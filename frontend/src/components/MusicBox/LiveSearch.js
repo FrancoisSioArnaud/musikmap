@@ -16,6 +16,8 @@ export default function LiveSearch({
   setStage,
   setSearchSong,
   setAchievements,
+  setFavoriteSong = false,
+  onSuccess = () => { }
 }) {
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
@@ -30,7 +32,6 @@ export default function LiveSearch({
    * @param {Array} dependencies - Triggers the callback function when the user's preferred_platform changes.
    */
   useEffect(() => {
-     console.log("here");
     if (user.preferred_platform) {
       setSelectedStreamingService(user.preferred_platform);
     }
@@ -49,18 +50,20 @@ export default function LiveSearch({
     const getData = setTimeout(() => {
       // Check if the user has selected spotify or deezer
       if (selectedStreamingService === "spotify") {
-        console.log(searchValue);
+        // console.log(searchValue);
         // Check if the search bar is empty
         if (searchValue === "") {
           console.log('search empty');
+          toggleSearchResults('remove');
           // Check if the user is authenticated with spotify
           if (isSpotifyAuthenticated) {
-            console.log('authenticated');
+            // console.log('authenticated');
             fetch("/spotify/recent-tracks")
               .then((response) => response.json())
               .then((data) => {
                 setJsonResults(data);
-                console.log(data);
+                // console.log(data);
+                toggleSearchResults('add');
               });
           } else {
             setJsonResults([]);
@@ -82,7 +85,7 @@ export default function LiveSearch({
             .then((response) => response.json())
             .then((data) => {
               setJsonResults(data);
-              // console.log(data);
+              toggleSearchResults('add');
             });
         }
       }
@@ -96,7 +99,7 @@ export default function LiveSearch({
               .then((response) => response.json())
               .then((data) => {
                 setJsonResults(data);
-                // console.log(data);
+                toggleSearchResults('add');
               });
           } else {
             setJsonResults([]);
@@ -118,11 +121,13 @@ export default function LiveSearch({
             .then((response) => response.json())
             .then((data) => {
               setJsonResults(data);
-              // console.log(data);
+              toggleSearchResults('add');
             });
         }
       }
     }, 400);
+
+    // console.log(getData);
 
     return () => clearTimeout(getData);
   }, [
@@ -132,34 +137,59 @@ export default function LiveSearch({
     isSpotifyAuthenticated,
   ]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   /**
    * Handles the deposit of a song to a box.
    * @param option - The selected option.
    * @param boxName - The name of the box.
    */
   function handleButtonClick(option, boxName) {
-    const data = { option, boxName };
-    // console.log(option);
-    const jsonData = JSON.stringify(data);
-    // console.log(jsonData);
-    const csrftoken = getCookie("csrftoken");
-    fetch("/box-management/get-box?name=" + boxName, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
-      },
-      body: jsonData,
-    })
-      .then((response) => response.json())
-      .then((data_resp) => {
-        console.log(data_resp);
-        // Set the search song to the new deposit
-        setSearchSong(data_resp.new_deposit);
-        setAchievements(data_resp.achievements);
-      });
-    setIsDeposited(true);
-    setStage(3);
+    if (setFavoriteSong) {
+      const data = { option };
+      const jsonData = JSON.stringify(data);
+      const csrftoken = getCookie("csrftoken");
+      fetch("/users/set-favorite-song", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: jsonData,
+      })
+        .then((response) => response.json())
+        .then((data_resp) => {
+          // console.log(data_resp);
+          onSuccess();
+          // Set the search song to the new deposit
+          // setSearchSong(data_resp.new_deposit);
+          // setAchievements(data_resp.achievements);
+        })
+    } else {
+      // const data = { option, boxName };
+      // const jsonData = JSON.stringify(data);
+      // const csrftoken = getCookie("csrftoken");
+      // fetch("/box-management/get-box?name=" + boxName, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "X-CSRFToken": csrftoken,
+      //   },
+      //   body: jsonData,
+      // })
+      //   .then((response) => response.json())
+      //   .then((data_resp) => {
+      //     console.log(data_resp);
+      //     // Set the search song to the new deposit
+      //     setSearchSong(data_resp.new_deposit);
+      //     setAchievements(data_resp.achievements);
+      //   });
+      setSearchSong(option);
+      setIsDeposited(true);
+      setStage(3);
+    }
   }
 
   /**
@@ -170,75 +200,104 @@ export default function LiveSearch({
     setSelectedStreamingService(service);
   }
 
+  /**
+   * Toggle animation class on search input click
+   */
+  function toggleSearch(action) {
+    let headerSearch = document.querySelector('.search-song');
+    if (action == 'add') {
+      headerSearch.classList.add('active')
+    }
+    else if (action == "remove") {
+      headerSearch.classList.remove('active')
+    }
+  }
+
+  /**
+   * Toggle animation class search results
+   */
+  function toggleSearchResults(action) {
+    let headerSearch = document.querySelector('.search-song');
+    if (action == 'add') {
+      headerSearch.classList.add('has-results')
+    }
+    else if (action == "remove") {
+      headerSearch.classList.remove('has-results')
+    }
+  }
+
   return (
-    <Stack>
-      <div className="search-song">
-        <h2>Choisi ta chanson à déposer</h2>
+    <div className="main-search-wrapper">
+      <div className="search-song step-header">
+        <h1>Choisis une chanson à déposer</h1>
+        {/* <h2>{setFavoriteSong == true ? 'Choisis ta chanson préférée' : 'Choisis ta chanson à déposer'}</h2> */}
+
+        <div className="d-flex">
+          <button
+            className={"btn-spotify " + (selectedStreamingService === "spotify" ? "active" : "")}
+            variant={
+              selectedStreamingService === "spotify" ? "contained" : "outlined"
+            }
+            onClick={() => handleStreamingServiceChange("spotify")}
+            sx={{ marginRight: "5px" }}
+          >
+            Spotify
+          </button>
+          <button
+            className={"btn-deezer " + (selectedStreamingService === "deezer" ? "active" : "")}
+            variant={
+              selectedStreamingService === "deezer" ? "contained" : "outlined"
+            }
+            onClick={() => handleStreamingServiceChange("deezer")}
+          >
+            Deezer
+          </button>
+        </div>
+
         <div className="search-song__wrapper">
-          
-          <div className="d-flex">
-            <button
-              className="btn-spotify"
-              variant={
-                selectedStreamingService === "spotify" ? "contained" : "outlined"
-              }
-              onClick={() => handleStreamingServiceChange("spotify")}
-              sx={{ marginRight: "5px" }}
-            >
-              Spotify
-            </button>
-            <button
-            className="btn-deezer"
-              variant={
-                selectedStreamingService === "deezer" ? "contained" : "outlined"
-              }
-              onClick={() => handleStreamingServiceChange("deezer")}
-            >
-              Deezer
-            </button>
-          </div>
-
-
           <div className="input-wrapper">
-            <input type="text" 
-              placeholder="Search for a song"
+            <input type="text"
+              placeholder="Rechercher"
               onChange={(e) => setSearchValue(e.target.value)}
+              onClick={() => toggleSearch('add')}
             />
           </div>
-          
+
+          <button className="cancel-search"
+            onClick={() => toggleSearch('remove')}
+          >Annuler</button>
         </div>
       </div>
 
+      <p>Recherche une chanson par son titre ou le nom de son artiste</p>
 
+      <ul className="search-results">
+        {jsonResults.map(option => (
+          <Box component="li" key={option.id}>
+            <div className="img-container">
+              <img
+                src={option.image_url}
+                alt={option.name}
+              />
+            </div>
 
+            <div className="song">
+              <p className="song-title" variant="h6">{option.name}</p>
+              <p className="song-subtitle" variant="subtitle2">{option.artist}</p>
+            </div>
 
-    <ul className="search-results">
-      {jsonResults.map(option => (
-        <Box component="li" key={option.id}>
-          <div class="img-container">
-            <img
-              src={option.image_url}
-              alt={option.name}
-            />
-          </div>
+            <button
+              className="btn-secondary"
+              variant="contained"
+              onClick={() => handleButtonClick(option, boxName)}
+            >
+              <span>Déposer</span>
+            </button>
 
-          <div class="song">
-            <p className="song-title" variant="h6">{option.name}</p>
-            <p className="song-subtitle" variant="subtitle2">{option.artist}</p>
-          </div>
+          </Box>
+        ))}
+      </ul>
 
-          <button
-          className="btn-tertiary"
-            variant="contained"
-            onClick={() => handleButtonClick(option, boxName)}
-          >
-            <span>Choisir</span>
-          </button>
-        
-        </Box>
-      ))}
-    </ul>
-
-    </Stack>
+    </div>
   );
 }

@@ -3,8 +3,8 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'blocks';
+@use 'blocks';
 
-@import 'views';
+@use 'views';
 
-@import 'nodes';
+@use 'nodes';

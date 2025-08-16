@@ -54,7 +54,6 @@ export default function LoginPage() {
     try {
       const response = await fetch("/users/login_user", requestOptions);
       const data = await response.json();
-      // console.log(data);
       if (response.ok) {
         setAuthenticationSuccess(true);
         setErrorMessages("");
@@ -82,7 +81,6 @@ export default function LoginPage() {
   const handleSubmit = (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    // console.log(jsonData);
     sendAndProcessData(data);
   };
 

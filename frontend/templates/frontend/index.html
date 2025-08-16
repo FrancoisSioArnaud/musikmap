@@ -1,27 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>La Boîte à Son</title>
+    <!-- <meta name="description" content="Your website description here." /> -->
+    <title>Changed</title>
+
     {% load static %}
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <!-- External stylesheet with async attribute for faster loading -->
+     <link rel="stylesheet" type="text/css" href="{% static "css/main.css" %}" async />
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Dosis:wght@500;600;800&display=swap" rel="stylesheet">
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
-    />
-    <link rel="stylesheet" type="text/css" href="{% static "css/main.css" %}"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" defer></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@300;400;500;600;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
   </head>
-  <body>
-    <div id="main">
-        {% csrf_token %}
-      <div id="app"></div>
-    </div>
 
-    <script src="{% static "frontend/main.js" %}"></script>
+  <body>
+    <main>
+      {% csrf_token %}
+      <div id="app"></div>
+    </main>
+
+    <!-- External JavaScript files with defer attribute for faster loading and execution -->
+    <script src="{% static "frontend/main.js" %}" defer></script>
   </body>
 </html>
+

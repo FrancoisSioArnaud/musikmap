@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.contrib import messages
@@ -8,10 +9,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .forms import RegisterUserForm
 from social_django.models import UserSocialAuth
-from .serializer import CustomUserSerializer
-from .models import CustomUser
-from box_management.models import Deposit
-
+from .serializer import CustomUserSerializer, SongSerializer
+from .models import CustomUser, FavoriteSongDiscovery
+from box_management.models import Deposit, Song
+from utils import NB_POINTS_FAVORITE_SONG_DISCOVERY
 
 class LoginUser(APIView):
     '''
@@ -210,45 +211,15 @@ class CheckAuthentication(APIView):
     Class goal : check if the user is authenticated
     '''
     def get(self, request, format=None):
+        # Check if the user is authenticated
         if request.user.is_authenticated:
             user = request.user
-            username = user.username
-            # first_name = user.first_name
-            # last_name = user.last_name
-            email = user.email
-            preferred_platform = user.preferred_platform
-            points = user.points
-
-            # Checks if the user is authenticated with social-auth and if so gets the provider
-            is_social_auth = UserSocialAuth.objects.filter(user=user).exists()
-
-            if request.user.profile_picture:  # If profile picture, include its URL in the response.
-                profile_picture_url = request.user.profile_picture.url
-                response = {
-                    'username': username,
-                    # 'first_name': first_name,
-                    # 'last_name': last_name,
-                    'email': email,
-                    'profile_picture_url': profile_picture_url,
-                    'preferred_platform': preferred_platform,
-                    'points': points,
-                    'is_social_auth': is_social_auth
-                }
-            else:
-                response = {
-                    'username': username,
-                    # 'first_name': first_name,
-                    # 'last_name': last_name,
-                    'email': email,
-                    'preferred_platform': preferred_platform,
-                    'points': points,
-                    'is_social_auth': is_social_auth
-                }
-
+            serializer = CustomUserSerializer(user)  # Serialize the user object
+            response = serializer.data  # Get serialized data
             return Response(response, status=status.HTTP_200_OK)
         else:
+            # Return an empty dictionary with an unauthorized status code if the user is not authenticated
             return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-
 
 class AddUserPoints(APIView):
     '''
@@ -299,13 +270,102 @@ class GetUserInfo(APIView):
 
     def get(self, request, format=None):
         user_id = request.GET.get(self.lookup_url_kwarg)
-        if user_id is not None:
+        if user_id is not None and user_id != 'null':
             user = get_object_or_404(CustomUser, id=user_id)
             serializer = CustomUserSerializer(user)
             total_deposits = Deposit.objects.filter(user=user).count()
             response = {}
             response = serializer.data
             response['total_deposits'] = total_deposits
+            response['has_favorite_song'] = user.favorite_song is not None
+
+            if response['has_favorite_song']:
+                current_user = request.user
+                if current_user.is_authenticated:
+                    is_discovered = current_user.has_discovered_user_favsong(user)
+                    response['is_discovered'] = is_discovered
+                    if is_discovered or current_user.id == user.id:
+                        response['favorite_song'] = SongSerializer(user.favorite_song).data
+                    else:
+                        response['favorite_song'] = None
+                else:
+                    response['is_discovered'] = False
+                    response['favorite_song'] = None
+
             return Response(response, status=status.HTTP_200_OK)
         else:
             return Response({'Bad Request': 'User ID not found in request'}, status=status.HTTP_400_BAD_REQUEST)
+
+class SetFavoriteSong(APIView):
+    def post(self, request, format=None):
+        user = request.user if not isinstance(request.user, AnonymousUser) else None
+        if not user:
+            return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        search_song = request.data.get('option')
+        if not search_song:
+            return Response({"error": "No song provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        song_name = search_song.get('name')
+        song_author = search_song.get('artist')
+        song_platform_id = search_song.get('platform_id')
+
+        try:
+            song = Song.objects.get(title=song_name, artist=song_author)
+        except Song.DoesNotExist:
+            song_url = search_song.get('url')
+            song_image = search_song.get('image_url')
+            song_duration = search_song.get('duration')
+
+            song = Song(
+                title=song_name,
+                artist=song_author,
+                url=song_url,
+                image_url=song_image,
+                duration=song_duration,
+                platform_id=song_platform_id
+            )
+            song.save()
+
+        user.favorite_song = song
+        user.save()
+
+        response = {
+            'user': CustomUserSerializer(user).data,
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+class DiscoverFavoriteSong(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        current_user = request.user
+        user_id = request.data.get('user_id')
+        target_user = get_object_or_404(CustomUser, id=user_id)
+
+        # Check if user has enough points
+        if current_user.points < 10:  # Assuming it costs 10 points to discover a favorite song
+            return Response({"error": "Not enough points"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the favorite song has already been discovered by this user
+        if current_user.has_discovered_user_favsong(target_user):
+            return Response({"error": "Favorite song already discovered"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Deduct points from the current user
+        current_user.points += NB_POINTS_FAVORITE_SONG_DISCOVERY
+        current_user.save()
+
+        # Create a new discovery record
+        FavoriteSongDiscovery.objects.create(
+            discovered_by=current_user,
+            discovered_user=target_user,
+            discovered_song=target_user.favorite_song
+        )
+
+        # Serialize the favorite song data
+        favorite_song_data = SongSerializer(target_user.favorite_song).data
+
+        return Response({
+            "status": "Favorite song discovered",
+            "favorite_song": favorite_song_data
+        }, status=status.HTTP_200_OK)

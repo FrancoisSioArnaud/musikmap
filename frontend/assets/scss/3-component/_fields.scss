@@ -1,3 +1,5 @@
+@use '../0-init/color' as *;
+@use '../0-init/icons' as *;
 /**
  * @file
  * Fields Components Styling
@@ -10,14 +12,14 @@
 
 .input-wrapper {
     width: 100%;
-    padding: 15px 20px;
+    padding: 6px 20px;
     box-sizing: border-box;
     border-radius: 66px;
     background: white;
-    box-shadow: 0px 6px 14px 0px rgba(0, 0, 0, 0.07);
     display: flex;
     align-items: center;
     gap: 13px;
+    border: 2px solid rgba(0, 0, 0, 0.03);
 
     &:before {
         font-family: $icomoon-font-family;

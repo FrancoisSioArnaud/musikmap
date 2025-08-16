@@ -11,8 +11,6 @@ import { getCookie } from "./Security/TokensUtils";
 export const logoutUser = async (setUser, setIsAuthenticated) => {
   try {
     const response = await fetch("/users/logout_user");
-    console.log(response);
-    // const data = await response.json();
     if (response.ok) {
       setIsAuthenticated(false);
       setUser(null);
@@ -37,8 +35,6 @@ export const checkUserStatus = async (setUser, setIsAuthenticated) => {
     const response = await fetch("/users/check-authentication");
     const data = await response.json();
     if (response.ok) {
-      // console.log("Authenticated");
-      // console.log(data);
       setUser(data);
       setIsAuthenticated(true);
     } else {
@@ -59,7 +55,6 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
   const form = JSON.stringify({
     preferred_platform: new_preferred_platform,
   });
-  //console.log(form);
   const requestOptions = {
     method: "POST",
     headers: {
@@ -98,7 +93,6 @@ export const getUserDetails = async (userID) => {
       return null;
     }
     const data = await response.json();
-    // console.log(data);
     return data;
   } catch (error) {
     console.error(error);

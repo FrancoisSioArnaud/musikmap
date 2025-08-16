@@ -13,3 +13,4 @@ NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX = 10  # Premier dépot d'un utilisateur dans
 NB_POINTS_FIRST_SONG_DEPOSIT_BOX = 20  # Première fois que ce son est déposé dans une boite
 NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL = 5  # Première fois que ce son est déposé sur le réseau
 NB_POINTS_CONSECUTIVE_DAYS_BOX = 2  # Jours consécutifs de dépôt sur une même boite
+NB_POINTS_FAVORITE_SONG_DISCOVERY = -10 # Points dépensés pour découvrir une chanson de coeur d'un autre user

@@ -3,19 +3,18 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'breadcrumb';
+@use 'breadcrumb';
 
-@import 'menu';
+@use 'menu';
 
-@import 'navbar';
+@use 'navbar';
 
-@import 'mega_menu';
+@use 'mega_menu';
 
-@import 'mobile_menu';
+@use 'mobile_menu';
 
-@import 'more_links';
+@use 'more_links';
 
-@import 'social-media';
+@use 'social-media';
 
-@import 'pager';
-
+@use 'pager';

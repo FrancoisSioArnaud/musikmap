@@ -49,7 +49,6 @@ export default function RegisterPage() {
    */
   const handleProfilePictureChange = (event) => {
     const file = event.target.files[0];
-    // console.log(file);
     setProfilePicture(file);
   };
 

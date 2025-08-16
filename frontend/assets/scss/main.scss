@@ -3,18 +3,18 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import '0-init/init';
+@use '0-init/init';
 
-@import '1-base/base';
+@use '1-base/base';
 
-@import '2-layout/layout';
+@use '2-layout/layout';
 
-@import '3-component/component';
+@use '3-component/component';
 
-@import '4-navigation/navigation';
+@use '4-navigation/navigation';
 
-@import '5-search/search';
+@use '5-search/search';
 
-@import '6-container/container';
+@use '6-container/container';
 
-@import '7-theme/theme';
+@use '7-theme/theme';

@@ -12,6 +12,8 @@ import { isMobile } from "react-device-detect";
 import SuccessfulLogout from "./SuccessfulLogout";
 import { Footer } from "./Common/footer";
 import UserPublicProfile from "./UserPublicProfile";
+import { ErrorProvider } from "./ErrorContext";
+import ErrorDialog from "./ErrorDialog";
 
 import {
   BrowserRouter as Router,
@@ -19,6 +21,8 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+
+import '../../assets/scss/main.scss';
 
 export default function App() {
   const [user, setUser] = useState({});
@@ -48,9 +52,10 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <ErrorProvider>
       <Router>
         <UserContext.Provider value={providerValue}>
+          <ErrorDialog />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route
@@ -110,8 +115,7 @@ export default function App() {
           </Routes>
         </UserContext.Provider>
       </Router>
-      <Footer sx={{ mt: 8, mb: 4 }} />
-    </>
+    </ErrorProvider>
   );
 }
 

@@ -1,3 +1,5 @@
+@use '../0-init/color' as *;
+
 /**
  * @file
  * Search Result Styling
@@ -10,9 +12,9 @@
 
 .search-results {
     list-style-type: none;
-    padding-left: 20px;
-    padding-right: 20px;
-    margin-top: 0;
+    padding: 16px 20px 0 20px;
+    background: $greyBackground;
+    margin: 0;
 
     li {
         display: flex;
@@ -20,20 +22,23 @@
         align-items: center;
         padding: 16px 0;
 
+        &:first-child {
+            padding-top: 0;
+        }
+
         .img-container {
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: url(../images/vinyl.png);
+            background-image: url(../images/vinyl.svg);
             background-repeat: no-repeat;
-            background-size: cover;
-            min-width: 76px;
-            height: 76px;
+            background-size: contain;
+            min-width: 56px;
+            height: 56px;
 
             img {
-                width: 17px;
+                width: 20px;
                 border-radius: 50%;
-                margin-top: -3px;
             }
         }
 
@@ -41,9 +46,13 @@
             margin: 0;
         }
 
+        .song {
+            flex-grow: 1;
+        }
+
         .song-title {
             font-size: 1.6rem;
-            font-weight: 700;
+            font-weight: 600;
             letter-spacing: 0.4px;
             color: $black;
         }
@@ -56,4 +65,3 @@
         }
     }
 }
-

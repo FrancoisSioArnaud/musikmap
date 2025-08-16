@@ -3,14 +3,14 @@ import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import LoaderLogo from '../../../static/images/loader.svg';
+import LoaderLogo from '../../../assets/images/loader.svg';
 
 export default function Loader({ setStage, boxInfo, className }) {
   return (
     <>
-        <div id="loader">
-          <img src={LoaderLogo} alt="" />
-        </div>
+      <div id="loader">
+        <img src={LoaderLogo} alt="" />
+      </div>
     </>
   );
 }

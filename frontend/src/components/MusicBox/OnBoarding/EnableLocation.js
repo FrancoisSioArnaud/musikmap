@@ -1,50 +1,53 @@
-import React, { useState, useEffect, useContext } from "react";
-import Button from "@mui/material/Button";
-import Grid from "@mui/material/Grid";
-import Paper from "@mui/material/Paper";
-import Typography from "@mui/material/Typography";
+
+import React, { useState, useEffect } from "react";
 import { checkLocation } from "../BoxUtils";
-import CircularProgress from "@mui/material/CircularProgress";
+import { useError } from "../../ErrorContext";
 
 export default function EnableLocation({ setStage, boxInfo, navigate, className }) {
-  // States & Variables
-
   const [isButtonClicked, setIsButtonClicked] = useState(false);
+  const { error, setError } = useError();
 
-  function handleButtonClick() {
+  async function handleButtonClick() {
     setIsButtonClicked(true);
-    checkLocation(boxInfo, navigate).then(() => setStage(2));
+    const status = await checkLocation(boxInfo);
+    if (status === "success") {
+      setStage(2);
+    } else {
+      setError({ title: "Oops !", message: status });
+    }
     document.getElementById('loader').style.display = "flex";
   }
 
   return (
     <>
       {boxInfo && Object.keys(boxInfo.box || {}).length > 0 ? (
-        <div className={className} >
+        <div className={className}>
           <div className="enable-location__wrapper">
-            <button className="btn-secondary">
+            <button className="box-name">
               <span>
                 {boxInfo.box.name}
               </span>
             </button>
 
-            <h1>Autoriser la localisation</h1>
+            <h1>Nous avons besoin de ta localisation</h1>
 
-            <p>Confirme que tu es bien à l'arrêt en partageant ta localisation. Ta localisation est uniquement utilisée à l'ouverture d'une boîte.</p>
+            <p>Pour éviter les petits tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.</p>
+
+            <p>Ta localisation est uniquement utilisée à l’ouverture d’une boîte</p>
 
             <button
               className="btn-primary"
               onClick={handleButtonClick}
             >
-                <span>Autoriser</span>
+              <span>Autoriser</span>
             </button>
 
           </div>
         </div>
-        
       ) : (
         <div>Loading...</div>
       )}
     </>
   );
 }
+

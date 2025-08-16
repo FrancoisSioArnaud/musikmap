@@ -3,10 +3,10 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'normalize';
+@use 'normalize';
 
-@import 'default';
+@use 'default';
 
-@import 'misc';
+@use 'misc';
 
-@import 'branding';
+@use 'branding';

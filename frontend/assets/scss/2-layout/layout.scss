@@ -3,12 +3,12 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'header';
+@use 'header';
 
-@import 'footer';
+@use 'footer';
 
-@import 'sidebars';
+@use 'sidebars';
 
-@import 'main';
+@use 'main';
 
-@import 'homepage';
+@use 'homepage';

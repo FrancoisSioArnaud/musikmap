@@ -15,10 +15,12 @@ import os
 from spotify.credentials import CLIENT_ID, CLIENT_SECRET
 from deezer.credentials import LOGIN_APP_ID, LOGIN_APP_SECRET
 
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(dotenv_path=BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -30,6 +32,14 @@ SECRET_KEY = 'django-insecure-mwb#$xb6cdl#+v*#7_r04r&d7dx#cn@lvhp)syyn-(84k87cvn
 DEBUG = True
 
 ALLOWED_HOSTS = ['boiteachanson.fr', 'www.boiteachanson.fr', "musikmap.com", "www.musikmap.com" ,'46.202.175.139']
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://boiteachanson.fr",
+    "https://www.boiteachanson.fr",
+    "https://musikmap.com",
+    "https://www.musikmap.com",
+]
+
 
 # Application definition
 
@@ -105,10 +115,21 @@ WSGI_APPLICATION = 'la_boite_a_son.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': os.getenv('DB_NAME'),
+#        'USER': os.getenv('DB_USER'),
+#        'PASSWORD': os.getenv('DB_PASSWORD'),
+#        'HOST': os.getenv('DB_HOST', default='localhost'),
+#        'PORT': os.getenv('DB_PORT', default='5432'),
+#    }
+#}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -147,7 +168,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Là où les fichiers collectés vont etre posé pour etre accessible à NGINX
 STATIC_ROOT = Path("/var/www/boite-a-groove/static")
+# Là où tu mets tes assets “sources” prêts à être collectés STATICFILES_DIRS = [ BASE_DIR / "frontend" / "static", # ex: .../static/css/main.css, .../static/js/app.js ]
+STATICFILES_DIRS = [
+    BASE_DIR / Path("../media/homepage"),
+    BASE_DIR / Path("../media/homepage/icon")
+]
+
+
+STATIC_ROOT = Path("/var/www/boite-a-groove/static")
+
 
 
 # Default primary key field type
@@ -182,9 +214,6 @@ SOCIAL_AUTH_DEEZER_KEY = LOGIN_APP_ID
 SOCIAL_AUTH_DEEZER_SECRET = LOGIN_APP_SECRET
 SOCIAL_AUTH_DEEZER_SCOPE = ['user-read-email']
 SOCIAL_AUTH_DEEZER_EXTRA_DATA = [('email', 'email')]
-
-
-
 
 
 

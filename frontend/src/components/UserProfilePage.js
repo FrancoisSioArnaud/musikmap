@@ -24,6 +24,7 @@ import {
 } from "./MusicBox/SpotifyUtils";
 import { useNavigate } from "react-router-dom";
 import CardMedia from "@mui/material/CardMedia";
+import LiveSearch from "./MusicBox/LiveSearch";
 
 // Styles
 const styles = {
@@ -119,6 +120,8 @@ export default function UserProfilePage() {
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [errorMessages, setErrorMessages] = useState([]);
+
+  const [showSearch, setShowSearch] = useState(false);
 
   const navigate = useNavigate();
 
@@ -237,7 +240,6 @@ export default function UserProfilePage() {
         console.log("Password changed successfuly");
       } else {
         if (data.errors) {
-          // console.log(data.errors);
           setErrorMessages(data.errors);
         } else {
           console.log(data);
@@ -268,7 +270,6 @@ export default function UserProfilePage() {
   const handleAvatarChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      // console.log(file);
       const form = new FormData();
       form.append("profile_picture", file);
       const csrftoken = getCookie("csrftoken");
@@ -338,7 +339,7 @@ export default function UserProfilePage() {
             <label htmlFor="avatar-input">
               <Avatar
                 style={styles.avatar}
-                src={user.profile_picture_url}
+                src={user.profile_picture}
                 alt={user.username}
                 component="span"
               />
@@ -471,6 +472,41 @@ export default function UserProfilePage() {
           </Typography>
         )}
 
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Typography variant="h6" gutterBottom>
+              Ta chanson préférée
+            </Typography>
+          </Grid>
+          <Grid>
+            {user.favorite_song ? (
+              <>
+                <img src={user.favorite_song.image_url} width={150} />
+                <Button
+                  variant="contained"
+                  onClick={() => setShowSearch(true)}
+                  style={styles.basicButton}
+                >Change pref song</Button>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={() => setShowSearch(true)}
+                style={styles.basicButton}
+              >Set pref song</Button>
+            )}
+            {showSearch && (
+              <LiveSearch
+                user={user}
+                setFavoriteSong={true}
+                onSuccess={() => {
+                  setShowSearch(false);
+                  checkUserStatus(setUser, setIsAuthenticated);
+                }}
+              />
+            )}
+          </Grid>
+        </Grid>
         <Grid
           container
           spacing={2}

@@ -1,5 +1,13 @@
+@use '../0-init/color' as *;
+
 /**
  * @file
  * Footer Styling
  */
 
+header {
+
+    .MuiToolbar-root {
+        border-bottom: 2px solid $greyBackground;
+    }
+}

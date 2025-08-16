@@ -1,0 +1,1864 @@
+@charset "UTF-8";
+/*************************************************************************************
+  Import tous les fichiers _name.scss de base.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Breakpoint Variables
+ */
+/**
+ * @file
+ * Font Variables
+ */
+/*$body_font : "Arial";*/
+/**
+ * @file
+ * Font Variables
+ */
+@font-face {
+  font-family: "icomoon";
+  src: url("../fonts/icomoon/icomoon.eot?76gna5");
+  src: url("../fonts/icomoon/icomoon.eot?76gna5#iefix") format("embedded-opentype"), url("../fonts/icomoon/icomoon.ttf?76gna5") format("truetype"), url("../fonts/icomoon/icomoon.woff?76gna5") format("woff"), url("../fonts/icomoon/icomoon.svg?76gna5#icomoon") format("svg");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block; }
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: "icomoon" !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale; }
+
+.icon-search .path1:before {
+  content: "";
+  color: black; }
+
+.icon-search .path2:before {
+  content: "";
+  margin-left: -0.962890625em;
+  color: black;
+  opacity: 0.15; }
+
+/**
+ * @file
+ * Color Variables
+ */
+/**
+ * @file
+ * Breakpoint Variables
+ */
+/*************************************************************************************
+  Styles typographiques récurrents pouvant être appliqués avec la méthode @extend
+****************************************************************************************/
+/************** HEADING **********************/
+.heading1,
+h1 {
+  font-weight: 700;
+  font-size: 2.8rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 3.3rem;
+  /* 117.857% */
+  letter-spacing: 0.56px;
+  margin: 3.6rem 0; }
+
+.heading2,
+h2 {
+  font-size: 2.4rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0.48px; }
+
+.heading3,
+h3 {
+  font-weight: 700; }
+
+.heading4,
+h4 {
+  font-weight: 700; }
+
+.heading5,
+h5 {
+  font-weight: 700; }
+
+.heading6,
+h6 {
+  font-weight: 700; }
+
+p {
+  color: rgba(0, 0, 0, 0.4);
+  /* Paragraph */
+  font-family: Dosis;
+  font-size: 1.6rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0.32px; }
+
+/************** FORM **********************/
+/*.label,
+%label {}*/
+/************** BUTTONS **********************/
+/*.btn {
+  &:hover,
+  &:focus {}
+}
+.btn-default {
+  &:hover,
+  &:focus {}
+}
+.btn-primary {
+  &:hover,
+  &:focus {}
+}*/
+/************** ICONS **********************/
+/************** CUSTOM SHARED **********************/
+/**
+ * @file
+ * Custom mixins
+ */
+/*************************************************************************************
+  Import tous les fichiers _name.scss de base.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Nomalize Styling
+ */
+/**
+ * 1. Set default font family to sans-serif.
+ * 2. Prevent iOS and IE text size adjust after device orientation change,
+ *    without disabling user zoom.
+ */
+html {
+  font-family: sans-serif;
+  -webkit-text-size-adjust: 100%;
+     -moz-text-size-adjust: 100%;
+          text-size-adjust: 100%; }
+
+/**
+ * Remove default margin.
+ */
+body {
+  margin: 0; }
+
+/* HTML5 display definitions
+   ========================================================================== */
+/**
+ * Correct `block` display not defined for any HTML5 element in IE 8/9.
+ * Correct `block` display not defined for `details` or `summary` in IE 10/11
+ * and Firefox.
+ * Correct `block` display not defined for `main` in IE 11.
+ */
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+main,
+menu,
+nav,
+section,
+summary {
+  display: block; }
+
+/**
+ * 1. Correct `inline-block` display not defined in IE 8/9.
+ * 2. Normalize vertical alignment of `progress` in Chrome, Firefox, and Opera.
+ */
+audio,
+canvas,
+progress,
+video {
+  display: inline-block;
+  /* 1 */
+  vertical-align: baseline;
+  /* 2 */ }
+
+/**
+ * Prevent modern browsers from displaying `audio` without controls.
+ * Remove excess height in iOS 5 devices.
+ */
+audio:not([controls]) {
+  display: none;
+  height: 0; }
+
+/**
+ * Address `[hidden]` styling not present in IE 8/9/10.
+ * Hide the `template` element in IE 8/9/10/11, Safari, and Firefox < 22.
+ */
+[hidden],
+template {
+  display: none; }
+
+/* Links
+   ========================================================================== */
+/**
+ * Remove the gray background color from active links in IE 10.
+ */
+a {
+  background-color: transparent; }
+
+/* Text-level semantics
+   ========================================================================== */
+/**
+ * Address styling not present in IE 8/9/10/11, Safari, and Chrome.
+ */
+abbr[title] {
+  border-bottom: 1px dotted; }
+
+/**
+ * Address style set to `bolder` in Firefox 4+, Safari, and Chrome.
+ */
+b,
+strong {
+  font-weight: bold; }
+
+/**
+ * Address styling not present in Safari and Chrome.
+ */
+dfn {
+  font-style: italic; }
+
+/**
+ * Address variable `h1` font-size and margin within `section` and `article`
+ * contexts in Firefox 4+, Safari, and Chrome.
+ */
+/**
+ * Address styling not present in IE 8/9.
+ */
+mark {
+  background: #ff0;
+  color: #000; }
+
+/**
+ * Address inconsistent and variable font size in all browsers.
+ */
+small {
+  font-size: 80%; }
+
+/**
+ * Prevent `sub` and `sup` affecting `line-height` in all browsers.
+ */
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline; }
+
+sup {
+  top: -0.5em; }
+
+sub {
+  bottom: -0.25em; }
+
+/* Embedded content
+   ========================================================================== */
+/**
+ * Remove border when inside `a` element in IE 8/9/10.
+ */
+img {
+  border: 0; }
+
+/**
+ * Correct overflow not hidden in IE 9/10/11.
+ */
+svg:not(:root) {
+  overflow: hidden; }
+
+/* Grouping content
+   ========================================================================== */
+/**
+ * Address margin not present in IE 8/9 and Safari.
+ */
+figure {
+  margin: 1em 40px; }
+
+/**
+ * Address differences between Firefox and other browsers.
+ */
+hr {
+  box-sizing: content-box;
+  height: 0; }
+
+/**
+ * Contain overflow in all browsers.
+ */
+pre {
+  overflow: auto; }
+
+/**
+ * Address odd `em`-unit font size rendering in all browsers.
+ */
+code,
+kbd,
+pre,
+samp {
+  font-family: monospace, monospace;
+  font-size: 1em; }
+
+/* Forms
+   ========================================================================== */
+/**
+ * Known limitation: by default, Chrome and Safari on OS X allow very limited
+ * styling of `select`, unless a `border` property is set.
+ */
+/**
+ * 1. Correct color not being inherited.
+ *    Known issue: affects color of disabled elements.
+ * 2. Correct font properties not being inherited.
+ * 3. Address margins set differently in Firefox 4+, Safari, and Chrome.
+ */
+button,
+input,
+optgroup,
+select,
+textarea {
+  color: inherit;
+  /* 1 */
+  font: inherit;
+  /* 2 */
+  margin: 0;
+  /* 3 */ }
+
+/**
+ * Address `overflow` set to `hidden` in IE 8/9/10/11.
+ */
+button {
+  overflow: visible; }
+
+/**
+ * Address inconsistent `text-transform` inheritance for `button` and `select`.
+ * All other form control elements do not inherit `text-transform` values.
+ * Correct `button` style inheritance in Firefox, IE 8/9/10/11, and Opera.
+ * Correct `select` style inheritance in Firefox.
+ */
+button,
+select {
+  text-transform: none; }
+
+/**
+ * 1. Avoid the WebKit bug in Android 4.0.* where (2) destroys native `audio`
+ *    and `video` controls.
+ * 2. Correct inability to style clickable `input` types in iOS.
+ * 3. Improve usability and consistency of cursor style between image-type
+ *    `input` and others.
+ */
+button,
+html input[type='button'],
+input[type='reset'],
+input[type='submit'] {
+  -webkit-appearance: button;
+     -moz-appearance: button;
+          appearance: button;
+  /* 2 */
+  cursor: pointer;
+  /* 3 */ }
+
+/**
+ * Re-set default cursor for disabled elements.
+ */
+button[disabled],
+html input[disabled] {
+  cursor: default; }
+
+/**
+ * Remove inner padding and border in Firefox 4+.
+ */
+button:moz-focus-inner,
+input:moz-focus-inner {
+  border: 0;
+  padding: 0; }
+
+/**
+ * Address Firefox 4+ setting `line-height` on `input` using `!important` in
+ * the UA stylesheet.
+ */
+input {
+  line-height: normal; }
+
+/**
+ * It's recommended that you don't attempt to style these elements.
+ * Firefox's implementation doesn't respect box-sizing, padding, or width.
+ *
+ * 1. Address box sizing set to `content-box` in IE 8/9/10.
+ * 2. Remove excess padding in IE 8/9/10.
+ */
+input[type='checkbox'],
+input[type='radio'] {
+  box-sizing: border-box;
+  /* 1 */
+  padding: 0;
+  /* 2 */ }
+
+/**
+ * 1. Address `appearance` set to `searchfield` in Safari and Chrome.
+ * 2. Address `box-sizing` set to `border-box` in Safari and Chrome.
+ */
+input[type='search'] {
+  -webkit-appearance: textfield;
+     -moz-appearance: textfield;
+          appearance: textfield;
+  /* 1 */
+  box-sizing: content-box;
+  /* 2 */ }
+
+/**
+ * Define consistent border, margin, and padding.
+ */
+fieldset {
+  border: 1px solid #c0c0c0;
+  margin: 0 2px;
+  padding: 0.35em 0.625em 0.75em; }
+
+/**
+ * 1. Correct `color` not being inherited in IE 8/9/10/11.
+ * 2. Remove padding so people aren't caught out if they zero out fieldsets.
+ */
+legend {
+  border: 0;
+  /* 1 */
+  padding: 0;
+  /* 2 */ }
+
+/**
+ * Remove default vertical scrollbar in IE 8/9/10/11.
+ */
+textarea {
+  overflow: auto; }
+
+/**
+ * Don't inherit the `font-weight` (applied by a rule above).
+ * NOTE: the default cannot safely be changed in Chrome and Safari on OS X.
+ */
+optgroup {
+  font-weight: bold; }
+
+/* Tables
+   ========================================================================== */
+/**
+ * Remove most spacing between table cells.
+ */
+table {
+  border-collapse: collapse;
+  border-spacing: 0; }
+
+td,
+th {
+  padding: 0; }
+
+/**
+ * @file
+ * Default Html Tags Styling
+ */
+/* ---------------- DRUPAL DEFAULT -----------------*/
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-size: 62.5%; }
+
+/*body {
+  //font-family: $body_font;
+}*/
+/* -------------- HEADINGS -----------------*/
+/* -------------- PARAGRAPHS -----------------*/
+/*p {
+  &:last-child {
+
+  }
+}*/
+/* -------------- BLOCKQUOTE -----------------*/
+/*blockquote {
+  p {}
+}*/
+/* -------------- LIST -----------------*/
+/*ol, ul {
+  li {
+
+  }
+}*/
+/* -------------- LISTS -----------------*/
+/**
+ * @file
+ * Styles for system messages and progress bar.
+ */
+/* ---------------- Top of page link  -----------------*/
+/*.top-of-page {
+  a {}
+}*/
+/* ---------------- Message Styling -----------------*/
+/*.messages--status {}
+.messages--warning {}
+.messages--error {
+  p.error {}
+}*/
+/* ---------------- Progress Bar Styling -----------------*/
+/*.progress { }
+
+
+.ajax-progress {
+  .throbber {
+    tr & {}
+  }
+  .message {}
+}*/
+/* ---------------- Alert Styling -----------------*/
+/*.alert-sm {}
+.alert a {}
+.alert-success {}
+.alert-info {
+  a, a:hover, a:focus {}
+}
+.alert-warning {
+  a, a:hover, a:focus {}
+}
+.alert-danger {
+  a, a:hover, a:focus {}
+}*/
+.d-flex {
+  display: flex;
+  gap: 8px; }
+
+.MuiAppBar-root {
+  box-shadow: none !important; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0; }
+
+/**
+ * @file
+ * Branding Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/*.site-logo { }
+.site-name { }
+.site-slogan { }*/
+/* ---------------- CUSTOM  -----------------*/
+html {
+  font-family: Dosis; }
+
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au layout.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Footer Styling
+ */
+header .MuiToolbar-root {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.03); }
+
+/**
+ * @file
+ * Footer Styling
+ */
+/**
+ * @file
+ * Sidebars Layout Styling
+ */
+/**
+ * @file
+ * Main Layout Styling
+ */
+.main-content {
+  height: calc(100vh - 58px); }
+  .main-content .startup {
+    height: 100%;
+    box-shadow: none;
+    border-radius: 0; }
+  .main-content .decoration {
+    height: 300px;
+    background: #fa9500;
+    background: linear-gradient(to right, #fa9500, #fa4000);
+    /* W3C */ }
+    .main-content .decoration__wrapper {
+      background-image: url(../images/box-bg.svg);
+      /* fallback */
+      background-repeat: no-repeat;
+      background-position: center top 30px;
+      background-size: 300px;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center; }
+    .main-content .decoration .song-cover {
+      position: relative;
+      left: -30px;
+      top: -25px; }
+      .main-content .decoration .song-cover > svg {
+        position: absolute;
+        z-index: 1;
+        top: 50%;
+        right: 0;
+        transform: translate(10%, -50%);
+        -webkit-animation-duration: .3s;
+                animation-duration: .3s;
+        -webkit-animation-delay: 1s;
+                animation-delay: 1s;
+        -webkit-animation-name: SlideVinyl;
+                animation-name: SlideVinyl;
+        -webkit-animation-fill-mode: forwards;
+                animation-fill-mode: forwards; }
+    .main-content .decoration .cadre {
+      width: 145px;
+      height: 145px;
+      border-radius: 11px;
+      padding: 10px;
+      box-shadow: 0px 5px 0px 0px #E2E2E2;
+      background: #fff;
+      z-index: 2;
+      position: relative; }
+      .main-content .decoration .cadre .image-wrapper {
+        overflow: hidden;
+        border-radius: 11px;
+        position: relative; }
+        .main-content .decoration .cadre .image-wrapper svg {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 3; }
+      .main-content .decoration .cadre img {
+        max-width: 100%;
+        border-radius: 11px;
+        filter: blur(15px); }
+  .main-content .bottom-content {
+    height: 50%;
+    background: #fff; }
+  .main-content .enable-location {
+    transition: .3s all ease-in-out;
+    position: fixed;
+    top: 100%;
+    z-index: 2; }
+  .main-content.stage-1 .enable-location {
+    transform: translateY(calc(-100% - 20px)); }
+  .main-content.stage-2, .main-content.stage-3, .main-content.stage-5 {
+    overflow: visible; }
+  .main-content.stage-3 .stage-3__wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column; }
+
+@-webkit-keyframes SlideVinyl {
+  from {
+    transform: translate(10%, -50%); }
+  to {
+    transform: translate(43%, -50%); } }
+
+@keyframes SlideVinyl {
+  from {
+    transform: translate(10%, -50%); }
+  to {
+    transform: translate(43%, -50%); } }
+
+/**
+ * @file
+ * Homepage Layout Styling
+ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  letter-spacing: 1.2%; }
+
+body {
+  font-family: dosis, sans-serif;
+  line-height: 1.6; }
+
+p {
+  font-size: 16px;
+  font-weight: normal;
+  line-height: normal; }
+
+h1 {
+  font-size: 32px;
+  font-weight: bolder;
+  margin-bottom: 1rem;
+  line-height: normal; }
+
+h2 {
+  font-size: 32px;
+  font-weight: bolder;
+  text-align: center;
+  margin-bottom: 36px;
+  line-height: normal; }
+
+section {
+  padding: 20px;
+  margin-bottom: 100px;
+  padding: 26px 26px 32px 26px; }
+
+.valeurs, .mission {
+  border-radius: 40px;
+  margin-left: 20px;
+  margin-right: 20px; }
+
+.landing-header {
+  background-color: white;
+  color: black;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0px 7px 16px rgba(0, 0, 0, 0.07);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding-top: 1rem;
+  padding-bottom: 2rem;
+  z-index: 7;
+  line-height: normal; }
+
+.landing-header img {
+  vertical-align: sub; }
+
+.instagram {
+  text-align: center; }
+
+.instagram a {
+  display: inline-block;
+  overflow: hidden;
+  text-align: center;
+  background: url("../../../media/homepage/maincolor.png") no-repeat center center/cover;
+  padding: 16px 20px;
+  border-radius: 1000px;
+  border: 3px solid white;
+  color: white;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0px 16px 14px rgba(0, 0, 0, 0.12); }
+
+.instagram a img {
+  vertical-align: sub;
+  margin-right: 8px; }
+
+.step1::before {
+  background: url("../../../media/homepage/icon/qr.svg") no-repeat center; }
+
+.step2::before {
+  background: url("../../../media/homepage/icon/location.svg") no-repeat center; }
+
+.step3::before {
+  background: url("../../../media/homepage/icon/search.svg") no-repeat center; }
+
+.step4::before {
+  background: url("../../../media/homepage/icon/note.svg") no-repeat center; }
+
+.step5::before {
+  background: url("../../../media/homepage/icon/play.svg") no-repeat center; }
+
+.mission ol li::before {
+  content: "";
+  width: 48px;
+  height: 48px;
+  font-size: 26px;
+  background-color: white;
+  border-radius: 100px;
+  background-size: 30px;
+  flex-grow: 0;
+  /* do not grow   - initial value: 0 */
+  flex-shrink: 0;
+  /* do not shrink - initial value: 1 */
+  flex-basis: 48px;
+  /* width/height  - initial value: auto */ }
+
+.flow ol li {
+  text-align: left;
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  align-items: center;
+  margin: 26px 0;
+  line-height: normal; }
+
+.mission ol li p {
+  text-align: left; }
+
+ul, ol {
+  list-style: none; }
+
+.hero {
+  background: url("../../../media/homepage/photoBAG.jpg") no-repeat center center/cover;
+  height: calc(95vh - 78px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #fff; }
+
+.hero .content {
+  position: absolute;
+  bottom: 80px;
+  background-color: white;
+  border-radius: 26px;
+  padding: 20px 26px;
+  background: url("../../../media/homepage/maincolor.png") no-repeat center center/cover;
+  margin-left: 20px;
+  margin-right: 20px; }
+
+.hero .content h1 {
+  margin-bottom: 8px; }
+
+.hero::after {
+  content: "";
+  width: 48px;
+  height: 48px;
+  position: absolute;
+  top: calc(95vh - 24px);
+  background-color: green;
+  background: url("../../../media/homepage/icon/arrow_down.svg") no-repeat center;
+  background-size: 30px;
+  background-color: white;
+  border-radius: 10000px; }
+
+.emoji {
+  text-align: center;
+  font-size: 32px;
+  background-color: white;
+  display: block;
+  width: 25%;
+  margin: auto;
+  margin-top: -50px;
+  margin-bottom: 42px;
+  box-shadow: 0px 7px 16px rgba(0, 0, 0, 0.07);
+  border-radius: 1000px; }
+
+.mission {
+  color: white;
+  background: url("../../../media/homepage/maincolor.png") no-repeat center center/cover;
+  text-align: center; }
+
+.mission p, .support p {
+  text-align: center; }
+
+.flow h3 {
+  display: inline-block;
+  padding: 16px 32px;
+  background-color: white;
+  color: black;
+  border-radius: 1000px; }
+
+.flowstepscontainer {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  flex-basis: calc(33% - 3rem);
+  text-align: center; }
+
+.flowstep {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 5px; }
+
+.service h3 {
+  margin-bottom: 1rem; }
+
+footer {
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  padding: 1rem 0; }
+
+footer p {
+  margin: 0; }
+
+.faq {
+  background: url("../../../media/homepage/maincolor.png") no-repeat center center/cover;
+  padding-top: 36px;
+  margin-bottom: 0;
+  font-size: 20px; }
+
+.faq h2 {
+  color: white; }
+
+.topic {
+  width: 100%; }
+
+.question, .reponse {
+  margin-bottom: 16px;
+  color: white;
+  box-shadow: 0px 7px 20px 0px rgba(0, 0, 0, 0.15); }
+
+.faq .question {
+  text-align: right;
+  margin-left: 20%;
+  width: 80%;
+  background-color: white;
+  color: black;
+  padding: 12px;
+  border-radius: 16px 0px 16px 16px; }
+
+.faq .reponse {
+  text-align: left;
+  margin-right: 20%;
+  width: 80%;
+  padding: 12px 16px;
+  border-radius: 0px 16px 16px 16px;
+  background: url("../../../media/homepage/maincolor.png") no-repeat center center/cover;
+  border: 2px solid white; }
+
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au "component"
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * File Component Styling - Default style for file module.
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Fields Components Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+.input-wrapper {
+  width: 100%;
+  padding: 6px 20px;
+  box-sizing: border-box;
+  border-radius: 66px;
+  background: white;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 2px solid rgba(0, 0, 0, 0.03); }
+  .input-wrapper:before {
+    font-family: "icomoon";
+    content: "";
+    font-size: 2.5rem;
+    background: linear-gradient(to right, #fa9500, #fa4000);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent; }
+  .input-wrapper input[type="text"] {
+    font-size: 1.6rem;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    letter-spacing: 0.48px;
+    border: none;
+    background: #fff;
+    width: 100%; }
+    .input-wrapper input[type="text"]::-moz-placeholder {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.15); }
+    .input-wrapper input[type="text"]:-ms-input-placeholder {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.15); }
+    .input-wrapper input[type="text"]::placeholder {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.15); }
+    .input-wrapper input[type="text"]:focus {
+      outline: none; }
+
+/**
+ * @file
+ * Icons Component Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/**
+ * @file
+ * Visual styles for tables.
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Visual styles for tabs.
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Forms Components Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+.btn-primary,
+.btn-tertiary {
+  border-radius: 80px;
+  border: 3px solid #fff;
+  background: linear-gradient(135deg, #F90 0%, #FF6900 52.6%, #FF3D00 100%);
+  background-blend-mode: multiply, normal;
+  padding: 1.5rem 2rem;
+  box-shadow: 0px 4px 0px 0px #E2E2E2, 0px 16px 14px 0px rgba(0, 0, 0, 0.12); }
+  .btn-primary span,
+  .btn-tertiary span {
+    font-family: Dosis;
+    font-size: 2.1rem;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    letter-spacing: 0.52px;
+    color: #fff; }
+
+.btn-secondary {
+  display: flex;
+  padding: 10px 14px;
+  align-items: center;
+  gap: 16px;
+  border-radius: 12px;
+  border: 2px solid #FD5D01;
+  background: none; }
+  .btn-secondary span {
+    background: var(--Main-Color, linear-gradient(92deg, #F90 0%, #FF6900 52.6%, #FF3D00 100%));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: normal; }
+
+.box-name {
+  font-weight: 700;
+  font-size: 1.6rem;
+  line-height: 1.334;
+  letter-spacing: 0em;
+  padding: 8px 16px 8px 8px;
+  background: #fff;
+  border-radius: 26px;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 8px; }
+  .box-name:before {
+    content: "";
+    min-width: 34px;
+    height: 34px;
+    background-image: url(../images/box-icon.svg);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat; }
+  .box-name span {
+    background: linear-gradient(to right, #fa9500, #fa4000);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0; }
+
+.btn-tertiary {
+  padding: 1.2rem 1.6rem; }
+  .btn-tertiary span {
+    font-size: 1.6rem;
+    letter-spacing: 0.4px; }
+
+.btn-spotify {
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0.32px;
+  color: #fff;
+  border-radius: 70px;
+  border: 2px solid #1ED760;
+  padding: 10px 12px;
+  background: #1ED760; }
+  .btn-spotify.active {
+    background: #fff;
+    color: #1ED760; }
+
+.btn-deezer {
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0.32px;
+  color: #fff;
+  border-radius: 70px;
+  border: 2px solid #9C42F3;
+  padding: 10px 12px;
+  background: #9C42F3; }
+  .btn-deezer.active {
+    background: #fff;
+    color: #9C42F3; }
+
+.bottom-content {
+  padding: 0 20px;
+  position: relative; }
+  .bottom-content:after {
+    content: "";
+    border-radius: 50% 50% 50% 50% / 7% 7% 93% 93%;
+    background: #fff;
+    width: 100vw;
+    height: 28vh;
+    left: 0;
+    top: -25px;
+    position: absolute;
+    z-index: 1; }
+  .bottom-content__wrapper {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px; }
+    .bottom-content__wrapper h1 {
+      width: 100%;
+      text-align: left;
+      margin: 75px 0 8px 0; }
+      .bottom-content__wrapper h1 + p {
+        margin-top: 0;
+        color: black;
+        font-weight: 700; }
+    .bottom-content__wrapper ol {
+      padding-left: 0;
+      margin-bottom: 16px;
+      counter-reset: orderedlist; }
+      .bottom-content__wrapper ol li {
+        font-size: 16px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+        letter-spacing: 0.32px;
+        color: rgba(0, 0, 0, 0.8);
+        list-style-type: none;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px; }
+        .bottom-content__wrapper ol li:before {
+          min-width: 26px;
+          height: 26px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          font-size: 16px;
+          font-style: normal;
+          font-weight: 600;
+          line-height: normal;
+          letter-spacing: 0.8px;
+          color: rgba(0, 0, 0, 0.8);
+          border-radius: 50%;
+          border: 2px solid rgba(0, 0, 0, 0.15);
+          counter-increment: orderedlist;
+          content: counter(orderedlist); }
+    .bottom-content__wrapper .btn-primary {
+      margin: 0 auto 32px; }
+  .bottom-content .box-name {
+    margin: -50px auto;
+    z-index: 2; }
+    .bottom-content .box-name span {
+      position: relative;
+      z-index: 2; }
+
+.step-header {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px; }
+  .step-header h1 {
+    margin: 0; }
+  .step-header p {
+    font-weight: 400;
+    text-align: center;
+    margin: 0;
+    color: rgba(0, 0, 0, 0.8); }
+
+.enable-location {
+  padding: 20px; }
+  .enable-location__wrapper {
+    background: #fff;
+    box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07);
+    border-radius: 26px;
+    height: 50vh;
+    padding: 26px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px; }
+  .enable-location h1 {
+    margin: 0; }
+    .enable-location h1 + p {
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.8); }
+  .enable-location p {
+    font-size: 1.4rem;
+    margin: 0; }
+
+/**
+ * @file
+ * Paragraphs Component Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+#loader {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  display: none; }
+  #loader.active {
+    display: flex; }
+
+/**
+ * @file
+ * Carousel Component Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+.mood {
+  background: rgba(0, 0, 0, 0.03);
+  padding-bottom: 96px;
+  flex-grow: 2; }
+  .mood .MuiTabs-scroller .MuiTabs-flexContainer {
+    padding: 12px; }
+  .mood .MuiTabs-scroller .MuiTabs-indicator {
+    background: #fff;
+    border-radius: 60px;
+    z-index: 1;
+    transition: none;
+    height: calc(100% - 24px);
+    transition: none;
+    transform: translateY(-12px); }
+  .mood .MuiTabs-scroller .MuiTabs-flexContainer {
+    gap: 12px;
+    padding-left: 20px; }
+  .mood .MuiTabs-scroller .MuiButtonBase-root {
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: normal;
+    letter-spacing: 0.32px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 60px;
+    text-transform: none;
+    color: rgba(0, 0, 0, 0.8);
+    z-index: 2; }
+    .mood .MuiTabs-scroller .MuiButtonBase-root.Mui-selected {
+      background: linear-gradient(to right, #fa9500, #fa4000);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; }
+  .mood .MuiTabPanel-root {
+    padding: 16px 10px 0 26px; }
+  .mood .mood-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px; }
+    .mood .mood-item__content {
+      padding: 12px 26px 12px 12px;
+      color: rgba(0, 0, 0, 0.8);
+      background: #fff;
+      box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07);
+      border-radius: 16px;
+      font-size: 16px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: normal;
+      letter-spacing: 0.32px;
+      display: flex;
+      gap: 8px;
+      flex-grow: 2; }
+      .mood .mood-item__content:before {
+        content: "";
+        min-width: 13px;
+        height: 21px;
+        background-image: url(../images/quote.svg);
+        background-size: 13px;
+        background-repeat: no-repeat; }
+    .mood .mood-item .btn-tertiary {
+      transform: translateX(-16px); }
+  .mood .btn-primary {
+    margin: 20px auto;
+    width: auto;
+    display: block; }
+  .mood .bottom-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    background: white; }
+    .mood .bottom-panel button {
+      padding: 12px;
+      border: none;
+      background: var(--Main-Color, linear-gradient(92deg, #F90 0%, #FF6900 52.6%, #FF3D00 100%));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.32px; }
+
+.selected-song {
+  width: 100%;
+  border-top: 2px solid rgba(0, 0, 0, 0.03); }
+  .selected-song .search-results {
+    padding: 12px 8px 12px 16px;
+    margin: 0;
+    background: #fff; }
+    .selected-song .search-results li {
+      padding-bottom: 0; }
+  .selected-song button {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.32px;
+    color: rgba(0, 0, 0, 0.3);
+    border: none;
+    background: none; }
+
+.reveal {
+  padding: 110px 40px 40px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative; }
+  .reveal > h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 0.64px;
+    color: rgba(0, 0, 0, 0.8);
+    margin: 0 0 8px; }
+  .reveal > p {
+    font-weight: 400;
+    margin: 0 0 16px;
+    color: rgba(0, 0, 0, 0.4);
+    text-align: center; }
+  .reveal > h3 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #000;
+    margin-top: 16px;
+    width: 100%; }
+  .reveal__notification {
+    padding: 20px;
+    border-radius: 26px;
+    border: 2px solid #1DCC00;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #1DCC00;
+    position: absolute;
+    top: -200px;
+    left: 20px;
+    right: 20px;
+    text-align: center;
+    z-index: 3;
+    box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07);
+    transition: all .3s ease-in;
+    -webkit-animation: .6s linear 1s 1 slidein forwards;
+            animation: .6s linear 1s 1 slidein forwards; }
+  .reveal .song__cover {
+    width: 243px;
+    height: 243px;
+    background-image: url(../images/vinyl-lg.png);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: contain;
+    background-position: center;
+    z-index: 2; }
+    .reveal .song__cover__image {
+      width: 168px;
+      height: 168px;
+      border-radius: 15.342px;
+      border: 2.877px solid #fff;
+      box-shadow: 0px 3.5px 0px 0px #E2E2E2, 0px 14px 12.25px 0px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+      margin-top: -25px; }
+  .reveal .song__information {
+    padding: 60px 20px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #fff;
+    letter-spacing: 0.64px;
+    text-align: center;
+    width: calc(100% - 40px);
+    margin-top: -67px;
+    z-index: 1; }
+    .reveal .song__information h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 0;
+      color: #000; }
+    .reveal .song__information p {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+      color: #000; }
+  .reveal .select {
+    padding: 16px 24px 16px 26px;
+    background: #fff;
+    border-radius: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07);
+    width: calc(100% - 12px);
+    box-sizing: border-box;
+    margin-top: -30px;
+    z-index: 2; }
+    .reveal .select .label {
+      padding: 0;
+      background: none;
+      border: none;
+      color: #000;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.32px;
+      line-height: 1;
+      margin: 0; }
+    .reveal .select ul {
+      list-style-type: none;
+      padding-left: 0;
+      position: relative;
+      margin: 0;
+      padding-right: 30px; }
+      .reveal .select ul:after {
+        content: "";
+        width: 0;
+        display: block;
+        height: 0;
+        border-style: solid;
+        border-right: 5px solid transparent;
+        border-left: 5px solid transparent;
+        border-top: 6px solid #000000;
+        border-bottom: 0;
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%); }
+      .reveal .select ul li button {
+        border: none;
+        padding: 0;
+        background: none; }
+      .reveal .select ul li img {
+        width: 110px; }
+      .reveal .select ul li:not(.selected) {
+        display: none; }
+    .reveal .select.open {
+      border-radius: 80px 80px 0 80px; }
+      .reveal .select.open li:not(.selected) {
+        display: block;
+        position: absolute;
+        bottom: -70px;
+        left: -40px;
+        padding: 10px 20px 20px 40px;
+        background: #fff;
+        border-radius: 0 0 80px 80px;
+        right: -24px;
+        box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07); }
+  .reveal select {
+    display: none; }
+  .reveal .author {
+    width: calc(100% - 12px);
+    margin-top: 16px;
+    gap: 16px; }
+    .reveal .author__informations {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      flex-grow: 2; }
+      .reveal .author__informations__name {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: #000;
+        margin: 0;
+        justify-content: center; }
+      .reveal .author__informations button {
+        background: var(--Main-Color, linear-gradient(92deg, #F90 0%, #FF6900 52.6%, #FF3D00 100%));
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        border: none;
+        padding: 0;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-align: left; }
+  .reveal .last-deposit {
+    padding: 12px 26px 12px 12px;
+    color: rgba(0, 0, 0, 0.8);
+    background: #fff;
+    box-shadow: 0px 7px 14px 0px rgba(0, 0, 0, 0.07);
+    border-radius: 16px;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    letter-spacing: 0.32px;
+    display: flex;
+    gap: 8px;
+    flex-grow: 2;
+    margin-top: 24px; }
+    .reveal .last-deposit:before {
+      content: "";
+      min-width: 13px;
+      height: 21px;
+      background-image: url(../images/quote.svg);
+      background-size: 13px;
+      background-repeat: no-repeat; }
+
+.author-profil-wrapper {
+  min-height: calc(100vh - 66px);
+  display: flex;
+  flex-direction: column; }
+  .author-profil-wrapper .favorite-song {
+    background: rgba(0, 0, 0, 0.03);
+    padding: 26px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 2; }
+
+.author-profil {
+  padding: 26px 36px; }
+  .author-profil .author {
+    gap: 16px; }
+    .author-profil .author__informations {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      flex-grow: 2; }
+      .author-profil .author__informations__name {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: 0.64px;
+        color: #000;
+        margin: 0;
+        justify-content: center; }
+    .author-profil .author .deposit-number {
+      font-size: 1.6rem;
+      color: rgba(0, 0, 0, 0.4);
+      letter-spacing: 0.32px;
+      font-weight: 400;
+      margin: 0; }
+
+.select-service-provider {
+  padding: 20px 16px 16px 16px;
+  border-radius: 33px;
+  border: 3px solid var(--Blanc, #FFF);
+  background: linear-gradient(135deg, #F90 0%, #FF6900 52.6%, #FF3D00 100%);
+  background-blend-mode: multiply, normal;
+  box-shadow: 0px 4px 0px 0px #E2E2E2, 0px 16px 14px 0px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 320px;
+  box-sizing: border-box;
+  z-index: 2;
+  margin-top: -30px; }
+  .select-service-provider .label {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px; }
+    .select-service-provider .label:before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-top: 9px solid transparent;
+      border-bottom: 9px solid transparent;
+      border-left: 14px solid #ffffff;
+      border-right: 0;
+      display: block; }
+  .select-service-provider .wrapper .d-flex {
+    gap: 12px; }
+    .select-service-provider .wrapper .d-flex button {
+      width: calc(50% - 8px);
+      padding: 16px;
+      background: #fff;
+      border: none;
+      border-radius: 100px; }
+  .select-service-provider .wrapper img {
+    max-width: 100%; }
+  .select-service-provider .copy-to-clipboard {
+    border: none;
+    background: #fff;
+    padding: 12px 16px;
+    border-radius: 70px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.32px;
+    width: calc(100% - 70px); }
+
+@-webkit-keyframes slidein {
+  from {
+    top: -300px; }
+  33% {
+    top: 0px; }
+  to {
+    top: 0px;
+    border-color: transparent;
+    border-radius: 0;
+    left: 0;
+    right: 0;
+    box-shadow: none; } }
+
+@keyframes slidein {
+  from {
+    top: -300px; }
+  33% {
+    top: 0px; }
+  to {
+    top: 0px;
+    border-color: transparent;
+    border-radius: 0;
+    left: 0;
+    right: 0;
+    box-shadow: none; } }
+
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés à la navigation.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Breadcrumb Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Default Menu Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+/**
+ * @file
+ * Navbar Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Default Mega Menu Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+/**
+ * @file
+ * Mobile Menu Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * More Links Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/**
+ * @file
+ * Social Links Styling
+ */
+/* ---------------- Share Links  -----------------*/
+/* ---------------- Client Social Media Links  -----------------*/
+/**
+ * @file
+ * Pager Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM  -----------------*/
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés à la recherche
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Search Form Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+.main-search-wrapper {
+  overflow-y: scroll;
+  height: 100%;
+  display: flex;
+  flex-direction: column; }
+
+.search-song {
+  gap: 16px;
+  transition: .2s all ease-in; }
+  .search-song h1 {
+    background: #fff;
+    text-align: center;
+    margin: 0;
+    font-size: 3.2rem;
+    height: 90px;
+    transition: .2s all ease-in; }
+  .search-song > .d-flex {
+    justify-content: center;
+    gap: 10px; }
+  .search-song__wrapper {
+    width: 100%;
+    display: flex;
+    transition: .2s all ease-in; }
+  .search-song .cancel-search {
+    opacity: 0;
+    width: 0;
+    transition: .2s all ease-in;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.32px; }
+  .search-song + p {
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    letter-spacing: 0.32px;
+    color: rgba(0, 0, 0, 0.8);
+    transition: .2s all ease-in;
+    opacity: 0;
+    height: 0;
+    box-sizing: content-box;
+    text-align: left;
+    padding: 16px 20px;
+    background: rgba(0, 0, 0, 0.03);
+    margin: 0;
+    flex-grow: 2; }
+  .search-song ~ .search-results {
+    padding: 0; }
+  .search-song.active {
+    padding-top: 0; }
+    .search-song.active h1 {
+      opacity: 0;
+      height: 0;
+      visibility: hidden; }
+    .search-song.active .search-song__wrapper {
+      gap: 10px; }
+    .search-song.active .cancel-search {
+      opacity: 1;
+      width: 80px; }
+    .search-song.active + p {
+      opacity: 1;
+      height: 60px; }
+  .search-song.has-results + p {
+    display: none; }
+  .search-song.has-results ~ .search-results {
+    padding: 16px 20px 0 20px; }
+
+/**
+ * @file
+ * Exposed Filters Styling - Views and Facet
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- VIEWS FILTERS  -----------------*/
+/* ---------------- FACETS FILTERS  -----------------*/
+/**
+ * @file
+ * Search Result Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+.search-results {
+  list-style-type: none;
+  padding: 16px 20px 0 20px;
+  background: rgba(0, 0, 0, 0.03);
+  margin: 0; }
+  .search-results li {
+    display: flex;
+    gap: 17px;
+    align-items: center;
+    padding: 16px 0; }
+    .search-results li:first-child {
+      padding-top: 0; }
+    .search-results li .img-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image: url(../images/vinyl.svg);
+      background-repeat: no-repeat;
+      background-size: contain;
+      min-width: 56px;
+      height: 56px; }
+      .search-results li .img-container img {
+        width: 20px;
+        border-radius: 50%; }
+    .search-results li p {
+      margin: 0; }
+    .search-results li .song {
+      flex-grow: 1; }
+    .search-results li .song-title {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: #000; }
+    .search-results li .song-subtitle {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.28px;
+      color: rgba(0, 0, 0, 0.4); }
+
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au "component"
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+/**
+ * @file
+ * Block Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+/*
+  .block-[configuration.provider] { }
+  .block-[plugin_id] { }
+*/
+/**
+ * @file
+ * Views Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+/**
+ * @file
+ * Nodes Styling
+ */
+/* ---------------- DEFAULT -----------------*/
+/* ---------------- CUSTOM -----------------*/
+/* .node--type-[node.bundle] { }
+ .node--view-mode-[view_mode] { }
+ */
+
+/*# sourceMappingURL=main.css.map */

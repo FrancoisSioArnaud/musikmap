@@ -26,7 +26,7 @@ import { UserContext } from "../../UserContext";
  * @param searchSong
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispSong, depositedBy, achievements }) {
+export default function SongDisplay({ dispSong, depositedBy, achievements, revealedDeposit }) {
   // States
   const [selectedProvider, setSelectedProvider] = useState("spotify");
 
@@ -38,34 +38,61 @@ export default function SongDisplay({ dispSong, depositedBy, achievements }) {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   /**
    * Handles the click event for the "Go to link" button.
    */
-  function redirectToLink() {
+  function redirectToLink(provider) {
     const csrftoken = getCookie("csrftoken");
     const requestOptions = {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
       body: JSON.stringify({
         song: dispSong,
-        platform: selectedProvider,
+        platform: provider,
       }),
     };
 
     fetch("../api_agg/aggreg", requestOptions)
       .then((response) => response.json())
       .then((data) => {
-        console.log(data);
-        window.open(data);
+        const deepLink = data;
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        if (isIOS) {
+          window.location = deepLink;
+
+          let navigationTimer;
+
+          const checkNavigationTimeout = () => {
+            clearTimeout(navigationTimer);
+            setTimeout(() => {
+              window.removeEventListener("pageshow", checkNavigationTimeout);
+              const webVersion = deepLink.replace(`${provider}://`, `https://open.${provider}.com/`);
+              window.location = webVersion;
+            }, 2000); // Fallback to external URL if the app didn't open within 2 seconds
+          };
+
+          window.addEventListener("pageshow", () => {
+            clearTimeout(navigationTimer);
+            window.removeEventListener("pageshow", checkNavigationTimeout);
+          });
+
+          navigationTimer = setTimeout(() => {
+            checkNavigationTimeout(); // Check for successful navigation to the deep link after 2 seconds
+          }, 2000);
+        } else {
+          window.open(deepLink, '_blank');
+        }
       });
   }
 
-  /**
-   * Handles the change event for the provider selection dropdown.
-   * @param {React.ChangeEvent<HTMLSelectElement>} event - The change event object.
-   */
-  function handleProviderChange(event) {
-    setSelectedProvider(event.target.value);
+  function copyToClipboard(title, artist) {
+    navigator.clipboard.writeText(title + ' : ' + artist);
   }
 
   // Gets the info of the user who has depisoted the song discovered and update the points of the current user
@@ -73,169 +100,164 @@ export default function SongDisplay({ dispSong, depositedBy, achievements }) {
     getUserDetails(depositedBy, navigate)
       .then((data) => {
         setUserInfo(data);
-        // console.log(data);
       })
       .catch((error) => {
         console.error(error);
       });
     checkUserStatus(setUser, setIsAuthenticated);
-  }, []); // Empty dependency array ensures the effect is only run once
+  }, []);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "20px",
-      }}
-    >
-      <Card
-        sx={{
-          display: "flex",
-          margin: "auto",
-          maxWidth: "fit-content",
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", width: 200 }}>
-          <CardContent sx={{ flex: "1 0 auto" }}>
-            <Typography component="div" variant="h5">
-              {dispSong.title}
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              color="text.secondary"
-              component="div"
-            >
-              {dispSong.artist}
-            </Typography>
-          </CardContent>
-          <Box
-            sx={{ display: "flex", alignItems: "center", pl: 1, pb: 1 }}
-          ></Box>
-          <Box
-            sx={{
-              flex: "1 0 auto",
-              display: "flex",
-              alignItems: "center",
-              pl: 1,
-              pb: 1,
-            }}
-          >
-            <select value={selectedProvider} onChange={handleProviderChange}>
-              <option value="spotify">Spotify</option>
-              <option value="deezer">Deezer</option>
-            </select>
-          </Box>
-          <Box sx={{ flex: "1 0 auto" }}>
-            <button
-              onClick={() => {
-                redirectToLink();
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Aller vers ...
-            </button>
-          </Box>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center" }}>
+
+    <div className="reveal">
+
+      <div className="reveal__notification">
+        Ta chanson a été déposée avec succès 👍
+      </div>
+
+      <h1>Bonne écoute !</h1>
+      <p>Découvre la chanson qui était dans la boîte avant que tu la remplaces.</p>
+
+
+      <div className="song__cover">
+        <div className="song__cover__image">
           <CardMedia
             component="img"
-            sx={{ width: 150 }}
+            sx={{ width: 168 }}
             image={dispSong.image_url}
             alt="Track cover"
           />
-        </Box>
-      </Card>
-      <Typography variant="h6">Auteur du dépôt :</Typography>
-      {userInfo ? (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "5px",
+          <p className="song__title">{dispSong.title}</p>
+        </div>
+      </div>
+
+      <div className="song__information">
+        <h1>{dispSong.title}</h1>
+        <p>{dispSong.artist}</p>
+      </div>
+
+      <div className="select-service-provider">
+
+        <button className="label"
+          onClick={() => {
+            handleSelectProvider('spotify')
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
           }}
         >
-          <Avatar
-            src={userInfo.profile_picture}
-            alt={userInfo.username}
-            sx={{
-              width: "40px",
-              height: "40px",
-            }}
-          />
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "left",
-            }}
-          >
-            <Typography variant="subtitle1">{userInfo.username}</Typography>
-            <Typography variant="subtitle2">
-              {userInfo.total_deposits + "ème dépôt"}
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/profile/" + depositedBy)}
-            sx={{
-              borderRadius: "20px",
-              backgroundColor: "white",
-              color: "orange",
-              border: "none",
-              textTransform: "none",
-              "&:hover": {
-                border: "none",
-              },
-            }}
-          >
-            Profil
-          </Button>
-        </Box>
-      ) : (
-        <Typography variant="subtitle1">Utilisateur non conneté</Typography>
-      )}
-      {isAuthenticated ? (
-        <Typography variant="h6">Succès débloqués :</Typography>
-      ) : (
-        <Typography variant="subtitle1">
-          Succès débloqués si vous étiez connecté :
-        </Typography>
-      )}
-      <Box
-        sx={{
-          marginTop: 2,
-          overflow: "auto",
-          maxHeight: 200,
-          borderRadius: "borderRadius",
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <List sx={{ padding: 1 }}>
-          {Object.keys(achievements).map((achievementKey) => {
-            const achievement = achievements[achievementKey];
+          Ecouter la chanson sur...
+        </button>
 
-            return (
-              <ListItem key={achievementKey} disablePadding>
-                <ListItemText
-                  primary={achievement.name}
-                  secondary={achievement.desc}
-                />
-                <Typography variant="body2">
-                  Points gagnés: {achievement.points}
-                </Typography>
-              </ListItem>
-            );
-          })}
-        </List>
-      </Box>
-    </Box>
+        <div className="wrapper">
+          <div className="d-flex">
+            <button onClick={() => {
+              redirectToLink('spotify')
+            }}>
+              <span className="sr-only">Spotify</span>
+              <img className="spotify" src="/static/images/spotify-logo.svg" alt="" />
+            </button>
+            <button onClick={() => {
+              redirectToLink('deezer')
+            }}>
+              <span className="sr-only">Deezer</span>
+              <img className="deezer" src="/static/images/deezer-logo.svg" alt="" />
+            </button>
+          </div>
+        </div>
+
+        <button className="copy-to-clipboard"
+          onClick={() => {
+            copyToClipboard(dispSong.title, dispSong.artist)
+          }}>
+          Copier le nom de la chanson et de l'artiste
+        </button>
+
+      </div>
+
+      <h3>Chanson déposée par</h3>
+
+      <div className="author d-flex">
+        {userInfo ? (
+          <>
+            <Avatar
+              src={userInfo.profile_picture}
+              alt={userInfo.username}
+              sx={{
+                width: "68px",
+                height: "68px",
+              }}
+            />
+            <div className="author__informations">
+              <p className="author__informations__name">{userInfo.username}</p>
+              <button
+                onClick={() => navigate("/profile/" + depositedBy)}
+                className="author__informations__link"
+              >
+                Voir le profil
+              </button>
+            </div>
+            <p className="deposit-number">
+              {userInfo.total_deposits + "ème dépôt"}
+            </p>
+          </>
+        ) : (
+          <>
+            <Avatar
+              sx={{
+                width: "68px",
+                height: "68px",
+              }}
+            />
+            <div className="author__informations">
+              <p className="author__informations__name">Utilisateur anonyme</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {revealedDeposit?.note_display && (
+        <div className="last-deposit">
+          {revealedDeposit.note_display}
+        </div>
+      )}
+
+      {/* <Box
+          sx={{
+            marginTop: 2,
+            overflow: "auto",
+            maxHeight: 200,
+            borderRadius: "borderRadius",
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <List sx={{ padding: 1 }}>
+            {Object.keys(achievements).map((achievementKey) => {
+              const achievement = achievements[achievementKey];
+
+              return (
+                <ListItem key={achievementKey} disablePadding>
+                  <ListItemText
+                    primary={achievement.name}
+                    secondary={achievement.desc}
+                  />
+                  <Typography variant="body2">
+                    Points gagnés: {achievement.points}
+                  </Typography>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box> */}
+
+
+    </div>
+
+
+
   );
 }
+

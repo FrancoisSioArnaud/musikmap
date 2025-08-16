@@ -27,7 +27,7 @@ export default function DispHiddenSongs({ deposits, isDeposited}) {
    * Increments the depositIndex if it is less than 1.
    */
   function next() {
-    if (depositIndex < deposits.last_deposits_songs.length - 1) {
+    if (depositIndex < deposits.box.last_deposits.length - 1) {
       setdepositIndex(depositIndex + 1);
     }
   }
@@ -56,7 +56,7 @@ export default function DispHiddenSongs({ deposits, isDeposited}) {
 
   return (
     <>
-      {Object.keys(deposits.last_deposits_songs).length > 0 ? (
+      {Object.keys(deposits.box.last_deposits).length > 0 ? (
         <Card
           sx={{
             display: "flex",
@@ -90,7 +90,7 @@ export default function DispHiddenSongs({ deposits, isDeposited}) {
               <CardMedia
                 component="img"
                 sx={{ width: 150 }}
-                image={deposits.last_deposits_songs[depositIndex].image_url}
+                image={deposits.box.last_deposits[depositIndex].image_url}
                 alt="Track cover"
               />
           </Box>

@@ -20,7 +20,7 @@ import SongDisplay from "./OnBoarding/SongDisplay";
 import DispHiddenSongs from "./OnBoarding/DispHiddenSongs";
 import Button from "@mui/material/Button";
 import IncentiveNote from "./OnBoarding/IncentiveNote";
-import { ClassNames } from "@emotion/react";
+// import { ClassNames } from "@emotion/react";
 
 export default function MusicBox() {
   // States & Variables
@@ -48,6 +48,7 @@ export default function MusicBox() {
 
   // The achievements the user obtains
   const [achievements, setAchievements] = useState({});
+  const [revealedDeposit, setRevealedDeposit] = useState({});
 
   /**
    * Function to be executed when the component is mounted and the page is loaded
@@ -57,7 +58,7 @@ export default function MusicBox() {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
     checkDeezerAuthentication(setIsDeezerAuthenticated);
     setCurrentBoxName(boxName);
-    updateVisibleDeposits(boxName);
+    // updateVisibleDeposits(boxName);
     getBoxDetails(boxName, navigate)
       .then((data) => {
         setBoxInfo(data);
@@ -71,16 +72,16 @@ export default function MusicBox() {
     <>
       <MenuAppBar />
       <Box className={`main-content stage-${stage}`}>
-        {(stage === 0 || stage === 1) && 
+        {(stage === 0 || stage === 1) &&
           <>
-            <BoxStartup setStage={setStage} boxInfo={boxInfo} className="startup"/>
+            <BoxStartup setStage={setStage} boxInfo={boxInfo} className="startup" />
             <EnableLocation
               className="enable-location"
               setStage={setStage}
               boxInfo={boxInfo}
               navigate={navigate}
             />
-            <Loader/>
+            <Loader />
           </>
         }
         {stage === 2 && (
@@ -99,7 +100,15 @@ export default function MusicBox() {
           </>
         )}
         {stage === 3 && (
-          <IncentiveNote setStage={setStage} searchSong={searchSong} />
+          <IncentiveNote setStage={setStage}
+            searchSong={searchSong}
+            setSearchSong={setSearchSong}
+            boxInfo={boxInfo}
+            setDispSong={setDispSong}
+            setDepositedBy={setDepositedBy}
+            setAchievements={setAchievements}
+            setRevealedDeposit={setRevealedDeposit}
+          />
         )}
         {stage === 4 && (
           <>
@@ -110,6 +119,7 @@ export default function MusicBox() {
               setDispSong={setDispSong}
               searchSong={searchSong}
               setDepositedBy={setDepositedBy}
+              setAchievements={setAchievements}
             />
           </>
         )}
@@ -117,6 +127,7 @@ export default function MusicBox() {
           <>
             <SongDisplay
               dispSong={dispSong}
+              revealedDeposit={revealedDeposit}
               depositedBy={depositedBy}
               achievements={achievements}
             />

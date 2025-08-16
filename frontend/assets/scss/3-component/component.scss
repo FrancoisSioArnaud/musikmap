@@ -3,24 +3,28 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'file';
+@use 'file';
 
-@import 'fields';
+@use 'fields';
 
-@import 'icons';
+@use 'icons';
 
-@import 'tables';
+@use 'tables';
 
-@import 'tabs';
+@use 'tabs';
 
-@import 'forms';
+@use 'forms';
 
-@import 'buttons';
+@use 'buttons';
 
-@import 'box';
+@use 'box';
 
-@import 'paragraphs';
+@use 'paragraphs';
 
-@import 'loader';
+@use 'loader';
 
-@import 'carousels';
+@use 'carousels';
+
+@use 'mood';
+
+@use 'reveal';

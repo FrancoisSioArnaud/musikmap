@@ -3,8 +3,8 @@
   NE PAS APPLIQUER DES STYLES ICI.
 ****************************************************************************************/
 
-@import 'search_form';
+@use 'search_form';
 
-@import 'exposed-filters';
+@use 'exposed-filters';
 
-@import 'search-result';
+@use 'search-result';

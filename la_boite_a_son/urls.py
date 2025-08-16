@@ -17,7 +17,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-
+from box_management.views import GetBox, cardboard_redirect
 # Here, dispatch the URLs to the correct app
 
 urlpatterns = [
@@ -30,4 +30,5 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('api_agg/', include('api_aggregation.urls')),
     path('oauth/', include('social_django.urls', namespace='social')),  # Social-Auth endpoints
+    path('cardboard/<slug:unique_url>/', cardboard_redirect, name='cardboard_redirect'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

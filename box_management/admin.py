@@ -14,7 +14,12 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     """
     list_display = ('name', 'description', 'url', 'image_url', 'client_name')
 
-
+class SongAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    """
+    Class goal: This class represents a Music Box used in the admin interface to import/export data.
+    """
+    list_display = ('id', 'title', 'artist', 'image_url', 'spotify_id', 'deezer_id', 'n_deposits')
+ 
 class LocationPointAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     """
     Class goal: This class represents a Location Point used in the admin interface to import/export data.
@@ -28,7 +33,7 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     From the admin interface, it is possible to export the deposits by box and month in order to study the statistics
     and create graphs.
     """
-    list_display = ('id', 'song_id', 'box_id', 'deposited_at', 'user', 'note')
+    list_display = ('id', 'song', 'box_id', 'deposited_at', 'user', 'note')
     list_filter = ('id', 'song_id', 'box_id', 'deposited_at', 'user', 'note')
     search_fields = ('id', 'song_id__title', 'box_id__name', 'user')
     ordering = ('-deposited_at',)
@@ -181,7 +186,12 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 admin.site.site_header = "Administration de la Boîte à Son"
 admin.site.register(Box, BoxAdmin)
 admin.site.register(Deposit, DepositAdmin)
-admin.site.register(Song)
+admin.site.register(Song, SongAdmin)
 admin.site.register(LocationPoint, LocationPointAdmin)
 admin.site.register(VisibleDeposit)
 admin.site.register(DiscoveredSong)
+
+@admin.register(Cardboard)
+class CardboardAdmin(admin.ModelAdmin):
+    list_display = ('box', 'unique_url')
+    search_fields = ('box__name', 'unique_url')
