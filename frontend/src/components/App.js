@@ -55,46 +55,39 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route
               path="/register"
-              element={
-                isMobile ? (
+              element={ /*
+                isMobile ? (*/
                   isAuthenticated ? (
                     <Navigate to="/profile" />
                   ) : (
                     <RegisterPage />
-                  )
+                  ) /*
                 ) : (
                   <RedirectToMobile />
-                )
+                )*/
               }
             />
             <Route
               path="/login"
-              element={
-                isMobile ? (
+              element={ /*
+                isMobile ? (*/
                   isAuthenticated ? (
                     <Navigate to="/profile" />
                   ) : (
                     <LoginPage />
-                  )
+                  ) /*
                 ) : (
                   <RedirectToMobile />
-                )
+                )*/
+              }
+            />
+               <Route
+              path="/profile"
+              element={
+              /*  isMobile ? (*/ isAuthenticated ? (<UserProfilePage />) : (<SuccessfulLogout />) /*) : (<RedirectToMobile />)*/
               }
             />
             <Route
-              path="/profile"
-              element={
-                isMobile ? (
-                  isAuthenticated ? (
-                    <UserProfilePage />
-                  ) : (
-                    <SuccessfulLogout />
-                  )
-                ) : (
-                  <RedirectToMobile />
-                )
-              }
-            />
             <Route
               path="/box/:boxName"
               element= { /*isMobile ? */
@@ -117,5 +110,6 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
