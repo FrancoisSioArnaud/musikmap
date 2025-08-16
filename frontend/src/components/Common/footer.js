@@ -19,10 +19,11 @@ export function Footer(props) {
     >
       {"Copyright © "}
       <Link color="inherit" href="/">
-        La boite à son
+        MusikMap
       </Link>{" "}
       {new Date().getFullYear()}
       {"."}
     </Typography>
   );
 }
+
