@@ -10,9 +10,11 @@ app_name = 'frontend'
 
 urlpatterns = [
     path('', index, name=''),
+    path('index', index, name=''),
     path('register', index),
     path('login', index),
     path('profile', index, name='profile'),
     path('box/<str:boxName>', index),
     path('profile/<int:userID>', index)
 ]
+
