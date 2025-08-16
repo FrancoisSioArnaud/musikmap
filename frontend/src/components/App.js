@@ -88,7 +88,6 @@ export default function App() {
               }
             />
             <Route
-            <Route
               path="/box/:boxName"
               element= { /*isMobile ? */
                 <MusicBox /> 
@@ -110,6 +109,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
