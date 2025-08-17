@@ -1,0 +1,20 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss de base.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use '0-init/init';
+
+@use '1-base/base';
+
+@use '2-layout/layout';
+
+@use '3-component/component';
+
+@use '4-navigation/navigation';
+
+@use '5-search/search';
+
+@use '6-container/container';
+
+@use '7-theme/theme';

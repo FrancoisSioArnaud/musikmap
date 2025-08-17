@@ -1,0 +1,52 @@
+@use '../0-init/color' as *;
+@use '../0-init/icons' as *;
+/**
+ * @file
+ * Fields Components Styling
+ */
+
+
+/* ---------------- DEFAULT -----------------*/
+
+/* ---------------- CUSTOM -----------------*/
+
+.input-wrapper {
+    width: 100%;
+    padding: 6px 20px;
+    box-sizing: border-box;
+    border-radius: 66px;
+    background: white;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    border: 2px solid rgba(0, 0, 0, 0.03);
+
+    &:before {
+        font-family: $icomoon-font-family;
+        content: $icon-search-path1;
+        font-size: 2.5rem;
+        background: $orangeGradient;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    input[type="text"] {
+        font-size: 1.6rem;
+        font-style: normal;
+        font-weight: 600;
+        line-height: normal;
+        letter-spacing: 0.48px;
+        border: none;
+        background: $white;
+        width: 100%;
+
+        &::placeholder {
+            font-weight: 500;
+            color: $greyPlaceholder;
+        }
+
+        &:focus {
+            outline: none;
+        }
+    }
+}

@@ -1,0 +1,30 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au "component"
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use 'file';
+
+@use 'fields';
+
+@use 'icons';
+
+@use 'tables';
+
+@use 'tabs';
+
+@use 'forms';
+
+@use 'buttons';
+
+@use 'box';
+
+@use 'paragraphs';
+
+@use 'loader';
+
+@use 'carousels';
+
+@use 'mood';
+
+@use 'reveal';

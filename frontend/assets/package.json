@@ -1,0 +1,36 @@
+{
+  "name": "module-themer",
+  "version": "2.1.4",
+  "description": "Module Themer",
+  "author": "Theo Lataste",
+  "private": true,
+  "engines": {
+    "node": ">=14",
+    "npm": ">=7"
+  },
+  "scripts": {
+    "build": "npm run prod:css",
+    "watch:css": "gulp",
+    "dev:css": "gulp dev",
+    "normal:css": "gulp dev-sans-sourcemap",
+    "prod:css": "gulp prod"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "chalk": "4.1.2",
+    "fancy-log": "^2.0.0",
+    "gulp": "^4.0.2",
+    "gulp-clean-css": "^4.3.0",
+    "gulp-if": "^3.0.0",
+    "gulp-less": "^5.0.0",
+    "gulp-load-plugins": "^2.0.7",
+    "gulp-postcss": "^10.0.0",
+    "gulp-sass": "^5.1.0",
+    "gulp-sourcemaps": "^3.0.0",
+    "lazypipe": "^1.0.2",
+    "merge-stream": "^2.0.0",
+    "node-version": "^2.0.0",
+    "sass": "^1.77.0",
+    "through2": "^4.0.2"
+  }
+}

@@ -1,0 +1,20 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés à la navigation.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use 'breadcrumb';
+
+@use 'menu';
+
+@use 'navbar';
+
+@use 'mega_menu';
+
+@use 'mobile_menu';
+
+@use 'more_links';
+
+@use 'social-media';
+
+@use 'pager';

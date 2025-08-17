@@ -1,0 +1,129 @@
+@use '../0-init/color' as *;
+/**
+ * @file
+ * Main Layout Styling
+ */
+
+body {}
+
+.main-content {
+    height: calc(100vh - 58px);
+
+    .startup {
+        height: 100%;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    .decoration {
+        height: 300px;
+        background: #fa9500;
+        background: $orangeGradient;
+        /* W3C */
+
+        &__wrapper {
+            background-image: url(../images/box-bg.svg);
+            /* fallback */
+            background-repeat: no-repeat;
+            background-position: center top 30px;
+            background-size: 300px;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .song-cover {
+            position: relative;
+            left: -30px;
+            top: -25px;
+
+            >svg {
+                position: absolute;
+                z-index: 1;
+                top: 50%;
+                right: 0;
+                transform: translate(10%, -50%);
+                animation-duration: .3s;
+                animation-delay: 1s;
+                animation-name: SlideVinyl;
+                animation-fill-mode: forwards;
+            }
+        }
+
+        .cadre {
+            width: 145px;
+            height: 145px;
+            border-radius: 11px;
+            padding: 10px;
+            box-shadow: 0px 5px 0px 0px #E2E2E2;
+            background: $white;
+            z-index: 2;
+            position: relative;
+
+            .image-wrapper {
+                overflow: hidden;
+                border-radius: 11px;
+                position: relative;
+
+                svg {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 3;
+                }
+            }
+
+            img {
+                max-width: 100%;
+                border-radius: 11px;
+                filter: blur(15px);
+            }
+        }
+    }
+
+    .bottom-content {
+        height: 50%;
+        background: $white;
+    }
+
+    .enable-location {
+        transition: .3s all ease-in-out;
+        position: fixed;
+        top: 100%;
+        z-index: 2;
+    }
+
+    &.stage-1 {
+
+        .enable-location {
+            transform: translateY(calc(-100% - 20px));
+        }
+    }
+
+    &.stage-2,
+    &.stage-3,
+    &.stage-5 {
+        overflow: visible;
+    }
+
+    &.stage-3 {
+        .stage-3__wrapper {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+    }
+}
+
+@keyframes SlideVinyl {
+    from {
+        transform: translate(10%, -50%);
+    }
+
+    to {
+        transform: translate(43%, -50%);
+    }
+}

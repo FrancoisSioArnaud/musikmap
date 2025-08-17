@@ -1,0 +1,10 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés à la recherche
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use 'search_form';
+
+@use 'exposed-filters';
+
+@use 'search-result';
