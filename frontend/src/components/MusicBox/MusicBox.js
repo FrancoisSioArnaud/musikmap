@@ -98,9 +98,6 @@ export default function MusicBox() {
             />
           </>
         )}
-        {stage === 3 && (
-          <IncentiveNote setStage={setStage} searchSong={searchSong} />
-        )}
         {stage === 4 && (
           <>
             <SongCard
@@ -126,3 +123,4 @@ export default function MusicBox() {
     </>
   );
 }
+
