@@ -11,6 +11,8 @@ import Avatar from "@mui/material/Avatar";
 import PersonIcon from "@mui/icons-material/Person";
 import Button from "@mui/material/Button";
 import AlbumIcon from "@mui/icons-material/Album";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+
 
 export default function MenuAppBar() {
   // States & Variables
@@ -95,3 +97,4 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
