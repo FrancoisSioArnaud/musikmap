@@ -465,30 +465,3 @@ class ManageDiscoveredSongs(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AddDepositNote(APIView):
-    '''
-    Class goal : add a note to a deposit
-    '''
-
-    def post(self, request, format=None):
-        note = request.data.get('note')
-
-        # A note is optional
-        if not note:
-            return Response({'status': 'Pas de note choisie'}, status=status.HTTP_200_OK)
-
-        try:
-            deposit_id = request.data.get('deposit_id')
-            deposit = Deposit.objects.get(id=deposit_id)
-
-            # Guard clause that checks if the note is a valid choice
-            if note not in dict(deposit.NOTE_CHOICES):
-                return Response({'status': 'Cette note n\'existe pas'}, status=status.HTTP_400_BAD_REQUEST)
-
-            deposit.note = note
-            deposit.save()
-
-            return Response({'status': 'Note ajoutée avec succès'}, status=status.HTTP_200_OK)
-
-        except Deposit.DoesNotExist:
-            return Response({'status': 'Dépôt introuvable'}, status=status.HTTP_401_UNAUTHORIZED)
