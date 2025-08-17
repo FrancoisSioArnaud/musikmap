@@ -67,61 +67,37 @@ export default function LibraryPage() {
         <Typography variant="h5" gutterBottom>
           Bibliothèque de {user?.username || ""}
         </Typography>
-        {discoveredSongs.length > 0 ? (
-          <>
-            <Typography variant="body1" gutterBottom>
-              <strong>Titre :</strong> {discoveredSongs[currentSongIndex].title}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              <strong>Artiste :</strong> {discoveredSongs[currentSongIndex].artist}
-            </Typography>
-            <CardMedia
-              component="img"
-              sx={{ width: 150, mb: 2 }}
-              image={discoveredSongs[currentSongIndex].image_url}
-              alt="Track cover"
-            />
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <select value={selectedProvider} onChange={handleProviderChange}>
-                <option value="spotify">Spotify</option>
-                <option value="deezer">Deezer</option>
-              </select>
-              <Button
-                onClick={redirectToLink}
-                sx={{ ml: 2 }}
-                variant="contained"
-              >
-                Aller vers…
-              </Button>
-            </Box>
-            <Grid container spacing={2}>
-              <Grid item>
-                <Button
-                  variant="contained"
-                  disabled={currentSongIndex === 0}
-                  onClick={() => setCurrentSongIndex(currentSongIndex - 1)}
-                >
-                  Chanson précédente
-                </Button>
-              </Grid>
-              <Grid item>
-                <Button
-                  variant="contained"
-                  disabled={
-                    currentSongIndex === discoveredSongs.length - 1
-                  }
-                  onClick={() => setCurrentSongIndex(currentSongIndex + 1)}
-                >
-                  Chanson suivante
-                </Button>
-              </Grid>
-            </Grid>
-          </>
-        ) : (
-          <Typography>
-            Vous n'avez pas encore découvert de chansons.
-          </Typography>
-        )}
+          {discoveredSongs.length > 0 ? (
+    discoveredSongs.map((song, index) => (
+      <Box
+        key={index}
+        sx={{
+          border: "1px solid lightgray",
+          borderRadius: "8px",
+          padding: 2,
+          marginBottom: 2,
+        }}
+      >
+        <Typography variant="subtitle1">
+          <strong>Titre :</strong> {song.title}
+        </Typography>
+        <Typography variant="subtitle1">
+          <strong>Artiste :</strong> {song.artist}
+        </Typography>
+        {/* Affichage de la pochette, si disponible */}
+        <CardMedia
+          component="img"
+          image={song.image_url}
+          alt="Track cover"
+          sx={{ width: 150, height: "auto", marginTop: 1 }}
+        />
+      </Box>
+    ))
+  ) : (
+    <Typography>
+      Vous n'avez pas encore découvert de chansons.
+    </Typography>
+  )}
       </Box>
     </>
   );
