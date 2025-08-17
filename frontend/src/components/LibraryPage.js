@@ -65,7 +65,7 @@ export default function LibraryPage() {
       <MenuAppBar />
       <Box sx={{ padding: 2 }}>
         <Typography variant="h5" gutterBottom>
-          Bibliothèque de {user?.username || ""}
+          Ta bibliothèque de découvertes 
         </Typography>
           {discoveredSongs.length > 0 ? (
     discoveredSongs.map((song, index) => (
