@@ -19,7 +19,6 @@ import EnableLocation from "./OnBoarding/EnableLocation";
 import SongDisplay from "./OnBoarding/SongDisplay";
 import DispHiddenSongs from "./OnBoarding/DispHiddenSongs";
 import Button from "@mui/material/Button";
-import IncentiveNote from "./OnBoarding/IncentiveNote";
 import { ClassNames } from "@emotion/react";
 
 export default function MusicBox() {
@@ -123,4 +122,5 @@ export default function MusicBox() {
     </>
   );
 }
+
 
