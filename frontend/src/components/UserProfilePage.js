@@ -586,6 +586,8 @@ export default function UserProfilePage() {
             </Grid>
           </Grid>
         </Grid>
+
+              /*
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box style={styles.musicBox}>
@@ -673,6 +675,8 @@ export default function UserProfilePage() {
             </Box>
           </Grid>
         </Grid>
+                  */
+
         <Button
           variant="contained"
           onClick={() => logoutUser(setUser, setIsAuthenticated)}
@@ -684,3 +688,4 @@ export default function UserProfilePage() {
     </>
   );
 }
+
