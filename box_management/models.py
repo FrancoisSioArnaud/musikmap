@@ -72,21 +72,10 @@ class Deposit(models.Model):
 
         super().save(*args, **kwargs)  # calling the save() method of the parent class (which is User)
 
-    NOTE_CHOICES = [
-        ('calme', 'Cette chanson m\'apaise et me détend !'),
-        ('danse', 'Cette chanson me donne envie de danser !'),
-        ('inspire', 'Cette chanson me pousse à être créatif !'),
-        ('joie', 'Cette chanson me met de bonne humeur !'),
-        ('motive', 'Cette chanson me motive pour la journée !'),
-        ('reflexion', 'Cette chanson me fait réfléchir sur la vie.'),
-        ('rire', 'Cette chanson me fait rire !'),
-        ('triste', 'Cette chanson me rend mélancolique !'),
-    ]
 
     song_id = models.ForeignKey(Song, on_delete=models.CASCADE)
     box_id = models.ForeignKey(Box, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True)
-    note = models.CharField(max_length=50, choices=NOTE_CHOICES, blank=True)
     # user_id = models.IntegerField()
     deposited_at = models.DateTimeField()
 
@@ -147,3 +136,4 @@ class DiscoveredSong(models.Model):
         Method goal: Returns the id of the user and the id of the deposit used to display it in the admin interface.
         """
         return str(self.user_id) + ' - ' + str(self.deposit_id)
+
