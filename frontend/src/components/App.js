@@ -88,6 +88,11 @@ export default function App() {
               /*  isMobile ? (*/ isAuthenticated ? (<UserProfilePage />) : (<SuccessfulLogout />) /*) : (<RedirectToMobile />)*/
               }
             />
+              <Route
+            path="/library"
+            element={/* isMobile ? */ isAuthenticated ? <LibraryPage /> : <SuccessfulLogout />
+              /* : <RedirectToMobile /> */}
+            />
             <Route
               path="/box/:boxName"
               element= { /*isMobile ? */
@@ -110,6 +115,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
