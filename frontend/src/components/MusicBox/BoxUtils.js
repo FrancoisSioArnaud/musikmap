@@ -176,28 +176,5 @@ export const updateVisibleDeposits = async (boxName) => {
   }
 };
 
-/**
- * Sets a note for a deposit by making a POST request to the server.
- * @param {string} depositID - The ID of the deposit to set the note for.
- * @param {string} note - The note content to be added.
- * @returns {Promise<void>} - A promise that resolves when the note is successfully set.
- */
-export const setDepositNote = async (depositID, note) => {
-  try {
-    const csrftoken = getCookie("csrftoken");
-    const requestOptions = {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
-      },
-      body: JSON.stringify({
-        deposit_id: depositID,
-        note: note,
-      }),
-    };
-    const response = await fetch("/box-management/add-note", requestOptions);
-  } catch (error) {
-    console.error(error);
-  }
-};
+
+
