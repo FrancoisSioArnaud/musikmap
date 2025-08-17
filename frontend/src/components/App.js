@@ -5,6 +5,7 @@ import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
 import MusicBox from "./MusicBox/MusicBox";
 import UserProfilePage from "./UserProfilePage";
+import LibraryPage from "./LibraryPage";
 import RedirectToMobile from "./RedirectToMobile";
 import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
@@ -109,6 +110,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
