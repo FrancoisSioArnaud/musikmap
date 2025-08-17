@@ -35,6 +35,7 @@ export default function MenuAppBar() {
             La Boîte à Groove
           </Typography>
         </Box>
+
         {isAuthenticated ? (
           <>
             <Box
@@ -62,6 +63,17 @@ export default function MenuAppBar() {
                 }}
               />
             </Box>
+
+            <IconButton
+              size="large"
+              aria-label="Ma bibliothèque"
+              color="inherit"
+              component={Link}
+              to="/library"
+            >
+              <LibraryMusicIcon sx={{ color: "#fa4000" }} />
+            </IconButton>
+                
             <IconButton
               size="large"
               aria-label="account of current user"
@@ -72,6 +84,7 @@ export default function MenuAppBar() {
             >
               <Avatar alt={user.username} src={user.profile_picture_url} />
             </IconButton>
+                
           </>
         ) : (
           <Button
@@ -97,4 +110,5 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
