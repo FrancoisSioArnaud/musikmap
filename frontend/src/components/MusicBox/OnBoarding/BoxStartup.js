@@ -8,7 +8,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
   return (
     <>
   
-      {boxInfo && Object.keys(boxInfo.deposit_count) != "" ? (
+      {boxInfo && Object.keys(boxInfo.box || {}).length > 0 ? (
         <Paper
           className={className}
           elevation={3}
@@ -43,6 +43,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
     </>
   );
 }
+
 
 
 
