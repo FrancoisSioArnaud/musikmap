@@ -15,7 +15,6 @@ import Loader from "./Loader";
 import BoxStartup from "./OnBoarding/BoxStartup";
 import EnableLocation from "./OnBoarding/EnableLocation";
 import SongDisplay from "./OnBoarding/SongDisplay";
-import DispHiddenSongs from "./OnBoarding/DispHiddenSongs";
 import Button from "@mui/material/Button";
 import { ClassNames } from "@emotion/react";
 
@@ -107,6 +106,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
