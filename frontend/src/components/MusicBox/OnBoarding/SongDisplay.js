@@ -22,11 +22,11 @@ import { UserContext } from "../../UserContext";
  * @param {Object} deposits - An object containing song deposit data.
  * @param {boolean} isDeposited - A boolean indicating whether the song has been deposited.
  * @param setStage - A function used to set the stage of the page
- * @param setDispSong - A function used to set the song that we will display
+ * @param setdispDeposits - A function used to set the song that we will display
  * @param searchSong
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispSong, depositedBy, achievements }) {
+export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
   // States
   const [selectedProvider, setSelectedProvider] = useState("spotify");
 
@@ -47,7 +47,7 @@ export default function SongDisplay({ dispSong, depositedBy, achievements }) {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
       body: JSON.stringify({
-        song: dispSong,
+        song: dispDeposits,
         platform: selectedProvider,
       }),
     };
@@ -100,14 +100,14 @@ export default function SongDisplay({ dispSong, depositedBy, achievements }) {
         <Box sx={{ display: "flex", flexDirection: "column", width: 200 }}>
           <CardContent sx={{ flex: "1 0 auto" }}>
             <Typography component="div" variant="h5">
-              {dispSong.title}
+              {dispDeposits.title}
             </Typography>
             <Typography
               variant="subtitle1"
               color="text.secondary"
               component="div"
             >
-              {dispSong.artist}
+              {dispDeposits.artist}
             </Typography>
           </CardContent>
           <Box
@@ -146,7 +146,7 @@ export default function SongDisplay({ dispSong, depositedBy, achievements }) {
           <CardMedia
             component="img"
             sx={{ width: 150 }}
-            image={dispSong.image_url}
+            image={dispDeposits.image_url}
             alt="Track cover"
           />
         </Box>
