@@ -35,7 +35,7 @@ export default function MusicBox() {
   // User Context variables
   const { user } = useContext(UserContext);
 
-  const [dispSong, setDispSong] = useState("");
+  const [dispDeposits, setDispDeposits] = useState({});
 
   const [searchSong, setSearchSong] = useState("");
 
@@ -66,7 +66,7 @@ export default function MusicBox() {
     <>
       <MenuAppBar />
       <Box className={`main-content stage-${stage}`}>
-        {(stage === 0 || stage === 1) && 
+        {(stage === 0 || stage === 1) &&
           <>
             <BoxStartup setStage={setStage} boxInfo={boxInfo} className="startup"/>
             <EnableLocation
@@ -96,7 +96,7 @@ export default function MusicBox() {
         {stage === 5 && (
           <>
             <SongDisplay
-              dispSong={dispSong}
+              dispDeposits={dispDeposits}
               depositedBy={depositedBy}
               achievements={achievements}
             />
@@ -106,8 +106,3 @@ export default function MusicBox() {
     </>
   );
 }
-
-
-
-
-
