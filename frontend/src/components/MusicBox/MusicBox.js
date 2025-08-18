@@ -10,7 +10,6 @@ import { checkDeezerAuthentication } from "./DeezerUtils";
 import {
   getBoxDetails,
   setCurrentBoxName,
-  updateVisibleDeposits,
 } from "./BoxUtils";
 import Loader from "./Loader";
 import BoxStartup from "./OnBoarding/BoxStartup";
@@ -55,7 +54,6 @@ export default function MusicBox() {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
     checkDeezerAuthentication(setIsDeezerAuthenticated);
     setCurrentBoxName(boxName);
-    updateVisibleDeposits(boxName);
     getBoxDetails(boxName, navigate)
       .then((data) => {
         setBoxInfo(data);
@@ -109,6 +107,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
