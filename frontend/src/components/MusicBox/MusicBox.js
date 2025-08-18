@@ -12,7 +12,6 @@ import {
   setCurrentBoxName,
   updateVisibleDeposits,
 } from "./BoxUtils";
-import SongCard from "./SongCard";
 import Loader from "./Loader";
 import BoxStartup from "./OnBoarding/BoxStartup";
 import EnableLocation from "./OnBoarding/EnableLocation";
@@ -97,18 +96,6 @@ export default function MusicBox() {
             />
           </>
         )}
-        {stage === 4 && (
-          <>
-            <SongCard
-              deposits={boxInfo}
-              isDeposited={isDeposited}
-              setStage={setStage}
-              setDispSong={setDispSong}
-              searchSong={searchSong}
-              setDepositedBy={setDepositedBy}
-            />
-          </>
-        )}
         {stage === 5 && (
           <>
             <SongDisplay
@@ -122,5 +109,6 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
