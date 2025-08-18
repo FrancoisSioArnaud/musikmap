@@ -94,14 +94,26 @@ class GetBox(APIView):
 
     def post(self, request, format=None):
         """
-        Handles the POST request for creating a new deposit.
-        Args:
-            request: The HTTP request object.
-            format (str, optional): The format of the response. Defaults to None.
-        Returns:
-            Response: The HTTP response object containing the new deposit and achievements earned by the user.
-        Raises:
-            Song.DoesNotExist: If the song does not exist.
+        Crée un nouveau dépôt (Deposit) et renvoie aussi l'avant-dernier dépôt
+        de la boîte (celui qui existait juste avant ce nouveau dépôt), avec la
+        chanson et l'utilisateur liés.
+
+        Réponse JSON (ex):
+        {
+            "previous_deposit": "2025-08-17T22:12:03.123456+02:00",  # ISO 8601
+            "song": {
+                "title": "...",
+                "artist": "...",
+                "url": "...",
+                "platform_id": "...",
+                "img_url": "..."       # alias de image_url
+            },
+            "user": {
+                "name": "...",
+                "profile_pic_url": "..."
+            },
+            "successes": { ... }       # mêmes succès/achievements qu'avant
+        }
         """
         option = request.data.get('option')
         song_id = option.get('id')
@@ -111,31 +123,50 @@ class GetBox(APIView):
         song_platform_id = option.get('platform_id')
         box_name = request.data.get('boxName')
 
-        # Verify if the song already exists
+        # 1) On vérifie/charge la Box ciblée
+        #    NB: .get() lèvera une DoesNotExist si introuvable (comportement actuel)
+        box = Box.objects.filter(url=box_name).get()
+
+        # 2) On va récupérer l'AVANT-DERNIER dépôt AVANT de créer le nouveau.
+        #    Ainsi, pas besoin d'exclure le dépôt que l'on va créer.
+        #    On sélectionne aussi la chanson et l'utilisateur en one-shot (select_related)
+        previous_deposit_obj = (
+            Deposit.objects
+            .filter(box_id=box)
+            .select_related('song_id', 'user')
+            .order_by('-deposited_at', '-id')   # tri du plus récent au plus ancien
+            .first()
+        )
+
+        # 3) On (ré)utilise ou crée la chanson
         try:
             song = Song.objects.filter(title=song_name, artist=song_author).get()
             song.n_deposits += 1
             song.save()
-
         except Song.DoesNotExist:
-            # Create a new song
             song_url = option.get('url')
             song_image = option.get('image_url')
             song_duration = option.get('duration')
-            song = Song(song_id=song_id, title=song_name, artist=song_author, url=song_url, image_url=song_image,
-                        duration=song_duration,
-                        platform_id=song_platform_id, n_deposits=1)
+            song = Song(
+                song_id=song_id,
+                title=song_name,
+                artist=song_author,
+                url=song_url,
+                image_url=song_image,
+                duration=song_duration,
+                platform_id=song_platform_id,
+                n_deposits=1
+            )
             song.save()
 
-        # Create a new deposit
-        # TODO change the namings of the different variable ---> boxName for the url of the box is WRONG 
-        box = Box.objects.filter(url=box_name).get()
+        # 4) Création du nouveau dépôt
         user = request.user if not isinstance(request.user, AnonymousUser) else None
         new_deposit = Deposit(song_id=song, box_id=box, user=user)
 
-        # Adding points
+        # 5) Calcul des succès / points (inchangé fonctionnellement)
         successes: dict = {}
-        points_to_add = NB_POINTS_ADD_SONG  # Default minimum points gained by deposit
+        points_to_add = NB_POINTS_ADD_SONG  # points par défaut
+
         default_deposit = {
             'name': "Pépite",
             'desc': "Tu as partagé une chanson",
@@ -143,71 +174,111 @@ class GetBox(APIView):
         }
         successes['default_deposit'] = default_deposit
 
-        # Achievements check :        
-        # check if it's the first time a user makes a deposit in a specific box
+        # Premier dépôt de cet utilisateur dans cette box ?
         if is_first_user_deposit(user, box):
             points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            # Create the dictionaries for each identity
-            first_user_deposit_box = {
+            successes['first_user_deposit_box'] = {
                 'name': "Conquérant",
                 'desc': "Tu n'as jamais déposé ici",
                 'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             }
-            successes['first_user_deposit_box'] = first_user_deposit_box
 
-        # check if it's the first time that a song is deposited to a specific box
+        # Première fois que CE son est déposé dans CETTE box ?
         if is_first_song_deposit(song, box):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            first_song_deposit = {
+            successes['first_song_deposit'] = {
                 'name': "Far West",
                 'desc': "Ce son n'a jamais été déposé ici",
                 'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             }
-            successes['first_song_deposit'] = first_song_deposit
-            # if it's the first time that a song is deposited on a box, we check all the network
+            # Première fois sur TOUT le réseau ?
             if is_first_song_deposit_global(song):
                 points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                first_song_deposit_global = {
+                successes['first_song_deposit_global'] = {
                     'name': "Far West",
                     'desc': "Ce son n'a jamais été déposé sur notre réseau",
                     'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
                 }
-                successes['first_song_deposit_global'] = first_song_deposit_global
 
-        # check if the user made deposits on consecutive dates
+        # Jours consécutifs ?
         nb_consecutive_days: int = get_consecutive_deposit_days(user, box)
         if nb_consecutive_days:
             consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
             points_to_add += consecutive_days_points
-            nb_consecutive_days += 1  # If we win 2*NB_points it means that we used the box for 3 days so we add 1 for display purposes
-            consecutive_days = {
+            nb_consecutive_days += 1  # +1 pour l'affichage (ex: 3 jours si 2*points)
+            successes['consecutive_days'] = {
                 'name': "L'amour fou",
                 'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
                 'points': consecutive_days_points
             }
-            successes['consecutive_days'] = consecutive_days
 
+        # 6) Ajout de points (inchangé)
         cookies = request.COOKIES
         csrf_token = get_token(request)
-        # Get the complete URL for the add-points endpoint using reverse
         add_points_url = request.build_absolute_uri(reverse('add-points'))
+        headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
 
-        headers = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token
-        }
+        requests.post(
+            add_points_url, cookies=cookies, headers=headers,
+            data=json.dumps({"points": points_to_add})
+        ).json()
 
-        requests.post(add_points_url, cookies=cookies, headers=headers, data=json.dumps({
-            "points": points_to_add
-        })).json()
-
+        # 7) Sauvegarde du nouveau dépôt
         new_deposit.save()
-        new_deposit = DepositSerializer(new_deposit).data
-        # Rediriger vers la page de détails de la boîte
 
+        # 8) Préparation de la "photographie" de l'avant-dernier dépôt
+        #    (celui capturé en étape 2). On envoie uniquement les champs souhaités.
+        if previous_deposit_obj is not None:
+            prev_dt_iso = previous_deposit_obj.deposited_at.isoformat()
+
+            # Song liée à l'avant-dernier dépôt
+            prev_song = previous_deposit_obj.song_id
+            song_payload = {
+                "title": prev_song.title,
+                "artist": prev_song.artist,
+                "url": prev_song.url,
+                "platform_id": getattr(prev_song, "platform_id", None),
+                # On renomme image_url -> img_url pour coller à ta spec de réponse
+                "img_url": getattr(prev_song, "image_url", None),
+            }
+
+            # User lié à l'avant-dernier dépôt (peut être None/Anonymous)
+            prev_user = previous_deposit_obj.user
+            if prev_user and not isinstance(prev_user, AnonymousUser):
+                # On tente d'être robuste sur le "name"
+                full_name = getattr(prev_user, "get_full_name", lambda: "")() or None
+                display_name = (
+                    full_name
+                    or getattr(prev_user, "name", None)
+                    or getattr(prev_user, "username", None)
+                )
+                profile_pic = (
+                    getattr(prev_user, "profile_pic_url", None)
+                    or getattr(prev_user, "avatar_url", None)
+                    or getattr(getattr(prev_user, "profile", None), "picture_url", None)
+                )
+                user_payload = {
+                    "name": display_name,
+                    "profile_pic_url": profile_pic
+                }
+            else:
+                user_payload = None
+        else:
+            # Aucun dépôt antérieur dans cette box
+            prev_dt_iso = None
+            song_payload = None
+            user_payload = None
+
+        # 9) Sérialisation du nouveau dépôt si tu en as encore besoin côté front
+        #    (je la commente pour respecter ta nouvelle spec de réponse)
+        # new_deposit_data = DepositSerializer(new_deposit).data
+
+        # 10) Réponse FINALE (format demandé)
         response = {
-            'new_deposit': new_deposit,
-            'achievements': successes
+            "previous_deposit": prev_dt_iso,  # date/heure ISO du dépôt précédent
+            "song": song_payload,             # infos de la chanson du dépôt précédent
+            "user": user_payload,             # infos user du dépôt précédent
+            "successes": successes            # on réutilise ta structure existante
         }
         return Response(response, status=status.HTTP_200_OK)
 
