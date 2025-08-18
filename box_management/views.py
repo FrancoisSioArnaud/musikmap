@@ -85,7 +85,7 @@ class GetBox(APIView):
                 #resp['last_deposits'] = box_deposits
                 #resp['last_deposits_songs'] = songs
                 resp['deposit_count'] = deposit_count
-                #resp['box'] = data
+                resp['box'] = data
                 return Response(resp, status=status.HTTP_200_OK)
             else:
                 return Response({'Bad Request': 'Invalid Box Name'}, status=status.HTTP_404_NOT_FOUND)
@@ -379,6 +379,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
