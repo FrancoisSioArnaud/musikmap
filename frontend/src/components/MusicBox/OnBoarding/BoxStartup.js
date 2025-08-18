@@ -18,7 +18,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
             <div className="bottom-content__wrapper">
               <button className="btn-secondary">
                 <span>
-               <!--   {boxInfo.box.name} -->
+                /* {boxInfo.box.name} */ 
                 </span>
               </button>
               
@@ -42,5 +42,6 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
     </>
   );
 }
+
 
 
