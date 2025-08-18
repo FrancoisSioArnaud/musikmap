@@ -157,6 +157,7 @@ export default function LiveSearch({
         // Set the search song to the new deposit
         setSearchSong(data_resp.new_deposit);
         setAchievements(data_resp.achievements);
+        setDispDeposits(data_resp.deposits)
       });
     setIsDeposited(true);
     setStage(5);
@@ -175,7 +176,7 @@ export default function LiveSearch({
       <div className="search-song">
         <h2>Choisi ta chanson à déposer</h2>
         <div className="search-song__wrapper">
-          
+
           <div className="d-flex">
             <button
               className="btn-spotify"
@@ -200,12 +201,12 @@ export default function LiveSearch({
 
 
           <div className="input-wrapper">
-            <input type="text" 
+            <input type="text"
               placeholder="Search for a song"
               onChange={(e) => setSearchValue(e.target.value)}
             />
           </div>
-          
+
         </div>
       </div>
 
@@ -234,7 +235,7 @@ export default function LiveSearch({
           >
             <span>Choisir</span>
           </button>
-        
+
         </Box>
       ))}
     </ul>
@@ -242,6 +243,3 @@ export default function LiveSearch({
     </Stack>
   );
 }
-
-
-
