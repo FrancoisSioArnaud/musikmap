@@ -74,15 +74,15 @@ class GetBox(APIView):
                 data = BoxSerializer(box[0]).data  # Gets in json the data from the database corresponding to the Box
                 deposit_count = Deposit.objects.filter(box_id=data.get('id')).count()
                 # Get all deposits of the box
-                last_deposit = Deposit.objects.filter(box_id=data.get('id').order_by('-deposited_at')
+                box_deposits = Deposit.objects.filter(box_id=data.get('id').order_by('-deposited_at'))
                 # Get the names of the songs corresponding to the deposits
-                songs = Song.objects.filter(id__in=last_deposit.values('song_id')).order_by('-id')
+                songs = Song.objects.filter(id__in=box_deposits.values('song_id')).order_by('-id')
                 # Serialize the objects
                 songs = SongSerializer(songs, many=True).data
-                last_deposit = DepositSerializer(last_deposit, many=True).data
+                box_deposits = DepositSerializer(box_deposits, many=True).data
 
                 resp = {}
-                resp['last_deposits'] = last_deposit
+                resp['last_deposits'] = box_deposits
                 resp['last_deposits_songs'] = songs
                 resp['deposit_count'] = deposit_count
                 resp['box'] = data
@@ -379,6 +379,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
