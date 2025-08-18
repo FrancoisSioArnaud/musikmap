@@ -333,7 +333,7 @@ class ManageDiscoveredSongs(APIView):
         if not user.is_authenticated:
             return Response({'error': 'Vous devez être connecté pour effectuer cette action.'},
                             status=status.HTTP_401_UNAUTHORIZED)
-        else:
+     {/*   else:
             # Add the deposit to the user's discovered songs
             song_id = request.data.get('visible_deposit').get('id')
             # Get the song linked to the id
@@ -350,7 +350,7 @@ class ManageDiscoveredSongs(APIView):
                 # Create a new discovered song linked to the user
                 DiscoveredSong(user_id=user, deposit_id=deposit).save()
                 return Response({'success': True}, status=status.HTTP_200_OK)
-
+*/}
     def get(self, request):
         """ Get the discovered songs of the user
 
@@ -379,6 +379,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
