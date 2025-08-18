@@ -159,7 +159,7 @@ export default function LiveSearch({
         setAchievements(data_resp.achievements);
       });
     setIsDeposited(true);
-    setStage(4);
+    setStage(5);
   }
 
   /**
@@ -242,5 +242,6 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
