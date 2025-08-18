@@ -16,6 +16,7 @@ export default function LiveSearch({
   setStage,
   setSearchSong,
   setAchievements,
+  setDispDeposits,
 }) {
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
@@ -241,3 +242,4 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
