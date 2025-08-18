@@ -70,7 +70,7 @@ class GetBox(APIView):
         name = request.GET.get(self.lookup_url_kwarg)
         if name is not None:
             box = Box.objects.filter(url=name)
-            if len(box) > 0:
+            if box.exists() :
                 data = BoxSerializer(box[0]).data  # Gets in json the data from the database corresponding to the Box
                 deposit_count = Deposit.objects.filter(box_id=data.get('id')).count()
                 # Get all deposits of the box
@@ -333,7 +333,7 @@ class ManageDiscoveredSongs(APIView):
         if not user.is_authenticated:
             return Response({'error': 'Vous devez être connecté pour effectuer cette action.'},
                             status=status.HTTP_401_UNAUTHORIZED)
-       else:
+        else:
             # Add the deposit to the user's discovered songs
             song_id = request.data.get('visible_deposit').get('id')
             # Get the song linked to the id
@@ -379,6 +379,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
