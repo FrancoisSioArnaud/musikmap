@@ -214,45 +214,6 @@ class GetBox(APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
-class ReplaceVisibleDeposits(APIView):
-    """
-    Class goal: Replace the visible deposits disclosed by the user
-    """
-
-    def post(self, request):
-        """
-        Function goal: Replace the visible deposits disclosed by the user
-
-        Args:
-            request: the request sent by the user
-
-        Returns:
-            Response: the response containing the new visible deposits or an error message
-        """
-
-        # Get the box, the visible deposit disclosed by the user and the search deposit
-        box_id = request.data.get('visible_deposit').get('box_id')
-        visible_deposit_id = request.data.get('visible_deposit').get('id')
-        search_deposit_id = request.data.get('search_deposit').get('id')
-        visible_deposit_id = Song.objects.filter(id=visible_deposit_id).get()
-        # Delete the visible deposit disclosed by the user
-        VisibleDeposit.objects.filter(deposit_id__song_id=visible_deposit_id).delete()
-
-        # Get the most recent deposit that is not in the visible deposits
-        i = 0
-        while search_deposit_id in VisibleDeposit.objects.filter(deposit_id__box_id=box_id).values('deposit_id'):
-            i += 1
-            search_deposit_id = Deposit.objects.filter(box_id=box_id).order_by('-deposited_at')[i].id
-
-        # Create a new visible deposit with the search deposit
-        search_deposit = Deposit.objects.filter(id=search_deposit_id).get()
-        # Check if the search deposit is not already visible
-        if len(VisibleDeposit.objects.filter(deposit_id__song_id=search_deposit.song_id)) == 0:
-            VisibleDeposit(deposit_id=search_deposit).save()
-            return Response({'success': True}, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'The search deposit is already visible'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class Location(APIView):
     """
@@ -346,49 +307,6 @@ class CurrentBoxManagement(APIView):
             return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class UpdateVisibleDeposits(APIView):
-    """
-    Class goal: Update the visible deposits of a box when the user discloses a deposit after depositing a song
-    """
-
-    def post(self, request):
-        """
-        Function goal: Update the visible deposits of a box
-        Args:
-            request: the request sent by the user
-
-        Returns:
-            Response: the response containing the new visible deposits or an error message
-        """
-        box_name = request.data.get('boxName')
-        box = Box.objects.filter(url=box_name).get()
-
-        # Get the maximum number of deposits to display
-        max_deposits = box.max_deposits
-        # Get the visible deposits of the box
-        visible_deposits = VisibleDeposit.objects.filter(deposit_id__box_id=box).order_by('-deposit_id__deposited_at')
-        # Get the number of visible deposits
-        n_visible_deposits = len(visible_deposits)
-
-        # If the number of visible deposits is more than the maximum number of deposits to display
-        if n_visible_deposits > max_deposits:
-            # Delete the oldest visible deposits
-            for i in range(max_deposits, n_visible_deposits):
-                visible_deposits[i].delete()
-        # If the number of visible deposits is less than the maximum number of deposits to display
-        elif n_visible_deposits < max_deposits:
-            # Get the number of deposits to add
-            n_deposits_to_add = max_deposits - n_visible_deposits
-            # Get the last n_deposits_to_add deposits of the box that are not visible
-            deposits_to_add = Deposit.objects.filter(box_id=box).exclude(
-                song_id__in=visible_deposits.values('deposit_id__song_id')).order_by('-deposited_at')[:n_deposits_to_add]
-            # Add the deposits to the visible deposits
-            for deposit in deposits_to_add:
-                # check if the song is already linked to a visible deposit
-                if not VisibleDeposit.objects.filter(deposit_id__song_id=deposit.song_id).exists():
-                    VisibleDeposit(deposit_id=deposit).save()
-        return Response({'success': True}, status=status.HTTP_200_OK)
-
 
 class ManageDiscoveredSongs(APIView):
     """
@@ -463,5 +381,6 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
