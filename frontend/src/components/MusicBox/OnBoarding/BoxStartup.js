@@ -7,8 +7,8 @@ import Typography from "@mui/material/Typography";
 export default function BoxStartup({ setStage, boxInfo, className }) {
   return (
     <>
-    {console.log(Object.keys(boxInfo.deposit_count))
-    console.log(Object.keys(boxInfo.deposit_count).length)}
+    {console.log(Object.keys(boxInfo.deposit_count))}
+    {console.log(Object.keys(boxInfo.deposit_count).length)}
       {boxInfo && Object.keys(boxInfo.deposit_count).length > 0 ? (
         <Paper
           className={className}
@@ -44,6 +44,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
     </>
   );
 }
+
 
 
 
