@@ -154,9 +154,7 @@ export default function LiveSearch({
       .then((response) => response.json())
       .then((data_resp) => {
         console.log(data_resp);
-        // Set the search song to the new deposit
-        setSearchSong(data_resp.new_deposit);
-        setAchievements(data_resp.achievements);
+        setAchievements(data_resp.successes);
         setDispDeposits(data_resp.deposits)
       });
     setIsDeposited(true);
