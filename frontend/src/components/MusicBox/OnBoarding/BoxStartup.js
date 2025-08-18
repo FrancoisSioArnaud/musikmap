@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 export default function BoxStartup({ setStage, boxInfo, className }) {
   return (
     <>
-      {boxInfo && Object.keys(boxInfo.box || {}).length > 0 ? (
+      {boxInfo /*&& Object.keys(boxInfo.box || {}).length > 0 */ ? (
         <Paper
           className={className}
           elevation={3}
@@ -42,3 +42,4 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
     </>
   );
 }
+
