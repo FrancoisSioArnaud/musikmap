@@ -183,6 +183,6 @@ admin.site.register(Box, BoxAdmin)
 admin.site.register(Deposit, DepositAdmin)
 admin.site.register(Song)
 admin.site.register(LocationPoint, LocationPointAdmin)
-admin.site.register(VisibleDeposit)
 admin.site.register(DiscoveredSong)
+
 
