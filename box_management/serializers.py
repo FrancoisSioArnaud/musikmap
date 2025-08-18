@@ -26,13 +26,8 @@ class LocationPointSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class VisibleDepositsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VisibleDeposit
-        fields = '__all__'
-
-
 class DiscoveredSongSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscoveredSong
         fields = '__all__'
+
