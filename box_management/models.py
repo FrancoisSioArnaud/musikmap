@@ -107,19 +107,6 @@ class LocationPoint(models.Model):
         return box_name + ' - ' + str(self.latitude) + ' - ' + str(self.longitude)
 
 
-class VisibleDeposit(models.Model):
-    """
-    Class goal: This class represents a visible deposit, i.e. a deposit that is visible by the user in a box.
-
-    Attributes:
-        deposit_id: The id of the deposit.
-    """
-    deposit_id = models.ForeignKey(Deposit, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return str(self.id) + '-' + str(self.deposit_id)
-
-
 class DiscoveredSong(models.Model):
     """
     Class goal: This class represents a discovered song.
@@ -136,4 +123,5 @@ class DiscoveredSong(models.Model):
         Method goal: Returns the id of the user and the id of the deposit used to display it in the admin interface.
         """
         return str(self.user_id) + ' - ' + str(self.deposit_id)
+
 
