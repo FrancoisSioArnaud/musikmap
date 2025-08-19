@@ -113,6 +113,7 @@ class GetBox(APIView):
                 "img_url": "..."
               },
               "user": {
+                "id": "...",
                 "name": "...",
                 "profile_pic_url": "..."
               }
@@ -246,7 +247,7 @@ class GetBox(APIView):
                 "img_url": getattr(s, "image_url", None),
             }
 
-            # User : si None/Anonymous, on renvoie null
+                    # User : si None/Anonymous, on renvoie null ; sinon on inclut aussi l'ID
             if u and not isinstance(u, AnonymousUser):
                 full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
                 display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
@@ -255,9 +256,14 @@ class GetBox(APIView):
                     or getattr(u, "avatar_url", None)
                     or getattr(getattr(u, "profile", None), "picture_url", None)
                 )
-                user_payload = {"name": display_name, "profile_pic_url": profile_pic}
+                user_payload = {
+                    "id": getattr(u, "id", None),              # 👈 ajoute l'ID utilisateur
+                    "name": display_name,
+                    "profile_pic_url": profile_pic
+                }
             else:
-                user_payload = None
+                user_payload = None  # pas d'utilisateur attaché au dépôt
+
 
             deposits_payload.append({
                 # Date ISO 8601 (avec timezone) pour faciliter le parsing côté front
@@ -440,6 +446,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
