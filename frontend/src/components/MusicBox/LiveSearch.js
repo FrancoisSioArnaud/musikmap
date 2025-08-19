@@ -137,30 +137,44 @@ export default function LiveSearch({
    * @param option - The selected option.
    * @param boxName - The name of the box.
    */
- async function handleButtonClick(option, boxName) {
-  try {
+  function handleButtonClick(option, boxName) {
+    const data = { option, boxName };
     const csrftoken = getCookie("csrftoken");
-    const res = await fetch("/box-management/get-box?name=" + boxName, {
+  
+    // IMPORTANT: on retourne la promesse fetch
+    return fetch("/box-management/get-box?name=" + boxName, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify({ option, boxName }),
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-
-    const data_resp = await res.json();
-    const deposits   = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
-    const successes  = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
-
-    setDispDeposits((prev) => [...prev, ...deposits]);
-    setAchievements(successes);
-
-    // seulement après les MÀJ de données :
-    setIsDeposited(true);
-    setStage(5);
-  } catch (e) {
-    console.error(e);
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then((data_resp) => {
+        // 1) MàJ des états de données
+        const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
+        const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
+  
+        // une seule mise à jour (évite la boucle setState)
+        setDispDeposits((prev) => [...prev, ...deposits]);
+        setAchievements(successes);
+      })
+      .then(() => {
+        // 2) Quand c’est fini, on change d’étape
+        setIsDeposited(true);
+        setStage(5);
+      })
+      .catch((err) => {
+        console.error(err);
+        // éventuellement afficher un message d’erreur
+      });
   }
-}
 
   /**
    * Handles the change of the streaming service.
@@ -242,6 +256,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
