@@ -165,10 +165,6 @@ export default function LiveSearch({
         // une seule mise à jour (évite la boucle setState)
         setDispDeposits((prev) => [...prev, ...deposits]);
         setAchievements(successes);
-        console.log("dispDeposits : ")
-        console.log(dispDeposits)
-        console.log("achievements : ")
-        console.log(achievements)
 
       })
       .then(() => {
@@ -261,6 +257,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
