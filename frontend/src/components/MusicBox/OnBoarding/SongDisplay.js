@@ -20,14 +20,13 @@ import { UserContext } from "../../UserContext";
  * SongCard Component
  * Displays a card representing a song with its title, artist, and album cover image.
  * @param {Object} deposits - An object containing song deposit data.
- * @param {boolean} isDeposited - A boolean indicating whether the song has been deposited.
  * @param setStage - A function used to set the stage of the page
  * @param setDispDeposits - A function used to set the songs that we will display
  * @param searchSong
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
+export default function SongDisplay({ dispDeposits, achievements }) {
   console.log(achievements)
   console.log(dispDeposits)
 
@@ -243,3 +242,4 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
+
