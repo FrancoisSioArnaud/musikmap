@@ -155,6 +155,13 @@ export default function LiveSearch({
       .then((response) => response.json())
       .then((data_resp) => {
         console.log(data_resp);
+       
+        const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
+        for (const dep of deposits) {
+          // mise à jour fonctionnelle => React prend toujours la version la + récente
+          setDispDeposits(prev => [...prev, dep]);
+        }
+        
         setDispDeposits(prev => [...prev, ...(data_resp.deposits)]);
         setAchievements(data_resp.successes);
       });
@@ -242,5 +249,6 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
