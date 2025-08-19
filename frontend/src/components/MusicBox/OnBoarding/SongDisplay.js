@@ -27,11 +27,11 @@ import { UserContext } from "../../UserContext";
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispDeposits, achievements }) {
-  console.log("achievements : ")
-  console.log(achievements)
-  console.log("dispDeposits : ")
-  console.log(dispDeposits)
+export default function SongDisplay({ setDispDeposits, setAchievements }) {
+  console.log("setAchievements : ")
+  console.log(setAchievements)
+  console.log("setDispDeposits : ")
+  console.log(setDispDeposits)
 
   // States
   const [selectedProvider, setSelectedProvider] = useState("spotify");
