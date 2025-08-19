@@ -163,9 +163,10 @@ export default function LiveSearch({
         }
         
         setAchievements(data_resp.successes);
+
+        setIsDeposited(true);
+        setStage(5);
       });
-    setIsDeposited(true);
-    setStage(5);
   }
 
   /**
@@ -248,6 +249,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
