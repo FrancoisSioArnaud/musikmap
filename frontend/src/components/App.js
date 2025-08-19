@@ -11,7 +11,7 @@ import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
 import { isMobile } from "react-device-detect";
 import SuccessfulLogout from "./SuccessfulLogout";
-import { Footer } from "./Common/footer";
+//import { Footer } from "./Common/footer";
 import UserPublicProfile from "./UserPublicProfile";
 
 import {
@@ -108,13 +108,14 @@ export default function App() {
           </Routes>
         </UserContext.Provider>
       </Router>
-      <Footer sx={{ mt: 8, mb: 4 }} />
+             /* {<Footer sx={{ mt: 8, mb: 4 }} }*/
     </>
   );
 }
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
