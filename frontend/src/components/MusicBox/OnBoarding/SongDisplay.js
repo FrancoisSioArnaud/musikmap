@@ -17,11 +17,16 @@ import { getUserDetails, checkUserStatus } from "../../UsersUtils";
 
 /**
  * Page d’affichage des précédents dépôts d’une boîte.
- * NOTE: setDispDeposits = LISTE des dépôts (nom imposé par la consigne)
- *       setAchievements = SUCCÈS (tableau ou objet)
+ * NOTE: dispDeposits = LISTE des dépôts (nom imposé par la consigne)
+ *       achievements = SUCCÈS (tableau ou objet)
  */
-export default function SongDisplay({ setDispDeposits, setAchievements }) {
+export default function SongDisplay({ dispDeposits, achievements }) {
 
+  console.log("DispDeposits : ")
+  console.log(dispDeposits)
+  console.log("Achievements : ")
+  console.log(achievements)
+  
   const navigate = useNavigate();
   const { setUser, setIsAuthenticated } = useContext(UserContext);
 
