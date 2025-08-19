@@ -36,9 +36,6 @@ export default function MusicBox() {
 
   const [searchSong, setSearchSong] = useState("");
 
-  // The ID of the user who has deposited the music selected by the current user
-  const [depositedBy, setDepositedBy] = useState(null);
-
   // The achievements the user obtains
   const [achievements, setAchievements] = useState([]);
   // Previous deposits to display
@@ -96,8 +93,7 @@ export default function MusicBox() {
           <>
             <SongDisplay
               setDispDeposits={setDispDeposits}
-              depositedBy={depositedBy}
-              achievements={achievements}
+              setAchievements={setAchievements}
             />
           </>
         )}
@@ -105,6 +101,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
