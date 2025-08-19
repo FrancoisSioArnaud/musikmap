@@ -21,6 +21,10 @@ import { getUserDetails, checkUserStatus } from "../../UsersUtils";
  *       setAchievements = SUCCÈS (tableau ou objet)
  */
 export default function SongDisplay({ setDispDeposits, setAchievements }) {
+  console.log("setDispDeposits : ")
+  console.log(setDispDeposits)
+  console.log("setAchievements : ")
+  console.log(setAchievements)
   const navigate = useNavigate();
   const { setUser, setIsAuthenticated } = useContext(UserContext);
 
