@@ -78,7 +78,6 @@ export default function MusicBox() {
         }
         {stage === 2 && (
           <>
-            {/* <DispHiddenSongs deposits={boxInfo} isDeposited={isDeposited} /> */}
             <LiveSearch
               isSpotifyAuthenticated={isSpotifyAuthenticated}
               isDeezerAuthenticated={isDeezerAuthenticated}
@@ -104,5 +103,6 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
