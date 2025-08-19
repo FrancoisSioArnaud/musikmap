@@ -166,8 +166,6 @@ export default function LiveSearch({
         setDispDeposits((prev) => [...prev, ...deposits]);
         setAchievements(successes);
 
-        console.log(setDispDeposits)
-        console.log(setAchievement)
       })
       .then(() => {
         // 2) Quand c’est fini, on change d’étape
@@ -259,6 +257,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
