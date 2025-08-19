@@ -40,7 +40,7 @@ export default function MusicBox() {
   const [depositedBy, setDepositedBy] = useState(null);
 
   // The achievements the user obtains
-  const [achievements, setAchievements] = useState({});
+  const [achievements, setAchievements] = useState([]);
   // Previous deposits to display
   const [dispDeposits, setDispDeposits] = useState([]);
 
@@ -104,6 +104,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
