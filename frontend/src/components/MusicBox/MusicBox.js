@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../UserContext";
 import Box from "@mui/material/Box";
-import MenuAppBar from "../Menu";
 import LiveSearch from "./LiveSearch";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -61,7 +60,6 @@ export default function MusicBox() {
 
   return (
     <>
-      <MenuAppBar />
       <Box className={`main-content stage-${stage}`}>
         {(stage === 0 || stage === 1) &&
           <>
@@ -103,6 +101,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
