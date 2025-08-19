@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
 import Box from "@mui/material/Box";
-import MenuAppBar from "./Menu";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { getUserDetails } from "./UsersUtils";
@@ -38,7 +37,6 @@ export default function UserPublicProfile() {
 
   return (
     <>
-      <MenuAppBar />
       <Box sx={{ padding: "16px" }}>
         {userInfo ? (
           <>
@@ -90,3 +88,4 @@ export default function UserPublicProfile() {
     </>
   );
 }
+
