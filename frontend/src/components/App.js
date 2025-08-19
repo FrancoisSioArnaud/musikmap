@@ -108,7 +108,7 @@ export default function App() {
           </Routes>
         </UserContext.Provider>
       </Router>
-             /* {<Footer sx={{ mt: 8, mb: 4 }} }*/
+              {/* <Footer sx={{ mt: 8, mb: 4 }} */}
     </>
   );
 }
