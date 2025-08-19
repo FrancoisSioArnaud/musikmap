@@ -216,6 +216,11 @@ class GetBox(APIView):
                 'points': consecutive_days_points
             }
 
+        # 🔽 Ajoute un résumé du total de points dans la liste des succès
+        successes['points_total'] = {
+            'points': points_to_add,   # <= le total calculé
+        }
+        
         # 6) Appel "add-points" (on ignore les erreurs réseau pour ne pas casser la création)
         cookies = request.COOKIES
         csrf_token = get_token(request)
@@ -446,6 +451,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
