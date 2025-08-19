@@ -92,200 +92,189 @@ class GetBox(APIView):
         else:
             return Response({'Bad Request': 'Name of the box not found in request'}, status=status.HTTP_400_BAD_REQUEST)
 
-    def post(self, request, format=None):
-        """
-        Crée un nouveau dépôt (Deposit) puis renvoie:
-        - successes : la liste des succès débloqués (en tableau)
-        - deposits  : les 10 avant-derniers dépôts DE LA MÊME BOX (donc sans le dépôt qu'on vient de créer),
-                      chacun avec date du dépôt, song et user liés.
+def post(self, request, format=None):
+    """
+    Crée un nouveau dépôt (Deposit) puis renvoie:
+    - successes : la liste des succès (en tableau)
+    - deposits  : 10 dépôts précédents de la même box (sans le nouveau)
+        * le plus récent (avant-dernier au global) : TOUTES LES INFOS 
+        * les 9 suivants : format allégé avec song.img_url, song.id, song.cost (linéaire 500 -> 100)
+    """
+    # --- Entrée ---
+    option = request.data.get('option') or {}
+    song_id = option.get('id')
 
-        Format JSON:
-        {
-          "successes": [ {...}, {...} ],
-          "deposits": [
-            {
-              "deposit_date": "2025-08-18T01:23:45+02:00",
-              "song": {
-                "title": "...",
-                "artist": "...",
-                "url": "...",
-                "platform_id": "...",
-                "img_url": "..."
-              },
-              "user": {
-                "id": "...",
-                "name": "...",
-                "profile_pic_url": "..."
-              }
-            },
-            ...
-          ]
-        }
-        """
-        # Récupération des données d'entrée (avec valeurs par défaut prudentes)
-        option = request.data.get('option') or {}
-        song_id = option.get('id')
+    song_name = option.get('name')
+    song_author = option.get('artist')
+    song_platform_id = option.get('platform_id')
+    box_name = request.data.get('boxName')
 
-        song_name = option.get('name')
-        song_author = option.get('artist')
-        song_platform_id = option.get('platform_id')
-        box_name = request.data.get('boxName')
+    # 1) Box ciblée (get() lèvera DoesNotExist si introuvable)
+    box = Box.objects.filter(url=box_name).get()
 
-        # 1) Charger la Box ciblée
-        #    NB: .get() lève DoesNotExist si introuvable -> comportement actuel conservé
-        box = Box.objects.filter(url=box_name).get()
+    # 2) On récupère les 10 dépôts PRÉCÉDENTS (avant création du nouveau)
+    #    -> pas besoin d'exclure le futur dépôt
+    previous_deposits_qs = (
+        Deposit.objects
+        .filter(box_id=box)
+        .select_related('song_id', 'user')
+        .order_by('-deposited_at', '-id')[:10]
+    )
 
-        # 2) Capturer les 10 dépôts PRÉCÉDENTS de la box AVANT de créer le nouveau
-        #    => évite d'avoir à exclure le dépôt qu'on va créer.
-        #    On optimise avec select_related sur les FK 'song_id' et 'user' pour éviter le N+1.
-        #    On trie par date décroissante et on ajoute '-id' comme "tie-breaker" si deux timestamps sont identiques.
-        previous_deposits_qs = (
-            Deposit.objects
-            .filter(box_id=box)
-            .select_related('song_id', 'user')
-            .order_by('-deposited_at', '-id')[:10]
+    # 3) (Ré)utiliser la chanson sinon créer
+    try:
+        song = Song.objects.filter(title=song_name, artist=song_author).get()
+        song.n_deposits = (song.n_deposits or 0) + 1
+        song.save()
+    except Song.DoesNotExist:
+        song = Song(
+            song_id=song_id,
+            title=song_name,
+            artist=song_author,
+            url=option.get('url'),
+            image_url=option.get('image_url'),
+            duration=option.get('duration'),
+            platform_id=song_platform_id,
+            n_deposits=1
         )
+        song.save()
 
-        # 3) (Ré)utiliser la chanson si elle existe déjà, sinon la créer
-        try:
-            song = Song.objects.filter(title=song_name, artist=song_author).get()
-            song.n_deposits = (song.n_deposits or 0) + 1
-            song.save()
-        except Song.DoesNotExist:
-            song = Song(
-                song_id=song_id,
-                title=song_name,
-                artist=song_author,
-                url=option.get('url'),
-                image_url=option.get('image_url'),
-                duration=option.get('duration'),
-                platform_id=song_platform_id,
-                n_deposits=1
-            )
-            song.save()
+    # 4) Nouveau dépôt (non encore utilisé dans la réponse des "previous")
+    user = request.user if not isinstance(request.user, AnonymousUser) else None
+    new_deposit = Deposit(song_id=song, box_id=box, user=user)
 
-        # 4) Créer le NOUVEAU dépôt
-        user = request.user if not isinstance(request.user, AnonymousUser) else None
-        new_deposit = Deposit(song_id=song, box_id=box, user=user)
+    # 5) Succès / points (comme avant)
+    successes: dict = {}
+    points_to_add = NB_POINTS_ADD_SONG
 
-        # 5) Calcul des succès / points (logique conservée)
-        successes: dict = {}
-        points_to_add = NB_POINTS_ADD_SONG  # points de base
+    successes['default_deposit'] = {
+        'name': "Pépite",
+        'desc': "Tu as partagé une chanson",
+        'points': NB_POINTS_ADD_SONG
+    }
 
-        successes['default_deposit'] = {
-            'name': "Pépite",
-            'desc': "Tu as partagé une chanson",
-            'points': NB_POINTS_ADD_SONG
+    if is_first_user_deposit(user, box):
+        points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
+        successes['first_user_deposit_box'] = {
+            'name': "Conquérant",
+            'desc': "Tu n'as jamais déposé ici",
+            'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
         }
 
-        # Premier dépôt de cet utilisateur dans cette box ?
-        if is_first_user_deposit(user, box):
-            points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            successes['first_user_deposit_box'] = {
-                'name': "Conquérant",
-                'desc': "Tu n'as jamais déposé ici",
-                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            }
-
-        # Première fois que CE son est déposé dans CETTE box ?
-        if is_first_song_deposit(song, box):
-            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            successes['first_song_deposit'] = {
+    if is_first_song_deposit(song, box):
+        points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+        successes['first_song_deposit'] = {
+            'name': "Far West",
+            'desc': "Ce son n'a jamais été déposé ici",
+            'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+        }
+        if is_first_song_deposit_global(song):
+            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+            successes['first_song_deposit_global'] = {
                 'name': "Far West",
-                'desc': "Ce son n'a jamais été déposé ici",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            }
-            # Première fois sur tout le réseau ?
-            if is_first_song_deposit_global(song):
-                points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                successes['first_song_deposit_global'] = {
-                    'name': "Far West",
-                    'desc': "Ce son n'a jamais été déposé sur notre réseau",
-                    'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                }
-
-        # Jours consécutifs ?
-        nb_consecutive_days: int = get_consecutive_deposit_days(user, box)
-        if nb_consecutive_days:
-            consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
-            points_to_add += consecutive_days_points
-            nb_consecutive_days += 1  # +1 pour l'affichage (ex: 3 jours si 2*points)
-            successes['consecutive_days'] = {
-                'name': "L'amour fou",
-                'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                'points': consecutive_days_points
+                'desc': "Ce son n'a jamais été déposé sur notre réseau",
+                'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             }
 
-        # Résumé du total de points
-        successes['points_total'] = {
-            'name': "Total",
-            'desc': "Points gagnés pour ce dépôt",
-            'points': points_to_add,   # <= le total calculé
+    nb_consecutive_days: int = get_consecutive_deposit_days(user, box)
+    if nb_consecutive_days:
+        consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
+        points_to_add += consecutive_days_points
+        nb_consecutive_days += 1  # affichage (+1)
+        successes['consecutive_days'] = {
+            'name': "L'amour fou",
+            'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
+            'points': consecutive_days_points
         }
-        
-        # 6) Appel "add-points" (on ignore les erreurs réseau pour ne pas casser la création)
-        cookies = request.COOKIES
-        csrf_token = get_token(request)
-        add_points_url = request.build_absolute_uri(reverse('add-points'))
-        headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
-        try:
-            requests.post(
-                add_points_url, cookies=cookies, headers=headers,
-                data=json.dumps({"points": points_to_add}), timeout=3
+
+    # Résumé du total de points dans successes
+    successes['points_total'] = {
+        'name': "Total",
+        'desc': "Points gagnés pour ce dépôt",
+        'points': points_to_add,
+    }
+
+    # 6) Service "add-points" (on ignore les erreurs réseau)
+    cookies = request.COOKIES
+    csrf_token = get_token(request)
+    add_points_url = request.build_absolute_uri(reverse('add-points'))
+    headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+    try:
+        requests.post(
+            add_points_url, cookies=cookies, headers=headers,
+            data=json.dumps({"points": points_to_add}), timeout=3
+        )
+    except Exception:
+        pass
+
+    # 7) Sauvegarde du nouveau dépôt
+    new_deposit.save()
+
+    # 8) Construction de la réponse "deposits"
+    deposits_payload = []
+
+    # Série des coûts (9 valeurs linéaires de 500 à 100)
+    cost_series = [500 - 50 * i for i in range(9)]  # [500, 450, ..., 100]
+
+    for idx, d in enumerate(previous_deposits_qs):
+        s = d.song_id  # FK -> Song
+        u = d.user     # FK -> User (peut être None)
+
+        # --- USER payload (commune aux 2 formats)
+        if u and not isinstance(u, AnonymousUser):
+            full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
+            display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+            profile_pic = (
+                getattr(u, "profile_pic_url", None)
+                or getattr(u, "avatar_url", None)
+                or getattr(getattr(u, "profile", None), "picture_url", None)
             )
-        except Exception:
-            pass
+            user_payload = {
+                "id": getattr(u, "id", None),
+                "name": display_name,
+                "profile_pic_url": profile_pic
+            }
+        else:
+            user_payload = None
 
-        # 7) Sauvegarder le nouveau dépôt (après calcul des succès/points)
-        new_deposit.save()
-
-        # 8) Construire le payload "deposits" demandé à partir des 10 dépôts précédents
-        deposits_payload = []
-        for d in previous_deposits_qs:
-            s = d.song_id  # FK vers Song
-            u = d.user     # FK vers User (peut être None)
-
-            song_payload = {
+        # --- Dernier dépôt précédent (idx == 0) : TOUTES LES INFOS (comme avant)
+        if idx == 0:
+            song_payload_full = {
                 "title": getattr(s, "title", None),
                 "artist": getattr(s, "artist", None),
                 "url": getattr(s, "url", None),
                 "platform_id": getattr(s, "platform_id", None),
-                # On expose "img_url" côté API, mappée depuis le champ modèle "image_url"
                 "img_url": getattr(s, "image_url", None),
             }
-
-                    # User : si None/Anonymous, on renvoie null ; sinon on inclut aussi l'ID
-            if u and not isinstance(u, AnonymousUser):
-                full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-                display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-                profile_pic = (
-                    getattr(u, "profile_pic_url", None)
-                    or getattr(u, "avatar_url", None)
-                    or getattr(getattr(u, "profile", None), "picture_url", None)
-                )
-                user_payload = {
-                    "id": getattr(u, "id", None),              # 👈 ajoute l'ID utilisateur
-                    "name": display_name,
-                    "profile_pic_url": profile_pic
-                }
-            else:
-                user_payload = None  # pas d'utilisateur attaché au dépôt
-
-
             deposits_payload.append({
-                # Date ISO 8601 (avec timezone) pour faciliter le parsing côté front
                 "deposit_date": (d.deposited_at.isoformat() if getattr(d, "deposited_at", None) else None),
-                "song": song_payload,
+                "song": song_payload_full,
                 "user": user_payload,
             })
+            continue
 
-        # 9) Réponse finale : successes en LISTE (pas dict) + les 10 dépôts précédents
-        response = {
-            "successes": list(successes.values()),
-            "deposits": deposits_payload,
+        # --- Les 9 suivants : FORMAT ALLÉGÉ + COST
+        # Choix du coût en fonction de la position (1..9) → 500..100
+        cost_index = idx - 1  # 0..8
+        cost_value = cost_series[cost_index] if cost_index < len(cost_series) else 100
+
+        song_payload_light = {
+            "img_url": getattr(s, "image_url", None),
+            "id": getattr(s, "id", None),     # PK du Song en base
+            "cost": cost_value,
         }
-        return Response(response, status=status.HTTP_200_OK)
+        deposits_payload.append({
+            "deposit_date": (d.deposited_at.isoformat() if getattr(d, "deposited_at", None) else None),
+            "song": song_payload_light,
+            "user": user_payload,
+        })
 
+    # 9) Réponse finale
+    response = {
+        "successes": list(successes.values()),
+        "deposits": deposits_payload,
+    }
+    return Response(response, status=status.HTTP_200_OK)
 
 class Location(APIView):
     """
@@ -453,6 +442,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
