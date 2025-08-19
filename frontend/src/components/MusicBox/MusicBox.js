@@ -84,7 +84,6 @@ export default function MusicBox() {
               isSpotifyAuthenticated={isSpotifyAuthenticated}
               isDeezerAuthenticated={isDeezerAuthenticated}
               boxName={boxName}
-              setIsDeposited={setIsDeposited}
               user={user}
               setStage={setStage}
               setSearchSong={setSearchSong}
@@ -105,6 +104,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
