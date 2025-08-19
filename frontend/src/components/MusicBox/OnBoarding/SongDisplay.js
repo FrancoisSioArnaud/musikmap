@@ -1,6 +1,5 @@
-// src/components/YourPath/SongDisplay.jsx
 import * as React from "react";
-import { useState, useEffect, useContext } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -12,58 +11,83 @@ import Avatar from "@mui/material/Avatar";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
-import { UserContext } from "../../UserContext";
+import { UserContext } from "../../UserContext"; // non utilisé ici mais prêt si besoin
 import { getCookie } from "../../Security/TokensUtils";
-import { getUserDetails } from "../../UsersUtils";
-import { checkUserStatus } from "../../UsersUtils";
+import { getUserDetails, checkUserStatus } from "../../UsersUtils";
 
 /**
- * Affiche les 10 dépôts précédents d'une boîte.
- * @param {Array}  dispDeposits   - Tableau des dépôts (1er: complet, suivants: song.id/img_url/cost).
- * @param {Array|Object} achievements - Succès (parfois tableau, parfois objet).
+ * Affiche les 10 précédents dépôts d'une boîte.
+ * - 1er dépôt (index 0) : affichage complet + bouton Play -> modale (Fermer / Spotify / Deezer / Copier nom)
+ * - 9 suivants (index 1..9) : image floutée + bouton Révéler (cost) -> GET /box-management/revealSong
+ *
+ * Props:
+ * - dispDeposits: Deposit[] (les 10 dépôts à afficher)
+ * - setDispDeposits: React.Dispatch<Deposit[]> (setter venant du parent)
+ * - achievements: Success[] (liste des succès, inclut "Total")
+ * - setAchievement: setter des succès (non utilisé ici, mais dispo)
  */
-export default function SongDisplay({ dispDeposits = [], achievements = [] }) {
+export default function SongDisplay({
+  dispDeposits,
+  setDispDeposits,
+  achievements,
+  setAchievement,
+}) {
   const navigate = useNavigate();
-  const { setUser, setIsAuthenticated } = useContext(UserContext);
 
-  // Copie locale, pour pouvoir "révéler" un dépôt sans muter les props
-  const [items, setItems] = useState(dispDeposits);
-  useEffect(() => setItems(dispDeposits || []), [dispDeposits]);
-
-  // Normalisation des achievements (accepte array ou objet)
-  const achList = Array.isArray(achievements)
-    ? achievements
-    : Object.values(achievements || {});
-  const totalAch = achList.find((a) => (a?.name || "").toLowerCase() === "total");
-  const totalPoints = totalAch?.points ?? 0;
-  const achWithoutTotal = achList.filter(
-    (a) => (a?.name || "").toLowerCase() !== "total"
+  // Garde-fous : toujours travailler avec des tableaux
+  const deposits = useMemo(
+    () => (Array.isArray(dispDeposits) ? dispDeposits : []),
+    [dispDeposits]
+  );
+  const succ = useMemo(
+    () => (Array.isArray(achievements) ? achievements : []),
+    [achievements]
   );
 
-  // Modale "Play" (pour le 1er dépôt ou pour un dépôt révélé)
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null); // { title, artist, url, platform_id }
+  // ----------- Helpers généraux -----------
 
-  // Modale "Succès"
-  const [achOpen, setAchOpen] = useState(false);
+  // Total de points = succès dont name === "Total"
+  const totalPoints = useMemo(() => {
+    const item = succ.find((s) => (s?.name || "").toLowerCase() === "total");
+    return item?.points ?? 0;
+  }, [succ]);
 
-  // Ouverture modale Play
-  const openPlayModal = (song) => {
-    setPlaySong(song || null);
-    setPlayOpen(true);
+  // Succès à afficher dans la modale (tous sauf "Total")
+  const displaySuccesses = useMemo(
+    () => succ.filter((s) => (s?.name || "").toLowerCase() !== "total"),
+    [succ]
+  );
+
+  // Map id -> nom de plateforme
+  const PLATFORM_MAP = { 1: "spotify", 2: "deezer" };
+
+  // Ouvre un lien Spotify/Deezer :
+  // - si url directe de la plateforme : on l'ouvre
+  // - sinon on ouvre une recherche
+  const openPlatformLink = (song, provider /* 'spotify' | 'deezer' */) => {
+    const { title, artist, url } = song || {};
+    const q = encodeURIComponent(`${title ?? ""} ${artist ?? ""}`.trim());
+
+    if (provider === "spotify") {
+      const direct = url && url.includes("open.spotify.com") ? url : `https://open.spotify.com/search/${q}`;
+      window.open(direct, "_blank");
+      return;
+    }
+    if (provider === "deezer") {
+      const direct = url && url.includes("deezer.com") ? url : `https://www.deezer.com/search/${q}`;
+      window.open(direct, "_blank");
+      return;
+    }
   };
-  const closePlayModal = () => {
-    setPlayOpen(false);
-    setPlaySong(null);
-  };
 
-  // Copier "Titre - Artiste" dans le presse-papiers
+  // Copie "Titre - Artiste" dans le presse-papiers
   const copySongText = async (song) => {
     const text = `${song?.title ?? ""} - ${song?.artist ?? ""}`.trim();
     try {
       await navigator.clipboard.writeText(text);
       alert("Copié dans le presse-papiers !");
     } catch {
+      // Fallback basique
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -74,342 +98,316 @@ export default function SongDisplay({ dispDeposits = [], achievements = [] }) {
     }
   };
 
-  /**
-   * Ouvre le lien agrégateur pour la plateforme de la chanson.
-   * 👉 On utilise song.platform_id comme demandé.
-   */
-  async function getPlateformLink(song) {
-    if (!song) return;
-    const selectedProvider = song.platform_id; // ✅ demandé
+  // ----------- Modale PLAY (1er dépôt) -----------
+  const [playOpen, setPlayOpen] = useState(false);
+
+  const openPlayModal = () => setPlayOpen(true);
+  const closePlayModal = () => setPlayOpen(false);
+
+  // Le provider est forcé au platform_id du song du 1er dépôt
+  const firstDeposit = deposits[0] || null;
+  const firstSong = firstDeposit?.song || null;
+  const selectedProvider =
+    PLATFORM_MAP[firstSong?.platform_id] ?? (firstSong?.url?.includes("deezer.com") ? "deezer" : "spotify");
+
+  // ----------- Modale SUCCÈS (1er dépôt) -----------
+  const [successOpen, setSuccessOpen] = useState(false);
+  const openSuccessModal = () => setSuccessOpen(true);
+  const closeSuccessModal = () => setSuccessOpen(false);
+
+  // ----------- Révélation d'un dépôt (indices 1..9) -----------
+  async function revealSong(idx /* index du dépôt à révéler */) {
+    const dep = deposits[idx];
+    const cost = dep?.song?.cost;
+    const songId = dep?.song?.id;
+    if (!songId || !cost) return;
+
     const csrftoken = getCookie("csrftoken");
 
-    const res = await fetch("/api_agg/aggreg", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify({
-        song: song.url, // on envoie l'URL du morceau
-        platform: selectedProvider, // id/platform_id (ton backend agrégateur doit l'accepter)
-      }),
-    });
-    if (!res.ok) return console.error("Erreur API aggreg:", res.status);
-    const data = await res.json();
-    window.open(data); // l'API renvoie une URL à ouvrir
-  }
+    // Spécification demandée: requête GET vers /box-management/revealSong
+    // -> On passe les params en query string (GET + "body" = non standard)
+    const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
 
-  /**
-   * Révélation d'un dépôt (pour les 9 suivants).
-   * GET /box-management/revealSong?song_id=...&cost=...
-   * Remplace dans items[index] les infos song par celles retournées.
-   */
-  async function revealSong(cost, songId, indexInList) {
     try {
-      const csrftoken = getCookie("csrftoken");
-      const url = `/box-management/revealSong?song_id=${encodeURIComponent(
-        songId
-      )}&cost=${encodeURIComponent(cost)}`;
-
       const res = await fetch(url, {
         method: "GET",
-        headers: { "X-CSRFToken": csrftoken },
+        headers: {
+          "X-CSRFToken": csrftoken,
+        },
       });
-      if (!res.ok) {
-        console.error("Erreur revealSong", res.status);
-        return;
-      }
-      const data = await res.json(); // { song: { title, artist, url, platform_id } }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      // data attendu:
+      // { song: { title, artist, url, platform_id } }
 
-      setItems((prev) =>
-        prev.map((it, i) =>
-          i === indexInList
-            ? {
-                ...it,
-                song: {
-                  ...it.song,
-                  title: data.song?.title,
-                  artist: data.song?.artist,
-                  url: data.song?.url,
-                  platform_id: data.song?.platform_id,
-                },
-              }
-            : it
-        )
-      );
+      // Met à jour le dépôt i: on fusionne les nouvelles infos song
+      const updated = [...deposits];
+      const prevSong = updated[idx]?.song || {};
+      updated[idx] = {
+        ...updated[idx],
+        song: {
+          ...prevSong,
+          title: data?.song?.title ?? prevSong.title,
+          artist: data?.song?.artist ?? prevSong.artist,
+          url: data?.song?.url ?? prevSong.url,
+          platform_id: data?.song?.platform_id ?? prevSong.platform_id,
+        },
+      };
+      setDispDeposits(updated);
     } catch (e) {
       console.error(e);
+      alert("Impossible de révéler ce titre pour le moment.");
     }
   }
 
-  // Rendu du 1er dépôt (complet)
-  const renderFirstDeposit = (dep) => {
-    if (!dep) return null;
-    const dateStr = dep.deposit_date;
-    const user = dep.user;
-    const song = dep.song;
-
+  if (deposits.length === 0) {
     return (
-      <Card sx={{ mb: 2, p: 2 }}>
-        {/* 1) deposit_date */}
-        <Box id="deposit_date" sx={{ mb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            {dateStr}
-          </Typography>
+      <Box sx={{ p: 3 }}>
+        <Typography>Aucun dépôt à afficher.</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+      {/* =================== DÉPÔT #1 : affichage complet =================== */}
+      <Card sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Dépôt le plus récent
+        </Typography>
+
+        <Box
+          id="deposit_date"
+          sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}
+        >
+          {firstDeposit?.deposit_date}
         </Box>
 
-        {/* 2) deposit_user (cliquable vers /profile/:id) */}
         <Box
           id="deposit_user"
-          onClick={() => user?.id && navigate("/profile/" + user.id)}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1,
             mb: 2,
-            cursor: user?.id ? "pointer" : "default",
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            if (firstDeposit?.user?.id != null) {
+              navigate("/profile/" + firstDeposit.user.id);
+            }
           }}
         >
           <Avatar
-            src={user?.profile_pic_url || undefined}
-            alt={user?.name || "user"}
-            sx={{ width: 36, height: 36 }}
+            src={firstDeposit?.user?.profile_pic_url || undefined}
+            alt={firstDeposit?.user?.name || "Anonyme"}
+            sx={{ width: 40, height: 40 }}
           />
-          <Typography variant="subtitle2">{user?.name || "Anonyme"}</Typography>
+          <Typography>{firstDeposit?.user?.name || "Anonyme"}</Typography>
         </Box>
 
-        {/* 3) deposit_song */}
         <Box
           id="deposit_song"
-          sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+          sx={{ display: "grid", gridTemplateColumns: "96px 1fr auto", gap: 2, alignItems: "center" }}
         >
           <CardMedia
             component="img"
-            image={song?.img_url || undefined}
-            alt={`${song?.title || ""} - ${song?.artist || ""}`}
+            image={firstSong?.img_url || undefined}
+            alt={`${firstSong?.title || ""} - ${firstSong?.artist || ""}`}
             sx={{ width: 96, height: 96, objectFit: "cover", borderRadius: 1 }}
           />
           <Box>
-            <Typography variant="h6" noWrap>
-              {song?.title}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {firstSong?.title || "Titre inconnu"}
             </Typography>
-            <Typography variant="subtitle2" color="text.secondary" noWrap>
-              {song?.artist}
+            <Typography variant="body2" color="text.secondary">
+              {firstSong?.artist || "Artiste inconnu"}
             </Typography>
-            <Button
-              variant="contained"
-              sx={{ mt: 1 }}
-              onClick={() => openPlayModal(song)}
-            >
-              Play
-            </Button>
           </Box>
+          <Button variant="contained" onClick={openPlayModal}>
+            Play
+          </Button>
         </Box>
 
-        {/* 4) deposit_interact */}
-        <Box id="deposit_interact" sx={{ display: "flex", gap: 1 }}>
-          <Button variant="outlined" onClick={() => setAchOpen(true)}>
-            +{totalPoints} points
+        <Box id="deposit_interact" sx={{ mt: 2 }}>
+          <Button variant="outlined" onClick={openSuccessModal}>
+            Points gagnés : {totalPoints}
           </Button>
         </Box>
       </Card>
-    );
-  };
 
-  // Rendu d'un dépôt suivant (révélé ou non)
-  const renderOtherDeposit = (dep, index) => {
-    const user = dep.user;
-    const song = dep.song;
-    const revealed = !!song?.title; // si title présent => déjà révélé
+      {/* =================== DÉPÔTS #2..#10 : format “révéler” =================== */}
+      {deposits.slice(1).map((dep, i) => {
+        const idx = i + 1; // index réel dans deposits
+        const u = dep?.user;
+        const s = dep?.song || {};
+        const isRevealed = Boolean(s?.title && s?.artist); // si déjà révélé
 
-    return (
-      <Card key={index} sx={{ mb: 2, p: 2 }}>
-        {/* 1) deposit_date */}
-        <Box id="deposit_date" sx={{ mb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            {dep.deposit_date}
-          </Typography>
-        </Box>
+        // Provider calculé si révélé
+        const provider = PLATFORM_MAP[s?.platform_id] ?? (s?.url?.includes("deezer.com") ? "deezer" : "spotify");
 
-        {/* 2) deposit_user */}
-        <Box
-          id="deposit_user"
-          onClick={() => user?.id && navigate("/profile/" + user.id)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mb: 2,
-            cursor: user?.id ? "pointer" : "default",
-          }}
-        >
-          <Avatar
-            src={user?.profile_pic_url || undefined}
-            alt={user?.name || "user"}
-            sx={{ width: 36, height: 36 }}
-          />
-          <Typography variant="subtitle2">{user?.name || "Anonyme"}</Typography>
-        </Box>
+        return (
+          <Card key={idx} sx={{ p: 2 }}>
+            {/* Date */}
+            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+              {dep?.deposit_date}
+            </Box>
 
-        {/* 3) deposit_song */}
-        <Box
-          id="deposit_song"
-          sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
-        >
-          <CardMedia
-            component="img"
-            image={song?.img_url || undefined}
-            alt="cover"
-            sx={{
-              width: 96,
-              height: 96,
-              objectFit: "cover",
-              borderRadius: 1,
-              filter: revealed ? "none" : "blur(6px)", // flou si non révélé
-              transition: "filter .2s ease",
-            }}
-          />
-          <Box>
-            {revealed ? (
-              <>
-                <Typography variant="h6" noWrap>
-                  {song?.title}
-                </Typography>
-                <Typography variant="subtitle2" color="text.secondary" noWrap>
-                  {song?.artist}
-                </Typography>
-                <Button
-                  variant="contained"
-                  sx={{ mt: 1 }}
-                  onClick={() => openPlayModal(song)}
-                >
-                  Play
-                </Button>
-              </>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Titre masqué — clique sur Révéler
-              </Typography>
-            )}
-          </Box>
-        </Box>
-
-        {/* 4) deposit_interact */}
-        <Box id="deposit_interact" sx={{ display: "flex", gap: 1 }}>
-          {revealed ? (
-            <Button variant="outlined" disabled>
-              Révélé
-            </Button>
-          ) : (
-            <Button
-              variant="outlined"
-              onClick={() => revealSong(song?.cost, song?.id, index)}
+            {/* User */}
+            <Box
+              id="deposit_user"
+              sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, cursor: "pointer" }}
+              onClick={() => {
+                if (u?.id != null) {
+                  navigate("/profile/" + u.id);
+                }
+              }}
             >
-              Révéler — {song?.cost}
-            </Button>
-          )}
-        </Box>
-      </Card>
-    );
-  };
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.name || "Anonyme"}
+                sx={{ width: 40, height: 40 }}
+              />
+              <Typography>{u?.name || "Anonyme"}</Typography>
+            </Box>
 
-  // Effets annexes existants (si besoin d’info user côté contexte)
-  useEffect(() => {
-    checkUserStatus(setUser, (auth) => setIsAuthenticated?.(auth));
-  }, [setUser, setIsAuthenticated]);
+            {/* Song (flouté tant que non révélé) */}
+            <Box
+              id="deposit_song"
+              sx={{ display: "grid", gridTemplateColumns: "96px 1fr auto", gap: 2, alignItems: "center" }}
+            >
+              <CardMedia
+                component="img"
+                image={s?.img_url || undefined}
+                alt="Cover"
+                sx={{
+                  width: 96,
+                  height: 96,
+                  objectFit: "cover",
+                  borderRadius: 1,
+                  filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                  transition: "filter .2s ease",
+                }}
+              />
+              <Box>
+                {isRevealed ? (
+                  <>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      {s?.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {s?.artist}
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Titre caché
+                  </Typography>
+                )}
+              </Box>
 
-  // --- Rendu global ---
-  if (!items?.length) {
-    return <Typography>Aucun dépôt à afficher.</Typography>;
-  }
+              <Box id="deposit_interact" sx={{ display: "flex", gap: 1 }}>
+                {isRevealed ? (
+                  <>
+                    <Button variant="contained" onClick={() => openPlatformLink(s, provider)}>
+                      Ouvrir ({provider})
+                    </Button>
+                    <Button variant="outlined" onClick={() => copySongText(s)}>
+                      Copier le nom
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="contained"
+                    onClick={() => revealSong(idx)}
+                    title="Révéler la chanson"
+                  >
+                    Révéler — {s?.cost ?? "?"}
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </Card>
+        );
+      })}
 
-  const first = items[0] || null;
-  const rest = items.slice(1);
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 800, mx: "auto" }}>
-      {/* 1er dépôt (complet) */}
-      {renderFirstDeposit(first)}
-
-      {/* Les 9 suivants */}
-      {rest.map((dep, i) => renderOtherDeposit(dep, i + 1))}
-
-      {/* === Modale Play === */}
+      {/* =================== MODALE PLAY (pour le 1er dépôt) =================== */}
       {playOpen && (
-        <Box
-          onClick={closePlayModal}
-          sx={{
-            position: "fixed",
-            inset: 0,
-            bgcolor: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            p: 2,
-            zIndex: 1300,
-          }}
-        >
-          <Card onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 420 }}>
+        <Overlay onClose={closePlayModal}>
+          <Card sx={{ width: "100%", maxWidth: 420, borderRadius: 2 }}>
             <CardContent sx={{ pb: 1 }}>
-              <Typography variant="h6" gutterBottom noWrap>
-                {playSong?.title} — {playSong?.artist}
-              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <Typography variant="h6" sx={{ mr: 2 }} noWrap>
+                  {firstSong?.title || "Titre"} — {firstSong?.artist || "Artiste"}
+                </Typography>
+                <Button onClick={closePlayModal} title="Fermer">×</Button>
+              </Box>
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                {/* Bouton fermer (icône croix simplifiée via "×") */}
-                <Button variant="outlined" onClick={closePlayModal} aria-label="Fermer">
-                  ×
-                </Button>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>
+                <Button variant="contained" onClick={() => openPlatformLink(firstSong, "spotify")}>
                   Spotify
                 </Button>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>
+                <Button variant="contained" onClick={() => openPlatformLink(firstSong, "deezer")}>
                   Deezer
                 </Button>
-                <Button variant="outlined" onClick={() => copySongText(playSong)}>
+                <Button variant="outlined" onClick={() => copySongText(firstSong)}>
                   Copier le nom de la chanson
                 </Button>
               </Box>
             </CardContent>
           </Card>
-        </Box>
+        </Overlay>
       )}
 
-      {/* === Modale Succès === */}
-      {achOpen && (
-        <Box
-          onClick={() => setAchOpen(false)}
-          sx={{
-            position: "fixed",
-            inset: 0,
-            bgcolor: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            p: 2,
-            zIndex: 1300,
-          }}
-        >
-          <Card onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 480 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Tes succès
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {achWithoutTotal.map((ach, idx) => (
-                  <ListItem key={idx} disableGutters divider>
-                    <ListItemText
-                      primary={ach?.name}
-                      secondary={ach?.desc}
-                      primaryTypographyProps={{ fontWeight: 600 }}
-                    />
-                    <Typography variant="body2">+{ach?.points}</Typography>
+      {/* =================== MODALE SUCCÈS =================== */}
+      {successOpen && (
+        <Overlay onClose={closeSuccessModal}>
+          <Card sx={{ width: "100%", maxWidth: 520, borderRadius: 2 }}>
+            <CardContent sx={{ pb: 1 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="h6">Tes succès</Typography>
+                <Button onClick={closeSuccessModal}>Fermer</Button>
+              </Box>
+
+              <List sx={{ mt: 1 }}>
+                {displaySuccesses.length === 0 && (
+                  <ListItem>
+                    <ListItemText primary="Aucun succès (hors Total)" />
+                  </ListItem>
+                )}
+                {displaySuccesses.map((ach, i) => (
+                  <ListItem key={i} divider>
+                    <ListItemText primary={ach.name} secondary={ach.desc} />
+                    <Typography variant="body2">+{ach.points}</Typography>
                   </ListItem>
                 ))}
               </List>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                <Button onClick={() => setAchOpen(false)}>Fermer</Button>
-              </Box>
             </CardContent>
           </Card>
-        </Box>
+        </Overlay>
       )}
+    </Box>
+  );
+}
+
+/** Petit composant Overlay simple (sans Dialog) pour rester dans tes imports */
+function Overlay({ children, onClose }) {
+  return (
+    <Box
+      onClick={onClose}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        bgcolor: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        zIndex: 1300,
+      }}
+    >
+      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: "90vw" }}>
+        {children}
+      </Box>
     </Box>
   );
 }
