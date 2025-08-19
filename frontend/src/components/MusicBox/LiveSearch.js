@@ -169,7 +169,7 @@ export default function LiveSearch({
       })
       .then(() => {
         // 2) Quand c’est fini, on change d’étape
-        //setStage(5);
+        setStage(5);
       })
       .catch((err) => {
         console.error(err);
@@ -257,6 +257,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
