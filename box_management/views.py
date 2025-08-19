@@ -216,8 +216,10 @@ class GetBox(APIView):
                 'points': consecutive_days_points
             }
 
-        # 🔽 Ajoute un résumé du total de points dans la liste des succès
+        # Résumé du total de points
         successes['points_total'] = {
+            'name': "Total",
+            'desc': "Points gagnés pour ce dépôt",
             'points': points_to_add,   # <= le total calculé
         }
         
@@ -451,6 +453,7 @@ class ManageDiscoveredSongs(APIView):
         # Serialize the discovered songs
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 
