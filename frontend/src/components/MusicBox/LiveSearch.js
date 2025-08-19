@@ -166,8 +166,9 @@ export default function LiveSearch({
       
       setAchievements(successes);
       
-      setStage(5);
+      
       });
+    setStage(5);
   }
 
   /**
@@ -250,6 +251,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
