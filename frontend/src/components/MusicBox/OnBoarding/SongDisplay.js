@@ -27,8 +27,10 @@ import { UserContext } from "../../UserContext";
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispDeposits, achievements }) {
+export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
+  console.log("achievements : ")
   console.log(achievements)
+  console.log("dispDeposits : ")
   console.log(dispDeposits)
 
   // States
@@ -182,7 +184,7 @@ export default function SongDisplay({ dispDeposits, achievements }) {
           >
             <Typography variant="subtitle1">{dispDeposits[0].user.name}</Typography>
             <Typography variant="subtitle2">
-              //{userInfo.total_deposits + "ème dépôt"}
+              {//userInfo.total_deposits + "ème dépôt"}
             </Typography>
           </Box>
           <Button
@@ -243,5 +245,3 @@ export default function SongDisplay({ dispDeposits, achievements }) {
     </Box>
   );
 }
-
-
