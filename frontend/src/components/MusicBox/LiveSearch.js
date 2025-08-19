@@ -155,8 +155,8 @@ export default function LiveSearch({
       .then((response) => response.json())
       .then((data_resp) => {
         console.log(data_resp);
-        setDispDeposits(prev => [...prev, ...(data_resp.deposits || [])]);
-        setAchievements(data_resp.successes || []);
+        setDispDeposits(prev => [...prev, ...(data_resp.deposits)]);
+        setAchievements(data_resp.successes);
       });
     setIsDeposited(true);
     setStage(5);
@@ -242,4 +242,5 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
