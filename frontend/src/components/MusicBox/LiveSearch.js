@@ -159,11 +159,11 @@ export default function LiveSearch({
       .then((data_resp) => {
         console.log(data_resp)
         // 1) MàJ des états de données
-        const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
+       // const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
         const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
   
         // une seule mise à jour (évite la boucle setState)
-        setDispDeposits((prev) => [...prev, ...deposits]);
+       // setDispDeposits((prev) => [...prev, ...deposits]);
         setAchievements(successes);
       })
       .then(() => {
@@ -256,6 +256,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
