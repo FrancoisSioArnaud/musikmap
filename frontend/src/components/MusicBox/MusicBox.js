@@ -30,8 +30,7 @@ export default function MusicBox() {
   const { boxName } = useParams();
   // Stores all the information about the box
   const [boxInfo, setBoxInfo] = useState({});
-  // Checks if a song has been deposited in the box
-  const [isDeposited, setIsDeposited] = useState(false);
+  
   // User Context variables
   const { user } = useContext(UserContext);
 
@@ -41,7 +40,11 @@ export default function MusicBox() {
   const [depositedBy, setDepositedBy] = useState(null);
 
   // The achievements the user obtains
-  const [achievements, setAchievements] = useState({});
+  const [achievements, setAchievements] = useState([]);
+
+  const [dispDeposits, setDispDeposits] = useState([]);
+
+
 
   /**
    * Function to be executed when the component is mounted and the page is loaded
@@ -103,6 +106,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
