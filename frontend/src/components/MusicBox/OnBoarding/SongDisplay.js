@@ -27,7 +27,7 @@ import { UserContext } from "../../UserContext";
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
+export default function SongDisplay({ dispDeposits, achievements }) {
   console.log(achievements)
   console.log(dispDeposits)
 
@@ -243,4 +243,5 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
+
 
