@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import MenuAppBar from "./Menu";
 import { UserContext } from "./UserContext";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
@@ -316,7 +315,6 @@ export default function UserProfilePage() {
 
   return (
     <>
-      <MenuAppBar />
       <div style={styles.root}>
         <Button
           variant="contained"
@@ -688,5 +686,6 @@ export default function UserProfilePage() {
     </>
   );
 }
+
 
 
