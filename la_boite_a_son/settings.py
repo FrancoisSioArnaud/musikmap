@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'frontend.apps.FrontendConfig',
     'rest_framework',
     'django_extensions',
-    'django.contrib.humanize'
+    'django.contrib.humanize',
     'spotify.apps.SpotifyConfig',
     'deezer.apps.DeezerConfig',
     'box_management.apps.BoxManagementConfig',
@@ -183,6 +183,7 @@ SOCIAL_AUTH_DEEZER_KEY = LOGIN_APP_ID
 SOCIAL_AUTH_DEEZER_SECRET = LOGIN_APP_SECRET
 SOCIAL_AUTH_DEEZER_SCOPE = ['user-read-email']
 SOCIAL_AUTH_DEEZER_EXTRA_DATA = [('email', 'email')]
+
 
 
 
