@@ -35,7 +35,7 @@ export default function MusicBox() {
   // User Context variables
   const { user } = useContext(UserContext);
 
-  const [dispDeposits, setDispDeposits] = useState({});
+  const [dispDeposits, setDispDeposits] = useState([]);
 
   const [searchSong, setSearchSong] = useState("");
 
@@ -106,3 +106,4 @@ export default function MusicBox() {
     </>
   );
 }
+
