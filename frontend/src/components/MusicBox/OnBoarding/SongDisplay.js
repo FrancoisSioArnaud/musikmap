@@ -33,6 +33,7 @@ export default function SongDisplay({
     [achievements]
   );
 
+  const [successOpen, setSuccessOpen] = useState(false);
   // total points (succès "Total")
   const totalPoints = useMemo(() => {
     const item = succ.find((s) => (s?.name || "").toLowerCase() === "total");
