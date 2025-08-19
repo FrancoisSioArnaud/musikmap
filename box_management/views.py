@@ -10,6 +10,8 @@ from .models import *
 from .util import calculate_distance, normalize_string, calculate_distance
 from utils import NB_POINTS_ADD_SONG, NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX, NB_POINTS_FIRST_SONG_DEPOSIT_BOX, NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL, NB_POINTS_CONSECUTIVE_DAYS_BOX
 from django.shortcuts import render, get_object_or_404
+from django.utils.timezone import localtime
+from django.contrib.humanize.templatetags.humanize import naturaltime
 import json
 import requests
 
@@ -247,7 +249,10 @@ class GetBox(APIView):
                     "img_url": getattr(s, "image_url", None),
                 }
                 deposits_payload.append({
-                    "deposit_date": (d.deposited_at.isoformat() if getattr(d, "deposited_at", None) else None),
+                    "deposit_date": (
+                        naturaltime(localtime(d.deposited_at))
+                        if getattr(d, "deposited_at", None) else None
+                    ),
                     "song": song_payload_full,
                     "user": user_payload,
                 })
@@ -470,6 +475,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
