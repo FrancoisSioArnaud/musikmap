@@ -24,6 +24,7 @@ import { UserContext } from "../../UserContext";
  * @param setStage - A function used to set the stage of the page
  * @param setdispDeposits - A function used to set the song that we will display
  * @param searchSong
+ * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
 export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
@@ -241,4 +242,5 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
+
 
