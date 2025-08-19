@@ -139,36 +139,41 @@ export default function LiveSearch({
    */
   function handleButtonClick(option, boxName) {
     const data = { option, boxName };
-    // console.log(option);
-    const jsonData = JSON.stringify(data);
-    // console.log(jsonData);
     const csrftoken = getCookie("csrftoken");
-    fetch("/box-management/get-box?name=" + boxName, {
+  
+    // IMPORTANT: on retourne la promesse fetch
+    return fetch("/box-management/get-box?name=" + boxName, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrftoken,
       },
-      body: jsonData,
+      body: JSON.stringify(data),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
       .then((data_resp) => {
-      const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
-      const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
-      
-      // Variante 1: ajouter un par un (OK car on utilise la forme fonctionnelle)
-      for (const dep of deposits) {
-      setDispDeposits(prev => [...prev, dep]);
-      }
-      
-      // Variante 2 (plus performante): tout d’un coup
-      // setDispDeposits(prev => [...prev, ...deposits]);
-      
-      setAchievements(successes);
-      
-      
+        // 1) MàJ des états de données
+        const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
+        const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
+  
+        // une seule mise à jour (évite la boucle setState)
+        setDispDeposits((prev) => [...prev, ...deposits]);
+        setAchievements(successes);
+      })
+      .then(() => {
+        // 2) Quand c’est fini, on change d’étape
+        setIsDeposited(true);
+        setStage(5);
+      })
+      .catch((err) => {
+        console.error(err);
+        // éventuellement afficher un message d’erreur
       });
-    setStage(5);
   }
 
   /**
@@ -251,6 +256,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
