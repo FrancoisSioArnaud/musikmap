@@ -92,8 +92,8 @@ export default function MusicBox() {
         {stage === 5 && (
           <>
             <SongDisplay
-              dispDeposits={DispDeposits}
-              achievements={Achievements}
+              dispDeposits={dispDeposits}
+              achievements={achievements}
             />
           </>
         )}
@@ -101,6 +101,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
