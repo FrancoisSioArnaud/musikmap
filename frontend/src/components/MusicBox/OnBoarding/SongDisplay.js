@@ -13,7 +13,6 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import { getCookie } from "../../Security/TokensUtils";
 
-// map id -> provider label
 const PLATFORM_MAP = { 1: "spotify", 2: "deezer" };
 
 export default function SongDisplay({
@@ -35,7 +34,6 @@ export default function SongDisplay({
 
   const [successOpen, setSuccessOpen] = useState(false);
 
-  // total points (succès "Total")
   const totalPoints = useMemo(() => {
     const item = succ.find((s) => (s?.name || "").toLowerCase() === "total");
     return item?.points ?? 0;
@@ -46,31 +44,20 @@ export default function SongDisplay({
     [succ]
   );
 
-  // -------- Modal Play : pour n'importe quel dépôt --------
+  // Modal Play
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
+  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
+  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
-  const openPlayFor = (song) => {
-    setPlaySong(song || null);
-    setPlayOpen(true);
-  };
-  const closePlay = () => {
-    setPlayOpen(false);
-    setPlaySong(null);
-  };
-
-  // -------- Agrégateur : provider = song.platform_id --------
+  // Ouverture lien via agrégateur (provider forcé par platform_id du song)
   async function getPlateformLink(song) {
     const csrftoken = getCookie("csrftoken");
     const selectedProvider = PLATFORM_MAP[song?.platform_id] || "spotify";
-
     const res = await fetch("../api_agg/aggreg", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify({
-        song: song?.url,         // URL du morceau
-        platform: selectedProvider,
-      }),
+      body: JSON.stringify({ song: song?.url, platform: selectedProvider }),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
@@ -93,7 +80,7 @@ export default function SongDisplay({
     }
   };
 
-  // -------- Révéler (GET /box-management/revealSong) --------
+  // Révéler (GET /box-management/revealSong)
   async function revealSong(idx) {
     const dep = deposits[idx];
     const cost = dep?.song?.cost;
@@ -101,19 +88,13 @@ export default function SongDisplay({
     if (!songId || !cost) return;
 
     const csrftoken = getCookie("csrftoken");
-    const url = `/box-management/revealSong?song_id=${encodeURIComponent(
-      songId
-    )}&cost=${encodeURIComponent(cost)}`;
+    const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
 
     try {
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { "X-CSRFToken": csrftoken },
-      });
+      const res = await fetch(url, { method: "GET", headers: { "X-CSRFToken": csrftoken } });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json(); // { song: { title, artist, url, platform_id } }
 
-      // met à jour le dépôt i (on garde img_url, cost, id, etc.)
       const updated = [...deposits];
       const prevSong = updated[idx]?.song || {};
       updated[idx] = {
@@ -150,7 +131,7 @@ export default function SongDisplay({
 
         return (
           <Card key={idx} sx={{ p: 2 }}>
-            {/* 1) deposit_date — ATTEND du texte "naturel" depuis Django */}
+            {/* 1) deposit_date — texte naturel fourni par le backend */}
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
               {dep?.deposit_date}
             </Box>
@@ -159,30 +140,18 @@ export default function SongDisplay({
             <Box
               id="deposit_user"
               sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, cursor: "pointer" }}
-              onClick={() => {
-                if (u?.id != null) navigate("/profile/" + u.id);
-              }}
+              onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
             >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.name || "Anonyme"}
-                sx={{ width: 40, height: 40 }}
-              />
+              <Avatar src={u?.profile_pic_url || undefined} alt={u?.name || "Anonyme"} sx={{ width: 40, height: 40 }} />
               <Typography>{u?.name || "Anonyme"}</Typography>
             </Box>
 
             {/* 3) deposit_song */}
             {idx === 0 ? (
-              // ======= PREMIER DÉPÔT : image full width + bloc titre/artiste à gauche et Play à droite =======
+              // ======= PREMIER DÉPÔT : image carrée pleine largeur + ligne titre/artiste (gauche) & Play (droite)
               <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-                {/* Image plein largeur (ratio 16/9, flou si non révélé) */}
-                <Box
-                  sx={{
-                    width: "100%",
-                    borderRadius: 1,
-                    overflow: "hidden",
-                  }}
-                >
+                {/* Image carré plein largeur */}
+                <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
                   {s?.img_url && (
                     <Box
                       component="img"
@@ -190,7 +159,7 @@ export default function SongDisplay({
                       alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                       sx={{
                         width: "100%",
-                        aspectRatio: "16/9",
+                        aspectRatio: "1 / 1",      // ⬅️ carré
                         objectFit: "cover",
                         display: "block",
                         filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
@@ -200,14 +169,7 @@ export default function SongDisplay({
                 </Box>
 
                 {/* Ligne titre/artiste à gauche, Play à droite */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 2,
-                  }}
-                >
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     {isRevealed && (
                       <>
@@ -223,7 +185,7 @@ export default function SongDisplay({
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={() => isRevealed ? openPlayFor(s) : null}
+                    onClick={() => (isRevealed ? openPlayFor(s) : null)}
                     disabled={!isRevealed}
                   >
                     Play
@@ -231,7 +193,7 @@ export default function SongDisplay({
                 </Box>
               </Box>
             ) : (
-              // ======= AUTRES DÉPÔTS : image à gauche, à droite (titre h2, artiste h3, play) quand révélé =======
+              // ======= AUTRES DÉPÔTS : image carrée à gauche, à droite (h2, h3, Play) une fois révélé
               <Box
                 id="deposit_song"
                 sx={{
@@ -242,15 +204,8 @@ export default function SongDisplay({
                   alignItems: "center",
                 }}
               >
-                {/* Image à gauche, blur si non révélé */}
-                <Box
-                  sx={{
-                    width: 140,
-                    height: 140,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                  }}
-                >
+                {/* Image carrée à gauche */}
+                <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
                   {s?.img_url && (
                     <Box
                       component="img"
@@ -267,7 +222,7 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                {/* Titre / Artiste / Play (quand révélé) */}
+                {/* Infos + Play (si révélé) */}
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   {isRevealed && (
                     <>
@@ -294,22 +249,17 @@ export default function SongDisplay({
             {/* 4) deposit_interact — toujours sous deposit_song */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx === 0 ? (
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Button variant="contained" onClick={() => openPlayFor(s)} disabled={!isRevealed}>
-                    Play
-                  </Button>
-                  <Button variant="outlined" onClick={() => setSuccessOpen(true)}>
-                    Points gagnés : {totalPoints}
-                  </Button>
-                </Box>
-              ) : isRevealed ? (
-                <Button variant="contained" onClick={() => openPlayFor(s)} size="large">
-                  Play
+                // 1er dépôt : plus de Play ici, seulement le bouton Points
+                <Button variant="outlined" onClick={() => setSuccessOpen(true)}>
+                  Points gagnés : {totalPoints}
                 </Button>
               ) : (
-                <Button variant="contained" onClick={() => revealSong(idx)} size="large">
-                  Révéler — {s?.cost ?? "?"}
-                </Button>
+                // Dépôts suivants : pas de Play ici même si révélé ; uniquement Révéler quand non révélé
+                !isRevealed ? (
+                  <Button variant="contained" onClick={() => revealSong(idx)} size="large">
+                    Révéler — {s?.cost ?? "?"}
+                  </Button>
+                ) : null
               )}
             </Box>
           </Card>
@@ -325,18 +275,12 @@ export default function SongDisplay({
                 <Typography variant="h6" sx={{ mr: 2 }} noWrap>
                   {playSong?.title || "Titre"} — {playSong?.artist || "Artiste"}
                 </Typography>
-                <Button onClick={closePlay} title="Fermer">
-                  ×
-                </Button>
+                <Button onClick={closePlay} title="Fermer">×</Button>
               </Box>
 
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>
-                  Spotify
-                </Button>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>
-                  Deezer
-                </Button>
+                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>Spotify</Button>
+                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>Deezer</Button>
                 <Button variant="outlined" onClick={() => copySongText(playSong)}>
                   Copier le nom de la chanson
                 </Button>
@@ -347,11 +291,7 @@ export default function SongDisplay({
       )}
 
       {/* ---- Modal SUCCÈS ---- */}
-      <SuccessModal
-        successes={displaySuccesses}
-        open={successOpen}
-        onClose={() => setSuccessOpen(false)}
-      />
+      <SuccessModal successes={displaySuccesses} open={successOpen} onClose={() => setSuccessOpen(false)} />
     </Box>
   );
 }
@@ -391,9 +331,7 @@ function SuccessModal({ open, successes, onClose }) {
 
           <List sx={{ mt: 1 }}>
             {(!successes || successes.length === 0) && (
-              <ListItem>
-                <ListItemText primary="Aucun succès (hors Total)" />
-              </ListItem>
+              <ListItem><ListItemText primary="Aucun succès (hors Total)" /></ListItem>
             )}
             {successes?.map((ach, i) => (
               <ListItem key={i} divider>
