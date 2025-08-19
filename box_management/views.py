@@ -269,7 +269,10 @@ class GetBox(APIView):
                 "cost": cost_value,
             }
             deposits_payload.append({
-                "deposit_date": (d.deposited_at.isoformat() if getattr(d, "deposited_at", None) else None),
+                "deposit_date": (
+                        naturaltime(localtime(d.deposited_at))
+                        if getattr(d, "deposited_at", None) else None
+                    ),
                 "song": song_payload_light,
                 "user": user_payload,
             })
@@ -475,6 +478,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
