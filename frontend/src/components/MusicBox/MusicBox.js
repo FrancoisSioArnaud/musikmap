@@ -35,8 +35,6 @@ export default function MusicBox() {
   // User Context variables
   const { user } = useContext(UserContext);
 
-  const [dispDeposits, setDispDeposits] = useState([]);
-
   const [searchSong, setSearchSong] = useState("");
 
   // The ID of the user who has deposited the music selected by the current user
@@ -106,4 +104,5 @@ export default function MusicBox() {
     </>
   );
 }
+
 
