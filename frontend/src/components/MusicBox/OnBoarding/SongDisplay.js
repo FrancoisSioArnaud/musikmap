@@ -20,8 +20,9 @@ import { UserContext } from "../../UserContext";
  * SongCard Component
  * Displays a card representing a song with its title, artist, and album cover image.
  * @param {Object} deposits - An object containing song deposit data.
+ * @param {boolean} isDeposited - A boolean indicating whether the song has been deposited.
  * @param setStage - A function used to set the stage of the page
- * @param setdispDeposits - A function used to set the song that we will display
+ * @param setDispDeposits - A function used to set the songs that we will display
  * @param searchSong
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
@@ -29,6 +30,7 @@ import { UserContext } from "../../UserContext";
 export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
   console.log(achievements)
   console.log(dispDeposits)
+
   // States
   const [selectedProvider, setSelectedProvider] = useState("spotify");
 
@@ -102,14 +104,14 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
         <Box sx={{ display: "flex", flexDirection: "column", width: 200 }}>
           <CardContent sx={{ flex: "1 0 auto" }}>
             <Typography component="div" variant="h5">
-              {dispDeposits.title}
+              {dispDeposits[0].song.title}
             </Typography>
             <Typography
               variant="subtitle1"
               color="text.secondary"
               component="div"
             >
-              {dispDeposits.artist}
+              {dispDeposits[0].song.artist}
             </Typography>
           </CardContent>
           <Box
@@ -148,7 +150,7 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
           <CardMedia
             component="img"
             sx={{ width: 150 }}
-            image={dispDeposits.image_url}
+            image={dispDeposits[0].song.img_url}
             alt="Track cover"
           />
         </Box>
@@ -164,8 +166,8 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
           }}
         >
           <Avatar
-            src={userInfo.profile_picture}
-            alt={userInfo.username}
+            src={dispDeposits[0].user.profile_pic_url}
+            alt={dispDeposits[0].user.name}
             sx={{
               width: "40px",
               height: "40px",
@@ -241,6 +243,3 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
-
-
-
