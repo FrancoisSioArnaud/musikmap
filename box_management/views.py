@@ -144,8 +144,11 @@ class GetBox(APIView):
         # 4) Nouveau dépôt (non encore utilisé dans la réponse des "previous")
         user = request.user if not isinstance(request.user, AnonymousUser) else None
         new_deposit = Deposit(song_id=song, box_id=box, user=user)
+
+        # 5) Sauvegarde du nouveau dépôt
+        new_deposit.save()
     
-        # 5) Succès / points (comme avant)
+        # 6) Succès / points
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
     
@@ -196,7 +199,7 @@ class GetBox(APIView):
             'points': points_to_add,
         }
     
-        # 6) Service "add-points" (on ignore les erreurs réseau)
+        # 7) Service "add-points" (on ignore les erreurs réseau)
         cookies = request.COOKIES
         csrf_token = get_token(request)
         add_points_url = request.build_absolute_uri(reverse('add-points'))
@@ -209,8 +212,6 @@ class GetBox(APIView):
         except Exception:
             pass
     
-        # 7) Sauvegarde du nouveau dépôt
-        new_deposit.save()
     
         # 8) Construction de la réponse "deposits"
         deposits_payload = []
@@ -478,24 +479,6 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
