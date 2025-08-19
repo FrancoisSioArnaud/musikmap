@@ -53,7 +53,7 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
       body: JSON.stringify({
-        song: dispDeposits,
+        song: setDispDeposits[0].song.url, //pas sur ??
         platform: selectedProvider,
       }),
     };
@@ -76,7 +76,7 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
 
   // Gets the info of the user who has depisoted the song discovered and update the points of the current user
   useEffect(() => {
-    getUserDetails(dispDeposits[0].user.id, navigate)
+    getUserDetails(setDispDeposits[0].user.id, navigate)
       .then((data) => {
         setUserInfo(data);
         // console.log(data);
@@ -106,14 +106,14 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
         <Box sx={{ display: "flex", flexDirection: "column", width: 200 }}>
           <CardContent sx={{ flex: "1 0 auto" }}>
             <Typography component="div" variant="h5">
-              {dispDeposits[0].song.title}
+              {setDispDeposits[0].song.title}
             </Typography>
             <Typography
               variant="subtitle1"
               color="text.secondary"
               component="div"
             >
-              {dispDeposits[0].song.artist}
+              {setDispDeposits[0].song.artist}
             </Typography>
           </CardContent>
           <Box
@@ -152,7 +152,7 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
           <CardMedia
             component="img"
             sx={{ width: 150 }}
-            image={dispDeposits[0].song.img_url}
+            image={setDispDeposits[0].song.img_url}
             alt="Track cover"
           />
         </Box>
@@ -168,8 +168,8 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
           }}
         >
           <Avatar
-            src={dispDeposits[0].user.profile_pic_url}
-            alt={dispDeposits[0].user.name}
+            src={setDispDeposits[0].user.profile_pic_url}
+            alt={setDispDeposits[0].user.name}
             sx={{
               width: "40px",
               height: "40px",
@@ -182,14 +182,14 @@ export default function SongDisplay({ setDispDeposits, setAchievements }) {
               justifyContent: "left",
             }}
           >
-            <Typography variant="subtitle1">{dispDeposits[0].user.name}</Typography>
+            <Typography variant="subtitle1">{setDispDeposits[0].user.name}</Typography>
             <Typography variant="subtitle2">
               //{userInfo.total_deposits + "ème dépôt"}
             </Typography>
           </Box>
           <Button
             variant="outlined"
-            onClick={() => navigate("/profile/" + dispDeposits[0].user.id)}
+            onClick={() => navigate("/profile/" + setDispDeposits[0].user.id)}
             sx={{
               borderRadius: "20px",
               backgroundColor: "white",
