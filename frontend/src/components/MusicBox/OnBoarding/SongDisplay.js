@@ -20,13 +20,14 @@ import { UserContext } from "../../UserContext";
  * SongCard Component
  * Displays a card representing a song with its title, artist, and album cover image.
  * @param {Object} deposits - An object containing song deposit data.
+ * @param {boolean} isDeposited - A boolean indicating whether the song has been deposited.
  * @param setStage - A function used to set the stage of the page
  * @param setDispDeposits - A function used to set the songs that we will display
  * @param searchSong
  * @param setAchievements
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
-export default function SongDisplay({ dispDeposits, achievements }) {
+export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
   console.log(achievements)
   console.log(dispDeposits)
 
@@ -73,7 +74,7 @@ export default function SongDisplay({ dispDeposits, achievements }) {
 
   // Gets the info of the user who has depisoted the song discovered and update the points of the current user
   useEffect(() => {
-    getUserDetails(depositedBy, navigate)
+    getUserDetails(dispDeposits[0].user.id, navigate)
       .then((data) => {
         setUserInfo(data);
         // console.log(data);
@@ -179,14 +180,14 @@ export default function SongDisplay({ dispDeposits, achievements }) {
               justifyContent: "left",
             }}
           >
-            <Typography variant="subtitle1">{userInfo.username}</Typography>
+            <Typography variant="subtitle1">{dispDeposits[0].user.name}</Typography>
             <Typography variant="subtitle2">
-              {userInfo.total_deposits + "ème dépôt"}
+              {//userInfo.total_deposits + "ème dépôt"}
             </Typography>
           </Box>
           <Button
             variant="outlined"
-            onClick={() => navigate("/profile/" + depositedBy)}
+            onClick={() => navigate("/profile/" + dispDeposits[0].user.id)}
             sx={{
               borderRadius: "20px",
               backgroundColor: "white",
@@ -242,4 +243,3 @@ export default function SongDisplay({ dispDeposits, achievements }) {
     </Box>
   );
 }
-
