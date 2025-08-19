@@ -93,7 +93,9 @@ export default function MusicBox() {
           <>
             <SongDisplay
               dispDeposits={dispDeposits}
+              setDispDeposits={setDispDeposits}
               achievements={achievements}
+              setAchievements={setAchievements}
             />
           </>
         )}
@@ -101,6 +103,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
