@@ -182,7 +182,7 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
           >
             <Typography variant="subtitle1">{dispDeposits[0].user.name}</Typography>
             <Typography variant="subtitle2">
-              {//userInfo.total_deposits + "ème dépôt"}
+              //{userInfo.total_deposits + "ème dépôt"}
             </Typography>
           </Box>
           <Button
@@ -243,3 +243,4 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
+
