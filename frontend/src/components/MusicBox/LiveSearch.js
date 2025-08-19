@@ -11,7 +11,6 @@ export default function LiveSearch({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxName,
-  setIsDeposited,
   user,
   setStage,
   setSearchSong,
@@ -167,7 +166,6 @@ export default function LiveSearch({
       
       setAchievements(successes);
       
-      setIsDeposited(true);
       setStage(5);
       });
   }
@@ -252,6 +250,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
