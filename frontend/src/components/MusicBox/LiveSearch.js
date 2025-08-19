@@ -49,18 +49,18 @@ export default function LiveSearch({
     const getData = setTimeout(() => {
       // Check if the user has selected spotify or deezer
       if (selectedStreamingService === "spotify") {
-        console.log(searchValue);
+        //console.log(searchValue);
         // Check if the search bar is empty
         if (searchValue === "") {
-          console.log('search empty');
+          //console.log('search empty');
           // Check if the user is authenticated with spotify
           if (isSpotifyAuthenticated) {
-            console.log('authenticated');
+            //console.log('authenticated');
             fetch("/spotify/recent-tracks")
               .then((response) => response.json())
               .then((data) => {
                 setJsonResults(data);
-                console.log(data);
+                //console.log(data);
               });
           } else {
             setJsonResults([]);
@@ -157,6 +157,7 @@ export default function LiveSearch({
         return response.json();
       })
       .then((data_resp) => {
+        console.log(data_resp)
         // 1) MàJ des états de données
         const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
         const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
@@ -255,6 +256,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
