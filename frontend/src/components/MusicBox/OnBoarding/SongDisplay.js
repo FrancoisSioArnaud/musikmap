@@ -27,6 +27,8 @@ import { UserContext } from "../../UserContext";
  * @returns {JSX.Element} - JSX element representing the SongCard component.
  */
 export default function SongDisplay({ dispDeposits, depositedBy, achievements }) {
+  console.log(achievements)
+  console.log(dispDeposits)
   // States
   const [selectedProvider, setSelectedProvider] = useState("spotify");
 
@@ -239,3 +241,4 @@ export default function SongDisplay({ dispDeposits, depositedBy, achievements })
     </Box>
   );
 }
+
