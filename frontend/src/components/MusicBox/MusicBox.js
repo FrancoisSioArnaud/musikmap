@@ -88,13 +88,14 @@ export default function MusicBox() {
               setStage={setStage}
               setSearchSong={setSearchSong}
               setAchievements={setAchievements}
+              setDispDeposits={setDispDeposits}
             />
           </>
         )}
         {stage === 5 && (
           <>
             <SongDisplay
-              dispDeposits={dispDeposits}
+              setDispDeposits={setDispDeposits}
               depositedBy={depositedBy}
               achievements={achievements}
             />
@@ -104,6 +105,7 @@ export default function MusicBox() {
     </>
   );
 }
+
 
 
 
