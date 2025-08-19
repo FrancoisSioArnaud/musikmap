@@ -167,7 +167,6 @@ export default function LiveSearch({
       })
       .then(() => {
         // 2) Quand c’est fini, on change d’étape
-        setIsDeposited(true);
         setStage(5);
       })
       .catch((err) => {
@@ -256,6 +255,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
