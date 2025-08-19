@@ -32,6 +32,10 @@ export default function SongDisplay({
   achievements,
   setAchievement,
 }) {
+  console.log("dispDeposits : ")
+  console.log(dispDeposits)
+  console.log("achievements : ")
+  console.log(achievements)
   const navigate = useNavigate();
 
   // Garde-fous : toujours travailler avec des tableaux
