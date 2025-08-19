@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import MenuAppBar from "./Menu";
 import { UserContext } from "./UserContext";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -62,7 +61,6 @@ export default function LibraryPage() {
 
   return (
     <>
-      <MenuAppBar />
       <Box sx={{ padding: 2 }}>
         <Typography variant="h5" gutterBottom>
           Ta bibliothèque de découvertes 
