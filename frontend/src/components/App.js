@@ -28,9 +28,9 @@ function LayoutWithHeader() {
   return (
     <>
       {/* Header fixe */}
-    {/*<MenuAppBar />*/}
+      <MenuAppBar />
       {/* Spacer exactement 64px pour ne pas "manger" le contenu sous l'AppBar */}
-  {/* <div style={{ height: 64 }} />*/}
+      <div style={{ height: 64 }} />
       {/* Les pages enfants s’affichent ici */}
       <Outlet />
     </>
@@ -111,5 +111,6 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
