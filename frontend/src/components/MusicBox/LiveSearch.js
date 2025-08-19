@@ -160,11 +160,11 @@ export default function LiveSearch({
         console.log(data_resp)
         // 1) MàJ des états de données
         const deposits = Array.isArray(data_resp?.deposits) ? data_resp.deposits : [];
-        //const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
+        const successes = Array.isArray(data_resp?.successes) ? data_resp.successes : [];
   
         // une seule mise à jour (évite la boucle setState)
         setDispDeposits((prev) => [...prev, ...deposits]);
-        //setAchievements(successes);
+        setAchievements(successes);
       })
       .then(() => {
         // 2) Quand c’est fini, on change d’étape
@@ -256,6 +256,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
