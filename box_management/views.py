@@ -443,6 +443,33 @@ class ManageDiscoveredSongs(APIView):
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class RevealSong(APIView):
+    """
+    GET /box-management/revealSong?cost=...&song_id=...
+    Renvoie les infos minimales d'un Song (title, artist, url, platform_id).
+    """
+    def get(self, request, format=None):
+        cost = request.GET.get("cost")
+        song_id = request.GET.get("song_id")
+
+        if not song_id:
+            return Response({"detail": "song_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            song = Song.objects.get(pk=song_id)
+        except Song.DoesNotExist:
+            return Response({"detail": "Song introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        # TODO: utiliser 'cost' pour débiter des points à l'utilisateur si besoin
+        data = {
+            "song": {
+                "title": song.title,
+                "artist": song.artist,
+                "url": song.url,
+                "platform_id": song.platform_id,
+            }
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
 
 
