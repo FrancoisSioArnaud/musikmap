@@ -162,7 +162,6 @@ export default function LiveSearch({
           setDispDeposits(prev => [...prev, dep]);
         }
         
-        setDispDeposits(prev => [...prev, ...(data_resp.deposits)]);
         setAchievements(data_resp.successes);
       });
     setIsDeposited(true);
@@ -249,6 +248,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
