@@ -63,7 +63,6 @@ class Song(models.Model):
         """
         return self.title + ' - ' + str(self.artist) + ' - ' + str(self.platform_id)
 
-
 class Deposit(models.Model):
     # Overriding of the save() method in order to avoid 'auto_now_add=True' which makes DateTimeField uneditable
     def save(self, *args, **kwargs):
@@ -123,6 +122,7 @@ class DiscoveredSong(models.Model):
         Method goal: Returns the id of the user and the id of the deposit used to display it in the admin interface.
         """
         return str(self.user_id) + ' - ' + str(self.deposit_id)
+
 
 
 
