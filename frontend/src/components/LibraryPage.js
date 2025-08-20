@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserContext } from "./UserContext";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
 import PlayModal from "./Common/PlayModal";
 
 /** Format relatif FR (ex: "il y a 3 heures") */
@@ -12,12 +14,10 @@ function formatRelativeFr(isoDateString) {
   if (isNaN(d)) return "";
 
   const now = new Date();
-  // diff (signed) in seconds: negative means "in the past"
-  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000);
+  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000); // signé
   const rtf = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
 
   const abs = Math.abs(diffSec);
-
   if (abs < 60) return rtf.format(diffSec, "second");
 
   const diffMin = Math.round(diffSec / 60);
@@ -44,6 +44,7 @@ function formatRelativeFr(isoDateString) {
  */
 export default function LibraryPage() {
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const [items, setItems] = useState([]);        // liste de dépôts découverts
   const [playOpen, setPlayOpen] = useState(false);
@@ -83,6 +84,10 @@ export default function LibraryPage() {
         const discoveredIso = it?.discovered_at || null;
         const naturalDiscovered = formatRelativeFr(discoveredIso) || it?.deposit_date || "";
 
+        // Utilisateur ayant déposé (si fourni par le backend)
+        const u = it?.user;
+        const canClickProfile = u?.id != null;
+
         return (
           <Box
             key={idx}
@@ -94,6 +99,26 @@ export default function LibraryPage() {
               title={discoveredIso ? new Date(discoveredIso).toLocaleString("fr-FR") : undefined}
             >
               Découvert · {naturalDiscovered}
+            </Box>
+
+            {/* Utilisateur du dépôt (comme Discover) */}
+            <Box
+              id="deposit_user"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 2,
+                cursor: canClickProfile ? "pointer" : "default",
+              }}
+              onClick={() => { if (canClickProfile) navigate("/profile/" + u.id); }}
+            >
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.name || "Anonyme"}
+                sx={{ width: 40, height: 40 }}
+              />
+              <Typography>{u?.name || "Anonyme"}</Typography>
             </Box>
 
             {/* --- MAIN layout (grand) --- */}
