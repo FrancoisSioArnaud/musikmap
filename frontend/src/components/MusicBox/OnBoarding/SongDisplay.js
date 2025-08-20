@@ -21,6 +21,8 @@ export default function SongDisplay({
   achievements,
   setAchievement,
 }) {
+
+  console.log("results")
   const navigate = useNavigate();
 
   const deposits = useMemo(
