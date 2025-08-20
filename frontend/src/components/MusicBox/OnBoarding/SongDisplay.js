@@ -122,7 +122,7 @@ export default function SongDisplay({
   
       // 3) Enregistrer la découverte côté serveur (best-effort, fire-and-forget)
       //    ManageDiscoveredSongs.post attend: { visible_deposit: { id: <song_pk> } }
-      fetch("/box-management/manage-discovered-songs", {
+      fetch("/box-management/discovered-songs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
