@@ -45,7 +45,6 @@ class Song(models.Model):
         url       : The URL of the song.
         image_url : The URL of the image of the song.
         duration  : The duration of the song.
-        platform_id: The id of the platform on which the song is available.
         n_deposits: The number of deposits of the song.
     """
     song_id = models.CharField(max_length=15)
@@ -61,7 +60,7 @@ class Song(models.Model):
         """
         Method goal: Returns the title and the artist of the song used to display it in the admin interface.
         """
-        return self.title + ' - ' + str(self.artist) + ' - ' + str(self.platform_id)
+        return self.title + ' - ' + str(self.artist)
 
 class Deposit(models.Model):
     # Overriding of the save() method in order to avoid 'auto_now_add=True' which makes DateTimeField uneditable
@@ -130,6 +129,7 @@ class DiscoveredSong(models.Model):
 
     def __str__(self):
         return f"{self.user_id} - {self.deposit_id}"
+
 
 
 
