@@ -177,6 +177,19 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
                'export_popular_songs_csv']
 
 
+
+
+@admin.register(DiscoveredSong)
+class DiscoveredSongAdmin(admin.ModelAdmin):
+    list_display = ("user_id", "deposit_id", "discovered_type", "discovered_at")
+    list_filter = ("discovered_type", "discovered_at")
+    search_fields = (
+        "user_id__username",
+        "deposit_id__song_id__title",
+        "deposit_id__song_id__artist",
+        "deposit_id__box_id__name",
+    )
+
 # Models accessible in the admin interface
 admin.site.site_header = "Administration de la Boîte à Son"
 admin.site.register(Box, BoxAdmin)
@@ -184,6 +197,7 @@ admin.site.register(Deposit, DepositAdmin)
 admin.site.register(Song)
 admin.site.register(LocationPoint, LocationPointAdmin)
 admin.site.register(DiscoveredSong)
+
 
 
 
