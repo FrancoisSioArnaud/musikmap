@@ -30,13 +30,16 @@ function LayoutWithHeader() {
       {/* Header fixe */}
       <MenuAppBar />
       {/* Spacer 64px pour compenser l’AppBar fixed */}
-      <div style={{ height: 64 }} />
+      {/*<div style={{ height: 64 }} />*/}
       {/* Zone scrollable qui remplit le viewport restant */}
       <main
         style={{
           flex: 1,
           Height: "calc(100vh - 64px)",
           Width: "100vw",
+          padding: "0"
+          margin: "0"
+          margin-top:"64px"
           overflowY: "scroll",   // force le scroll vertical
           WebkitOverflowScrolling: "touch", // inertie iOS
         }}
@@ -106,4 +109,5 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
