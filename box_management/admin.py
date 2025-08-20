@@ -178,8 +178,6 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
 
 
-
-@admin.register(DiscoveredSong)
 class DiscoveredSongAdmin(admin.ModelAdmin):
     list_display = ("user_id", "deposit_id", "discovered_type", "discovered_at")
     list_filter = ("discovered_type", "discovered_at")
@@ -197,6 +195,7 @@ admin.site.register(Deposit, DepositAdmin)
 admin.site.register(Song)
 admin.site.register(LocationPoint, LocationPointAdmin)
 admin.site.register(DiscoveredSong)
+
 
 
 
