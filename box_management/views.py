@@ -377,13 +377,8 @@ class ManageDiscoveredSongs(APIView):
 class RevealSong(APIView):
     """
     GET /box-management/revealSong?cost=...&song_id=...
-    Renvoie :
-      {
-        song: { title, artist, spotify_url, deezer_url },
-        visible_deposit: { id: <song_pk> },
-        discovery: "created" | "already_exists" | "no_deposit_found" | "anonymous" | "error"
-      }
-    Et enregistre (best-effort) la découverte de la chanson pour l'utilisateur courant.
+    Renvoie les infos minimales d'un Song :
+      { song: { title, artist, spotify_url, deezer_url } }
     """
     def get(self, request, format=None):
         cost = request.GET.get("cost")  # TODO: débiter des points si besoin
@@ -397,37 +392,12 @@ class RevealSong(APIView):
         except Song.DoesNotExist:
             return Response({"detail": "Song introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Enregistrement de la découverte (best-effort, sans lever d'erreur au client)
-        user = request.user
-        discovery_status = "anonymous"
-        if user.is_authenticated:
-            try:
-                already = DiscoveredSong.objects.filter(
-                    user_id=user,
-                    deposit_id__song_id__artist=song.artist,
-                    deposit_id__song_id__title=song.title,
-                ).exists()
-                if already:
-                    discovery_status = "already_exists"
-                else:
-                    deposit = Deposit.objects.filter(song_id=song).last()
-                    if deposit:
-                        DiscoveredSong(user_id=user, deposit_id=deposit).save()
-                        discovery_status = "created"
-                    else:
-                        discovery_status = "no_deposit_found"
-            except Exception:
-                discovery_status = "error"
-
         data = {
             "song": {
                 "title": song.title,
                 "artist": song.artist,
                 "spotify_url": song.spotify_url,  # peut être None
                 "deezer_url": song.deezer_url,    # peut être None
-            },
-            # fourni pour un éventuel POST /box-management/manageDiscoveredSongs côté front
-            "visible_deposit": {"id": song.id},
-            "discovery": discovery_status,
+            }
         }
         return Response(data, status=status.HTTP_200_OK)
