@@ -17,10 +17,6 @@ import requests
 import threading
 
 
-
-
-
-
 def is_first_user_deposit(user, box):
     deposits = Deposit.objects.filter(user=user, box_id=box)
     return not deposits.exists()
@@ -55,18 +51,22 @@ def get_consecutive_deposit_days(user, box):
     return consecutive_days
 
 
+# imports déjà évoqués
+import json, threading, requests
+from django.contrib.auth import get_user_model
+
 def _bg_save_song_and_deposit(song_data: dict, box_id: int, user_id: int | None,
                               aggreg_url: str, cookies: dict, headers: dict) -> None:
     """
     Tâche de fond :
-      - upsert du Song (et maj spotify_url/deezer_url)
-      - appel à /api_agg/aggreg pour récupérer l'URL de l'autre plateforme
-      - création du Deposit
-    On isole les imports locaux pour éviter les cycles à l'import.
+      - upsert Song (sans platform_id)
+      - renseigne spotify_url / deezer_url
+      - appelle /api_agg/aggreg pour récupérer l'URL de l'autre plateforme
+      - crée le Deposit
     """
     from box_management.models import Song, Deposit, Box
 
-    # Récupérer Box + User (si possible)
+    # Box + User
     try:
         box = Box.objects.get(pk=box_id)
     except Box.DoesNotExist:
@@ -79,59 +79,68 @@ def _bg_save_song_and_deposit(song_data: dict, box_id: int, user_id: int | None,
         except User.DoesNotExist:
             user = None
 
-    # Upsert Song: (title, artist) comme clé de dédup basique
+    # Upsert Song (clé simple : title + artist)
     try:
         song = Song.objects.get(title=song_data["title"], artist=song_data["artist"])
         song.n_deposits = (song.n_deposits or 0) + 1
     except Song.DoesNotExist:
         song = Song(
-            song_id     = song_data.get("song_id"),
-            title       = song_data["title"],
-            artist      = song_data["artist"],
-            url         = song_data.get("url"),
-            image_url   = song_data.get("image_url"),
-            duration    = song_data.get("duration"),
-            platform_id = song_data.get("platform_id"),
-            n_deposits  = 1,
+            song_id    = song_data.get("song_id"),
+            title      = song_data["title"],
+            artist     = song_data["artist"],
+            url        = song_data.get("url"),
+            image_url  = song_data.get("image_url"),
+            duration   = song_data.get("duration"),
+            # ⚠️ plus de platform_id ici
+            n_deposits = 1,
         )
 
-    # Enregistrer l'URL de la plateforme courante
-    if song_data.get("platform_id") == 1:
+    # Déterminer la plateforme courante (transiente, NON sauvegardée)
+    current_platform = song_data.get("current_platform")
+    if not current_platform:
+        u = (song_data.get("url") or "").lower()
+        if "spotify" in u:
+            current_platform = "spotify"
+        elif "deezer" in u:
+            current_platform = "deezer"
+
+    # Renseigner l’URL de la plateforme courante
+    if current_platform == "spotify":
         song.spotify_url = song_data.get("url")
-    elif song_data.get("platform_id") == 2:
+    elif current_platform == "deezer":
         song.deezer_url = song_data.get("url")
 
-    # Demander l'AUTRE plateforme à /api_agg/aggreg
-    other_platform = "deezer" if song_data.get("platform_id") == 1 else "spotify"
-    payload = {
-        "song": {
-            "title":    song_data["title"],
-            "artist":   song_data["artist"],
-            "duration": song_data.get("duration"),
-        },
-        "platform": other_platform,
-    }
-    try:
-        r = requests.post(aggreg_url, cookies=cookies, headers=headers,
-                          data=json.dumps(payload), timeout=6)
-        if r.ok:
-            # L'API renvoie une "JSON string" (ex: "spotify://track/xxx")
-            other_url = r.json()
-            if isinstance(other_url, str):
-                if other_platform == "deezer":
-                    song.deezer_url = other_url
-                else:
-                    song.spotify_url = other_url
-    except Exception:
-        # On ignore en silence pour ne pas planter le thread
-        pass
+    # Appeler l’AUTRE plateforme via /api_agg/aggreg
+    other_platform = "deezer" if current_platform == "spotify" else "spotify"
+    if current_platform in ("spotify", "deezer"):
+        payload = {
+            "song": {
+                "title":    song.title,
+                "artist":   song.artist,
+                "duration": song_data.get("duration"),
+            },
+            "platform": other_platform,
+        }
+        try:
+            r = requests.post(aggreg_url, cookies=cookies, headers=headers,
+                              data=json.dumps(payload), timeout=6)
+            if r.ok:
+                other_url = r.json()  # ex: "spotify://track/xxx" ou "deezer://www.deezer.com/track/yyy"
+                if isinstance(other_url, str):
+                    if other_platform == "deezer":
+                        song.deezer_url = other_url
+                    else:
+                        song.spotify_url = other_url
+        except Exception:
+            pass
 
-    # Sauvegarde Song puis création du Deposit
+    # Sauvegarde + création du dépôt
     try:
         song.save()
         Deposit.objects.create(song_id=song, box_id=box, user=user)
     except Exception:
         pass
+
 
 
 class GetBox(APIView):
@@ -540,6 +549,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
