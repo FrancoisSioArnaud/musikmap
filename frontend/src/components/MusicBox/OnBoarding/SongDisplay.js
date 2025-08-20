@@ -191,7 +191,7 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                {/* Ligne titre/artiste à gauche, Play à droite */}
+                
                 <Box
                   sx={{
                     display: "flex",
@@ -203,7 +203,7 @@ export default function SongDisplay({
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     {isRevealed && (
                       <>
-                        {/* Titre premier dépôt — aligné à gauche */}
+                       
                         <Typography
                           component="h1"
                           variant="h5"
@@ -212,7 +212,7 @@ export default function SongDisplay({
                         >
                           {s.title}
                         </Typography>
-                        {/* Artiste (révélé) — aligné à gauche */}
+                        
                         <Typography
                           component="h2"
                           variant="subtitle1"
@@ -247,7 +247,7 @@ export default function SongDisplay({
                   alignItems: "center",
                 }}
               >
-                {/* Image carrée à gauche */}
+                
                 <Box
                   sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}
                 >
@@ -267,7 +267,7 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                {/* Infos + Play (si révélé) */}
+               
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}
                 >
@@ -276,7 +276,7 @@ export default function SongDisplay({
                       <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
                         {s.title}
                       </Typography>
-                      {/* Artiste des chansons révélées — aligné à gauche */}
+                      
                       <Typography
                         component="h3"
                         variant="subtitle1"
@@ -290,7 +290,7 @@ export default function SongDisplay({
                         variant="contained"
                         size="large"
                         onClick={() => openPlayFor(s)}
-                        sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                        sx={{ alignSelf: "flex-start", mt: 0.5, textAlign: "left" }}
                       >
                         Play
                       </Button>
