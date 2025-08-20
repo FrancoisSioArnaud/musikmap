@@ -71,7 +71,7 @@ export default function MenuAppBar() {
               component={Link}
               to="/library"
             >
-              <LibraryMusicIcon sx={{ color: "#fa4000" }} />
+              <LibraryMusicIcon sx={{ color: "#000" }} />
             </IconButton>
                 
             <IconButton
@@ -110,5 +110,6 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
