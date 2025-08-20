@@ -69,9 +69,9 @@
         flex-grow: 2;
     }
 
-    &~.search-results {
-        padding: 0;
-    }
+   // &~.search-results {
+   //     padding: 0;
+   // }
 
     &.active {
         padding-top: 0;
@@ -82,9 +82,9 @@
             visibility: hidden;
         }
 
-      //  .search-song__wrapper {
-      //      gap: 10px;
-      //  }
+        .search-song__wrapper {
+            gap: 10px;
+        }
 
         .cancel-search {
             opacity: 1;
