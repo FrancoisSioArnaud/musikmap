@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Avatar from "@mui/material/Avatar";
@@ -13,7 +12,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import { getCookie } from "../../Security/TokensUtils";
 
-const PLATFORM_MAP = { 1: "spotify", 2: "deezer" };
+// NOTE: plus d'agrégateur / PLATFORM_MAP ici
 
 export default function SongDisplay({
   dispDeposits,
@@ -21,8 +20,6 @@ export default function SongDisplay({
   achievements,
   setAchievement,
 }) {
-
-  console.log("results")
   const navigate = useNavigate();
 
   const deposits = useMemo(
@@ -52,18 +49,24 @@ export default function SongDisplay({
   const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
   const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
-  // Ouverture lien via agrégateur (provider forcé par platform_id du song)
-  async function getPlateformLink(song) {
-    const csrftoken = getCookie("csrftoken");
-    const selectedProvider = PLATFORM_MAP[song?.platform_id] || "spotify";
-    const res = await fetch("../api_agg/aggreg", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify({ song: song?.url, platform: selectedProvider }),
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    window.open(data);
+  // Ouvre l'URL Spotify stockée sur le song, sinon message d'erreur
+  function openSpotify(song) {
+    const url = song?.spotify_url;
+    if (url) {
+      window.open(url);
+    } else {
+      alert("Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois");
+    }
+  }
+
+  // Ouvre l'URL Deezer stockée sur le song, sinon message d'erreur
+  function openDeezer(song) {
+    const url = song?.deezer_url;
+    if (url) {
+      window.open(url);
+    } else {
+      alert("Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois");
+    }
   }
 
   const copySongText = async (song) => {
@@ -95,7 +98,7 @@ export default function SongDisplay({
     try {
       const res = await fetch(url, { method: "GET", headers: { "X-CSRFToken": csrftoken } });
       if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json(); // { song: { title, artist, url, platform_id } }
+      const data = await res.json(); // { song: { title, artist, url, platform_id } } (anciens dépôts révélés)
 
       const updated = [...deposits];
       const prevSong = updated[idx]?.song || {};
@@ -107,6 +110,7 @@ export default function SongDisplay({
           artist: data?.song?.artist ?? prevSong.artist,
           url: data?.song?.url ?? prevSong.url,
           platform_id: data?.song?.platform_id ?? prevSong.platform_id,
+          // NB: les champs spotify_url / deezer_url ne sont pas fournis par cet endpoint
         },
       };
       setDispDeposits(updated);
@@ -150,7 +154,7 @@ export default function SongDisplay({
 
             {/* 3) deposit_song */}
             {idx === 0 ? (
-              // ======= PREMIER DÉPÔT : image carrée pleine largeur + ligne titre/artiste (gauche) & Play (droite)
+              // ======= PREMIER DÉPÔT
               <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
                 {/* Image carré plein largeur */}
                 <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
@@ -161,7 +165,7 @@ export default function SongDisplay({
                       alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                       sx={{
                         width: "100%",
-                        aspectRatio: "1 / 1",      // ⬅️ carré
+                        aspectRatio: "1 / 1",
                         objectFit: "cover",
                         display: "block",
                         filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
@@ -195,7 +199,7 @@ export default function SongDisplay({
                 </Box>
               </Box>
             ) : (
-              // ======= AUTRES DÉPÔTS : image carrée à gauche, à droite (h2, h3, Play) une fois révélé
+              // ======= AUTRES DÉPÔTS
               <Box
                 id="deposit_song"
                 sx={{
@@ -251,12 +255,10 @@ export default function SongDisplay({
             {/* 4) deposit_interact — toujours sous deposit_song */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx === 0 ? (
-                // 1er dépôt : plus de Play ici, seulement le bouton Points
                 <Button variant="outlined" onClick={() => setSuccessOpen(true)}>
                   Points gagnés : {totalPoints}
                 </Button>
               ) : (
-                // Dépôts suivants : pas de Play ici même si révélé ; uniquement Révéler quand non révélé
                 !isRevealed ? (
                   <Button variant="contained" onClick={() => revealSong(idx)} size="large">
                     Révéler — {s?.cost ?? "?"}
@@ -281,8 +283,8 @@ export default function SongDisplay({
               </Box>
 
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>Spotify</Button>
-                <Button variant="contained" onClick={() => getPlateformLink(playSong)}>Deezer</Button>
+                <Button variant="contained" onClick={() => openSpotify(playSong)}>Spotify</Button>
+                <Button variant="contained" onClick={() => openDeezer(playSong)}>Deezer</Button>
                 <Button variant="outlined" onClick={() => copySongText(playSong)}>
                   Copier le nom de la chanson
                 </Button>
