@@ -36,13 +36,16 @@ def is_first_user_deposit(user, box) -> bool:
         return False
     return not Deposit.objects.filter(user=user, box_id=box).exists()
 
+
 def is_first_song_deposit_global_by_title_artist(title: str, artist: str) -> bool:
     return not Deposit.objects.filter(song_id__title=title, song_id__artist=artist).exists()
+
 
 def is_first_song_deposit_in_box_by_title_artist(title: str, artist: str, box) -> bool:
     return not Deposit.objects.filter(
         box_id=box, song_id__title=title, song_id__artist=artist
     ).exists()
+
 
 def get_consecutive_deposit_days(user, box) -> int:
     deposits = Deposit.objects.filter(user=user, box_id=box).order_by('-deposited_at')
@@ -54,6 +57,7 @@ def get_consecutive_deposit_days(user, box) -> int:
             consecutive_days += 1
             previous_date -= timedelta(days=1)
     return consecutive_days
+
 
 # -----------------------
 # Vues
@@ -87,6 +91,7 @@ class GetBox(APIView):
               * idx 0 : toutes les infos (incl. spotify_url / deezer_url)
               * suivants : format allégé
         + Enregistre automatiquement la découverte "main" du dépôt idx 0 si user connecté.
+        + Complète l'URL de la plateforme manquante via /api_agg/aggreg (best-effort).
         """
         option = request.data.get('option') or {}
         song_id = option.get('id')
@@ -142,7 +147,7 @@ class GetBox(APIView):
 
         successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
 
-        # 4) Upsert Song (clé = title+artist), remplir l'URL selon platform_id
+        # 4) Upsert Song (clé = title + artist) + URL selon platform_id reçue
         try:
             song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
             song.n_deposits = (song.n_deposits or 0) + 1
@@ -161,6 +166,47 @@ class GetBox(APIView):
         elif song_platform_id == 2 and incoming_url:
             song.deezer_url = incoming_url
 
+        # 4bis) Compléter l'autre plateforme via l'agrégateur (best-effort, synchrone)
+        try:
+            # Déterminer quelle plateforme est manquante
+            other_platform = None
+            if song_platform_id == 1 and not song.deezer_url:
+                other_platform = "deezer"
+            elif song_platform_id == 2 and not song.spotify_url:
+                other_platform = "spotify"
+
+            if other_platform in ("spotify", "deezer"):
+                csrf_token = get_token(request)
+                headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+                aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
+
+                payload = {
+                    "song": {
+                        "title": song.title,
+                        "artist": song.artist,
+                        "duration": option.get('duration') or song.duration,
+                    },
+                    "platform": other_platform,
+                }
+                r = requests.post(
+                    aggreg_url,
+                    cookies=request.COOKIES,
+                    headers=headers_bg,
+                    data=json.dumps(payload),
+                    timeout=6
+                )
+                if r.ok:
+                    other_url = r.json()
+                    if isinstance(other_url, str) and other_url:
+                        if other_platform == "spotify":
+                            song.spotify_url = song.spotify_url or other_url
+                        else:
+                            song.deezer_url = song.deezer_url or other_url
+        except Exception:
+            # on ignore toute erreur de complétion (best-effort)
+            pass
+
+        # Sauvegarde finale du Song
         song.save()
 
         # 5) Créer le nouveau dépôt
@@ -193,10 +239,8 @@ class GetBox(APIView):
         # 7bis) Auto-discovery "main" pour l’idx 0 si user connecté
         if user and previous_deposits:
             d0 = previous_deposits[0]
-            # déjà découvert ce dépôt ?
             already_this_deposit = DiscoveredSong.objects.filter(user_id=user, deposit_id=d0).exists()
             if not already_this_deposit:
-                # existe-t-il une découverte du même TITLE/ARTIST ?
                 existing_same_song = DiscoveredSong.objects.filter(
                     user_id=user,
                     deposit_id__song_id__title__iexact=d0.song_id.title,
@@ -204,13 +248,11 @@ class GetBox(APIView):
                 ).order_by('-discovered_at').first()
 
                 if existing_same_song:
-                    # upgrade revealed -> main et repointer sur le "main" d0
                     if existing_same_song.discovered_type != "main":
                         existing_same_song.discovered_type = "main"
                         existing_same_song.deposit_id = d0
                         existing_same_song.save(update_fields=["discovered_type", "deposit_id", "discovered_at"])
                 else:
-                    # créer une ligne "main"
                     DiscoveredSong.objects.create(user_id=user, deposit_id=d0, discovered_type="main")
 
         # 8) Construire la réponse
@@ -236,7 +278,7 @@ class GetBox(APIView):
                 song_payload = {
                     "title": getattr(s, "title", None),
                     "artist": getattr(s, "artist", None),
-                    "url": getattr(s, "url", None),
+                    "url": getattr(s, "url", None),  # laissé pour compat, peut rester vide
                     "spotify_url": getattr(s, "spotify_url", None),
                     "deezer_url": getattr(s, "deezer_url", None),
                     "img_url": getattr(s, "image_url", None),
@@ -250,7 +292,7 @@ class GetBox(APIView):
                 }
 
             deposits_payload.append({
-                "deposit_id": d.id,  # ⬅️ utile au front pour ManageDiscoveredSongs
+                "deposit_id": d.id,  # utile au front pour ManageDiscoveredSongs
                 "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
                 "song": song_payload,
                 "user": user_payload,
@@ -324,7 +366,7 @@ class ManageDiscoveredSongs(APIView):
             discovered_type = "revealed"
 
         if not deposit_id:
-            # rétro-compat éventuelle
+            # rétro-compat éventuelle (ancien front)
             song_id = request.data.get('visible_deposit', {}).get('id')
             if not song_id:
                 return Response({'error': "Identifiant de dépôt manquant."}, status=status.HTTP_400_BAD_REQUEST)
