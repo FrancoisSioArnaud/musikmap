@@ -2,101 +2,121 @@ import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "./UserContext";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
-import CardMedia from "@mui/material/CardMedia";
-import { getCookie } from "./Security/TokensUtils";
+import PlayModal from "./Common/PlayModal";
 
 /**
- * Page qui affiche les chansons découvertes de l'utilisateur.
+ * Page qui affiche les dépôts découverts de l'utilisateur (main & revealed).
  */
 export default function LibraryPage() {
-  // On récupère éventuellement l'utilisateur si on veut afficher son nom ou ses points
   const { user } = useContext(UserContext);
 
-  // États pour stocker les chansons découvertes et l’index courant
-  const [discoveredSongs, setDiscoveredSongs] = useState([]);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [items, setItems] = useState([]);        // liste de dépôts découverts
+  const [playOpen, setPlayOpen] = useState(false);
+  const [playSong, setPlaySong] = useState(null);
 
-  // État pour savoir si l’on veut ouvrir le lien Spotify ou Deezer
-  const [selectedProvider, setSelectedProvider] = useState("spotify");
+  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
+  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
-  // Fonction qui va chercher les chansons découvertes via l’API Django
-  async function getDiscoveredSongs() {
+  async function getDiscovered() {
     const response = await fetch("../box-management/discovered-songs");
     const data = await response.json();
-    if (response.ok) {
-      setDiscoveredSongs(data);
-    } else {
-      console.log(data);
-    }
+    if (response.ok) setItems(Array.isArray(data) ? data : []);
+    else console.error(data);
   }
 
-  // Exécuté au premier rendu pour récupérer les chansons
-  useEffect(() => {
-    getDiscoveredSongs();
-  }, []);
+  useEffect(() => { getDiscovered(); }, []);
 
-  // Gestion du changement de plateforme (Spotify ou Deezer)
-  function handleProviderChange(event) {
-    setSelectedProvider(event.target.value);
-  }
-
-  // Redirige vers Spotify ou Deezer pour écouter la chanson
-  function redirectToLink() {
-    const csrftoken = getCookie("csrftoken");
-    fetch("../api_agg/aggreq", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify({
-        song: discoveredSongs[currentSongIndex],
-        platform: selectedProvider,
-      }),
-    })
-      .then((resp) => resp.json())
-      .then((data) => {
-        window.location.href = data; // redirige vers le lien retourné par l’API
-      });
+  if (!items.length) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h5" gutterBottom>Ta bibliothèque de découvertes</Typography>
+        <Typography>Vous n'avez pas encore découvert de chansons.</Typography>
+      </Box>
+    );
   }
 
   return (
-    <>
-      <Box sx={{ padding: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Ta bibliothèque de découvertes 
-        </Typography>
-          {discoveredSongs.length > 0 ? (
-    discoveredSongs.map((song, index) => (
-      <Box
-        key={index}
-        sx={{
-          border: "1px solid lightgray",
-          borderRadius: "8px",
-          padding: 2,
-          marginBottom: 2,
-        }}
-      >
-        <Typography variant="subtitle1">
-          <strong>Titre :</strong> {song.title}
-        </Typography>
-        <Typography variant="subtitle1">
-          <strong>Artiste :</strong> {song.artist}
-        </Typography>
-        {/* Affichage de la pochette, si disponible */}
-        <CardMedia
-          component="img"
-          image={song.image_url}
-          alt="Track cover"
-          sx={{ width: 150, height: "auto", marginTop: 1 }}
-        />
-      </Box>
-    ))
-  ) : (
-    <Typography>
-      Vous n'avez pas encore découvert de chansons.
-    </Typography>
-  )}
-      </Box>
-    </>
+    <Box sx={{ p: 2, display: "grid", gap: 2 }}>
+      <Typography variant="h5" gutterBottom>Ta bibliothèque de découvertes</Typography>
+
+      {items.map((it, idx) => {
+        const t = (it?.discovered_type || "").toLowerCase();
+        const s = it?.song || {};
+        const isMain = t === "main";
+
+        return (
+          <Box key={idx} sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}>
+            {/* Date + User (optionnel) */}
+            <Box sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+              {it?.deposit_date}
+            </Box>
+
+            {/* --- MAIN layout (grand) --- */}
+            {isMain ? (
+              <Box sx={{ display: "grid", gap: 1, mb: 1 }}>
+                {/* Image carré plein largeur */}
+                <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
+                  {s?.img_url && (
+                    <Box
+                      component="img"
+                      src={s.img_url}
+                      alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
+                      sx={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
+                    />
+                  )}
+                </Box>
+
+                {/* Titres alignés à gauche + bouton Play */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                  <Box sx={{ minWidth: 0, flex: 1, textAlign: "left" }}>
+                    <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                      {s.title}
+                    </Typography>
+                    <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                      {s.artist}
+                    </Typography>
+                  </Box>
+                  <Button variant="contained" size="large" onClick={() => openPlayFor(s)}>
+                    Play
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              /* --- REVEALED layout (compact) --- */
+              <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 2, alignItems: "center" }}>
+                {/* pochette 140x140 à gauche */}
+                <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+                  {s?.img_url && (
+                    <Box
+                      component="img"
+                      src={s.img_url}
+                      alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  )}
+                </Box>
+
+                {/* infos + Play */}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                  <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                    {s.title}
+                  </Typography>
+                  <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                    {s.artist}
+                  </Typography>
+                  <Button variant="contained" size="large" onClick={() => openPlayFor(s)} sx={{ alignSelf: "flex-start", mt: 0.5 }}>
+                    Play
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+
+      {/* Modale de lecture commune */}
+      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
+    </Box>
   );
 }
