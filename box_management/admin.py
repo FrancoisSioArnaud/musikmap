@@ -22,6 +22,9 @@ class LocationPointAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_display = ('box_id', 'latitude', 'longitude', 'dist_location')
 
 
+class DiscoveredSongAdmin(admin.ModelAdmin):
+    list_display = ("id" ,"user_col", "deposit_col", "song_title", "song_artist", "discovered_at")
+
 class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     """
     Class goal: This class represents a Deposit used in the admin interface to import/export data.
@@ -184,5 +187,6 @@ admin.site.register(Deposit, DepositAdmin)
 admin.site.register(Song)
 admin.site.register(LocationPoint, LocationPointAdmin)
 admin.site.register(DiscoveredSong)
+
 
 
