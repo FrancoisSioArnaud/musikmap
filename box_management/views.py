@@ -167,7 +167,10 @@ class GetBox(APIView):
 
         # 4) Upsert Song (clé = title + artist) + URL selon platform_id (sans toucher l’autre champ, et sans remplir url)
         try:
-            song = Song.objects.get(title__iexact=song_name,artist__iexact=song_author,) #check case INsensitive
+            song = Song.objects.get(
+                title__iexact=song_name,
+                artist__iexact=song_author,
+            )  # case-insensitive
             song.n_deposits = (song.n_deposits or 0) + 1
         except Song.DoesNotExist:
             song = Song(
@@ -177,8 +180,7 @@ class GetBox(APIView):
                 image_url=option.get('image_url') or "",
                 duration=option.get('duration') or 0,
                 platform_id=song_platform_id or 1,
-                # url (platform_url) volontairement NON rempli
-                # spotify_url / deezer_url remplis selon platform_id ci-dessous
+                # url laissé tel quel (déprécié)
             )
 
         # Remplir UNIQUEMENT le champ correspondant à platform_id
@@ -189,7 +191,6 @@ class GetBox(APIView):
         elif song_platform_id == 2:         # Deezer
             if incoming_url:
                 song.deezer_url = incoming_url
-        # ne pas toucher song.url (platform_url) -> on le laisse vide / tel quel
 
         song.save()
 
@@ -244,7 +245,7 @@ class GetBox(APIView):
                 user_payload = None
 
             if idx == 0:
-                # Premier "previous" : toutes les infos + spotify_url / deezer_url (au lieu de platform_id)
+                # Premier "previous" : toutes les infos + spotify_url / deezer_url
                 song_payload = {
                     "title": getattr(s, "title", None),
                     "artist": getattr(s, "artist", None),
@@ -376,10 +377,11 @@ class ManageDiscoveredSongs(APIView):
 class RevealSong(APIView):
     """
     GET /box-management/revealSong?cost=...&song_id=...
-    Renvoie les infos minimales d'un Song (title, artist, url, platform_id simple).
+    Renvoie les infos minimales d'un Song :
+      { song: { title, artist, spotify_url, deezer_url } }
     """
     def get(self, request, format=None):
-        cost = request.GET.get("cost")     # TODO: débiter des points si besoin
+        cost = request.GET.get("cost")  # TODO: débiter des points si besoin
         song_id = request.GET.get("song_id")
 
         if not song_id:
@@ -390,28 +392,12 @@ class RevealSong(APIView):
         except Song.DoesNotExist:
             return Response({"detail": "Song introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-        # URL principale à renvoyer (préférence pour song.url, sinon une des URLs connues)
-        url_to_return = song.url or song.spotify_url or song.deezer_url
-
-        # platform_id simple d'après l'URL retournée
-        pid = None
-        if url_to_return:
-            u_lower = url_to_return.lower()
-            if "spotify" in u_lower:
-                pid = 1
-            elif "deezer" in u_lower:
-                pid = 2
-        if pid is None:
-            if song.platform_id in (1, 2):
-                pid = song.platform_id
-
         data = {
             "song": {
                 "title": song.title,
                 "artist": song.artist,
-                "url": url_to_return,
-                "platform_id": pid,  # 1/2 ou None si indéterminé
+                "spotify_url": song.spotify_url,  # peut être None
+                "deezer_url": song.deezer_url,    # peut être None
             }
         }
         return Response(data, status=status.HTTP_200_OK)
-
