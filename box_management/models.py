@@ -53,6 +53,7 @@ class Song(models.Model):
     artist = models.CharField(max_length=50)
     spotify_url = models.URLField(max_length=200)
     deezer_url = models.URLField(max_length=200)
+    platform_id = models.IntegerField(default=1)
     image_url = models.URLField(max_length=200, blank=True)
     duration = models.IntegerField(default=0)  # Duration in seconds
     n_deposits = models.IntegerField(default=0)
@@ -122,6 +123,7 @@ class DiscoveredSong(models.Model):
         Method goal: Returns the id of the user and the id of the deposit used to display it in the admin interface.
         """
         return str(self.user_id) + ' - ' + str(self.deposit_id)
+
 
 
 
