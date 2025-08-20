@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from django.contrib.auth.models import AnonymousUser
 from django.middleware.csrf import get_token
 from django.urls import reverse
-from django.utils.timezone import localtime
+from django.utils.timezone import localtime, now
 from django.contrib.humanize.templatetags.humanize import naturaltime
 
 # DRF
@@ -343,13 +343,23 @@ class ManageDiscoveredSongs(APIView):
     def post(self, request):
         user = request.user
         if not user.is_authenticated:
-            return Response({'error': 'Vous devez être connecté pour effectuer cette action.'},
-                            status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {'error': 'Vous devez être connecté pour effectuer cette action.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         song_id = request.data.get('visible_deposit', {}).get('id')
-        song_obj = Song.objects.filter(id=song_id).get()
+        if not song_id:
+            return Response({'error': "Identifiant de chanson manquant."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        # Déjà découverte ?
+        try:
+            song_obj = Song.objects.get(id=song_id)
+        except Song.DoesNotExist:
+            return Response({'error': 'Chanson introuvable.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Déjà découverte par cet utilisateur (même titre/artiste) ?
         if DiscoveredSong.objects.filter(
             user_id=user,
             deposit_id__song_id__artist=song_obj.artist,
@@ -358,18 +368,34 @@ class ManageDiscoveredSongs(APIView):
             return Response({'error': 'Cette chanson est déjà liée à un autre dépôt.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        deposit = Deposit.objects.filter(song_id=song_obj).last()
-        DiscoveredSong(user_id=user, deposit_id=deposit).save()
+        deposit = Deposit.objects.filter(song_id=song_obj).order_by('-deposited_at').first()
+        if not deposit:
+            return Response({'error': "Aucun dépôt trouvé pour cette chanson."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Enregistre la découverte avec l'heure locale
+        DiscoveredSong(
+            user_id=user,
+            deposit_id=deposit,
+            discovered_at=localtime(now())
+        ).save()
+
         return Response({'success': True}, status=status.HTTP_200_OK)
 
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
-            return Response({'error': 'Vous devez être connecté pour effectuer cette action.'},
-                            status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {'error': 'Vous devez être connecté pour effectuer cette action.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        discovered_deposits = DiscoveredSong.objects.filter(user_id=user).order_by('-deposit_id__deposited_at')
-        discovered_songs = [Song.objects.filter(deposit=dep.deposit_id).get() for dep in discovered_deposits]
+        discovered_deposits = DiscoveredSong.objects.filter(user_id=user) \
+            .order_by('-deposit_id__deposited_at')
+        discovered_songs = [
+            Song.objects.filter(deposit=dep.deposit_id).get()
+            for dep in discovered_deposits
+        ]
         serializer = SongSerializer(discovered_songs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -401,3 +427,4 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
