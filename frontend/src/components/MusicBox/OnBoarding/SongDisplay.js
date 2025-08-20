@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -55,52 +54,29 @@ export default function SongDisplay({
     setPlaySong(null);
   };
 
-  // Ouvre une URL ou affiche un message si absente
-  function openUrlOrWarn(url) {
-    if (url) {
-      window.open(url, "_blank");
-    } else {
-      alert(
-        "Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois"
-      );
-    }
-  }
-
-  // Copie "Titre - Artiste" dans le presse-papiers
-  const copySongText = async (song) => {
-    const text = `${song?.title ?? ""} - ${song?.artist ?? ""}`.trim();
-    try {
-      await navigator.clipboard.writeText(text);
-      alert("Copié dans le presse-papiers !");
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      alert("Copié dans le presse-papiers !");
-    }
-  };
-
-    // Révéler (GET /box-management/revealSong) + enregistrer la découverte "revealed"
+  // Révéler (GET /box-management/revealSong) + enregistrer la découverte "revealed"
   async function revealSong(idx) {
     const dep = deposits[idx];
     const cost = dep?.song?.cost;
     const songId = dep?.song?.id;
     const depositId = dep?.deposit_id; // <-- fourni par le backend GetBox.post
     if (!songId || !cost) return;
-  
+
     const csrftoken = getCookie("csrftoken");
-    const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
-  
+    const url = `/box-management/revealSong?song_id=${encodeURIComponent(
+      songId
+    )}&cost=${encodeURIComponent(cost)}`;
+
     try {
       // 1) Révélation
-      const res = await fetch(url, { method: "GET", headers: { "X-CSRFToken": csrftoken } });
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "X-CSRFToken": csrftoken },
+      });
       if (!res.ok) throw new Error("HTTP " + res.status);
       // Attendu: { song: { title, artist, spotify_url, deezer_url } }
       const data = await res.json();
-  
+
       // 2) MAJ locale du dépôt révélé
       const updated = [...deposits];
       const prevSong = updated[idx]?.song || {};
@@ -115,29 +91,35 @@ export default function SongDisplay({
         },
       };
       setDispDeposits(updated);
-  
+
       // 3) Enregistrer la découverte "revealed"
       if (depositId) {
         await fetch("/box-management/discovered-songs", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-          body: JSON.stringify({ deposit_id: depositId, discovered_type: "revealed" }),
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+          body: JSON.stringify({
+            deposit_id: depositId,
+            discovered_type: "revealed",
+          }),
         });
-        // Pas d'alerte en cas d'échec : silencieux (la lib lira depuis le back plus tard)
+        // silencieux en cas d'échec
       }
     } catch (e) {
       console.error(e);
       alert("Impossible de révéler ce titre pour le moment.");
     }
   }
-  
+
   if (deposits.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Aucun dépôt à afficher.</Typography>
       </Box>
     );
-    }
+  }
 
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
@@ -200,7 +182,7 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                
+                {/* Ligne titre/artiste à gauche, Play à droite */}
                 <Box
                   sx={{
                     display: "flex",
@@ -212,7 +194,6 @@ export default function SongDisplay({
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     {isRevealed && (
                       <>
-                       
                         <Typography
                           component="h1"
                           variant="h5"
@@ -221,7 +202,7 @@ export default function SongDisplay({
                         >
                           {s.title}
                         </Typography>
-                        
+
                         <Typography
                           component="h2"
                           variant="subtitle1"
@@ -256,7 +237,7 @@ export default function SongDisplay({
                   alignItems: "center",
                 }}
               >
-                
+                {/* Image carrée à gauche */}
                 <Box
                   sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}
                 >
@@ -276,7 +257,7 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-               
+                {/* Infos + Play (si révélé) */}
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}
                 >
@@ -285,7 +266,7 @@ export default function SongDisplay({
                       <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
                         {s.title}
                       </Typography>
-                      
+
                       <Typography
                         component="h3"
                         variant="subtitle1"
@@ -299,7 +280,7 @@ export default function SongDisplay({
                         variant="contained"
                         size="large"
                         onClick={() => openPlayFor(s)}
-                        sx={{ alignSelf: "flex-start", mt: 0.5, textAlign: "left" }}
+                        sx={{ alignSelf: "flex-start", mt: 0.5 }}
                       >
                         Play
                       </Button>
@@ -325,48 +306,8 @@ export default function SongDisplay({
         );
       })}
 
-      {/* ---- Modal PLAY ---- */}
-      {playOpen && playSong && (
-        <Overlay onClose={closePlay}>
-          <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 2 }}>
-            <CardContent sx={{ pb: 1 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 2,
-                }}
-              >
-                <Typography variant="h6" sx={{ mr: 2 }} noWrap>
-                  {playSong?.title || "Titre"} — {playSong?.artist || "Artiste"}
-                </Typography>
-                <Button onClick={closePlay} title="Fermer">
-                  ×
-                </Button>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  variant="contained"
-                  onClick={() => openUrlOrWarn(playSong?.spotify_url)}
-                >
-                  Spotify
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => openUrlOrWarn(playSong?.deezer_url)}
-                >
-                  Deezer
-                </Button>
-                <Button variant="outlined" onClick={() => copySongText(playSong)}>
-                  Copier le nom de la chanson
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Overlay>
-      )}
+      {/* ---- Modal PLAY (commune) ---- */}
+      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
       {/* ---- Modal SUCCÈS ---- */}
       <SuccessModal
