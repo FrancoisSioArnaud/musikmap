@@ -140,7 +140,7 @@ async function revealSong(idx) {
     console.error(e);
     alert("Impossible de révéler ce titre pour le moment.");
   }
-
+}
 
 
   if (deposits.length === 0) {
