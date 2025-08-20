@@ -117,12 +117,14 @@ class DiscoveredSong(models.Model):
     """
     deposit_id = models.ForeignKey(Deposit, on_delete=models.CASCADE)
     user_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    discovered_at = models.DateTimeField()
 
     def __str__(self):
         """
         Method goal: Returns the id of the user and the id of the deposit used to display it in the admin interface.
         """
         return str(self.user_id) + ' - ' + str(self.deposit_id)
+
 
 
 
