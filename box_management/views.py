@@ -67,31 +67,6 @@ def get_consecutive_deposit_days(user, box) -> int:
     return consecutive_days
 
 
-def _infer_platform_id_from_url(url: Optional[str]) -> Optional[int]:
-    """Renvoie 1 (spotify) / 2 (deezer) / None en se basant sur l'URL."""
-    if not url:
-        return None
-    u = url.lower()
-    if "spotify" in u:
-        return 1
-    if "deezer" in u:
-        return 2
-    return None
-
-
-def _infer_platform_id_from_song(song: Song) -> Optional[int]:
-    """Infère un platform_id pour l'API front sans champ en BDD."""
-    # Priorité : url "principale", sinon on se base sur spotify_url/deezer_url
-    pid = _infer_platform_id_from_url(song.url)
-    if pid:
-        return pid
-    if song.spotify_url:
-        return 1
-    if song.deezer_url:
-        return 2
-    return None
-
-
 # -----------------------
 # Tâche de fond
 # -----------------------
@@ -107,15 +82,15 @@ def _bg_save_song_and_deposit(
     """
     Tâche de fond :
       - upsert Song (sans platform_id)
-      - renseigne spotify_url / deezer_url
-      - appelle ./api_agg/aggreg pour récupérer l'URL de l'autre plateforme
+      - renseigne spotify_url / deezer_url à partir de current_platform (fourni par l'appelant)
+      - appelle /api_agg/aggreg pour récupérer l'URL de l'autre plateforme
       - crée le Deposit
     """
     from .models import Song, Deposit, Box  # import local pour éviter les cycles
 
     # Box + User
     try:
-        box = Box.objects.get(box_id)
+        box = Box.objects.get(pk=box_id)
     except Box.DoesNotExist:
         return
 
@@ -123,53 +98,53 @@ def _bg_save_song_and_deposit(
     if user_id:
         User = get_user_model()
         try:
-            user = User.objects.get(user_id)
+            user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             user = None
 
-    # Upsert Song (clé simple : title + artist)
     title = song_data["title"]
     artist = song_data["artist"]
+
+    # Upsert Song (clé = title + artist)
     try:
         song = Song.objects.get(title=title, artist=artist)
         song.n_deposits = (song.n_deposits or 0) + 1
     except Song.DoesNotExist:
         song = Song(
-            song_id=song_data.get("song_id"),
-            title=title,
-            artist=artist,
-            url=song_data.get("url"),
-            image_url=song_data.get("image_url"),
-            duration=song_data.get("duration"),
-            n_deposits=1,
+            song_id   = song_data.get("song_id"),
+            title     = title,
+            artist    = artist,
+            url       = song_data.get("url"),
+            image_url = song_data.get("image_url"),
+            duration  = song_data.get("duration"),
+            n_deposits= 1,
         )
 
-    # Déterminer plateforme courante (transiente, NON sauvegardée)
-    current_platform = song_data.get("current_platform")
+    # Plateforme courante (fournie par l'appelant via POST → 1/2 mappé en "spotify"/"deezer")
+    current_platform = song_data.get("current_platform")  # "spotify" ou "deezer"
 
-    # Renseigner l’URL de la plateforme courante
+    # Renseigner l’URL correspondante si fournie
     if current_platform == "spotify":
         song.spotify_url = song_data.get("url")
     elif current_platform == "deezer":
         song.deezer_url = song_data.get("url")
 
-    # Appeler l’AUTRE plateforme via /api_agg/aggreg
+    # Appel de l'autre plateforme via l’agrégateur
     other_platform = "deezer" if current_platform == "spotify" else "spotify"
     if current_platform in ("spotify", "deezer"):
         payload = {
             "song": {
-                "title": title,
-                "artist": artist,
+                "title":    title,
+                "artist":   artist,
                 "duration": song_data.get("duration"),
             },
             "platform": other_platform,
         }
         try:
-            r = requests.post(
-                aggreg_url, cookies=cookies, headers=headers, data=json.dumps(payload), timeout=6
-            )
+            r = requests.post(aggreg_url, cookies=cookies, headers=headers,
+                              data=json.dumps(payload), timeout=6)
             if r.ok:
-                other_url = r.json()  # "spotify://track/..." ou "deezer://www.deezer.com/track/..."
+                other_url = r.json()  # ex: "spotify://track/..." ou "deezer://www.deezer.com/track/..."
                 if isinstance(other_url, str):
                     if other_platform == "deezer":
                         song.deezer_url = other_url
@@ -178,7 +153,7 @@ def _bg_save_song_and_deposit(
         except Exception:
             pass
 
-    # Sauvegarde + création du dépôt
+    # Sauvegarde + dépôt
     try:
         song.save()
         Deposit.objects.create(song_id=song, box_id=box, user=user)
@@ -229,8 +204,7 @@ class GetBox(APIView):
         song_id = option.get('id')
         song_name = option.get('name')
         song_author = option.get('artist')
-        # peut encore être fourni par le front ; on ne le stocke plus en BDD
-        song_platform_id = option.get('platform_id')
+        song_platform_id = option.get('platform_id')  # 1/2 fourni par le front (non stocké en BDD)
         box_name = request.data.get('boxName')
 
         # 1) Box
@@ -297,14 +271,8 @@ class GetBox(APIView):
         aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
         headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
 
-        # déduire une plateforme courante transiente (pour enrichir spotify_url/deezer_url)
-        current_platform = None
-        if song_platform_id in (1, 2):
-            current_platform = {1: "spotify", 2: "deezer"}[song_platform_id]
-        elif option.get('url'):
-            current_platform = {1: "spotify", 2: "deezer"}.get(
-                _infer_platform_id_from_url(option.get('url'))
-            )
+        # current_platform transiente, d’après platform_id fourni (1/2)
+        current_platform = {1: "spotify", 2: "deezer"}.get(song_platform_id)
 
         song_data = {
             "song_id":   song_id,
@@ -313,7 +281,7 @@ class GetBox(APIView):
             "url":       option.get('url'),
             "image_url": option.get('image_url'),
             "duration":  option.get('duration'),
-            "current_platform": current_platform,  # transiente
+            "current_platform": current_platform,  # "spotify" ou "deezer"
         }
 
         threading.Thread(
@@ -367,11 +335,27 @@ class GetBox(APIView):
                 user_payload = None
 
             if idx == 0:
+                # URL principale et platform_id calculé simplement
+                url_primary = getattr(s, "url", None) or getattr(s, "spotify_url", None) or getattr(s, "deezer_url", None)
+                pid = None
+                if url_primary:
+                    u_lower = url_primary.lower()
+                    if "spotify" in u_lower:
+                        pid = 1
+                    elif "deezer" in u_lower:
+                        pid = 2
+                # fallback si url_primary vide mais une URL connue existe
+                if pid is None:
+                    if getattr(s, "spotify_url", None):
+                        pid = 1
+                    elif getattr(s, "deezer_url", None):
+                        pid = 2
+
                 song_payload = {
                     "title": getattr(s, "title", None),
                     "artist": getattr(s, "artist", None),
-                    "url": getattr(s, "url", None),
-                    "platform_id": _infer_platform_id_from_song(s),  # inféré (compat front)
+                    "url": url_primary,
+                    "platform_id": pid,  # juste pour compat front
                     "img_url": getattr(s, "image_url", None),
                 }
             else:
@@ -498,10 +482,10 @@ class ManageDiscoveredSongs(APIView):
 class RevealSong(APIView):
     """
     GET /box-management/revealSong?cost=...&song_id=...
-    Renvoie les infos minimales d'un Song (title, artist, url, platform_id inféré).
+    Renvoie les infos minimales d'un Song (title, artist, url, platform_id simple).
     """
     def get(self, request, format=None):
-        cost = request.GET.get("cost")
+        cost = request.GET.get("cost")     # TODO: débiter des points si besoin
         song_id = request.GET.get("song_id")
 
         if not song_id:
@@ -512,18 +496,30 @@ class RevealSong(APIView):
         except Song.DoesNotExist:
             return Response({"detail": "Song introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-        # TODO: utiliser 'cost' pour débiter des points si besoin
-
         # URL principale à renvoyer (préférence pour song.url, sinon une des URLs connues)
         url_to_return = song.url or song.spotify_url or song.deezer_url
+
+        # platform_id simple d'après l'URL
+        pid = None
+        if url_to_return:
+            u_lower = url_to_return.lower()
+            if "spotify" in u_lower:
+                pid = 1
+            elif "deezer" in u_lower:
+                pid = 2
+        # fallback si url principale vide mais urls connues
+        if pid is None:
+            if song.spotify_url:
+                pid = 1
+            elif song.deezer_url:
+                pid = 2
+
         data = {
             "song": {
                 "title": song.title,
                 "artist": song.artist,
                 "url": url_to_return,
-                "platform_id": _infer_platform_id_from_url(url_to_return),  # inféré (compat front)
+                "platform_id": pid,  # 1/2 ou None si indéterminé
             }
         }
         return Response(data, status=status.HTTP_200_OK)
-
-
