@@ -167,7 +167,7 @@ class GetBox(APIView):
 
         # 4) Upsert Song (clé = title + artist) + URL selon platform_id (sans toucher l’autre champ, et sans remplir url)
         try:
-            song = Song.objects.get(title=song_name, artist=song_author)
+            song = Song.objects.get(title__iexact=song_name,artist__iexact=song_author,) #check case INsensitive
             song.n_deposits = (song.n_deposits or 0) + 1
         except Song.DoesNotExist:
             song = Song(
@@ -414,3 +414,4 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
