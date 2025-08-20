@@ -14,6 +14,11 @@ from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
 import json
 import requests
+import threading
+
+
+
+
 
 
 def is_first_user_deposit(user, box):
@@ -48,6 +53,85 @@ def get_consecutive_deposit_days(user, box):
             previous_date -= timedelta(days=1)
 
     return consecutive_days
+
+
+def _bg_save_song_and_deposit(song_data: dict, box_id: int, user_id: int | None,
+                              aggreg_url: str, cookies: dict, headers: dict) -> None:
+    """
+    Tâche de fond :
+      - upsert du Song (et maj spotify_url/deezer_url)
+      - appel à /api_agg/aggreg pour récupérer l'URL de l'autre plateforme
+      - création du Deposit
+    On isole les imports locaux pour éviter les cycles à l'import.
+    """
+    from box_management.models import Song, Deposit, Box
+
+    # Récupérer Box + User (si possible)
+    try:
+        box = Box.objects.get(pk=box_id)
+    except Box.DoesNotExist:
+        return
+    user = None
+    if user_id:
+        User = get_user_model()
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            user = None
+
+    # Upsert Song: (title, artist) comme clé de dédup basique
+    try:
+        song = Song.objects.get(title=song_data["title"], artist=song_data["artist"])
+        song.n_deposits = (song.n_deposits or 0) + 1
+    except Song.DoesNotExist:
+        song = Song(
+            song_id     = song_data.get("song_id"),
+            title       = song_data["title"],
+            artist      = song_data["artist"],
+            url         = song_data.get("url"),
+            image_url   = song_data.get("image_url"),
+            duration    = song_data.get("duration"),
+            platform_id = song_data.get("platform_id"),
+            n_deposits  = 1,
+        )
+
+    # Enregistrer l'URL de la plateforme courante
+    if song_data.get("platform_id") == 1:
+        song.spotify_url = song_data.get("url")
+    elif song_data.get("platform_id") == 2:
+        song.deezer_url = song_data.get("url")
+
+    # Demander l'AUTRE plateforme à /api_agg/aggreg
+    other_platform = "deezer" if song_data.get("platform_id") == 1 else "spotify"
+    payload = {
+        "song": {
+            "title":    song_data["title"],
+            "artist":   song_data["artist"],
+            "duration": song_data.get("duration"),
+        },
+        "platform": other_platform,
+    }
+    try:
+        r = requests.post(aggreg_url, cookies=cookies, headers=headers,
+                          data=json.dumps(payload), timeout=6)
+        if r.ok:
+            # L'API renvoie une "JSON string" (ex: "spotify://track/xxx")
+            other_url = r.json()
+            if isinstance(other_url, str):
+                if other_platform == "deezer":
+                    song.deezer_url = other_url
+                else:
+                    song.spotify_url = other_url
+    except Exception:
+        # On ignore en silence pour ne pas planter le thread
+        pass
+
+    # Sauvegarde Song puis création du Deposit
+    try:
+        song.save()
+        Deposit.objects.create(song_id=song, box_id=box, user=user)
+    except Exception:
+        pass
 
 
 class GetBox(APIView):
@@ -107,29 +191,11 @@ class GetBox(APIView):
         # 1) Box
         box = Box.objects.filter(url=box_name).get()
     
-        # 2) (Ré)utiliser la chanson sinon créer
-        try:
-            song = Song.objects.filter(title=song_name, artist=song_author).get()
-            song.n_deposits = (song.n_deposits or 0) + 1
-            song.save()
-        except Song.DoesNotExist:
-            song = Song(
-                song_id=song_id,
-                title=song_name,
-                artist=song_author,
-                url=option.get('url'),
-                image_url=option.get('image_url'),
-                duration=option.get('duration'),
-                platform_id=song_platform_id,
-                n_deposits=1
-            )
-            song.save()
-    
-        # 3) Préparer le nouveau dépôt (pas encore sauvé)
+        # 2) User courant
         user = request.user if not isinstance(request.user, AnonymousUser) else None
-        new_deposit = Deposit(song_id=song, box_id=box, user=user)
+        user_id = getattr(user, "id", None)
     
-        # 4) Succès AVANT le save()
+        # 3) Succès AVANT l'écriture (vue synchro et rapide)
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
     
@@ -147,14 +213,26 @@ class GetBox(APIView):
                 'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             }
     
-        if is_first_song_deposit(song, box):
+        # NB: le "first_song_deposit" est évalué ici avec l'état actuel de la DB (sans le nouveau)
+        # Il sera sauvegardé plus tard en tâche de fond.
+        # Pour la dédup Song on se base sur (title, artist)
+        try:
+            _existing_song = Song.objects.get(title=song_name, artist=song_author)
+            # rien à faire ici pour le succès "Far West" si la chanson existe déjà dans la box
+        except Song.DoesNotExist:
+            # Si la chanson n'a jamais existé, on appliquera le succès box/global ici
+            if is_first_song_deposit_global_temp := is_first_song_deposit_global(Song(title=song_name, artist=song_author)):
+                # On ne peut pas tester proprement "dans la box" sans Song lié ; garde ta logique initiale si nécessaire.
+                pass
+    
+        if is_first_song_deposit(Song(title=song_name, artist=song_author), box):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             successes['first_song_deposit'] = {
                 'name': "Far West",
                 'desc': "Ce son n'a jamais été déposé ici",
                 'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             }
-            if is_first_song_deposit_global(song):
+            if is_first_song_deposit_global(Song(title=song_name, artist=song_author)):
                 points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
                 successes['first_song_deposit_global'] = {
                     'name': "Far West",
@@ -179,37 +257,48 @@ class GetBox(APIView):
             'points': points_to_add,
         }
     
-        # 5) Sauvegarde du nouveau dépôt
-        new_deposit.save()
-    
-        # 6) Appel add-points (best-effort)
-        cookies = request.COOKIES
+        # 4) Lancer la TÂCHE DE FOND (song + autre plateforme + deposit)
         csrf_token = get_token(request)
-        add_points_url = request.build_absolute_uri(reverse('add-points'))
-        headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+        aggreg_url = request.build_absolute_uri("/api_agg/aggreg")  # ou reverse(...) si tu as nommé la route
+        headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+        song_data = {
+            "song_id":     song_id,
+            "title":       song_name,
+            "artist":      song_author,
+            "url":         option.get('url'),
+            "image_url":   option.get('image_url'),
+            "duration":    option.get('duration'),
+            "platform_id": song_platform_id,
+        }
+        threading.Thread(
+            target=_bg_save_song_and_deposit,
+            args=(song_data, box.id, user_id, aggreg_url, request.COOKIES, headers_bg),
+            daemon=True
+        ).start()
+    
+        # 5) Appel add-points (best-effort) — on peut le faire ici pour retour rapide
         try:
-            requests.post(add_points_url, cookies=cookies, headers=headers,
+            add_points_url = request.build_absolute_uri(reverse('add-points'))
+            requests.post(add_points_url, cookies=request.COOKIES, headers=headers_bg,
                           data=json.dumps({"points": points_to_add}), timeout=3)
         except Exception:
             pass
     
-        # 7) Récupérer les 10 dépôts précédents EN EXCLUANT le nouveau
-        previous_deposits_qs = (
+        # 6) Récupérer les 10 DÉPÔTS PRÉCÉDENTS (sans le nouveau, qui sera créé en tâche de fond)
+        previous_deposits = list(
             Deposit.objects
             .filter(box_id=box)
-            .exclude(pk=new_deposit.pk)             
             .select_related('song_id', 'user')
             .order_by('-deposited_at', '-id')[:10]
         )
-        # si tu tiens au "snapshot" immédiat indépendamment de la suite, force l’évaluation ici:
-        previous_deposits = list(previous_deposits_qs)
     
-        # 8) Construire la réponse (comme tu le faisais)
+        # 7) Construire la réponse (comme avant)
         cost_series = [500 - 50 * i for i in range(9)]
         deposits_payload = []
         for idx, d in enumerate(previous_deposits):
             s = d.song_id
             u = d.user
+    
             if u and not isinstance(u, AnonymousUser):
                 full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
                 display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
@@ -241,7 +330,10 @@ class GetBox(APIView):
                 }
     
             deposits_payload.append({
-                "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
+                "deposit_date": (
+                    naturaltime(localtime(d.deposited_at))
+                    if getattr(d, "deposited_at", None) else None
+                ),
                 "song": song_payload,
                 "user": user_payload,
             })
@@ -251,7 +343,8 @@ class GetBox(APIView):
             "deposits": deposits_payload,
         }
         return Response(response, status=status.HTTP_200_OK)
-    
+
+
 
 class Location(APIView):
     """
@@ -447,6 +540,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
