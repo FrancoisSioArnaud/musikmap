@@ -5,6 +5,40 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import PlayModal from "./Common/PlayModal";
 
+/** Format relatif FR (ex: "il y a 3 heures") */
+function formatRelativeFr(isoDateString) {
+  if (!isoDateString) return "";
+  const d = new Date(isoDateString);
+  if (isNaN(d)) return "";
+
+  const now = new Date();
+  // diff (signed) in seconds: negative means "in the past"
+  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
+
+  const abs = Math.abs(diffSec);
+
+  if (abs < 60) return rtf.format(diffSec, "second");
+
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return rtf.format(diffMin, "minute");
+
+  const diffHr = Math.round(diffSec / 3600);
+  if (Math.abs(diffHr) < 24) return rtf.format(diffHr, "hour");
+
+  const diffDay = Math.round(diffSec / 86400);
+  if (Math.abs(diffDay) < 7) return rtf.format(diffDay, "day");
+
+  const diffWeek = Math.round(diffDay / 7);
+  if (Math.abs(diffWeek) < 5) return rtf.format(diffWeek, "week");
+
+  const diffMonth = Math.round(diffDay / 30);
+  if (Math.abs(diffMonth) < 12) return rtf.format(diffMonth, "month");
+
+  const diffYear = Math.round(diffDay / 365);
+  return rtf.format(diffYear, "year");
+}
+
 /**
  * Page qui affiche les dépôts découverts de l'utilisateur (main & revealed).
  */
@@ -45,11 +79,21 @@ export default function LibraryPage() {
         const s = it?.song || {};
         const isMain = t === "main";
 
+        // Date de découverte naturelle (fallback sur deposit_date si jamais)
+        const discoveredIso = it?.discovered_at || null;
+        const naturalDiscovered = formatRelativeFr(discoveredIso) || it?.deposit_date || "";
+
         return (
-          <Box key={idx} sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}>
-            {/* Date + User (optionnel) */}
-            <Box sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {it?.deposit_date}
+          <Box
+            key={idx}
+            sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
+          >
+            {/* Date de découverte */}
+            <Box
+              sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}
+              title={discoveredIso ? new Date(discoveredIso).toLocaleString("fr-FR") : undefined}
+            >
+              Découvert · {naturalDiscovered}
             </Box>
 
             {/* --- MAIN layout (grand) --- */}
