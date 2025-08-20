@@ -115,7 +115,6 @@ async function revealSong(idx) {
         ...prevSong,
         title:       payload.title       ?? prevSong.title,
         artist:      payload.artist      ?? prevSong.artist,
-        url:         payload.url         ?? prevSong.url,
         spotify_url: payload.spotify_url ?? prevSong.spotify_url,
         deezer_url:  payload.deezer_url  ?? prevSong.deezer_url,
       },
