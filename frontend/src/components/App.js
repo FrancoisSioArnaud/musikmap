@@ -37,8 +37,7 @@ function LayoutWithHeader() {
           flex: 1,
           Height: "calc(100vh - 64px)",
           Width: "100vw",
-          padding: "0",
-          paddingTop: "64px",
+          padding: "64px 0 0 0",
           overflowY: "scroll",   // force le scroll vertical
           WebkitOverflowScrolling: "touch", // inertie iOS
         }}
@@ -108,6 +107,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
