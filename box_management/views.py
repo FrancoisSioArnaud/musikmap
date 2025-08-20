@@ -179,8 +179,6 @@ class GetBox(APIView):
                 artist=song_author,
                 image_url=option.get('image_url') or "",
                 duration=option.get('duration') or 0,
-                platform_id=song_platform_id or 1,
-                # url laissé tel quel (déprécié)
             )
 
         # Remplir UNIQUEMENT le champ correspondant à platform_id
@@ -427,4 +425,5 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
