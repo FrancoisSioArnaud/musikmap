@@ -194,7 +194,8 @@ admin.site.register(Box, BoxAdmin)
 admin.site.register(Deposit, DepositAdmin)
 admin.site.register(Song)
 admin.site.register(LocationPoint, LocationPointAdmin)
-admin.site.register(DiscoveredSong)
+admin.site.register(DiscoveredSong, DiscoveredSongAdmin)
+
 
 
 
