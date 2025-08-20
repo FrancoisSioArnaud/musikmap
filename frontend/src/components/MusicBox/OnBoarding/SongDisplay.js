@@ -81,46 +81,67 @@ export default function SongDisplay({
     }
   };
 
-  // Révéler (GET /box-management/revealSong)
-  async function revealSong(idx) {
-    const dep = deposits[idx];
-    const cost = dep?.song?.cost;
-    const songId = dep?.song?.id;
-    if (!songId || !cost) return;
+ // Révéler (GET /box-management/revealSong) puis enregistrer la découverte (POST /box-management/manageDiscoveredSongs)
+async function revealSong(idx) {
+  const dep = deposits[idx];
+  const cost = dep?.song?.cost;
+  const songId = dep?.song?.id;
+  if (!songId || !cost) return;
 
-    const csrftoken = getCookie("csrftoken");
-    const url = `/box-management/revealSong?song_id=${encodeURIComponent(
-      songId
-    )}&cost=${encodeURIComponent(cost)}`;
+  const csrftoken = getCookie("csrftoken");
+  const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
 
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { "X-CSRFToken": csrftoken },
-      });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      // Attendu: { song: { title, artist, spotify_url, deezer_url } }
-      const data = await res.json();
+  try {
+    const res = await fetch(url, { method: "GET", headers: { "X-CSRFToken": csrftoken } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
 
-      const updated = [...deposits];
-      const prevSong = updated[idx]?.song || {};
-      updated[idx] = {
-        ...updated[idx],
-        song: {
-          ...prevSong,
-          title: data?.song?.title ?? prevSong.title,
-          artist: data?.song?.artist ?? prevSong.artist,
-          // on ne touche pas prevSong.url (déprécié côté back)
-          spotify_url: data?.song?.spotify_url ?? prevSong.spotify_url,
-          deezer_url: data?.song?.deezer_url ?? prevSong.deezer_url,
-        },
-      };
-      setDispDeposits(updated);
-    } catch (e) {
-      console.error(e);
-      alert("Impossible de révéler ce titre pour le moment.");
+    // Attendu:
+    // {
+    //   song: { title, artist, spotify_url, deezer_url },
+    //   visible_deposit: { id },
+    //   discovery: "created" | "already_exists" | ...
+    // }
+    const data = await res.json();
+
+    // 1) Mettre à jour l'affichage du dépôt révélé
+    const updated = [...deposits];
+    const prevSong = updated[idx]?.song || {};
+    updated[idx] = {
+      ...updated[idx],
+      song: {
+        ...prevSong,
+        title: data?.song?.title ?? prevSong.title,
+        artist: data?.song?.artist ?? prevSong.artist,
+        spotify_url: data?.song?.spotify_url ?? prevSong.spotify_url,
+        deezer_url: data?.song?.deezer_url ?? prevSong.deezer_url,
+      },
+    };
+    setDispDeposits(updated);
+
+    // 2) Enregistrer la découverte côté serveur (tolérant — ignore le 400 "déjà liée")
+    const discoveredPayload = {
+      visible_deposit: { id: data?.visible_deposit?.id ?? songId },
+    };
+
+    const res2 = await fetch("/box-management/manageDiscoveredSongs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
+      body: JSON.stringify(discoveredPayload),
+    });
+
+    // 200 => OK, 400 "déjà liée" => on ignore, autres statuts => log
+    if (!res2.ok && res2.status !== 400) {
+      console.warn("manageDiscoveredSongs non enregistré (HTTP " + res2.status + ")");
     }
+  } catch (e) {
+    console.error(e);
+    alert("Impossible de révéler ce titre pour le moment.");
   }
+
+
 
   if (deposits.length === 0) {
     return (
