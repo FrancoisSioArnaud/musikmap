@@ -94,7 +94,7 @@ class GetBox(APIView):
         else:
             return Response({'Bad Request': 'Name of the box not found in request'}, status=status.HTTP_400_BAD_REQUEST)
 
-     @transaction.atomic  # optionnel mais sain
+    
     def post(self, request, format=None):
         # --- Entrée ---
         option = request.data.get('option') or {}
@@ -447,6 +447,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
