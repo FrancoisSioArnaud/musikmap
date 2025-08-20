@@ -14,7 +14,6 @@ import SuccessfulLogout from "./SuccessfulLogout";
 // import { Footer } from "./Common/footer";
 import UserPublicProfile from "./UserPublicProfile";
 
-// 👇 IMPORTANT : Outlet pour le layout, MenuAppBar pour le header
 import {
   BrowserRouter as Router,
   Routes,
@@ -22,18 +21,28 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
-import MenuAppBar from "./Menu"; // ← ton composant menu fixe
+import MenuAppBar from "./Menu"; // <-- ton menu fixed (64px)
 
 function LayoutWithHeader() {
   return (
-    <>
+    // wrapper full-height pour permettre au main de s’étirer
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       {/* Header fixe */}
       <MenuAppBar />
-      {/* Spacer exactement 64px pour ne pas "manger" le contenu sous l'AppBar */}
+      {/* Spacer 64px pour compenser l’AppBar fixed */}
       <div style={{ height: 64 }} />
-      {/* Les pages enfants s’affichent ici */}
-      <Outlet />
-    </>
+      {/* Zone scrollable qui remplit le viewport restant */}
+      <main
+        style={{
+          flex: 1,
+          minHeight: "calc(100vh - 64px)",
+          overflowY: "scroll",   // force le scroll vertical
+          WebkitOverflowScrolling: "touch", // inertie iOS
+        }}
+      >
+        <Outlet />
+      </main>
+    </div>
   );
 }
 
@@ -63,54 +72,36 @@ export default function App() {
       <Router>
         <UserContext.Provider value={providerValue}>
           <Routes>
-            {/* ====== Routes avec header ====== */}
+            {/* ====== Routes AVEC header (layout global) ====== */}
             <Route element={<LayoutWithHeader />}>
               <Route path="/" element={<HomePage />} />
               <Route
                 path="/profile"
-                element={/* isMobile ? */ isAuthenticated ? <UserProfilePage /> : <SuccessfulLogout /> /* : <RedirectToMobile /> */}
+                element={isAuthenticated ? <UserProfilePage /> : <SuccessfulLogout />}
               />
               <Route
                 path="/library"
-                element={/* isMobile ? */ isAuthenticated ? <LibraryPage /> : <SuccessfulLogout /> /* : <RedirectToMobile /> */}
+                element={isAuthenticated ? <LibraryPage /> : <SuccessfulLogout />}
               />
-              <Route
-                path="/box/:boxName"
-                element={/* isMobile ? */ <MusicBox /> /* : <RedirectToMobile /> */}
-              />
-              <Route
-                path="/profile/:userID"
-                element={/* isMobile ? */ <UserPublicProfile /> /* : <RedirectToMobile /> */}
-              />
+              <Route path="/box/:boxName" element={<MusicBox />} />
+              <Route path="/profile/:userID" element={<UserPublicProfile />} />
             </Route>
 
             {/* ====== Routes SANS header (auth) ====== */}
             <Route
               path="/register"
-              element={
-                /* isMobile ? */
-                isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />
-                /* : <RedirectToMobile /> */
-              }
+              element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}
             />
             <Route
               path="/login"
-              element={
-                /* isMobile ? */
-                isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />
-                /* : <RedirectToMobile /> */
-              }
+              element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}
             />
           </Routes>
         </UserContext.Provider>
       </Router>
-      {/* <Footer sx={{ mt: 8, mb: 4 }} /> */}
     </>
   );
 }
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
-
-
-
