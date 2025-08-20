@@ -108,7 +108,7 @@ def _bg_save_song_and_deposit(
     Tâche de fond :
       - upsert Song (sans platform_id)
       - renseigne spotify_url / deezer_url
-      - appelle /api_agg/aggreg pour récupérer l'URL de l'autre plateforme
+      - appelle ./api_agg/aggreg pour récupérer l'URL de l'autre plateforme
       - crée le Deposit
     """
     from .models import Song, Deposit, Box  # import local pour éviter les cycles
@@ -141,7 +141,6 @@ def _bg_save_song_and_deposit(
             url=song_data.get("url"),
             image_url=song_data.get("image_url"),
             duration=song_data.get("duration"),
-            # ⚠️ plus de platform_id en BDD
             n_deposits=1,
         )
 
@@ -299,7 +298,7 @@ class GetBox(APIView):
 
         # 4) Lancer la tâche de fond (song + autre plateforme + deposit)
         csrf_token = get_token(request)
-        aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
+        aggreg_url = request.build_absolute_uri("./api_agg/aggreg")
         headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
 
         # déduire une plateforme courante transiente (pour enrichir spotify_url/deezer_url)
@@ -530,3 +529,4 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
