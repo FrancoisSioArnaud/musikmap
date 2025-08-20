@@ -12,8 +12,6 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import { getCookie } from "../../Security/TokensUtils";
 
-// NOTE: plus d'agrégateur / PLATFORM_MAP ici
-
 export default function SongDisplay({
   dispDeposits,
   setDispDeposits,
@@ -46,29 +44,27 @@ export default function SongDisplay({
   // Modal Play
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
-  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
-  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
+  const openPlayFor = (song) => {
+    setPlaySong(song || null);
+    setPlayOpen(true);
+  };
+  const closePlay = () => {
+    setPlayOpen(false);
+    setPlaySong(null);
+  };
 
-  // Ouvre l'URL Spotify stockée sur le song, sinon message d'erreur
-  function openSpotify(song) {
-    const url = song?.spotify_url;
+  // Ouvre une URL ou affiche un message si absente
+  function openUrlOrWarn(url) {
     if (url) {
-      window.open(url);
+      window.open(url, "_blank");
     } else {
-      alert("Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois");
+      alert(
+        "Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois"
+      );
     }
   }
 
-  // Ouvre l'URL Deezer stockée sur le song, sinon message d'erreur
-  function openDeezer(song) {
-    const url = song?.deezer_url;
-    if (url) {
-      window.open(url);
-    } else {
-      alert("Oops ! Une erreur s'est produite, utilise le bouton copier la chanson pour cette fois");
-    }
-  }
-
+  // Copie "Titre - Artiste" dans le presse-papiers
   const copySongText = async (song) => {
     const text = `${song?.title ?? ""} - ${song?.artist ?? ""}`.trim();
     try {
@@ -85,48 +81,46 @@ export default function SongDisplay({
     }
   };
 
- // Révéler (GET /box-management/revealSong)
-// Met à jour le dépôt avec title/artist/url ET, si fournis, spotify_url / deezer_url.
-async function revealSong(idx) {
-  const dep = deposits[idx];
-  const cost = dep?.song?.cost;
-  const songId = dep?.song?.id;
-  if (!songId || !cost) return;
+  // Révéler (GET /box-management/revealSong)
+  async function revealSong(idx) {
+    const dep = deposits[idx];
+    const cost = dep?.song?.cost;
+    const songId = dep?.song?.id;
+    if (!songId || !cost) return;
 
-  const csrftoken = getCookie("csrftoken");
-  const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
+    const csrftoken = getCookie("csrftoken");
+    const url = `/box-management/revealSong?song_id=${encodeURIComponent(
+      songId
+    )}&cost=${encodeURIComponent(cost)}`;
 
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { "X-CSRFToken": csrftoken },
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "X-CSRFToken": csrftoken },
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      // Attendu: { song: { title, artist, spotify_url, deezer_url } }
+      const data = await res.json();
 
-    // attendu: { song: { title, artist, url, spotify_url?, deezer_url? } }
-    const data = await res.json();
-    const payload = data?.song || {};
-
-    const updated = [...deposits];
-    const prevSong = updated[idx]?.song || {};
-    updated[idx] = {
-      ...updated[idx],
-      song: {
-        ...prevSong,
-        title:       payload.title       ?? prevSong.title,
-        artist:      payload.artist      ?? prevSong.artist,
-        spotify_url: payload.spotify_url ?? prevSong.spotify_url,
-        deezer_url:  payload.deezer_url  ?? prevSong.deezer_url,
-      },
-    };
-
-    setDispDeposits(updated);
-  } catch (e) {
-    console.error(e);
-    alert("Impossible de révéler ce titre pour le moment.");
+      const updated = [...deposits];
+      const prevSong = updated[idx]?.song || {};
+      updated[idx] = {
+        ...updated[idx],
+        song: {
+          ...prevSong,
+          title: data?.song?.title ?? prevSong.title,
+          artist: data?.song?.artist ?? prevSong.artist,
+          // on ne touche pas prevSong.url (déprécié côté back)
+          spotify_url: data?.song?.spotify_url ?? prevSong.spotify_url,
+          deezer_url: data?.song?.deezer_url ?? prevSong.deezer_url,
+        },
+      };
+      setDispDeposits(updated);
+    } catch (e) {
+      console.error(e);
+      alert("Impossible de révéler ce titre pour le moment.");
+    }
   }
-}
-
 
   if (deposits.length === 0) {
     return (
@@ -134,7 +128,7 @@ async function revealSong(idx) {
         <Typography>Aucun dépôt à afficher.</Typography>
       </Box>
     );
-  }
+    }
 
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
@@ -145,24 +139,39 @@ async function revealSong(idx) {
 
         return (
           <Card key={idx} sx={{ p: 2 }}>
-            {/* 1) deposit_date — texte naturel fourni par le backend */}
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+            {/* 1) deposit_date */}
+            <Box
+              id="deposit_date"
+              sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}
+            >
               {dep?.deposit_date}
             </Box>
 
             {/* 2) deposit_user */}
             <Box
               id="deposit_user"
-              sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, cursor: "pointer" }}
-              onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 2,
+                cursor: u?.id != null ? "pointer" : "default",
+              }}
+              onClick={() => {
+                if (u?.id != null) navigate("/profile/" + u.id);
+              }}
             >
-              <Avatar src={u?.profile_pic_url || undefined} alt={u?.name || "Anonyme"} sx={{ width: 40, height: 40 }} />
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.name || "Anonyme"}
+                sx={{ width: 40, height: 40 }}
+              />
               <Typography>{u?.name || "Anonyme"}</Typography>
             </Box>
 
             {/* 3) deposit_song */}
             {idx === 0 ? (
-              // ======= PREMIER DÉPÔT
+              // ======= PREMIER DÉPÔT =======
               <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
                 {/* Image carré plein largeur */}
                 <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
@@ -183,14 +192,34 @@ async function revealSong(idx) {
                 </Box>
 
                 {/* Ligne titre/artiste à gauche, Play à droite */}
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                  }}
+                >
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     {isRevealed && (
                       <>
-                        <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700 }}>
+                        {/* Titre premier dépôt — aligné à gauche */}
+                        <Typography
+                          component="h1"
+                          variant="h5"
+                          noWrap
+                          sx={{ fontWeight: 700, textAlign: "left" }}
+                        >
                           {s.title}
                         </Typography>
-                        <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap>
+                        {/* Artiste (révélé) — aligné à gauche */}
+                        <Typography
+                          component="h2"
+                          variant="subtitle1"
+                          color="text.secondary"
+                          noWrap
+                          sx={{ textAlign: "left" }}
+                        >
                           {s.artist}
                         </Typography>
                       </>
@@ -207,7 +236,7 @@ async function revealSong(idx) {
                 </Box>
               </Box>
             ) : (
-              // ======= AUTRES DÉPÔTS
+              // ======= AUTRES DÉPÔTS =======
               <Box
                 id="deposit_song"
                 sx={{
@@ -219,7 +248,9 @@ async function revealSong(idx) {
                 }}
               >
                 {/* Image carrée à gauche */}
-                <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+                <Box
+                  sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}
+                >
                   {s?.img_url && (
                     <Box
                       component="img"
@@ -237,13 +268,22 @@ async function revealSong(idx) {
                 </Box>
 
                 {/* Infos + Play (si révélé) */}
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}
+                >
                   {isRevealed && (
                     <>
                       <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
                         {s.title}
                       </Typography>
-                      <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap>
+                      {/* Artiste des chansons révélées — aligné à gauche */}
+                      <Typography
+                        component="h3"
+                        variant="subtitle1"
+                        color="text.secondary"
+                        noWrap
+                        sx={{ textAlign: "left" }}
+                      >
                         {s.artist}
                       </Typography>
                       <Button
@@ -260,19 +300,17 @@ async function revealSong(idx) {
               </Box>
             )}
 
-            {/* 4) deposit_interact — toujours sous deposit_song */}
+            {/* 4) deposit_interact */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx === 0 ? (
                 <Button variant="outlined" onClick={() => setSuccessOpen(true)}>
                   Points gagnés : {totalPoints}
                 </Button>
-              ) : (
-                !isRevealed ? (
-                  <Button variant="contained" onClick={() => revealSong(idx)} size="large">
-                    Révéler — {s?.cost ?? "?"}
-                  </Button>
-                ) : null
-              )}
+              ) : !isRevealed ? (
+                <Button variant="contained" onClick={() => revealSong(idx)} size="large">
+                  Révéler — {s?.cost ?? "?"}
+                </Button>
+              ) : null}
             </Box>
           </Card>
         );
@@ -283,16 +321,35 @@ async function revealSong(idx) {
         <Overlay onClose={closePlay}>
           <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 2 }}>
             <CardContent sx={{ pb: 1 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
                 <Typography variant="h6" sx={{ mr: 2 }} noWrap>
                   {playSong?.title || "Titre"} — {playSong?.artist || "Artiste"}
                 </Typography>
-                <Button onClick={closePlay} title="Fermer">×</Button>
+                <Button onClick={closePlay} title="Fermer">
+                  ×
+                </Button>
               </Box>
 
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button variant="contained" onClick={() => openSpotify(playSong)}>Spotify</Button>
-                <Button variant="contained" onClick={() => openDeezer(playSong)}>Deezer</Button>
+                <Button
+                  variant="contained"
+                  onClick={() => openUrlOrWarn(playSong?.spotify_url)}
+                >
+                  Spotify
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => openUrlOrWarn(playSong?.deezer_url)}
+                >
+                  Deezer
+                </Button>
                 <Button variant="outlined" onClick={() => copySongText(playSong)}>
                   Copier le nom de la chanson
                 </Button>
@@ -303,7 +360,11 @@ async function revealSong(idx) {
       )}
 
       {/* ---- Modal SUCCÈS ---- */}
-      <SuccessModal successes={displaySuccesses} open={successOpen} onClose={() => setSuccessOpen(false)} />
+      <SuccessModal
+        successes={displaySuccesses}
+        open={successOpen}
+        onClose={() => setSuccessOpen(false)}
+      />
     </Box>
   );
 }
@@ -343,7 +404,9 @@ function SuccessModal({ open, successes, onClose }) {
 
           <List sx={{ mt: 1 }}>
             {(!successes || successes.length === 0) && (
-              <ListItem><ListItemText primary="Aucun succès (hors Total)" /></ListItem>
+              <ListItem>
+                <ListItemText primary="Aucun succès (hors Total)" />
+              </ListItem>
             )}
             {successes?.map((ach, i) => (
               <ListItem key={i} divider>
