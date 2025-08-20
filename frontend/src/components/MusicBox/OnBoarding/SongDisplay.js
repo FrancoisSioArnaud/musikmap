@@ -85,40 +85,49 @@ export default function SongDisplay({
     }
   };
 
-  // Révéler (GET /box-management/revealSong)
-  async function revealSong(idx) {
-    const dep = deposits[idx];
-    const cost = dep?.song?.cost;
-    const songId = dep?.song?.id;
-    if (!songId || !cost) return;
+ // Révéler (GET /box-management/revealSong)
+// Met à jour le dépôt avec title/artist/url ET, si fournis, spotify_url / deezer_url.
+async function revealSong(idx) {
+  const dep = deposits[idx];
+  const cost = dep?.song?.cost;
+  const songId = dep?.song?.id;
+  if (!songId || !cost) return;
 
-    const csrftoken = getCookie("csrftoken");
-    const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
+  const csrftoken = getCookie("csrftoken");
+  const url = `/box-management/revealSong?song_id=${encodeURIComponent(songId)}&cost=${encodeURIComponent(cost)}`;
 
-    try {
-      const res = await fetch(url, { method: "GET", headers: { "X-CSRFToken": csrftoken } });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json(); // { song: { title, artist, url, platform_id } } (anciens dépôts révélés)
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { "X-CSRFToken": csrftoken },
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
 
-      const updated = [...deposits];
-      const prevSong = updated[idx]?.song || {};
-      updated[idx] = {
-        ...updated[idx],
-        song: {
-          ...prevSong,
-          title: data?.song?.title ?? prevSong.title,
-          artist: data?.song?.artist ?? prevSong.artist,
-          url: data?.song?.url ?? prevSong.url,
-          platform_id: data?.song?.platform_id ?? prevSong.platform_id,
-          // NB: les champs spotify_url / deezer_url ne sont pas fournis par cet endpoint
-        },
-      };
-      setDispDeposits(updated);
-    } catch (e) {
-      console.error(e);
-      alert("Impossible de révéler ce titre pour le moment.");
-    }
+    // attendu: { song: { title, artist, url, spotify_url?, deezer_url? } }
+    const data = await res.json();
+    const payload = data?.song || {};
+
+    const updated = [...deposits];
+    const prevSong = updated[idx]?.song || {};
+    updated[idx] = {
+      ...updated[idx],
+      song: {
+        ...prevSong,
+        title:       payload.title       ?? prevSong.title,
+        artist:      payload.artist      ?? prevSong.artist,
+        url:         payload.url         ?? prevSong.url,
+        spotify_url: payload.spotify_url ?? prevSong.spotify_url,
+        deezer_url:  payload.deezer_url  ?? prevSong.deezer_url,
+      },
+    };
+
+    setDispDeposits(updated);
+  } catch (e) {
+    console.error(e);
+    alert("Impossible de révéler ce titre pour le moment.");
   }
+}
+
 
   if (deposits.length === 0) {
     return (
