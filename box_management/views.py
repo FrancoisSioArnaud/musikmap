@@ -115,7 +115,7 @@ def _bg_save_song_and_deposit(
 
     # Box + User
     try:
-        box = Box.objects.get(pk=box_id)
+        box = Box.objects.get(box_id)
     except Box.DoesNotExist:
         return
 
@@ -123,7 +123,7 @@ def _bg_save_song_and_deposit(
     if user_id:
         User = get_user_model()
         try:
-            user = User.objects.get(pk=user_id)
+            user = User.objects.get(user_id)
         except User.DoesNotExist:
             user = None
 
@@ -146,10 +146,6 @@ def _bg_save_song_and_deposit(
 
     # Déterminer plateforme courante (transiente, NON sauvegardée)
     current_platform = song_data.get("current_platform")
-    if not current_platform:
-        current_platform = {1: "spotify", 2: "deezer"}.get(
-            _infer_platform_id_from_url(song_data.get("url"))
-        )
 
     # Renseigner l’URL de la plateforme courante
     if current_platform == "spotify":
@@ -298,7 +294,7 @@ class GetBox(APIView):
 
         # 4) Lancer la tâche de fond (song + autre plateforme + deposit)
         csrf_token = get_token(request)
-        aggreg_url = request.build_absolute_uri("./api_agg/aggreg")
+        aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
         headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
 
         # déduire une plateforme courante transiente (pour enrichir spotify_url/deezer_url)
@@ -529,4 +525,5 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
