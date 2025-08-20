@@ -30,15 +30,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: url(../images/vinyl.svg);
-            background-repeat: no-repeat;
-            background-size: contain;
+            //background-image: url(../images/vinyl.svg);
+            //background-repeat: no-repeat;
+            //background-size: contain;
             min-width: 56px;
             height: 56px;
 
             img {
-                width: 20px;
-                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                border-radius: 12%;
             }
         }
 
