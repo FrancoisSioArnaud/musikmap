@@ -26,6 +26,7 @@ from utils import (
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
     NB_POINTS_CONSECUTIVE_DAYS_BOX,
 )
+from api_aggregation.views import ApiAggregation
 
 # -----------------------
 # Helpers "business"
@@ -507,6 +508,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
