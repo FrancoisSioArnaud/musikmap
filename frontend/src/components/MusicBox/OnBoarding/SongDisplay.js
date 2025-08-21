@@ -168,10 +168,7 @@ export default function SongDisplay({
         const isRevealed = already || Boolean(s?.title && s?.artist);
 
         const card = (
-          <Card key={`card-${idx}`} sx={{
-              p: 2,
-              background:"linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)"
-            }}>
+          <Card key={`card-${idx}`} sx={{ p: 2 , background: "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)" }}>
             {/* 1) deposit_date */}
             <Box
               id="deposit_date"
