@@ -133,6 +133,8 @@ export default function SongDisplay({
             width: "100%",
             aspectRatio: "1 / 1.5",
             borderRadius: 2,
+            background:
+              "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -156,7 +158,18 @@ export default function SongDisplay({
           </Typography>
         </Box>
 
-  
+        {/* Flèche vers le bas (indicateur scroll) */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 8,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            opacity: 0.75,
+          }}
+        >
           <KeyboardArrowDownIcon fontSize="large" />
         </Box>
       </Box>
@@ -168,10 +181,7 @@ export default function SongDisplay({
         const isRevealed = already || Boolean(s?.title && s?.artist);
 
         const card = (
-          <Card key={`card-${idx}`} sx={{
-              p: 2,
-              background:
-              "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)", }}>
+          <Card key={`card-${idx}`} sx={{ p: 2 }}>
             {/* 1) deposit_date */}
             <Box
               id="deposit_date"
