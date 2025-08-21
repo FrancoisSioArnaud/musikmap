@@ -138,7 +138,7 @@ export default function SongDisplay({
               id="deposit_date"
               sx={{ mb: 1, fontSize: 14, color: "text.secondary"}}
             >
-              {"Pépite déposée il y a " + dep?.deposit_date}
+              {"Pépite déposée " + dep?.deposit_date}
             </Box>
 
             {/* 2) deposit_user */}
