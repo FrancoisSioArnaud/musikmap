@@ -143,7 +143,7 @@ export default function SongDisplay({
           }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          <Typography component="h1" variant="h5" sx={{ fontWeight: 700, fontColor : #FFF }}>
+          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
             La dernière chanson déposée ici
           </Typography>
           <Typography
@@ -387,7 +387,7 @@ export default function SongDisplay({
                     p: 2,
                   }}
                 >
-                  <Typography component="h1" variant="h5" sx={{ fontWeight: 700, fontColor : #FFF }}>
+                  <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
                     Utilise tes points pour révéler d’autres chansons déposées encore
                     avant dans cette boîte
                   </Typography>
