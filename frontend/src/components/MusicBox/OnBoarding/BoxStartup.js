@@ -23,7 +23,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
                 </span>
               </button>
               
-              <h1>{boxInfo.deposit_count} chansons sur cet arrêt, échanges-en une pour la découvrir</h1>
+              <h1>{boxInfo.deposit_count} pépites 💎 déposées ici, ajoutes-en une pour les découvrir</h1>
         
 
               <button
@@ -43,6 +43,7 @@ export default function BoxStartup({ setStage, boxInfo, className }) {
     </>
   );
 }
+
 
 
 
