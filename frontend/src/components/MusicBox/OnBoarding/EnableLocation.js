@@ -30,7 +30,7 @@ export default function EnableLocation({ setStage, boxInfo, navigate, className 
 
             <h1>Autoriser la localisation</h1>
 
-            <p>Confirme que tu es bien à l'arrêt en partageant ta localisation. Ta localisation est uniquement utilisée à l'ouverture d'une boîte.</p>
+            <p>Confirme que tu es bien à coté du spot en partageant ta localisation. Ta localisation est uniquement utilisée pour ouvrir la boîte boîte.</p>
 
             <button
               className="btn-primary"
@@ -43,8 +43,9 @@ export default function EnableLocation({ setStage, boxInfo, navigate, className 
         </div>
         
       ) : (
-        <div>Loading...</div>
+        <div></div>
       )}
     </>
   );
 }
+
