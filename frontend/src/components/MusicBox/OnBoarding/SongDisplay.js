@@ -10,6 +10,7 @@ import Avatar from "@mui/material/Avatar";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { getCookie } from "../../Security/TokensUtils";
 import PlayModal from "../../Common/PlayModal";
 
@@ -83,7 +84,7 @@ export default function SongDisplay({
       updated[idx] = {
         ...updated[idx],
         already_discovered: true,         // pour masquer le bouton et forcer l’affichage révélé
-        discovered_at: "à l'instant",     // pour l’étiquette demandée
+        discovered_at: "à l'instant",     // libellé immédiat demandé
         song: {
           ...prevSong,
           title: data?.song?.title ?? prevSong.title,
@@ -125,18 +126,67 @@ export default function SongDisplay({
 
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+      {/* ======= SECTION INTRO (carrée) ======= */}
+      <Box
+        id="intro"
+        sx={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          borderRadius: 2,
+          background:
+            "linear-gradient(135deg, rgba(240,240,255,0.8), rgba(230,245,255,0.8))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          p: 2,
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+            "La dernière chanson déposée ici
+          </Typography>
+          <Typography
+            component="span"
+            variant="subtitle2"
+            sx={{ opacity: 0.8 }}
+          >
+            (par un vrai humain.e)
+          </Typography>
+          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+            t'attend juste en dessous"
+          </Typography>
+        </Box>
+
+        {/* Flèche vers le bas (indicateur scroll) */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 8,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            opacity: 0.75,
+          }}
+        >
+          <KeyboardArrowDownIcon fontSize="large" />
+        </Box>
+      </Box>
+
       {deposits.map((dep, idx) => {
         const u = dep?.user;
         const s = dep?.song || {};
         const already = !!dep?.already_discovered;
         const isRevealed = already || Boolean(s?.title && s?.artist);
 
-        return (
-          <Card key={idx} sx={{ p: 2 }}>
+        const card = (
+          <Card key={`card-${idx}`} sx={{ p: 2 }}>
             {/* 1) deposit_date */}
             <Box
               id="deposit_date"
-              sx={{ mb: 1, fontSize: 14, color: "text.secondary"}}
+              sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}
             >
               {"Pépite déposée " + dep?.deposit_date}
             </Box>
@@ -316,6 +366,39 @@ export default function SongDisplay({
             </Box>
           </Card>
         );
+
+        // Après le premier dépôt, insérer la section "à découvrir" si d'autres existent
+        if (idx === 0) {
+          return (
+            <React.Fragment key={idx}>
+              {card}
+              {deposits.length > 1 && (
+                <Box
+                  id="a_decouvrir"
+                  sx={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: 2,
+                    background:
+                      "linear-gradient(135deg, rgba(240,255,240,0.8), rgba(230,255,245,0.8))",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    p: 2,
+                  }}
+                >
+                  <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+                    "Utilise tes points pour révéler d’autres chansons déposées encore
+                    avant dans cette boîte"
+                  </Typography>
+                </Box>
+              )}
+            </React.Fragment>
+          );
+        }
+
+        return card;
       })}
 
       {/* ---- Modal PLAY (commune) ---- */}
