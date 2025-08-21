@@ -14,12 +14,6 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { getCookie } from "../../Security/TokensUtils";
 import PlayModal from "../../Common/PlayModal";
 
-useEffect(() => {
-  // scroll instantané en haut à l'ouverture
-  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  // si tu préfères une petite animation :
-  // window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-}, []);
 
 export default function SongDisplay({
   dispDeposits,
