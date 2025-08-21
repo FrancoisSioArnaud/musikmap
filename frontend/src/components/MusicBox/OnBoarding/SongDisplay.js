@@ -54,12 +54,12 @@ export default function SongDisplay({
     setPlaySong(null);
   };
 
-  // Révéler (GET /box-management/revealSong) + enregistrer la découverte "revealed"
-  async function revealSong(idx) {
+  // Découvrir (GET /box-management/revealSong) + enregistrer la découverte "revealed"
+  async function discoverSong(idx) {
     const dep = deposits[idx];
     const cost = dep?.song?.cost;
     const songId = dep?.song?.id;
-    const depositId = dep?.deposit_id; // <-- fourni par le backend GetBox.post
+    const depositId = dep?.deposit_id; // fourni par le backend GetBox.post
     if (!songId || !cost) return;
 
     const csrftoken = getCookie("csrftoken");
@@ -77,11 +77,13 @@ export default function SongDisplay({
       // Attendu: { song: { title, artist, spotify_url, deezer_url } }
       const data = await res.json();
 
-      // 2) MAJ locale du dépôt révélé
+      // 2) MAJ locale du dépôt (révélé)
       const updated = [...deposits];
       const prevSong = updated[idx]?.song || {};
       updated[idx] = {
         ...updated[idx],
+        already_discovered: true,         // pour masquer le bouton et forcer l’affichage révélé
+        discovered_at: "à l'instant",     // pour l’étiquette demandée
         song: {
           ...prevSong,
           title: data?.song?.title ?? prevSong.title,
@@ -92,7 +94,7 @@ export default function SongDisplay({
       };
       setDispDeposits(updated);
 
-      // 3) Enregistrer la découverte "revealed"
+      // 3) Enregistrer côté serveur la découverte "revealed"
       if (depositId) {
         await fetch("/box-management/discovered-songs", {
           method: "POST",
@@ -109,7 +111,7 @@ export default function SongDisplay({
       }
     } catch (e) {
       console.error(e);
-      alert("Impossible de révéler ce titre pour le moment.");
+      alert("Impossible de découvrir ce titre pour le moment.");
     }
   }
 
@@ -126,7 +128,8 @@ export default function SongDisplay({
       {deposits.map((dep, idx) => {
         const u = dep?.user;
         const s = dep?.song || {};
-        const isRevealed = Boolean(s?.title && s?.artist);
+        const already = !!dep?.already_discovered;
+        const isRevealed = already || Boolean(s?.title && s?.artist);
 
         return (
           <Card key={idx} sx={{ p: 2 }}>
@@ -297,10 +300,19 @@ export default function SongDisplay({
                   Points gagnés : {totalPoints}
                 </Button>
               ) : !isRevealed ? (
-                <Button variant="contained" onClick={() => revealSong(idx)} size="large">
-                  Révéler — {s?.cost ?? "?"}
+                <Button variant="contained" onClick={() => discoverSong(idx)} size="large">
+                  Découvrir — {s?.cost ?? "?"}
                 </Button>
-              ) : null}
+              ) : (
+                // Affichage de la ligne "Découvert…" pour les secondaires uniquement
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {deposits[idx]?.discovered_at === "à l'instant"
+                    ? "Découverte à l'instant"
+                    : deposits[idx]?.discovered_at
+                    ? `Découvert : ${deposits[idx].discovered_at}`
+                    : null}
+                </Typography>
+              )}
             </Box>
           </Card>
         );
