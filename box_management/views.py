@@ -170,22 +170,39 @@ class GetBox(APIView):
     
         # 4bis) Compléter l'autre URL via l'agrégateur si manquante
         try:
-            # On choisit la plateforme manquante à récupérer
+            # Quelle plateforme manque ?
             if song_platform_id == 1 and not song.deezer_url:
                 request_platform = "deezer"
             elif song_platform_id == 2 and not song.spotify_url:
                 request_platform = "spotify"
             else:
                 request_platform = None
-    
+        
             if request_platform:
-                aggreg_url = request.build_absolute_uri("/api_aggregation/aggreg")
-                headers = {"Content-Type": "application/json"}
+                # URL de l'endpoint via reverse (namespace: api_agg)
+                aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
+        
                 payload = {
-                    "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
+                    "song": {
+                        "title": song.title,
+                        "artist": song.artist,
+                        "duration": song.duration,
+                    },
                     "platform": request_platform,
                 }
-                r = requests.ApiAggregation(post, data=json.dumps(payload), headers=headers, timeout=5)
+        
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": get_token(request),  # utile si CSRF actif
+                }
+        
+                r = requests.post(
+                    aggreg_url,
+                    data=json.dumps(payload),
+                    headers=headers,
+                    cookies=request.COOKIES,  # propage la session/csrf si nécessaire
+                    timeout=6,
+                )
                 if r.ok:
                     other_url = r.json()
                     if isinstance(other_url, str):
@@ -196,6 +213,7 @@ class GetBox(APIView):
         except Exception:
             # best-effort : on ignore les erreurs d’agrégation
             pass
+
     
         song.save()
     
@@ -508,6 +526,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
