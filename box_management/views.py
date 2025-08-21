@@ -84,204 +84,225 @@ class GetBox(APIView):
         return Response(resp, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
-        """
-        Crée/MAJ Song (synchrone), crée Deposit (synchrone), retourne:
-          - successes
-          - deposits: 10 dépôts précédents (sans le nouveau)
-              * idx 0 : toutes les infos (incl. spotify_url / deezer_url)
-              * suivants : format allégé
-        + Enregistre automatiquement la découverte "main" du dépôt idx 0 si user connecté.
-        + Complète l'URL de la plateforme manquante via /api_agg/aggreg (best-effort).
-        """
-        option = request.data.get('option') or {}
-        song_id = option.get('id')
-        song_name = option.get('name')
-        song_author = option.get('artist')
-        song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
-        box_name = request.data.get('boxName')
+    """
+    Crée/MAJ Song (synchrone), crée Deposit (synchrone), retourne:
+      - successes
+      - deposits: 10 dépôts précédents (sans le nouveau)
+          * idx 0 : toutes les infos (incl. spotify_url / deezer_url)
+          * idx > 0 :
+              - déjà découverts par l'utilisateur -> renvoyés révélés (title/artist/urls)
+              - sinon -> format allégé (img_url, id, cost)
+              - champs additionnels: already_discovered (bool), discovered_at (naturaltime ou None)
+    """
+    option = request.data.get('option') or {}
+    song_id = option.get('id')
+    song_name = option.get('name')
+    song_author = option.get('artist')
+    song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
+    box_name = request.data.get('boxName')
 
-        # 1) Box
-        box = Box.objects.filter(url=box_name).get()
+    # 1) Box
+    box = Box.objects.filter(url=box_name).get()
 
-        # 2) User courant
-        user = request.user if not isinstance(request.user, AnonymousUser) else None
+    # 2) User courant
+    user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-        # 3) Succès AVANT écriture
-        successes: dict = {}
-        points_to_add = NB_POINTS_ADD_SONG
-        successes['default_deposit'] = {'name': "Pépite", 'desc': "Tu as partagé une chanson", 'points': NB_POINTS_ADD_SONG}
+    # 3) Succès AVANT écriture
+    successes: dict = {}
+    points_to_add = NB_POINTS_ADD_SONG
+    successes['default_deposit'] = {'name': "Pépite", 'desc': "Tu as partagé une chanson", 'points': NB_POINTS_ADD_SONG}
 
-        if user and is_first_user_deposit(user, box):
-            points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            successes['first_user_deposit_box'] = {
-                'name': "Conquérant",
-                'desc': "Tu n'as jamais déposé ici",
-                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            }
+    if user and is_first_user_deposit(user, box):
+        points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
+        successes['first_user_deposit_box'] = {
+            'name': "Conquérant",
+            'desc': "Tu n'as jamais déposé ici",
+            'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
+        }
 
-        if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
-            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            successes['first_song_deposit'] = {
+    if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
+        points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+        successes['first_song_deposit'] = {
+            'name': "Far West",
+            'desc': "Ce son n'a jamais été déposé ici",
+            'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+        }
+        if is_first_song_deposit_global_by_title_artist(song_name, song_author):
+            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+            successes['first_song_deposit_global'] = {
                 'name': "Far West",
-                'desc': "Ce son n'a jamais été déposé ici",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            }
-            if is_first_song_deposit_global_by_title_artist(song_name, song_author):
-                points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                successes['first_song_deposit_global'] = {
-                    'name': "Far West",
-                    'desc': "Ce son n'a jamais été déposé sur notre réseau",
-                    'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                }
-
-        nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
-        if nb_consecutive_days:
-            consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
-            points_to_add += consecutive_days_points
-            nb_consecutive_days += 1
-            successes['consecutive_days'] = {
-                'name': "L'amour fou",
-                'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                'points': consecutive_days_points
+                'desc': "Ce son n'a jamais été déposé sur notre réseau",
+                'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             }
 
-        successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
+    nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
+    if nb_consecutive_days:
+        consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
+        points_to_add += consecutive_days_points
+        nb_consecutive_days += 1
+        successes['consecutive_days'] = {
+            'name': "L'amour fou",
+            'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
+            'points': consecutive_days_points
+        }
 
-        # 4) Upsert Song (clé = title + artist) + URL selon platform_id reçue
-        try:
-            song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
-            song.n_deposits = (song.n_deposits or 0) + 1
-        except Song.DoesNotExist:
-            song = Song(
-                song_id=song_id,
-                title=song_name,
-                artist=song_author,
-                image_url=option.get('image_url') or "",
-                duration=option.get('duration') or 0,
-            )
+    successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
 
-        incoming_url = option.get('url')
-        if song_platform_id == 1 and incoming_url:
-            song.spotify_url = incoming_url
-        elif song_platform_id == 2 and incoming_url:
-            song.deezer_url = incoming_url
-
-        # 4bis) Compléter l'autre plateforme via l'agrégateur (best-effort, synchrone)
-        try:
-            # Déterminer quelle plateforme est manquante
-            other_platform = None
-            if song_platform_id == 1 and not song.deezer_url:
-                other_platform = "deezer"
-            elif song_platform_id == 2 and not song.spotify_url:
-                other_platform = "spotify"
-
-            if other_platform in ("spotify", "deezer"):
-                csrf_token = get_token(request)
-                headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
-                aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
-
-                payload = {
-                    "song": {
-                        "title": song.title,
-                        "artist": song.artist,
-                        "duration": option.get('duration') or song.duration,
-                    },
-                    "platform": other_platform,
-                }
-                r = requests.post(
-                    aggreg_url,
-                    cookies=request.COOKIES,
-                    headers=headers_bg,
-                    data=json.dumps(payload),
-                    timeout=6
-                )
-                if r.ok:
-                    other_url = r.json()
-                    if isinstance(other_url, str) and other_url:
-                        if other_platform == "spotify":
-                            song.spotify_url = song.spotify_url or other_url
-                        else:
-                            song.deezer_url = song.deezer_url or other_url
-        except Exception:
-            # on ignore toute erreur de complétion (best-effort)
-            pass
-
-        # Sauvegarde finale du Song
-        song.save()
-
-        # 5) Créer le nouveau dépôt
-        new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
-
-        # 6) Créditer les points (best-effort)
-        try:
-            csrf_token = get_token(request)
-            add_points_url = request.build_absolute_uri(reverse('add-points'))
-            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
-            requests.post(
-                add_points_url,
-                cookies=request.COOKIES,
-                headers=headers_bg,
-                data=json.dumps({"points": points_to_add}),
-                timeout=3
-            )
-        except Exception:
-            pass
-
-        # 7) Récupérer les 10 dépôts précédents (sans le nouveau)
-        previous_deposits = list(
-            Deposit.objects
-            .filter(box_id=box)
-            .exclude(pk=new_deposit.pk)
-            .select_related('song_id', 'user')
-            .order_by('-deposited_at', '-id')[:10]
+    # 4) Upsert Song (clé = title+artist), remplir l'URL selon platform_id
+    try:
+        song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
+        song.n_deposits = (song.n_deposits or 0) + 1
+    except Song.DoesNotExist:
+        song = Song(
+            song_id=song_id,
+            title=song_name,
+            artist=song_author,
+            image_url=option.get('image_url') or "",
+            duration=option.get('duration') or 0,
         )
 
-        # 7bis) Auto-discovery "main" pour l’idx 0 si user connecté
-        if user and previous_deposits:
-            d0 = previous_deposits[0]
-            already_this_deposit = DiscoveredSong.objects.filter(user_id=user, deposit_id=d0).exists()
-            if not already_this_deposit:
-                existing_same_song = DiscoveredSong.objects.filter(
-                    user_id=user,
-                    deposit_id__song_id__title__iexact=d0.song_id.title,
-                    deposit_id__song_id__artist__iexact=d0.song_id.artist
-                ).order_by('-discovered_at').first()
+    incoming_url = option.get('url')
+    if song_platform_id == 1 and incoming_url:
+        song.spotify_url = incoming_url
+    elif song_platform_id == 2 and incoming_url:
+        song.deezer_url = incoming_url
 
-                if existing_same_song:
-                    if existing_same_song.discovered_type != "main":
-                        existing_same_song.discovered_type = "main"
-                        existing_same_song.deposit_id = d0
-                        existing_same_song.save(update_fields=["discovered_type", "deposit_id", "discovered_at"])
-                else:
-                    DiscoveredSong.objects.create(user_id=user, deposit_id=d0, discovered_type="main")
+    # 4bis) Compléter l'autre URL via l'agrégateur si manquante
+    try:
+        # On choisit la plateforme manquante à récupérer
+        if song_platform_id == 1 and not song.deezer_url:
+            request_platform = "deezer"
+        elif song_platform_id == 2 and not song.spotify_url:
+            request_platform = "spotify"
+        else:
+            request_platform = None
 
-        # 8) Construire la réponse
-        cost_series = [500 - 50 * i for i in range(9)]  # 500 → 100
-        deposits_payload = []
-        for idx, d in enumerate(previous_deposits):
-            s = d.song_id
-            u = d.user
+        if request_platform:
+            aggreg_url = request.build_absolute_uri("/api_agg/aggreg")
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
+                "platform": request_platform,
+            }
+            r = requests.post(aggreg_url, data=json.dumps(payload), headers=headers, timeout=5)
+            if r.ok:
+                other_url = r.json()
+                if isinstance(other_url, str):
+                    if request_platform == "deezer":
+                        song.deezer_url = other_url
+                    elif request_platform == "spotify":
+                        song.spotify_url = other_url
+    except Exception:
+        # best-effort : on ignore les erreurs d’agrégation
+        pass
 
-            if u and not isinstance(u, AnonymousUser):
-                full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-                display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-                profile_pic = (
-                    getattr(u, "profile_pic_url", None)
-                    or getattr(u, "avatar_url", None)
-                    or getattr(getattr(u, "profile", None), "picture_url", None)
-                )
-                user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
+    song.save()
+
+    # 5) Créer le nouveau dépôt
+    new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
+
+    # 6) Créditer les points (best-effort)
+    try:
+        csrf_token = get_token(request)
+        add_points_url = request.build_absolute_uri(reverse('add-points'))
+        headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+        requests.post(
+            add_points_url,
+            cookies=request.COOKIES,
+            headers=headers_bg,
+            data=json.dumps({"points": points_to_add}),
+            timeout=3
+        )
+    except Exception:
+        pass
+
+    # 7) Récupérer les 10 dépôts précédents (sans le nouveau)
+    previous_deposits = list(
+        Deposit.objects
+        .filter(box_id=box)
+        .exclude(pk=new_deposit.pk)
+        .select_related('song_id', 'user')
+        .order_by('-deposited_at', '-id')[:10]
+    )
+
+    # 7bis) Auto-discovery "main" pour l’idx 0 si user connecté
+    if user and previous_deposits:
+        d0 = previous_deposits[0]
+        already_this_deposit = DiscoveredSong.objects.filter(user_id=user, deposit_id=d0).exists()
+        if not already_this_deposit:
+            existing_same_song = DiscoveredSong.objects.filter(
+                user_id=user,
+                deposit_id__song_id__title__iexact=d0.song_id.title,
+                deposit_id__song_id__artist__iexact=d0.song_id.artist
+            ).order_by('-discovered_at').first()
+
+            if existing_same_song:
+                if existing_same_song.discovered_type != "main":
+                    existing_same_song.discovered_type = "main"
+                    existing_same_song.deposit_id = d0
+                    existing_same_song.save(update_fields=["discovered_type", "deposit_id", "discovered_at"])
             else:
-                user_payload = None
+                DiscoveredSong.objects.create(user_id=user, deposit_id=d0, discovered_type="main")
 
-            if idx == 0:
+    # Préparer un index {deposit_id: discovered_instance} pour l'utilisateur courant
+    ds_by_dep = {}
+    if user and previous_deposits:
+        dep_ids = [d.id for d in previous_deposits]
+        for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids):
+            ds_by_dep[ds.deposit_id_id] = ds
+
+    # 8) Construire la réponse
+    cost_series = [500 - 50 * i for i in range(9)]  # 500 → 100
+    deposits_payload = []
+    for idx, d in enumerate(previous_deposits):
+        s = d.song_id
+        u = d.user
+
+        if u and not isinstance(u, AnonymousUser):
+            full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
+            display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+            profile_pic = (
+                getattr(u, "profile_pic_url", None)
+                or getattr(u, "avatar_url", None)
+                or getattr(getattr(u, "profile", None), "picture_url", None)
+            )
+            user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
+        else:
+            user_payload = None
+
+        # Découverte par dépôt (uniquement idx > 0 demandé)
+        ds = ds_by_dep.get(d.id) if user else None
+        already_discovered = bool(ds) if idx > 0 else False
+        discovered_at_natural = (
+            naturaltime(localtime(ds.discovered_at)) if (idx > 0 and ds and getattr(ds, "discovered_at", None)) else None
+        )
+
+        if idx == 0:
+            # Premier : toujours complet
+            song_payload = {
+                "title": getattr(s, "title", None),
+                "artist": getattr(s, "artist", None),
+                "url": getattr(s, "url", None),
+                "spotify_url": getattr(s, "spotify_url", None),
+                "deezer_url": getattr(s, "deezer_url", None),
+                "img_url": getattr(s, "image_url", None),
+            }
+            dep_obj = {
+                "deposit_id": d.id,
+                "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
+                "song": song_payload,
+                "user": user_payload,
+            }
+        else:
+            # Secondaires : si déjà découverts -> renvoyés révélés
+            if already_discovered:
                 song_payload = {
+                    "id": getattr(s, "id", None),
                     "title": getattr(s, "title", None),
                     "artist": getattr(s, "artist", None),
-                    "url": getattr(s, "url", None),  # laissé pour compat, peut rester vide
+                    "img_url": getattr(s, "image_url", None),
                     "spotify_url": getattr(s, "spotify_url", None),
                     "deezer_url": getattr(s, "deezer_url", None),
-                    "img_url": getattr(s, "image_url", None),
                 }
             else:
                 cost_value = cost_series[idx - 1] if (idx - 1) < len(cost_series) else 100
@@ -291,16 +312,19 @@ class GetBox(APIView):
                     "cost": cost_value,
                 }
 
-            deposits_payload.append({
-                "deposit_id": d.id,  # utile au front pour ManageDiscoveredSongs
+            dep_obj = {
+                "deposit_id": d.id,
                 "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
+                "already_discovered": already_discovered if user else False,
+                "discovered_at": discovered_at_natural if user else None,
                 "song": song_payload,
                 "user": user_payload,
-            })
+            }
 
-        response = {"successes": list(successes.values()), "deposits": deposits_payload}
-        return Response(response, status=status.HTTP_200_OK)
+        deposits_payload.append(dep_obj)
 
+    response = {"successes": list(successes.values()), "deposits": deposits_payload}
+    return Response(response, status=status.HTTP_200_OK)
 
 class Location(APIView):
     def post(self, request):
@@ -483,3 +507,4 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
