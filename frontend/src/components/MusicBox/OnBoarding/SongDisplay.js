@@ -361,8 +361,6 @@ export default function SongDisplay({
                     width: "100%",
                     aspectRatio: "1 / 1.5",
                     borderRadius: 2,
-                    background:
-                      "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
