@@ -178,7 +178,7 @@ class GetBox(APIView):
                 request_platform = None
     
             if request_platform:
-                aggreg_url = request.build_absolute_uri("./api_agg/aggreg")
+                aggreg_url = request.build_absolute_uri("../api_aggregation/aggreg")
                 headers = {"Content-Type": "application/json"}
                 payload = {
                     "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
@@ -507,6 +507,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
