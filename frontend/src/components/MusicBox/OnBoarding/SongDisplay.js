@@ -131,7 +131,7 @@ export default function SongDisplay({
         id="intro"
          sx={{
             width: "100%",
-            aspectRatio: "1 / 1.5",
+            aspectRatio: "1 / 1.20",
             borderRadius: 2,
             display: "flex",
             alignItems: "center",
