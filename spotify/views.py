@@ -232,7 +232,7 @@ class Search(APIView):
         search_query = request.data.get('search_query')
 
         # Search for tracks using the Spotipy client
-        results = sp.search(q=search_query, type='track')
+        results = sp.search(q=search_query, type='track', limit=50)
 
         # Extract the track data from the results and create a list of tracks
         tracks = []
@@ -250,3 +250,4 @@ class Search(APIView):
             tracks.append(track)
         # Return the list of tracks as a response
         return Response(tracks, status=status.HTTP_200_OK)
+
