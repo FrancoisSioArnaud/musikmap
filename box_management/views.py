@@ -185,7 +185,7 @@ class GetBox(APIView):
                     "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
                     "platform": request_platform,
                 }
-                r = requests.post(aggreg_url, data=json.dumps(payload), headers=headers, timeout=5)
+                r = requests.ApiAggregation(post, data=json.dumps(payload), headers=headers, timeout=5)
                 if r.ok:
                     other_url = r.json()
                     if isinstance(other_url, str):
@@ -508,6 +508,7 @@ class RevealSong(APIView):
             }
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
