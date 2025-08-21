@@ -129,23 +129,22 @@ export default function SongDisplay({
       {/* ======= SECTION INTRO (carrée) ======= */}
       <Box
         id="intro"
-        sx={{
-          position: "relative",
-          width: "100%",
-          aspectRatio: "1 / 1",
-          borderRadius: 2,
-          background:
-            "linear-gradient(135deg, rgba(240,240,255,0.8), rgba(230,245,255,0.8))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          p: 2,
-        }}
+         sx={{
+            width: "100%",
+            aspectRatio: "1 / 1.5",
+            borderRadius: 2,
+            background:
+              "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            p: 2,
+          }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-            "La dernière chanson déposée ici
+          <Typography component="h1" variant="h5" sx={{ fontWeight: 700, fontColor : #FFF }}>
+            La dernière chanson déposée ici
           </Typography>
           <Typography
             component="span"
@@ -155,7 +154,7 @@ export default function SongDisplay({
             (par un vrai humain.e)
           </Typography>
           <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-            t'attend juste en dessous"
+            t'attend juste en dessous
           </Typography>
         </Box>
 
@@ -377,10 +376,10 @@ export default function SongDisplay({
                   id="a_decouvrir"
                   sx={{
                     width: "100%",
-                    aspectRatio: "1 / 1",
+                    aspectRatio: "1 / 1.5",
                     borderRadius: 2,
                     background:
-                      "linear-gradient(135deg, rgba(240,255,240,0.8), rgba(230,255,245,0.8))",
+                      "linear-gradient(135deg, #FF9900, #FF6900, #FF3D00)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -388,9 +387,9 @@ export default function SongDisplay({
                     p: 2,
                   }}
                 >
-                  <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-                    "Utilise tes points pour révéler d’autres chansons déposées encore
-                    avant dans cette boîte"
+                  <Typography component="h1" variant="h5" sx={{ fontWeight: 700, fontColor : #FFF }}>
+                    Utilise tes points pour révéler d’autres chansons déposées encore
+                    avant dans cette boîte
                   </Typography>
                 </Box>
               )}
