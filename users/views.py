@@ -148,9 +148,6 @@ class ChangePasswordUser(APIView):
 
 
 class ChangeProfilePicture(APIView):
-    """
-    Changer sa photo de profil (auth requis).
-    """
     def post(self, request, format=None):
         if not request.user.is_authenticated:
             return Response({'errors': ['Utilisateur non connecté.']}, status=status.HTTP_401_UNAUTHORIZED)
@@ -160,22 +157,20 @@ class ChangeProfilePicture(APIView):
 
         file = request.FILES['profile_picture']
 
-        # petites gardes-fous (facultatif mais utile)
         if not (file.content_type or '').startswith('image/'):
             return Response({'errors': ['Le fichier doit être une image.']}, status=status.HTTP_400_BAD_REQUEST)
-        if file.size > 5 * 1024 * 1024:  # 5 Mo
+        if file.size > 5 * 1024 * 1024:
             return Response({'errors': ['Image trop volumineuse (max 5 Mo).']}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = request.user
-        user.profile_picture = file
-        user.save()
-
-        # renvoyer l’URL directement (utile côté front)
-        url = getattr(user.profile_picture, 'url', None)
-        return Response(
-            {'status': 'Image de profil mise à jour.', 'profile_picture_url': url},
-            status=status.HTTP_200_OK
-        )
+        try:
+            user = request.user
+            user.profile_picture = file
+            user.save()
+            url = getattr(user.profile_picture, 'url', None)
+            return Response({'status': 'Image de profil mise à jour.', 'profile_picture_url': url},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'errors': [str(e)]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ChangePreferredPlatform(APIView):
@@ -353,3 +348,4 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
