@@ -151,3 +151,168 @@ export default function UserSettings() {
 
       {/* Avatar + username (édition via page dédiée) */}
       <Grid container spacing={2} alignItems="center">
+        <Grid item style={styles.avatarContainer}>
+          <input
+            accept="image/*"
+            id="avatar-input"
+            type="file"
+            style={{ display: "none" }}
+            onChange={handleAvatarChange}
+          />
+          <label htmlFor="avatar-input">
+            <Avatar
+              style={styles.avatar}
+              src={user.profile_picture_url}
+              alt={user.username}
+              component="span"
+            />
+            <EditIcon style={styles.editIcon} />
+          </label>
+        </Grid>
+        <Grid item>
+          <Typography variant="h5">{user.username}</Typography>
+        </Grid>
+      </Grid>
+
+      {/* Infos perso */}
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom>
+            Tes informations personnelles
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            style={styles.textField}
+            label="Email"
+            variant="outlined"
+            fullWidth
+            value={user.email}
+            InputProps={{ readOnly: true }}
+          />
+        </Grid>
+        {!user.is_social_auth ? (
+          <Grid item xs={12} sm={6}>
+            <TextField
+              style={styles.textField}
+              label="Mot de passe"
+              variant="outlined"
+              fullWidth
+              type="password"
+              value="*******"
+              InputProps={{ readOnly: true }}
+            />
+          </Grid>
+        ) : null}
+      </Grid>
+
+      {/* Mot de passe */}
+      {!user.is_social_auth ? (
+        showPasswordForm ? (
+          <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField required fullWidth name="old_password" label="Ancien mot de passe" type="password" />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField required fullWidth name="new_password1" label="Nouveau mot de passe" type="password" />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField required fullWidth name="new_password2" label="Confirmation" type="password" />
+              </Grid>
+            </Grid>
+            <Button type="submit" variant="contained" sx={{ mt: 3 }} style={styles.basicButton}>
+              Modifier
+            </Button>
+            <Button variant="contained" sx={{ ml: 2, mt: 3 }} onClick={handlePasswordCancel} style={styles.basicButton}>
+              Annuler
+            </Button>
+            {Object.keys(errorMessages).map((k) => (
+              <Typography key={k} variant="body2" color="error" align="center">
+                {errorMessages[k]}
+              </Typography>
+            ))}
+          </Box>
+        ) : (
+          <Button variant="contained" onClick={handlePasswordChange} style={styles.basicButton} sx={{ mt: 1 }}>
+            Modifier le mot de passe
+          </Button>
+        )
+      ) : (
+        <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+          Vous êtes connecté avec une plateforme de streaming.
+        </Typography>
+      )}
+
+      {/* Streaming providers */}
+      <Grid container spacing={2} alignItems="center" style={styles.buttonGroup} sx={{ mt: 3 }}>
+        <Grid item xs={12}>
+          <Typography variant="h6" style={styles.streamingTitle}>
+            Tes services de streaming
+          </Typography>
+          <Typography variant="subtitle1" gutterBottom>
+            Ta plateforme principale est celle utilisée pour la recherche
+          </Typography>
+        </Grid>
+
+        {/* Spotify */}
+        <Grid container spacing={2} alignItems="center" style={styles.buttonGroup}>
+          <Grid item>
+            <img src="../static/images/spotify_logo.svg" alt="Spotify" style={styles.image} />
+          </Grid>
+          <Grid item>
+            {isSpotifyAuthenticated ? (
+              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickDisconnectSpotify}>
+                Se déconnecter
+              </Button>
+            ) : (
+              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickConnectSpotify}>
+                Se connecter
+              </Button>
+            )}
+          </Grid>
+          <Grid item>
+            {user.preferred_platform === "spotify" ? (
+              <Typography variant="subtitle1">Plateforme principale</Typography>
+            ) : (
+              <Button variant="contained" style={styles.buttonPlatform} onClick={() => handlePreferredPlatform("spotify")}>
+                Choisir comme plateforme principale
+              </Button>
+            )}
+          </Grid>
+        </Grid>
+
+        {/* Deezer */}
+        <Grid container spacing={2} alignItems="center" style={styles.buttonGroup}>
+          <Grid item>
+            <img src="../static/images/deezer_logo.svg" alt="Deezer" style={styles.image} />
+          </Grid>
+          <Grid item>
+            {isDeezerAuthenticated ? (
+              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickDisconnectDeezer}>
+                Se déconnecter
+              </Button>
+            ) : (
+              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickConnectDeezer}>
+                Se connecter
+              </Button>
+            )}
+          </Grid>
+          <Grid item>
+            {user.preferred_platform === "deezer" ? (
+              <Typography variant="subtitle1">Plateforme principale</Typography>
+            ) : (
+              <Button variant="contained" style={styles.buttonPlatform} onClick={() => handlePreferredPlatform("deezer")}>
+                Choisir comme plateforme principale
+              </Button>
+            )}
+          </Grid>
+        </Grid>
+      </Grid>
+
+      <Button variant="contained" onClick={() => logoutUser(setUser, setIsAuthenticated)} style={styles.disconnectButton}>
+        Déconnexion
+      </Button>
+    </div>
+  );
+}
