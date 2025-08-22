@@ -80,7 +80,10 @@ export default function App() {
               <Route
                 path="/profile"
                 element={isAuthenticated ? <UserProfilePage /> : <SuccessfulLogout />}
+                
               />
+              <Route path="/profile/settings" element={<UserSettings />} />
+              <Route path="/profile/edit" element={<UserProfileEdit />} />
               <Route
                 path="/library"
                 element={isAuthenticated ? <LibraryPage /> : <SuccessfulLogout />}
@@ -107,6 +110,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
