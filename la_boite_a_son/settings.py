@@ -149,6 +149,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = Path("/var/www/boite-a-groove/static")
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path("/var/www/boite-a-groove/media")
 
 
 # Default primary key field type
@@ -183,6 +185,7 @@ SOCIAL_AUTH_DEEZER_KEY = LOGIN_APP_ID
 SOCIAL_AUTH_DEEZER_SECRET = LOGIN_APP_SECRET
 SOCIAL_AUTH_DEEZER_SCOPE = ['user-read-email']
 SOCIAL_AUTH_DEEZER_EXTRA_DATA = [('email', 'email')]
+
 
 
 
