@@ -147,33 +147,34 @@ class ChangePasswordUser(APIView):
 
 
 class ChangeProfilePicture(APIView):
-    '''
-    Class goal :
-    While logged in, change your profile picture (will erase the old one from the DB)
-    '''
+    """
+    Changer sa photo de profil (auth requis).
+    """
     def post(self, request, format=None):
-        # Guard clause that checks if user is logged in
         if not request.user.is_authenticated:
-            return Response({'errors': 'Utilisateur non connecté.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'errors': ['Utilisateur non connecté.']}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Get connected user
-        user = request.user
-
-        # Guard clause that checks if the profile_picture field exists in the request.FILES
         if 'profile_picture' not in request.FILES:
-            return Response({'errors': 'Aucune image de profil n\'a été fournie.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'errors': ['Aucune image de profil n’a été fournie.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the new profile picture from the request.FILES
-        new_profile_picture = request.FILES['profile_picture']
+        file = request.FILES['profile_picture']
 
-        try:
-            # Update the user's profile picture
-            user.profile_picture = new_profile_picture
-            user.save()
+        # petites gardes-fous (facultatif mais utile)
+        if not (file.content_type or '').startswith('image/'):
+            return Response({'errors': ['Le fichier doit être une image.']}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > 5 * 1024 * 1024:  # 5 Mo
+            return Response({'errors': ['Image trop volumineuse (max 5 Mo).']}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({'status': 'L\'image de profil a été modifiée avec succès.'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        user = request.user
+        user.profile_picture = file
+        user.save()
+
+        # renvoyer l’URL directement (utile côté front)
+        url = getattr(user.profile_picture, 'url', None)
+        return Response(
+            {'status': 'Image de profil mise à jour.', 'profile_picture_url': url},
+            status=status.HTTP_200_OK
+        )
 
 
 class ChangePreferredPlatform(APIView):
@@ -309,3 +310,38 @@ class GetUserInfo(APIView):
             return Response(response, status=status.HTTP_200_OK)
         else:
             return Response({'Bad Request': 'User ID not found in request'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangeUsername(APIView):
+    """
+    Changer son nom d’utilisateur (username) en étant connecté.
+    """
+    def post(self, request, format=None):
+        if not request.user.is_authenticated:
+            return Response({'errors': ['Utilisateur non connecté.']}, status=status.HTTP_401_UNAUTHORIZED)
+
+        new_username = request.data.get('username') or request.data.get('new_username')
+        if not new_username:
+            return Response({'errors': ['Veuillez fournir un nom d’utilisateur.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        # validations de base
+        validator = UnicodeUsernameValidator()
+        try:
+            validator(new_username)
+        except ValidationError as e:
+            return Response({'errors': list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_username) < 3 or len(new_username) > 150:
+            return Response({'errors': ['Le nom d’utilisateur doit contenir entre 3 et 150 caractères.']},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # unicité (hors moi)
+        if CustomUser.objects.filter(username__iexact=new_username).exclude(pk=request.user.pk).exists():
+            return Response({'errors': ['Ce nom d’utilisateur est déjà pris.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        # OK, on met à jour
+        user = request.user
+        user.username = new_username
+        user.save()
+
+        return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
+                        status=status.HTTP_200_OK)
