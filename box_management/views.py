@@ -529,25 +529,47 @@ class RevealSong(APIView):
 
 def user_deposits(request):
     user = request.user
-    # Adapte à ton modèle:
-    # On suppose un modèle Deposit(user, song_title, song_artist, song_img_url, created_at)
-    qs = (Deposit.objects
-          .filter(user=user)
-          .order_by("-created_at")[:500])
+
+    qs = (
+        Deposit.objects
+        .filter(user=user)
+        .select_related("song")
+        .order_by("-deposited_at")[:500]
+    )
 
     data = []
     for d in qs:
+        # Récupère les infos chanson quelle que soit ta nomenclature
+        s = getattr(d, "song", None)
+
+        if s:
+            title = getattr(s, "title", None) or getattr(s, "name", None)
+            artist = getattr(s, "artist", None) or getattr(s, "artist_name", None)
+            img_url = (
+                getattr(s, "img_url", None)
+                or getattr(s, "image_url", None)
+                or getattr(s, "cover_url", None)
+            )
+        else:
+            # fallback si pas de FK 'song' ou données dénormalisées
+            title = getattr(d, "song_title", None)
+            artist = getattr(d, "song_artist", None)
+            img_url = (
+                getattr(d, "song_img_url", None)
+                or getattr(d, "song_image_url", None)
+            )
+
         data.append({
             "id": d.id,
             "song": {
-                "title": d.song_title,
-                "artist": d.song_artist,
-                "img_url": getattr(d, "song_img_url", None),
+                "title": title,
+                "artist": artist,
+                # le front attend 'img_url'
+                "img_url": img_url,
             },
-            "deposited_at": d.created_at.isoformat(),
+            "deposited_at": getattr(d, "deposited_at", None).isoformat() if getattr(d, "deposited_at", None) else None,
         })
+
     return Response(data, status=200)
-
-
 
 
