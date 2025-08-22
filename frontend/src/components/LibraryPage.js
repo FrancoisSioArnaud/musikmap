@@ -1,3 +1,4 @@
+// frontend/src/components/LibraryPage.js
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "./UserContext";
@@ -65,7 +66,6 @@ export default function LibraryPage() {
   if (!items.length) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography variant="h5" gutterBottom>Ta bibliothèque de découvertes</Typography>
         <Typography>Vous n'avez pas encore découvert de chansons.</Typography>
       </Box>
     );
@@ -73,7 +73,6 @@ export default function LibraryPage() {
 
   return (
     <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-
       {items.map((it, idx) => {
         const t = (it?.discovered_type || "").toLowerCase();
         const s = it?.song || {};
