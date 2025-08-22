@@ -14,6 +14,7 @@ from django.contrib.humanize.templatetags.humanize import naturaltime
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 # Projet
 from .models import Box, Deposit, Song, LocationPoint, DiscoveredSong
@@ -582,5 +583,6 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
