@@ -73,7 +73,6 @@ export default function LibraryPage() {
 
   return (
     <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-      <Typography variant="h5" gutterBottom>Ta bibliothèque de découvertes</Typography>
 
       {items.map((it, idx) => {
         const t = (it?.discovered_type || "").toLowerCase();
