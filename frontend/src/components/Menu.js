@@ -64,15 +64,6 @@ export default function MenuAppBar() {
               />
             </Box>
 
-            <IconButton
-              size="large"
-              aria-label="Ma bibliothèque"
-              color="inherit"
-              component={Link}
-              to="/library"
-            >
-              <LibraryMusicIcon sx={{ color: "#000" }} />
-            </IconButton>
                 
             <IconButton
               size="large"
@@ -110,6 +101,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
