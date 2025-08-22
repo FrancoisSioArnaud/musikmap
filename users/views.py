@@ -11,7 +11,8 @@ from social_django.models import UserSocialAuth
 from .serializer import CustomUserSerializer
 from .models import CustomUser
 from box_management.models import Deposit
-
+from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.db import IntegrityError, transaction
 
 class LoginUser(APIView):
     '''
@@ -314,6 +315,7 @@ class GetUserInfo(APIView):
 class ChangeUsername(APIView):
     """
     Changer son nom d’utilisateur (username) en étant connecté.
+    Retourne toujours du JSON, y compris en cas d’erreur.
     """
     def post(self, request, format=None):
         if not request.user.is_authenticated:
@@ -323,7 +325,7 @@ class ChangeUsername(APIView):
         if not new_username:
             return Response({'errors': ['Veuillez fournir un nom d’utilisateur.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        # validations de base
+        # Validation syntaxique
         validator = UnicodeUsernameValidator()
         try:
             validator(new_username)
@@ -334,14 +336,20 @@ class ChangeUsername(APIView):
             return Response({'errors': ['Le nom d’utilisateur doit contenir entre 3 et 150 caractères.']},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # unicité (hors moi)
+        # Unicité (hors moi)
         if CustomUser.objects.filter(username__iexact=new_username).exclude(pk=request.user.pk).exists():
             return Response({'errors': ['Ce nom d’utilisateur est déjà pris.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        # OK, on met à jour
-        user = request.user
-        user.username = new_username
-        user.save()
+        try:
+            with transaction.atomic():
+                user = request.user
+                user.username = new_username
+                user.save()
+        except IntegrityError:
+            return Response({'errors': ['Conflit d’unicité sur le nom d’utilisateur.']}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Attraper tout le reste pour éviter un 500 HTML
+            return Response({'errors': [f'Erreur serveur: {str(e)}']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
