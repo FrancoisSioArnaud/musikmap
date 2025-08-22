@@ -32,7 +32,7 @@ export default function MenuAppBar() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            La Boîte à Groove
+            MusikBox
           </Typography>
         </Box>
 
@@ -110,6 +110,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
