@@ -19,39 +19,74 @@ export default function UserProfileEdit() {
   const onAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSaving(true);
+  
     const form = new FormData();
     form.append("profile_picture", file);
     const csrftoken = getCookie("csrftoken");
-    setSaving(true);
+  
     try {
       const res = await fetch("/users/change-profile-pic", {
         method: "POST",
-        headers: { "X-CSRFToken": csrftoken },
+        headers: { "X-CSRFToken": csrftoken, "Accept": "application/json" },
+        credentials: "same-origin",
         body: form,
       });
-      await res.json();
-      if (res.ok) await checkUserStatus(setUser, setIsAuthenticated);
+  
+      const ct = res.headers.get("content-type") || "";
+      const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
+  
+      if (!res.ok) {
+        const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
+        alert(msg);
+        return;
+      }
+  
+      // Mettre à jour l’UI
+      if (payload?.profile_picture_url) {
+        setUser((prev) => ({ ...prev, profile_picture_url: payload.profile_picture_url }));
+      } else {
+        await checkUserStatus(setUser, setIsAuthenticated);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Échec de l’envoi de l’image.");
     } finally {
       setSaving(false);
     }
   };
 
-  const onSaveUsername = async () => {
-    const csrftoken = getCookie("csrftoken");
+  
+   const onSaveUsername = async () => {
     setSaving(true);
+    const csrftoken = getCookie("csrftoken");
+  
     try {
       const res = await fetch("/users/change-username", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        credentials: "same-origin",
         body: JSON.stringify({ username }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        await checkUserStatus(setUser, setIsAuthenticated);
-        navigate("/profile");
-      } else {
-        console.log(data);
+  
+      const ct = res.headers.get("content-type") || "";
+      const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
+  
+      if (!res.ok) {
+        const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
+        alert(msg);
+        return;
       }
+  
+      await checkUserStatus(setUser, setIsAuthenticated);
+      navigate("/profile");
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de sauvegarder. Vérifie ta connexion.");
     } finally {
       setSaving(false);
     }
