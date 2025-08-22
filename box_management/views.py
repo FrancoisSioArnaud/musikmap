@@ -527,49 +527,60 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
-def user_deposits(request):
-    user = request.user
 
-    qs = (
-        Deposit.objects
-        .filter(user=user)
-        .select_related("song")
-        .order_by("-deposited_at")[:500]
-    )
+class UserDepositsView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    data = []
-    for d in qs:
-        # Récupère les infos chanson quelle que soit ta nomenclature
-        s = getattr(d, "song", None)
+    def get(self, request):
+        user = request.user
 
-        if s:
-            title = getattr(s, "title", None) or getattr(s, "name", None)
-            artist = getattr(s, "artist", None) or getattr(s, "artist_name", None)
-            img_url = (
-                getattr(s, "img_url", None)
-                or getattr(s, "image_url", None)
-                or getattr(s, "cover_url", None)
-            )
-        else:
-            # fallback si pas de FK 'song' ou données dénormalisées
-            title = getattr(d, "song_title", None)
-            artist = getattr(d, "song_artist", None)
-            img_url = (
-                getattr(d, "song_img_url", None)
-                or getattr(d, "song_image_url", None)
-            )
+        # Tri correct: ton modèle expose 'deposited_at' (pas 'created_at')
+        qs = (Deposit.objects
+              .filter(user=user)
+              .order_by("-deposited_at")[:500])
 
-        data.append({
-            "id": d.id,
-            "song": {
-                "title": title,
-                "artist": artist,
-                # le front attend 'img_url'
-                "img_url": img_url,
-            },
-            "deposited_at": getattr(d, "deposited_at", None).isoformat() if getattr(d, "deposited_at", None) else None,
-        })
+        # Essaie de détecter le nom de la FK vers Song (song vs song_id)
+        rel_candidates = [
+            f.name for f in Deposit._meta.get_fields()
+            if getattr(f, "is_relation", False)
+            and getattr(f, "many_to_one", False)
+            and not getattr(f, "auto_created", False)
+        ]
+        song_rel_name = None
+        for cand in ("song", "song_id", "track", "track_id"):
+            if cand in rel_candidates:
+                song_rel_name = cand
+                break
 
-    return Response(data, status=200)
+        if song_rel_name:
+            qs = qs.select_related(song_rel_name)
+
+        items = []
+        for d in qs:
+            # Récupère l’instance de chanson si relation trouvée
+            s = getattr(d, song_rel_name, None) if song_rel_name else None
+
+            def pick(obj, *names):
+                """Renvoie la première propriété existante et non vide parmi names, sur obj."""
+                for n in names:
+                    if obj is not None and hasattr(obj, n):
+                        val = getattr(obj, n)
+                        if val not in (None, ""):
+                            return val
+                return None
+
+            # Essaie d’abord sur l’objet Song (s), puis en fallback sur Deposit (d) si tu as dénormalisé
+            title  = pick(s, "title", "name") or pick(d, "song_title")
+            artist = pick(s, "artist", "artist_name") or pick(d, "song_artist")
+            img    = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
+
+            deposited = getattr(d, "deposited_at", None)
+            items.append({
+                "id": d.id,
+                "song": {"title": title, "artist": artist, "img_url": img},
+                "deposited_at": deposited.isoformat() if deposited else None,
+            })
+
+        return Response(items, status=200)
 
 
