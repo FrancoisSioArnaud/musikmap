@@ -77,7 +77,7 @@ export default function UserProfilePage() {
 
       {/* Tab: Découvertes (rend LibraryPage sans le titre) */}
       <TabPanel value={tab} index={0}>
-        <LibraryPage hideTitle />
+        <LibraryPage />
       </TabPanel>
 
       {/* Tab: Partages (mes dépôts) */}
@@ -134,3 +134,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
