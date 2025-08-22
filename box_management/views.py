@@ -550,6 +550,71 @@ def user_deposits(request):
 
 
 
+def user_deposits(request):
+    """
+    Retourne les dépôts (partages) de l'utilisateur connecté.
+    Format attendu pour le front :
+    [
+      {
+        "id": 123,
+        "song": { "title": "...", "artist": "...", "img_url": "..." },
+        "deposited_at": "2025-08-20T12:34:56Z"  # si dispo
+      },
+      ...
+    ]
+    """
+    user = request.user
+
+    # On essaye de précharger la FK 'song' si elle existe
+    qs = Deposit.objects.filter(user=user).order_by("-id")[:500]
+    try:
+        qs = qs.select_related("song")
+    except Exception:
+        pass  # si pas de FK song, on ignore
+
+    def extract_song_fields(d):
+        """
+        Supporte plusieurs schémas de données :
+        - d.song.title / d.song.artist / d.song.img_url (FK)
+        - d.song_title / d.song_artist / d.song_img_url (aplati)
+        - variantes image_url / cover_url...
+        """
+        s = getattr(d, "song", None)
+        if s is not None:
+            title = getattr(s, "title", None) or getattr(s, "name", None)
+            artist = getattr(s, "artist", None) or getattr(s, "artist_name", None)
+            img_url = (
+                getattr(s, "img_url", None)
+                or getattr(s, "image_url", None)
+                or getattr(s, "cover_url", None)
+            )
+        else:
+            title = getattr(d, "song_title", None)
+            artist = getattr(d, "song_artist", None)
+            img_url = (
+                getattr(d, "song_img_url", None)
+                or getattr(d, "song_image_url", None)
+                or getattr(d, "cover_url", None)
+            )
+        return {"title": title, "artist": artist, "img_url": img_url}
+
+    items = []
+    for d in qs:
+        dt = (
+            getattr(d, "created_at", None)
+            or getattr(d, "deposited_at", None)
+            or getattr(d, "deposit_date", None)
+        )
+        deposited_at = dt.isoformat() if hasattr(dt, "isoformat") else None
+        items.append(
+            {
+                "id": d.id,
+                "song": extract_song_fields(d),
+                "deposited_at": deposited_at,
+            }
+        )
+
+    return Response(items, status=status.HTTP_200_OK)
 
 
 
