@@ -8,12 +8,9 @@ urlpatterns = [
     path('verify-location', Location.as_view()),
     path('current-box-management', CurrentBoxManagement.as_view()),
     path('discovered-songs', ManageDiscoveredSongs.as_view()),
-    path("revealSong", RevealSong.as_view(), name="reveal-song"),
-    path("user-deposits", user_deposits, name="user-deposits"),
+    path('revealSong', RevealSong.as_view(), name="reveal-song"),
+    path('user-deposits', UserDepositsView.as_view(), name="user-deposits"),  # <-- CBV aligné
 ]
-
-
-
 
 
 
