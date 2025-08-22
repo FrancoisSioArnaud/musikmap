@@ -9,8 +9,9 @@ urlpatterns = [
     path('current-box-management', CurrentBoxManagement.as_view()),
     path('discovered-songs', ManageDiscoveredSongs.as_view()),
     path('revealSong', RevealSong.as_view(), name="reveal-song"),
-    path('user-deposits', UserDepositsView.as_view(), name="user-deposits"),  # <-- CBV aligné
+    path('user-deposits', UserDepositsView.as_view(), name="user-deposits"), 
 ]
+
 
 
 
