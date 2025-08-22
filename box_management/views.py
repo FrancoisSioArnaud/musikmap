@@ -527,6 +527,26 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
+def user_deposits(request):
+    user = request.user
+    # Adapte à ton modèle:
+    # On suppose un modèle Deposit(user, song_title, song_artist, song_img_url, created_at)
+    qs = (Deposit.objects
+          .filter(user=user)
+          .order_by("-created_at")[:500])
+
+    data = []
+    for d in qs:
+        data.append({
+            "id": d.id,
+            "song": {
+                "title": d.song_title,
+                "artist": d.song_artist,
+                "img_url": getattr(d, "song_img_url", None),
+            },
+            "deposited_at": d.created_at.isoformat(),
+        })
+    return Response(data, status=200)
 
 
 
