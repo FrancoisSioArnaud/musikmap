@@ -1,6 +1,7 @@
-import * as React from "react";
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import { getCookie } from "../Security/TokensUtils";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -11,9 +12,8 @@ import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
-import PlayModal from "../../Common/PlayModal";
-import LiveSearch from "../LiveSearch";
-import AchievementModal from "../AchievementModal";
+
+
 
 export default function SongDisplay({
   dispDeposits,
@@ -435,3 +435,4 @@ export default function SongDisplay({
     </Box>
   );
 }
+
