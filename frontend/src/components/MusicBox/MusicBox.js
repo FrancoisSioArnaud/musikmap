@@ -77,11 +77,11 @@ export default function MusicBox() {
             isDeezerAuthenticated={isDeezerAuthenticated}
             boxName={boxName}
             user={user}
-            navigate={navigate}
           />
         )}
       </Box>
     </>
   );
 }
+
 
