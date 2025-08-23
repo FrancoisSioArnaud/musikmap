@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+// frontend/src/components/MusicBox/LiveSearch.js
+import React, { useState, useEffect, useContext } from "react";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
@@ -9,24 +11,26 @@ export default function LiveSearch({
   boxName,
   user,
   onDepositSuccess, // (addedDeposit, successes) => void
-  onClose,    
+  onClose,          // parent ferme le drawer, ici on ne l'utilise pas directement
 }) {
+  const { setUser } = useContext(UserContext) || {};
+
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
   const [selectedStreamingService, setSelectedStreamingService] = useState(
     user?.preferred_platform || "spotify"
   );
 
-  // Synchro plateforme préférée
+  // Mettre à jour le service sélectionné quand la préférence user change
   useEffect(() => {
     if (user?.preferred_platform) {
       setSelectedStreamingService(user.preferred_platform);
     }
   }, [user?.preferred_platform]);
 
-  // Recherche / récents
+  // Charger récents / rechercher selon service + saisie
   useEffect(() => {
-    const getData = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (selectedStreamingService === "spotify") {
         if (searchValue === "") {
           if (isSpotifyAuthenticated) {
@@ -34,7 +38,9 @@ export default function LiveSearch({
               .then((r) => r.json())
               .then(setJsonResults)
               .catch(() => setJsonResults([]));
-          } else setJsonResults([]);
+          } else {
+            setJsonResults([]);
+          }
         } else {
           const csrftoken = getCookie("csrftoken");
           fetch("/spotify/search", {
@@ -55,7 +61,9 @@ export default function LiveSearch({
               .then((r) => r.json())
               .then(setJsonResults)
               .catch(() => setJsonResults([]));
-          } else setJsonResults([]);
+          } else {
+            setJsonResults([]);
+          }
         } else {
           const csrftoken = getCookie("csrftoken");
           fetch("/deezer/search", {
@@ -70,7 +78,7 @@ export default function LiveSearch({
       }
     }, 400);
 
-    return () => clearTimeout(getData);
+    return () => clearTimeout(timer);
   }, [searchValue, selectedStreamingService, isDeezerAuthenticated, isSpotifyAuthenticated]);
 
   function handleStreamingServiceChange(service) {
@@ -78,39 +86,57 @@ export default function LiveSearch({
   }
 
   // Dépôt POST
-  // Dépôt POST
-function handleButtonClick(option, boxName) {
-  const data = { option, boxName };
-  const csrftoken = getCookie("csrftoken");
+  function handleButtonClick(option, boxName) {
+    const csrftoken = getCookie("csrftoken");
 
-  fetch("/box-management/get-box?name=" + boxName, {
-    method: "POST",
-    headers: {
+    // Garantir platform_id attendu par le back
+    const platformId =
+      option.platform_id ??
+      (selectedStreamingService === "spotify" ? 1 : 2);
+
+    const data = {
+      option: { ...option, platform_id: platformId },
+      boxName,
+    };
+
+    fetch("/box-management/get-box?name=" + boxName, {
+      method: "POST",
+      headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrftoken,
-    },
-    body: JSON.stringify(data),
+      },
+      body: JSON.stringify(data),
     })
-    .then((data_resp) => {
-    const { added_deposit, successes, points_balance } = data_resp || {};
-  
-    // 1) Notifie le parent (SongDisplay) pour afficher le my_deposit + achievements
-    if (typeof onDepositSuccess === "function") {
-      onDepositSuccess(added_deposit, successes);
-    }
-  
-    // 2) Met à jour le solde dans le UserContext pour que le menu réagisse
-    if (typeof points_balance === "number") {
-      setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-    } else {
-      // Cas anonyme : on garde un compteur local
-      const total = (successes || []).find(s => (s.name||"").toLowerCase()==="total")?.points || 0;
-      const key = "anon_points";
-      const cur = parseInt(localStorage.getItem(key) || "0", 10);
-      localStorage.setItem(key, String(cur + total));
-    }
-  })
-}
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then((payload) => {
+        const { added_deposit, successes, points_balance } = payload || {};
+
+        // 1) Notifie SongDisplay -> affichage du my_deposit + bascule "achievements"
+        if (typeof onDepositSuccess === "function") {
+          onDepositSuccess(added_deposit, successes);
+        }
+
+        // 2) Met à jour le solde global si possible, sinon cumule local pour anonymes
+        if (typeof points_balance === "number" && setUser) {
+          setUser((prev) => ({ ...(prev || {}), points: points_balance }));
+        } else {
+          const total =
+            (successes || []).find(
+              (s) => (s.name || "").toLowerCase() === "total"
+            )?.points || 0;
+          const key = "anon_points";
+          const cur = parseInt(localStorage.getItem(key) || "0", 10);
+          localStorage.setItem(key, String(cur + total));
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Impossible de déposer cette chanson pour le moment.");
+      });
+  }
 
   return (
     <Stack>
@@ -158,7 +184,10 @@ function handleButtonClick(option, boxName) {
               <p className="song-subtitle">{option.artist}</p>
             </div>
 
-            <button className="btn-tertiary" onClick={() => handleButtonClick(option, boxName)}>
+            <button
+              className="btn-tertiary"
+              onClick={() => handleButtonClick(option, boxName)}
+            >
               <span>Choisir</span>
             </button>
           </Box>
@@ -167,8 +196,3 @@ function handleButtonClick(option, boxName) {
     </Stack>
   );
 }
-
-
-
-
-
