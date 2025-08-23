@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useEffect } from "react";
 import { useNavigate as useRouterNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -98,6 +98,25 @@ export default function SongDisplay({
     setDrawerView("achievements");
     setIsSearchOpen(true);
   };
+
+  // ---- Enregistrer automatiquement le dépôt #0 comme "main" à l’ouverture (montage uniquement) ----
+  useEffect(() => {
+    // Conditions : user connecté + présence d'un dépôt #0 avec un id
+    if (!user || !user.username) return;
+    const first = Array.isArray(dispDeposits) && dispDeposits.length > 0 ? dispDeposits[0] : null;
+    const firstId = first?.deposit_id;
+    if (!firstId) return;
+
+    const csrftoken = getCookie("csrftoken");
+    fetch("/box-management/discovered-songs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+      body: JSON.stringify({ deposit_id: firstId, discovered_type: "main" }),
+    })
+      .then(() => {})
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← uniquement au montage, comme demandé
 
   // ---- Reveal d’un dépôt (débit + découverte + maj UI + maj points) ----
   const revealDeposit = async (dep) => {
