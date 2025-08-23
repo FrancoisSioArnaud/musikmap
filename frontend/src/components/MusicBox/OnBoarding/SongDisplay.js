@@ -95,7 +95,7 @@ export default function SongDisplay({
 
   // ---- Composant interne : carte "ma pépite" (révélée, compacte)
   const MyDepositCard = () => (
-    <Card sx={{ p: 2, border: "1px dashed #e5e7eb" }}>
+    <Card sx={{ p: 2, border: "1px dashed #e5e7eb", margin :"65px 0" }}>
       {/* Titre H1 demandé */}
       <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
         La chanson que tu as déposée
