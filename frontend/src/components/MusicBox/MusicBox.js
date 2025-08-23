@@ -1,119 +1,85 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../UserContext";
 import Box from "@mui/material/Box";
-import LiveSearch from "./LiveSearch";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { checkSpotifyAuthentication } from "./SpotifyUtils";
 import { checkDeezerAuthentication } from "./DeezerUtils";
-import {
-  getBoxDetails,
-  setCurrentBoxName,
-} from "./BoxUtils";
+import { getBoxDetails, setCurrentBoxName } from "./BoxUtils";
 import Loader from "./Loader";
 import BoxStartup from "./OnBoarding/BoxStartup";
 import EnableLocation from "./OnBoarding/EnableLocation";
 import SongDisplay from "./OnBoarding/SongDisplay";
-import Button from "@mui/material/Button";
-import { ClassNames } from "@emotion/react";
 
 export default function MusicBox() {
-  // States & Variables
+  // Auth streaming
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
   const [isDeezerAuthenticated, setIsDeezerAuthenticated] = useState(false);
 
-  const [stage, setStage] = useState(0);
+  // Étapes
+  const [stage, setStage] = useState(0); // 0: intro, 1: géoloc, 2: découverte
   const navigate = useNavigate();
 
-  // Gets box name from URL
+  // Param URL
   const { boxName } = useParams();
-  // Stores all the information about the box
-  const [boxInfo, setBoxInfo] = useState({});
 
-  // User Context variables
+  // Métadonnées boîte
+  const [boxInfo, setBoxInfo] = useState({}); // { box, deposit_count }
+
+  // Contexte user
   const { user } = useContext(UserContext);
 
-  const [searchSong, setSearchSong] = useState("");
-
-  // The achievements the user obtains
-  const [achievements, setAchievements] = useState([]);
-  // Previous deposits to display
+  // Dépôts à afficher (dernier + 9 précédents)
   const [dispDeposits, setDispDeposits] = useState([]);
 
-
-  /**
-   * Function to be executed when the component is mounted and the page is loaded
-   * Check at page load (only) if user is authenticated with spotify and get the box's details
-   */
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
     checkDeezerAuthentication(setIsDeezerAuthenticated);
     setCurrentBoxName(boxName);
+
     getBoxDetails(boxName, navigate)
       .then((data) => {
-        setBoxInfo(data);
+        // data attendu: { box, deposit_count, deposits }
+        const meta = {
+          box: data?.box || {},
+          deposit_count: typeof data?.deposit_count === "number" ? data.deposit_count : 0,
+        };
+        setBoxInfo(meta);
+        setDispDeposits(Array.isArray(data?.deposits) ? data.deposits : []);
       })
       .catch((error) => {
         console.error(error);
       });
-  }, []); // Empty dependency array ensures the effect is only run once
+  }, []); // mount only
 
   return (
     <>
       <Box className={`main-content stage-${stage}`}>
-        {(stage === 0 || stage === 1) &&
+        {(stage === 0 || stage === 1) && (
           <>
-            <BoxStartup setStage={setStage} boxInfo={boxInfo} className="startup"/>
+            <BoxStartup setStage={setStage} boxInfo={boxInfo} className="startup" />
             <EnableLocation
               className="enable-location"
               setStage={setStage}
               boxInfo={boxInfo}
               navigate={navigate}
             />
-            <Loader/>
-          </>
-        }
-       {stage === 2 && (
-          <>
-            <SongDisplay
-              dispDeposits={dispDeposits}
-              setDispDeposits={setDispDeposits}
-              achievements={achievements}
-              setAchievements={setAchievements}
-            />
+            <Loader />
           </>
         )}
-        {stage === 3 && (
-          <>
-            <LiveSearch
-              isSpotifyAuthenticated={isSpotifyAuthenticated}
-              isDeezerAuthenticated={isDeezerAuthenticated}
-              boxName={boxName}
-              user={user}
-              setStage={setStage}
-              setSearchSong={setSearchSong}
-              setAchievements={setAchievements}
-              setDispDeposits={setDispDeposits}
-            />
-          </>
+
+        {stage === 2 && (
+          <SongDisplay
+            // données
+            dispDeposits={dispDeposits}
+            setDispDeposits={setDispDeposits}
+            // pour LiveSearch (modale dans SongDisplay)
+            isSpotifyAuthenticated={isSpotifyAuthenticated}
+            isDeezerAuthenticated={isDeezerAuthenticated}
+            boxName={boxName}
+            user={user}
+          />
         )}
-    
       </Box>
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
