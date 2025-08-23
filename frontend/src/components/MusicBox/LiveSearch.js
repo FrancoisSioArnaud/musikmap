@@ -8,6 +8,7 @@ export default function LiveSearch({
   isDeezerAuthenticated,
   boxName,
   user,
+  onDepositSuccess, // (addedDeposit, successes) => void
   onClose,    
 }) {
   const [searchValue, setSearchValue] = useState("");
@@ -157,4 +158,5 @@ function handleButtonClick(option, boxName) {
     </Stack>
   );
 }
+
 
