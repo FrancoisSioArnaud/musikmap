@@ -270,8 +270,8 @@ export default function SongDisplay({
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          mt: "26px",
-          mb: "26px",
+          mt: "16px",
+          mb: "16px",
           p: 2,
         }}
       >
