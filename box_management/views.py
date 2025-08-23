@@ -198,7 +198,11 @@ class GetBox(APIView):
         deposit_count = Deposit.objects.filter(box_id=box.id).count()
         deposits_payload = self._build_deposits_payload(box, request.user, limit=10)
 
-        resp = {'deposit_count': deposit_count, 'box': data, 'deposits': deposits_payload}
+        resp = {
+            'deposit_count': deposit_count,
+            'box': data,
+            'deposits': deposits_payload,
+            'reveal_cost': COST_REVEAL_BOX,}
         return Response(resp, status=status.HTTP_200_OK)
 
     # --------- POST (création d’un dépôt) ---------
@@ -237,6 +241,7 @@ class GetBox(APIView):
             'name': "Pépite",
             'desc': "Tu as partagé une chanson",
             'points': NB_POINTS_ADD_SONG
+          
         }
 
         if user and is_first_user_deposit(user, box):
@@ -374,7 +379,7 @@ class GetBox(APIView):
         response = {
             "successes": list(successes.values()),
             "added_deposit": added_deposit,
-            "points_balance": points_balance,  # None si anonyme ou si ajout échoue
+            "points_balance": points_balance, 
         }
         return Response(response, status=status.HTTP_200_OK)
 
@@ -706,6 +711,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
