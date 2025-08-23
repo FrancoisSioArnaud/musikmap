@@ -209,7 +209,7 @@ class GetBox(APIView):
         return Response(resp, status=status.HTTP_200_OK)
 
     # --------- POST (création d’un dépôt) ---------
-   def post(self, request, format=None):
+    def post(self, request, format=None):
         """
         Ne fait que:
           - upsert Song
@@ -600,6 +600,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
