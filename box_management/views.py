@@ -202,7 +202,8 @@ class GetBox(APIView):
             'deposit_count': deposit_count,
             'box': data,
             'deposits': deposits_payload,
-            'reveal_cost': COST_REVEAL_BOX,}
+            'reveal_cost': int(COST_REVEAL_BOX),
+        }
         return Response(resp, status=status.HTTP_200_OK)
 
     # --------- POST (création d’un dépôt) ---------
@@ -544,16 +545,12 @@ class ManageDiscoveredSongs(APIView):
 class RevealSong(APIView):
     """
     POST /box-management/revealSong
-    Body: { "deposit_id": <int> }   # on ne fait PAS confiance à "cost" côté client
-    Réponse (200): {
-      "song": { "title": "...", "artist": "...", "spotify_url": "...", "deezer_url": "..." },
-      "points_balance": <int>   # présent seulement si user connecté
-    }
-    Erreurs:
-      401 si non authentifié
-      400 {error:"insufficient_funds", message:"Tu n’as pas assez de crédit pour révéler cette pépite"}
-      404 si dépôt/chanson introuvable
-      502 si échec du débit de points
+    Body: { "deposit_id": <int> }
+    200: { "song": {...}, "points_balance": <int> }
+    401 si non authentifié
+    400 {error:"insufficient_funds", message:"Tu n’as pas assez de crédit pour révéler cette pépite"}
+    404 si dépôt/chanson introuvable
+    502 si échec du débit ou de l’enregistrement de découverte
     """
     def post(self, request, format=None):
         # 1) Auth requise
@@ -576,10 +573,10 @@ class RevealSong(APIView):
         if not song:
             return Response({"detail": "Chanson introuvable pour ce dépôt"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 4) Coût côté serveur (source de vérité)
+        # 4) Coût (source de vérité côté serveur)
         cost = int(COST_REVEAL_BOX)
 
-        # 5) Vérifier le solde utilisateur
+        # 5) Vérifier solde utilisateur
         try:
             user.refresh_from_db(fields=["points"])
         except Exception:
@@ -590,14 +587,23 @@ class RevealSong(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 6) Débiter les points via l’endpoint existant /users/add-points (best-effort mais bloquant)
+        # Prépare en-têtes/cookies CSRF corrects pour appels internes
+        csrf_token = get_token(request)
+        origin = request.build_absolute_uri("/")  # ex: https://mon-domaine/
+        headers_bg = {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token,
+            "Referer": origin,                 # nécessaire en HTTPS
+            "Origin": origin.rstrip("/"),      # idem
+        }
+        cookies = request.COOKIES  # contient sessionid + csrftoken
+
+        # 6) Débiter les points via /users/add-points
         try:
-            csrf_token = get_token(request)
-            add_points_url = request.build_absolute_uri(reverse('add-points'))  # → /users/add-points
-            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+            add_points_url = request.build_absolute_uri(reverse('add-points'))  # /users/add-points
             r = requests.post(
                 add_points_url,
-                cookies=request.COOKIES,
+                cookies=cookies,
                 headers=headers_bg,
                 data=json.dumps({"points": -cost}),
                 timeout=4,
@@ -613,19 +619,17 @@ class RevealSong(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 7) Enregistrer la découverte via l’endpoint ManageDiscoveredSongs
+        # 7) Enregistrer la découverte via /box-management/discovered-songs
         try:
             discover_url = request.build_absolute_uri("/box-management/discovered-songs")
-            csrf_token = get_token(request)
-            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
             r2 = requests.post(
                 discover_url,
-                cookies=request.COOKIES,
+                cookies=cookies,
                 headers=headers_bg,
                 data=json.dumps({"deposit_id": deposit_id, "discovered_type": "revealed"}),
                 timeout=4,
             )
-            # On tolère l’erreur "déjà découvert" (400) comme un succès fonctionnel
+            # Tolérer "déjà découvert" (400), mais bloquer autres erreurs (403 CSRF, etc.)
             if not r2.ok and r2.status_code != 400:
                 return Response(
                     {"detail": "Erreur lors de l’enregistrement de la découverte."},
@@ -644,7 +648,7 @@ class RevealSong(APIView):
             user.refresh_from_db()
         points_balance = getattr(user, "points", None)
 
-        # 9) Réponse (même forme qu’avant + solde)
+        # 9) Réponse
         data = {
             "song": {
                 "title": song.title,
@@ -655,7 +659,6 @@ class RevealSong(APIView):
             "points_balance": points_balance,
         }
         return Response(data, status=status.HTTP_200_OK)
-
 
 class UserDepositsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -711,6 +714,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
