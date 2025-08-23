@@ -23,7 +23,7 @@ export default function PlayModal({ open, song, onClose }) {
     const q = safeText();
     if (!q) {
       alert(
-        "Impossible d'ouvrir la recherche YouTube : titre/artiste manquants. Utilise le bouton « Copier »."
+        "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
       );
       return;
     }
