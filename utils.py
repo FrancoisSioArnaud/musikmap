@@ -15,4 +15,5 @@ NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL = 5  # Première fois que ce son est dépos�
 NB_POINTS_CONSECUTIVE_DAYS_BOX = 2  # Jours consécutifs de dépôt sur une même boite
 COST_REVEAL_BOX = 40 #cout d'un reveal dans une box
 COST_REVEAL_PROFILE = 60 #depot sur profil
-COST_REVEAL_HEARTSONG #chanson de coeur
+#COST_REVEAL_HEARTSONG #chanson de coeur
+
