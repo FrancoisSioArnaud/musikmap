@@ -11,7 +11,7 @@ import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
-import PlayModal from "../../Common/PlayModal";
+import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "../LiveSearch";
 import AchievementModal from "../AchievementModal";
 
