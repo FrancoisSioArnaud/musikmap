@@ -8,8 +8,7 @@ export default function LiveSearch({
   isDeezerAuthenticated,
   boxName,
   user,
-  onDepositSuccess, // (addedDeposit, successes) => void
-  onClose,          // () => void
+  onClose,    
 }) {
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
@@ -78,35 +77,30 @@ export default function LiveSearch({
   }
 
   // Dépôt POST
-  function handleButtonClick(option, boxName) {
-    const data = { option, boxName };
-    const csrftoken = getCookie("csrftoken");
+function handleButtonClick(option, boxName) {
+  const data = { option, boxName };
+  const csrftoken = getCookie("csrftoken");
 
-    fetch("/box-management/get-box?name=" + boxName, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      body: JSON.stringify(data),
+  fetch("/box-management/get-box?name=" + boxName, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrftoken,
+    },
+    body: JSON.stringify(data),
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return response.json();
     })
-      .then((response) => {
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        return response.json();
-      })
-      .then((resp) => {
-        const successes = Array.isArray(resp?.successes) ? resp.successes : [];
-        const added = resp?.added_deposit || null;
-        if (!added) throw new Error("Réponse invalide (added_deposit manquant)");
-
-        // Laisser le parent gérer l’UI : my_deposit + modal achievements
-        onDepositSuccess?.(added, successes);
-
-        // Fermer la modale LiveSearch
-        onClose?.();
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Impossible d'ajouter ce dépôt pour le moment.");
-      });
-  }
+    .then(({ successes, added_deposit }) => {
+      onDepositSuccess(added_deposit, successes);
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Une erreur est survenue pendant le dépôt.");
+    });
+}
 
   return (
     <Stack>
@@ -163,3 +157,4 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
