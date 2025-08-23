@@ -9,9 +9,6 @@ from django.middleware.csrf import get_token
 from django.urls import reverse
 from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from django.db.models import F
-from django.db import transaction
-from django.contrib.auth import get_user_model
 
 # DRF
 from rest_framework import status
@@ -605,6 +602,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
