@@ -71,13 +71,12 @@ class GetBox(APIView):
 
     # --------- Helpers ---------
 
+    @staticmethod
     def _map_user(u):
         if not u or isinstance(u, AnonymousUser):
             return None
-        # Nom d’affichage
         full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
         display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-        # Photo
         profile_pic = (
             getattr(u, "profile_picture_url", None)
             or getattr(u, "profile_pic_url", None)
@@ -86,7 +85,7 @@ class GetBox(APIView):
         )
         return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
 
-
+    @staticmethod
     def _map_song_full(s, include_id=False):
         if not s:
             return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
@@ -101,7 +100,7 @@ class GetBox(APIView):
             payload["id"] = getattr(s, "id", None)
         return payload
 
-
+    @staticmethod
     def _map_song_teaser(s):
         # Teaser: id + image + cost=300
         return {
@@ -110,7 +109,7 @@ class GetBox(APIView):
             "cost": 300,
         }
 
-
+    @staticmethod
     def _naturaltime(dt):
         return naturaltime(localtime(dt)) if dt else None
 
@@ -120,8 +119,7 @@ class GetBox(APIView):
         idx 0: toujours révélé/complet.
         idx > 0:
           - user authentifié -> révélé si présent dans DiscoveredSong, sinon teaser
-          - anonyme -> toujours teaser
-        Pour les anonymes, inclure already_discovered=false et discovered_at=null sur idx>0 (demande explicite).
+          - anonyme -> toujours teaser (mais on renvoie already_discovered=false, discovered_at=null)
         """
         qs = (
             Deposit.objects
@@ -129,7 +127,6 @@ class GetBox(APIView):
             .select_related('song_id', 'user')
             .order_by('-deposited_at', '-id')[:limit]
         )
-
         deposits = list(qs)
         if not deposits:
             return []
@@ -307,11 +304,7 @@ class GetBox(APIView):
             if request_platform:
                 aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
                 payload = {
-                    "song": {
-                        "title": song.title,
-                        "artist": song.artist,
-                        "duration": song.duration,
-                    },
+                    "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
                     "platform": request_platform,
                 }
                 headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
@@ -330,6 +323,7 @@ class GetBox(APIView):
                         elif request_platform == "spotify":
                             song.spotify_url = other_url
         except Exception:
+            # best-effort
             pass
 
         song.save()
@@ -601,6 +595,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
