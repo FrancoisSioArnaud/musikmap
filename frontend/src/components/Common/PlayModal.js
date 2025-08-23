@@ -9,8 +9,7 @@ import Button from "@mui/material/Button";
 export default function PlayModal({ open, song, onClose }) {
   if (!open || !song) return null;
 
-  const safeText = () =>
-    `${song?.title ?? ""} ${song?.artist ?? ""}`.trim();
+  const safeText = () => `${song?.title ?? ""} ${song?.artist ?? ""}`.trim();
 
   const openOrAlert = (url) => {
     if (url) window.open(url, "_blank", "noopener,noreferrer");
@@ -24,13 +23,11 @@ export default function PlayModal({ open, song, onClose }) {
     const q = safeText();
     if (!q) {
       alert(
-        "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
+        "Impossible d'ouvrir la recherche YouTube : titre/artiste manquants. Utilise le bouton « Copier »."
       );
       return;
     }
-    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-      q
-    )}`;
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -40,7 +37,6 @@ export default function PlayModal({ open, song, onClose }) {
       await navigator.clipboard.writeText(text);
       alert("Copié dans le presse-papiers !");
     } catch {
-      // Fallback pour vieux navigateurs
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -76,14 +72,26 @@ export default function PlayModal({ open, song, onClose }) {
               <Button onClick={onClose} title="Fermer">×</Button>
             </Box>
 
-            {/* Ligne des boutons de plateforme */}
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button variant="contained" onClick={() => openOrAlert(song?.spotify_url)}>Spotify</Button>
-              <Button variant="contained" onClick={() => openOrAlert(song?.deezer_url)}>Deezer</Button>
-              <Button variant="contained" onClick={openYouTubeSearch}>YouTube</Button>
+            {/* 3 colonnes égales */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 1,
+              }}
+            >
+              <Button fullWidth variant="contained" onClick={() => openOrAlert(song?.spotify_url)}>
+                Spotify
+              </Button>
+              <Button fullWidth variant="contained" onClick={() => openOrAlert(song?.deezer_url)}>
+                Deezer
+              </Button>
+              <Button fullWidth variant="contained" onClick={openYouTubeSearch}>
+                YouTube
+              </Button>
             </Box>
 
-            {/* Bouton Copier en pleine largeur, sous les trois */}
+            {/* Bouton Copier en pleine largeur, sous la rangée */}
             <Box sx={{ mt: 1 }}>
               <Button fullWidth variant="outlined" onClick={copySongText}>
                 Copier le nom de la chanson
