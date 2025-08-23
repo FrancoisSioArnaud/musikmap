@@ -175,12 +175,13 @@ export default function SongDisplay({
         id="intro"
         sx={{
           width: "100%",
-          aspectRatio: "1 / 1.20",
           borderRadius: 2,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
+          marginTop: "26px",
+          marginBottom: "26px",
           p: 2,
         }}
       >
@@ -190,9 +191,6 @@ export default function SongDisplay({
           </Typography>
           <Typography component="span" variant="subtitle2" sx={{ opacity: 0.8 }}>
             (par un vrai humain.e)
-          </Typography>
-          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-            t'attend juste en dessous
           </Typography>
         </Box>
       </Box>
