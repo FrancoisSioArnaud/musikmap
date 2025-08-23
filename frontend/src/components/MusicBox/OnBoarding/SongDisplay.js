@@ -1,30 +1,30 @@
-import * as React from "react";
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo } from "react";
+import { useNavigate as useRouterNavigate } from "react-router-dom";
+
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Avatar from "@mui/material/Avatar";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
 
 import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "../LiveSearch.js";
-import AchievementModal from "../AchievementModal.js";
-
 
 export default function SongDisplay({
   dispDeposits,
-  setDispDeposits,
+  setDispDeposits,               // gardé si besoin futur
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxName,
   user,
 }) {
-  const navigate = useNavigate();
+  const navigate = useRouterNavigate();
 
   // Liste dépôts (sécurise le mapping)
   const deposits = useMemo(
@@ -37,15 +37,27 @@ export default function SongDisplay({
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
 
-  // LiveSearch (drawer plein écran mobile)
+  // Drawer (full page mobile)
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [drawerView, setDrawerView] = useState("search"); // 'search' | 'achievements'
 
   // Dépôt tout juste ajouté par l’utilisateur (n’est PAS injecté dans dispDeposits)
   const [myDeposit, setMyDeposit] = useState(null);
 
-  // Achievements (reçus après POST) + modal
+  // Achievements (reçus après POST)
   const [achievements, setAchievements] = useState([]);
-  const [achModalOpen, setAchModalOpen] = useState(false);
+
+  const totalPoints = useMemo(() => {
+    const item = achievements.find(
+      (s) => (s?.name || "").toLowerCase() === "total"
+    );
+    return item?.points ?? 0;
+  }, [achievements]);
+
+  const displaySuccesses = useMemo(
+    () => achievements.filter((s) => (s?.name || "").toLowerCase() !== "total"),
+    [achievements]
+  );
 
   // --- handlers PLAY ---
   const openPlayFor = (song) => {
@@ -57,9 +69,10 @@ export default function SongDisplay({
     setPlaySong(null);
   };
 
-  // --- handler LiveSearch ---
+  // --- handlers Drawer / LiveSearch ---
   const openSearch = () => {
     if (myDeposit) return; // un seul dépôt possible
+    setDrawerView("search");
     setIsSearchOpen(true);
   };
   const closeSearch = () => {
@@ -71,16 +84,18 @@ export default function SongDisplay({
     // 1) On stocke le dépôt “perso” sans l’injecter dans dispDeposits
     setMyDeposit(addedDeposit || null);
 
-    // 2) Achievements + ouverture de la modale
+    // 2) Achievements puis on bascule le Drawer en mode "achievements"
     setAchievements(Array.isArray(successes) ? successes : []);
-    setAchModalOpen(true);
+    setDrawerView("achievements");
+    setIsSearchOpen(true); // s'assure que le Drawer est bien ouvert
   };
 
+  // ====== BRANCHE SANS DÉPÔTS (boîte vide) ======
   if (deposits.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
         <Typography>Aucun dépôt à afficher.</Typography>
-        {/* CTA Déposer si pas de dépôt du tout */}
+
         {!myDeposit && (
           <Box sx={{ mt: 2 }}>
             <Button variant="contained" onClick={openSearch} fullWidth>
@@ -88,11 +103,12 @@ export default function SongDisplay({
             </Button>
           </Box>
         )}
-        {/* Drawer LiveSearch */}
+
+        {/* Drawer LiveSearch / Achievements */}
         <Drawer
           anchor="right"
           open={isSearchOpen}
-          // onClose ignoré (pas de fermeture sur backdrop/ESC)
+          // pas de fermeture par backdrop/ESC
           onClose={() => {}}
           ModalProps={{ keepMounted: true }}
           PaperProps={{ sx: { width: "100vw" } }}
@@ -103,28 +119,55 @@ export default function SongDisplay({
                 <CloseIcon />
               </IconButton>
             </Box>
-            <LiveSearch
-              isSpotifyAuthenticated={isSpotifyAuthenticated}
-              isDeezerAuthenticated={isDeezerAuthenticated}
-              boxName={boxName}
-              user={user}
-              onDepositSuccess={handleDepositSuccess}
-              onClose={closeSearch}
-            />
+
+            {drawerView === "search" ? (
+              <LiveSearch
+                isSpotifyAuthenticated={isSpotifyAuthenticated}
+                isDeezerAuthenticated={isDeezerAuthenticated}
+                boxName={boxName}
+                user={user}
+                onDepositSuccess={handleDepositSuccess}
+                onClose={closeSearch}
+              />
+            ) : (
+              <Box sx={{ display: "grid", gap: 1 }}>
+                <Typography variant="h6">Bravo !</Typography>
+
+                <List sx={{ mt: 1 }}>
+                  {displaySuccesses.length === 0 && (
+                    <ListItem>
+                      <ListItemText primary="Aucun succès (hors Total)" />
+                    </ListItem>
+                  )}
+                  {displaySuccesses.map((ach, i) => (
+                    <ListItem key={i} divider>
+                      <ListItemText primary={ach.name} secondary={ach.desc} />
+                      <Typography variant="body2">+{ach.points}</Typography>
+                    </ListItem>
+                  ))}
+                </List>
+
+                <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Total
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    +{totalPoints}
+                  </Typography>
+                </Box>
+
+                <Button variant="contained" onClick={closeSearch} sx={{ mt: 2 }}>
+                  Revenir à la boîte
+                </Button>
+              </Box>
+            )}
           </Box>
         </Drawer>
-
-        {/* Modal Achievements */}
-        <AchievementModal
-          open={achModalOpen}
-          successes={achievements}
-          onClose={() => setAchModalOpen(false)}
-          primaryCtaLabel="Revenir à la boîte"
-        />
       </Box>
     );
   }
 
+  // ====== BRANCHE AVEC DÉPÔTS ======
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
       {/* ======= HERO INTRO ======= */}
@@ -400,12 +443,11 @@ export default function SongDisplay({
       {/* === PLAY MODAL === */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
-      {/* === LIVE SEARCH DRAWER (mobile full) === */}
+      {/* === DRAWER (LiveSearch / Achievements) === */}
       <Drawer
         anchor="right"
         open={isSearchOpen}
-        // pas de fermeture par backdrop/ESC
-        onClose={() => {}}
+        onClose={() => {}} // pas de fermeture par backdrop/ESC
         ModalProps={{ keepMounted: true }}
         PaperProps={{ sx: { width: "100vw" } }}
       >
@@ -415,24 +457,50 @@ export default function SongDisplay({
               <CloseIcon />
             </IconButton>
           </Box>
-          <LiveSearch
-            isSpotifyAuthenticated={isSpotifyAuthenticated}
-            isDeezerAuthenticated={isDeezerAuthenticated}
-            boxName={boxName}
-            user={user}
-            onDepositSuccess={handleDepositSuccess}
-            onClose={closeSearch}
-          />
+
+          {drawerView === "search" ? (
+            <LiveSearch
+              isSpotifyAuthenticated={isSpotifyAuthenticated}
+              isDeezerAuthenticated={isDeezerAuthenticated}
+              boxName={boxName}
+              user={user}
+              onDepositSuccess={handleDepositSuccess}
+              onClose={closeSearch}
+            />
+          ) : (
+            <Box sx={{ display: "grid", gap: 1 }}>
+              <Typography variant="h6">Bravo !</Typography>
+
+              <List sx={{ mt: 1 }}>
+                {displaySuccesses.length === 0 && (
+                  <ListItem>
+                    <ListItemText primary="Aucun succès (hors Total)" />
+                  </ListItem>
+                )}
+                {displaySuccesses.map((ach, i) => (
+                  <ListItem key={i} divider>
+                    <ListItemText primary={ach.name} secondary={ach.desc} />
+                    <Typography variant="body2">+{ach.points}</Typography>
+                  </ListItem>
+                ))}
+              </List>
+
+              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Total
+                </Typography>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  +{totalPoints}
+                </Typography>
+              </Box>
+
+              <Button variant="contained" onClick={closeSearch} sx={{ mt: 2 }}>
+                Revenir à la boîte
+              </Button>
+            </Box>
+          )}
         </Box>
       </Drawer>
-
-      {/* === ACHIEVEMENTS MODAL === */}
-      <AchievementModal
-        open={achModalOpen}
-        successes={achievements}
-        onClose={() => setAchModalOpen(false)}
-        primaryCtaLabel="Revenir à la boîte"
-      />
     </Box>
   );
 }
