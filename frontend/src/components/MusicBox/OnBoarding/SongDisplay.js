@@ -12,8 +12,9 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import PlayModal from "../../Common/PlayModal.js";
-import LiveSearch from "../LiveSearch";
-import AchievementModal from "../AchievementModal";
+import LiveSearch from "../LiveSearch.js";
+import AchievementModal from "../AchievementModal.js";
+
 
 export default function SongDisplay({
   dispDeposits,
