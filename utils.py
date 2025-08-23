@@ -13,3 +13,6 @@ NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX = 10  # Premier dépot d'un utilisateur dans
 NB_POINTS_FIRST_SONG_DEPOSIT_BOX = 20  # Première fois que ce son est déposé dans une boite
 NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL = 5  # Première fois que ce son est déposé sur le réseau
 NB_POINTS_CONSECUTIVE_DAYS_BOX = 2  # Jours consécutifs de dépôt sur une même boite
+COST_REVEAL_BOX = 40 #cout d'un reveal dans une box
+COST_REVEAL_PROFILE = 60 #depot sur profil
+COST_REVEAL_HEARTSONG #chanson de coeur
