@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { useNavigate as useRouterNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -15,16 +15,22 @@ import ListItemText from "@mui/material/ListItemText";
 
 import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "../LiveSearch.js";
+import { getCookie } from "../../Security/TokensUtils";
+import { UserContext } from "../../UserContext";
 
 export default function SongDisplay({
   dispDeposits,
-  setDispDeposits,               // gardé si besoin futur
+  setDispDeposits, // utilisé pour maj après reveal
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxName,
   user,
+  revealCost, // ← nouveau (reçu du parent)
 }) {
   const navigate = useRouterNavigate();
+  const { setUser } = useContext(UserContext) || {};
+
+  const cost = typeof revealCost === "number" ? revealCost : 40;
 
   // Sécurise la liste
   const deposits = useMemo(
@@ -91,6 +97,61 @@ export default function SongDisplay({
     setAchievements(Array.isArray(successes) ? successes : []);
     setDrawerView("achievements");
     setIsSearchOpen(true);
+  };
+
+  // ---- Reveal d’un dépôt (débit + découverte + maj UI + maj points) ----
+  const revealDeposit = async (dep) => {
+    try {
+      if (!user || !user.username) {
+        alert("Connecte-toi pour révéler cette pépite.");
+        return;
+      }
+      const csrftoken = getCookie("csrftoken");
+      const res = await fetch("/box-management/revealSong", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        body: JSON.stringify({ deposit_id: dep.deposit_id }),
+      });
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (payload?.error === "insufficient_funds") {
+          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
+        } else {
+          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+        }
+        return;
+      }
+
+      // 1) MAJ visuelle: remplace le teaser par la chanson révélée
+      const revealed = payload?.song || {};
+      setDispDeposits?.((prev) => {
+        const arr = Array.isArray(prev) ? [...prev] : [];
+        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
+        if (idx >= 0) {
+          arr[idx] = {
+            ...arr[idx],
+            already_discovered: true,
+            discovered_at: "à l'instant",
+            song: {
+              ...(arr[idx]?.song || {}),
+              title: revealed.title,
+              artist: revealed.artist,
+              spotify_url: revealed.spotify_url,
+              deezer_url: revealed.deezer_url,
+            },
+          };
+        }
+        return arr;
+      });
+
+      // 2) MAJ du solde (menu)
+      if (typeof payload?.points_balance === "number" && setUser) {
+        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
+      }
+    } catch {
+      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+    }
   };
 
   // ---- Composant interne : carte "ma pépite" (révélée, compacte)
@@ -428,8 +489,13 @@ export default function SongDisplay({
             {/* actions secondaires */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx > 0 && !isRevealed ? (
-                <Button variant="contained" size="large" disabled>
-                  Découvrir — 300
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => revealDeposit(dep)}
+                  disabled={!user || !user.username}
+                >
+                  {`Découvrir — ${cost}`}
                 </Button>
               ) : idx > 0 && isRevealed ? (
                 <Typography variant="body2" sx={{ mt: 1 }}>
