@@ -31,6 +31,9 @@ export default function MusicBox() {
   // Dépôts à afficher (dernier + 9 précédents)
   const [dispDeposits, setDispDeposits] = useState([]);
 
+  // Coût reveal (fourni par le back dans GET get-box)
+  const [revealCost, setRevealCost] = useState(40);
+
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
     checkDeezerAuthentication(setIsDeezerAuthenticated);
@@ -38,18 +41,19 @@ export default function MusicBox() {
 
     getBoxDetails(boxName, navigate)
       .then((data) => {
-        // data attendu: { box, deposit_count, deposits }
+        // data attendu: { box, deposit_count, deposits, reveal_cost }
         const meta = {
           box: data?.box || {},
           deposit_count: typeof data?.deposit_count === "number" ? data.deposit_count : 0,
         };
         setBoxInfo(meta);
         setDispDeposits(Array.isArray(data?.deposits) ? data.deposits : []);
+        setRevealCost(typeof data?.reveal_cost === "number" ? data.reveal_cost : 40);
       })
       .catch((error) => {
         console.error(error);
       });
-  }, []); // mount only
+  }, [boxName, navigate]);
 
   return (
     <>
@@ -72,16 +76,15 @@ export default function MusicBox() {
             // données
             dispDeposits={dispDeposits}
             setDispDeposits={setDispDeposits}
-            // pour LiveSearch (modale dans SongDisplay)
+            // pour LiveSearch (drawer dans SongDisplay)
             isSpotifyAuthenticated={isSpotifyAuthenticated}
             isDeezerAuthenticated={isDeezerAuthenticated}
             boxName={boxName}
             user={user}
+            revealCost={revealCost}
           />
         )}
       </Box>
     </>
   );
 }
-
-
