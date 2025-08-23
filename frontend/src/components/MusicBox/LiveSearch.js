@@ -2,16 +2,6 @@ import React, { useState, useEffect } from "react";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import { getCookie } from "../Security/TokensUtils";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
-import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
-
 
 
 
@@ -435,4 +425,5 @@ export default function SongDisplay({
     </Box>
   );
 }
+
 
