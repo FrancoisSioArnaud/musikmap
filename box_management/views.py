@@ -27,6 +27,7 @@ from utils import (
     NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
     NB_POINTS_CONSECUTIVE_DAYS_BOX,
+    COST_REVEAL_BOX,
 )
 from api_aggregation.views import ApiAggregation
 
@@ -534,29 +535,119 @@ class ManageDiscoveredSongs(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+
 class RevealSong(APIView):
     """
-    GET /box-management/revealSong?cost=...&song_id=...
-    Renvoie : { song: { title, artist, spotify_url, deezer_url } }
+    POST /box-management/revealSong
+    Body: { "deposit_id": <int> }   # on ne fait PAS confiance à "cost" côté client
+    Réponse (200): {
+      "song": { "title": "...", "artist": "...", "spotify_url": "...", "deezer_url": "..." },
+      "points_balance": <int>   # présent seulement si user connecté
+    }
+    Erreurs:
+      401 si non authentifié
+      400 {error:"insufficient_funds", message:"Tu n’as pas assez de crédit pour révéler cette pépite"}
+      404 si dépôt/chanson introuvable
+      502 si échec du débit de points
     """
-    def get(self, request, format=None):
-        cost = request.GET.get("cost")  # TODO: débiter des points si besoin
-        song_id = request.GET.get("song_id")
-        if not song_id:
-            return Response({"detail": "song_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, format=None):
+        # 1) Auth requise
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
 
+        # 2) Paramètres
+        deposit_id = request.data.get("deposit_id")
+        if not deposit_id:
+            return Response({"detail": "deposit_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3) Récupérer le dépôt + chanson
         try:
-            song = Song.objects.get(pk=song_id)
-        except Song.DoesNotExist:
-            return Response({"detail": "Song introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            deposit = Deposit.objects.select_related("song_id").get(pk=deposit_id)
+        except Deposit.DoesNotExist:
+            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
+        song = deposit.song_id
+        if not song:
+            return Response({"detail": "Chanson introuvable pour ce dépôt"}, status=status.HTTP_404_NOT_FOUND)
+
+        # 4) Coût côté serveur (source de vérité)
+        cost = int(COST_REVEAL_BOX)
+
+        # 5) Vérifier le solde utilisateur
+        try:
+            user.refresh_from_db(fields=["points"])
+        except Exception:
+            user.refresh_from_db()
+        if getattr(user, "points", 0) < cost:
+            return Response(
+                {"error": "insufficient_funds", "message": "Tu n’as pas assez de crédit pour révéler cette pépite"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 6) Débiter les points via l’endpoint existant /users/add-points (best-effort mais bloquant)
+        try:
+            csrf_token = get_token(request)
+            add_points_url = request.build_absolute_uri(reverse('add-points'))  # → /users/add-points
+            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+            r = requests.post(
+                add_points_url,
+                cookies=request.COOKIES,
+                headers=headers_bg,
+                data=json.dumps({"points": -cost}),
+                timeout=4,
+            )
+            if not r.ok:
+                return Response(
+                    {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        except Exception:
+            return Response(
+                {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # 7) Enregistrer la découverte via l’endpoint ManageDiscoveredSongs
+        try:
+            discover_url = request.build_absolute_uri("/box-management/discovered-songs")
+            csrf_token = get_token(request)
+            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
+            r2 = requests.post(
+                discover_url,
+                cookies=request.COOKIES,
+                headers=headers_bg,
+                data=json.dumps({"deposit_id": deposit_id, "discovered_type": "revealed"}),
+                timeout=4,
+            )
+            # On tolère l’erreur "déjà découvert" (400) comme un succès fonctionnel
+            if not r2.ok and r2.status_code != 400:
+                return Response(
+                    {"detail": "Erreur lors de l’enregistrement de la découverte."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        except Exception:
+            return Response(
+                {"detail": "Erreur lors de l’enregistrement de la découverte."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # 8) Points à jour
+        try:
+            user.refresh_from_db(fields=["points"])
+        except Exception:
+            user.refresh_from_db()
+        points_balance = getattr(user, "points", None)
+
+        # 9) Réponse (même forme qu’avant + solde)
         data = {
             "song": {
                 "title": song.title,
                 "artist": song.artist,
                 "spotify_url": song.spotify_url,
                 "deezer_url": song.deezer_url,
-            }
+            },
+            "points_balance": points_balance,
         }
         return Response(data, status=status.HTTP_200_OK)
 
@@ -615,6 +706,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
