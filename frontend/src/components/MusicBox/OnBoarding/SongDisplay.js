@@ -26,14 +26,14 @@ export default function SongDisplay({
 }) {
   const navigate = useRouterNavigate();
 
-  // Liste dépôts (sécurise le mapping)
+  // Sécurise la liste
   const deposits = useMemo(
     () => (Array.isArray(dispDeposits) ? dispDeposits : []),
     [dispDeposits]
   );
 
   // === ÉTATS LOCAUX ===
-  // Modale PLAY
+  // Play
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
 
@@ -41,7 +41,7 @@ export default function SongDisplay({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [drawerView, setDrawerView] = useState("search"); // 'search' | 'achievements'
 
-  // Dépôt tout juste ajouté par l’utilisateur (n’est PAS injecté dans dispDeposits)
+  // Dépôt tout juste ajouté (NON injecté dans dispDeposits)
   const [myDeposit, setMyDeposit] = useState(null);
 
   // Achievements (reçus après POST)
@@ -59,7 +59,7 @@ export default function SongDisplay({
     [achievements]
   );
 
-  // --- handlers PLAY ---
+  // --- PLAY ---
   const openPlayFor = (song) => {
     setPlaySong(song || null);
     setPlayOpen(true);
@@ -69,7 +69,7 @@ export default function SongDisplay({
     setPlaySong(null);
   };
 
-  // --- handlers Drawer / LiveSearch ---
+  // --- Drawer / LiveSearch ---
   const openSearch = () => {
     if (myDeposit) return; // un seul dépôt possible
     setDrawerView("search");
@@ -79,38 +79,128 @@ export default function SongDisplay({
     setIsSearchOpen(false);
   };
 
-  // Callback transmis à LiveSearch après POST réussi
-  const handleDepositSuccess = (addedDeposit, successes) => {
-    // 1) On stocke le dépôt “perso” sans l’injecter dans dispDeposits
-    setMyDeposit(addedDeposit || null);
-
-    // 2) Achievements puis on bascule le Drawer en mode "achievements"
-    setAchievements(Array.isArray(successes) ? successes : []);
+  // Rouvre le drawer en mode achievements
+  const reopenAchievements = () => {
     setDrawerView("achievements");
-    setIsSearchOpen(true); // s'assure que le Drawer est bien ouvert
+    setIsSearchOpen(true);
   };
 
-  // ====== BRANCHE SANS DÉPÔTS (boîte vide) ======
+  // Callback après POST réussi (LiveSearch)
+  const handleDepositSuccess = (addedDeposit, successes) => {
+    setMyDeposit(addedDeposit || null);
+    setAchievements(Array.isArray(successes) ? successes : []);
+    setDrawerView("achievements");
+    setIsSearchOpen(true);
+  };
+
+  // ---- Composant interne : carte "ma pépite" (révélée, compacte)
+  const MyDepositCard = () => (
+    <Card sx={{ p: 2, border: "1px dashed #e5e7eb" }}>
+      {/* Titre H1 demandé */}
+      <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        La chanson que tu as déposée
+      </Typography>
+
+      {/* deposit_song (layout compact révélé) */}
+      <Box
+        id="deposit_song"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "140px 1fr",
+          gap: 2,
+          mb: 1,
+          alignItems: "center",
+        }}
+      >
+        <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+          {myDeposit?.song?.img_url && (
+            <Box
+              component="img"
+              src={myDeposit.song.img_url}
+              alt={`${myDeposit.song.title} - ${myDeposit.song.artist}`}
+              sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          )}
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+          <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
+            {myDeposit?.song?.title}
+          </Typography>
+          <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+            {myDeposit?.song?.artist}
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => openPlayFor(myDeposit.song)}
+            sx={{ alignSelf: "flex-start", mt: 0.5 }}
+          >
+            Play
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Ligne d’info + points cliquables (à gauche texte, à droite points) */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          justifyContent: "space-between",
+          mt: 1,
+        }}
+      >
+        <Typography variant="body2" sx={{ flex: 1 }}>
+          Utilise tes points pour révéler d&apos;autres pépites dans la boîte ou sur les profils d&apos;autres utilisateurs
+        </Typography>
+
+        <Box
+          role="button"
+          tabIndex={0}
+          onClick={reopenAchievements}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && reopenAchievements()}
+          sx={{
+            px: 2,
+            py: 1,
+            borderRadius: 1.5,
+            fontWeight: 700,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            userSelect: "none",
+          }}
+        >
+          +{totalPoints}
+        </Box>
+      </Box>
+    </Card>
+  );
+
+  // ====== CASE: AUCUN DÉPÔT (boîte vide) ======
   if (deposits.length === 0) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Aucun dépôt à afficher.</Typography>
-
-        {!myDeposit && (
-          <Box sx={{ mt: 2 }}>
+      <Box sx={{ p: 2, display: "grid", gap: 2 }}>
+        {!myDeposit ? (
+          // --- Avant dépôt ---
+          <Card sx={{ p: 2 }}>
+            <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+              Ajoute chanson à ton tour pour gagner des crédits et pouvoir révéler d&apos;autres pépites.
+            </Typography>
             <Button variant="contained" onClick={openSearch} fullWidth>
               Déposer une chanson
             </Button>
-          </Box>
+          </Card>
+        ) : (
+          // --- Après dépôt ---
+          <MyDepositCard />
         )}
 
         {/* Drawer LiveSearch / Achievements */}
         <Drawer
           anchor="right"
           open={isSearchOpen}
-          // pas de fermeture par backdrop/ESC
           onClose={() => {}}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{ keepMounted: true, disableRestoreFocus: true }}
           PaperProps={{ sx: { width: "100vw" } }}
         >
           <Box sx={{ p: 2, display: "grid", gap: 2 }}>
@@ -167,10 +257,10 @@ export default function SongDisplay({
     );
   }
 
-  // ====== BRANCHE AVEC DÉPÔTS ======
+  // ====== CASE: AVEC DÉPÔTS ======
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
-      {/* ======= HERO INTRO ======= */}
+      {/* HERO */}
       <Box
         id="intro"
         sx={{
@@ -180,8 +270,8 @@ export default function SongDisplay({
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          marginTop: "26px",
-          marginBottom: "26px",
+          mt: "26px",
+          mb: "26px",
           p: 2,
         }}
       >
@@ -295,7 +385,6 @@ export default function SongDisplay({
                   alignItems: "center",
                 }}
               >
-                {/* cover 140x140 */}
                 <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
                   {s?.img_url && (
                     <Box
@@ -313,7 +402,6 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                {/* infos + Play (si révélé) */}
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   {isRevealed && (
                     <>
@@ -337,7 +425,7 @@ export default function SongDisplay({
               </Box>
             )}
 
-            {/* actions */}
+            {/* actions secondaires */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx > 0 && !isRevealed ? (
                 <Button variant="contained" size="large" disabled>
@@ -356,80 +444,23 @@ export default function SongDisplay({
           </Card>
         );
 
-        // Après le premier dépôt, on insère:
-        // - soit le bloc "my_deposit" (si présent),
-        // - soit un CTA "Déposer une chanson".
+        // Après le premier dépôt, on insère le CTA (avant dépôt) ou le bloc "ma pépite" (après dépôt).
         if (idx === 0) {
           return (
             <React.Fragment key={`first-frag`}>
               {card}
 
-              {/* Bloc my_deposit OU CTA */}
-              {myDeposit ? (
-                <Card key={`my-deposit`} sx={{ p: 2, border: "1px dashed #e5e7eb" }}>
-                  {/* deposit_date */}
-                  <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-                    {"Ta pépite (à l’instant)"}
-                  </Box>
-
-                  {/* deposit_song (layout compact révélé) */}
-                  <Box
-                    id="deposit_song"
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "140px 1fr",
-                      gap: 2,
-                      mb: 0,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-                      {myDeposit?.song?.img_url && (
-                        <Box
-                          component="img"
-                          src={myDeposit.song.img_url}
-                          alt={`${myDeposit.song.title} - ${myDeposit.song.artist}`}
-                          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
-                      )}
-                    </Box>
-
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                      <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
-                        {myDeposit?.song?.title}
-                      </Typography>
-                      <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                        {myDeposit?.song?.artist}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        size="large"
-                        onClick={() => openPlayFor(myDeposit.song)}
-                        sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                      >
-                        Play
-                      </Button>
-                    </Box>
-                  </Box>
-                </Card>
-              ) : (
-                <Box
-                  id="cta_deposit"
-                  sx={{
-                    width: "100%",
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    p: 2,
-                    border: "1px dashed #e5e7eb",
-                  }}
-                >
+              {!myDeposit ? (
+                <Card sx={{ p: 2 }}>
+                  <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                    Ajoute chanson à ton tour pour gagner des crédits et pouvoir révéler d&apos;autres pépites.
+                  </Typography>
                   <Button variant="contained" onClick={openSearch}>
                     Déposer une chanson
                   </Button>
-                </Box>
+                </Card>
+              ) : (
+                <MyDepositCard />
               )}
             </React.Fragment>
           );
@@ -438,15 +469,15 @@ export default function SongDisplay({
         return card;
       })}
 
-      {/* === PLAY MODAL === */}
+      {/* PLAY MODAL */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
-      {/* === DRAWER (LiveSearch / Achievements) === */}
+      {/* DRAWER (LiveSearch / Achievements) */}
       <Drawer
         anchor="right"
         open={isSearchOpen}
-        onClose={() => {}} // pas de fermeture par backdrop/ESC
-        ModalProps={{ keepMounted: true }}
+        onClose={() => {}} // pas de fermeture backdrop/ESC
+        ModalProps={{ keepMounted: true, disableRestoreFocus: true }}
         PaperProps={{ sx: { width: "100vw" } }}
       >
         <Box sx={{ p: 2, display: "grid", gap: 2 }}>
