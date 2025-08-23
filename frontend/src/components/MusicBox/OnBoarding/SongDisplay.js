@@ -453,7 +453,7 @@ export default function SongDisplay({
               {!myDeposit ? (
                 <Card sx={{ p: 2 }}>
                   <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                    Ajoute chanson à ton tour pour gagner des crédits et pouvoir révéler d&apos;autres pépites.
+                    Dépose une chanson à ton tour pour gagner des crédits et pouvoir révéler d&apos;autres pépites.
                   </Typography>
                   <Button variant="contained" onClick={openSearch}>
                     Déposer une chanson
