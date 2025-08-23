@@ -20,12 +20,12 @@ import { UserContext } from "../../UserContext";
 
 export default function SongDisplay({
   dispDeposits,
-  setDispDeposits, // utilisé pour maj après reveal
+  setDispDeposits, 
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxName,
   user,
-  revealCost, // ← nouveau (reçu du parent)
+  revealCost,
 }) {
   const navigate = useRouterNavigate();
   const { setUser } = useContext(UserContext) || {};
