@@ -325,7 +325,7 @@ class GetBox(APIView):
         try:
             if user and getattr(user, "is_authenticated", False):
                 csrf_token = get_token(request)
-                add_points_url = request.build_absolute_uri(reverse('users.add-points'))
+                add_points_url = request.build_absolute_uri(reverse('./users.add-points'))
                 headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
                 r = requests.post(
                     add_points_url,
@@ -598,6 +598,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
