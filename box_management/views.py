@@ -320,29 +320,44 @@ class GetBox(APIView):
 
             new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
 
-        # 6) Créditer les points via endpoint (best-effort) + récupérer le solde
-        points_balance = None
-        try:
-            if user and getattr(user, "is_authenticated", False):
-                csrf_token = get_token(request)
-                add_points_url = request.build_absolute_uri(reverse('./users.add-points'))
-                headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
-                r = requests.post(
-                    add_points_url,
-                    cookies=request.COOKIES,
-                    headers=headers_bg,
-                    data=json.dumps({"points": points_to_add}),
-                    timeout=4,
-                )
-                if r.ok:
-                    try:
-                        user.refresh_from_db(fields=["points"])
-                    except Exception:
-                        user.refresh_from_db()
-                    points_balance = getattr(user, "points", None)
-        except Exception:
-            # silencieux
-            pass
+            # 6) Créditer les points via endpoint (best-effort) + récupérer le solde
+            points_balance = None
+            try:
+                if user and getattr(user, "is_authenticated", False):
+                    # URL correcte (nom = 'add-points' dans users/urls.py)
+                    add_points_url = request.build_absolute_uri(reverse('add-points'))
+    
+                    # IMPORTANT : réutiliser le cookie CSRF existant et l’envoyer aussi en header
+                    csrftoken_cookie = request.COOKIES.get('csrftoken')
+                    csrftoken_header = csrftoken_cookie or get_token(request)
+    
+                    headers_bg = {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrftoken_header,
+                        # En HTTPS + CSRF_COOKIE_SECURE, Django exige un Referer cohérent
+                        "Referer": request.build_absolute_uri('/'),
+                    }
+    
+                    r = requests.post(
+                        add_points_url,
+                        cookies=request.COOKIES,        # sessionid + csrftoken
+                        headers=headers_bg,
+                        data=json.dumps({"points": points_to_add}),
+                        timeout=4,
+                    )
+    
+                    if r.ok:
+                        try:
+                            user.refresh_from_db(fields=["points"])
+                        except Exception:
+                            user.refresh_from_db()
+                        points_balance = getattr(user, "points", None)
+                    # (facultatif pour debug)
+                    # else:
+                    #     print("add-points failed:", r.status_code, r.text)
+            except Exception:
+                # silencieux
+                pass
 
         # 7) Payload du dépôt ajouté (révélé complet)
         added_deposit = {
@@ -598,6 +613,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
