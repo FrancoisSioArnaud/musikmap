@@ -78,6 +78,7 @@ export default function LiveSearch({
   }
 
   // Dépôt POST
+  // Dépôt POST
 function handleButtonClick(option, boxName) {
   const data = { option, boxName };
   const csrftoken = getCookie("csrftoken");
@@ -85,11 +86,11 @@ function handleButtonClick(option, boxName) {
   fetch("/box-management/get-box?name=" + boxName, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrftoken,
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
     },
     body: JSON.stringify(data),
-  })
+    })
     .then((data_resp) => {
     const { added_deposit, successes, points_balance } = data_resp || {};
   
@@ -102,12 +103,11 @@ function handleButtonClick(option, boxName) {
     if (typeof points_balance === "number") {
       setUser((prev) => ({ ...(prev || {}), points: points_balance }));
     } else {
-      // Cas anonyme : on peut garder un compteur local si tu veux
-      // (facultatif)
-      // const total = (successes || []).find(s => (s.name||"").toLowerCase()==="total")?.points || 0;
-      // const key = "anon_points";
-      // const cur = parseInt(localStorage.getItem(key) || "0", 10);
-      // localStorage.setItem(key, String(cur + total));
+      // Cas anonyme : on garde un compteur local
+      const total = (successes || []).find(s => (s.name||"").toLowerCase()==="total")?.points || 0;
+      const key = "anon_points";
+      const cur = parseInt(localStorage.getItem(key) || "0", 10);
+      localStorage.setItem(key, String(cur + total));
     }
   })
 }
@@ -167,6 +167,7 @@ function handleButtonClick(option, boxName) {
     </Stack>
   );
 }
+
 
 
 
