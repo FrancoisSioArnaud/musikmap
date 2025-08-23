@@ -369,11 +369,14 @@ export default function SongDisplay({
         const s = dep?.song || {};
         const isRevealed = Boolean(s?.title && s?.artist);
 
+        const dateSuffix =
+          dep?.discovered_at ? ` (Tu as découvert cette chanson ici ${dep.discovered_at})` : "";
+
         const card = (
           <Card key={`dep-${dep?.deposit_id ?? idx}`} sx={{ p: 2 }}>
             {/* date */}
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + dep?.deposit_date}
+              {"Pépite déposée " + (dep?.deposit_date || "") + dateSuffix}
             </Box>
 
             {/* user */}
@@ -514,14 +517,6 @@ export default function SongDisplay({
                 >
                   {`Découvrir — ${cost}`}
                 </Button>
-              ) : idx > 0 && isRevealed ? (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {deposits[idx]?.discovered_at === "à l'instant"
-                    ? "Découverte à l'instant"
-                    : deposits[idx]?.discovered_at
-                    ? `Découvert : ${deposits[idx].discovered_at}`
-                    : null}
-                </Typography>
               ) : null}
             </Box>
           </Card>
