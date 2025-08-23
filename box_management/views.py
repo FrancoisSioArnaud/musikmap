@@ -441,60 +441,54 @@ class ManageDiscoveredSongs(APIView):
     def post(self, request):
         user = request.user
         if not user.is_authenticated:
-            return Response({'error': 'Vous devez être connecté pour effectuer cette action.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {'error': 'Vous devez être connecté pour effectuer cette action.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
+        # deposit_id désormais OBLIGATOIRE (plus de fallback visible_deposit/song_id)
         deposit_id = request.data.get('deposit_id')
+        if not deposit_id:
+            return Response(
+                {'error': 'Identifiant de dépôt manquant.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         discovered_type = request.data.get('discovered_type') or "revealed"
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
-        if not deposit_id:
-            # rétro-compat éventuelle (ancien front)
-            song_id = request.data.get('visible_deposit', {}).get('id')
-            if not song_id:
-                return Response({'error': "Identifiant de dépôt manquant."}, status=status.HTTP_400_BAD_REQUEST)
-            try:
-                song_obj = Song.objects.get(id=song_id)
-            except Song.DoesNotExist:
-                return Response({'error': 'Chanson introuvable.'}, status=status.HTTP_404_NOT_FOUND)
-            deposit = Deposit.objects.filter(song_id=song_obj).order_by('-deposited_at').first()
-            if not deposit:
-                return Response({'error': "Aucun dépôt trouvé pour cette chanson."}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            try:
-                deposit = Deposit.objects.select_related('song_id').get(pk=deposit_id)
-            except Deposit.DoesNotExist:
-                return Response({'error': "Dépôt introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        # Vérifie l'existence du dépôt
+        try:
+            deposit = Deposit.objects.select_related('song_id').get(pk=deposit_id)
+        except Deposit.DoesNotExist:
+            return Response(
+                {'error': "Dépôt introuvable."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        # 1) Un dépôt ne peut être découvert qu'une fois par user
+        # Seule contrainte conservée : un même dépôt ne peut être découvert qu'une fois par user
         if DiscoveredSong.objects.filter(user_id=user, deposit_id=deposit).exists():
-            return Response({'error': 'Ce dépôt est déjà découvert.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'Ce dépôt est déjà découvert.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # 2) Interdire doublon même morceau (title/artist) — sauf upgrade revealed -> main
-        same_song = DiscoveredSong.objects.filter(
+        # Création simple
+        DiscoveredSong.objects.create(
             user_id=user,
-            deposit_id__song_id__title__iexact=deposit.song_id.title,
-            deposit_id__song_id__artist__iexact=deposit.song_id.artist
-        ).order_by('-discovered_at').first()
-
-        if same_song:
-            if same_song.discovered_type != "main" and discovered_type == "main":
-                # Upgrade et repointage vers le dépôt “main”
-                same_song.discovered_type = "main"
-                same_song.deposit_id = deposit
-                same_song.save(update_fields=["discovered_type", "deposit_id", "discovered_at"])
-                return Response({'success': True, 'upgraded': True}, status=status.HTTP_200_OK)
-            # déjà lié à un autre dépôt pour ce morceau
-            return Response({'error': 'Cette chanson est déjà liée à un autre dépôt.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 3) Création
-        DiscoveredSong.objects.create(user_id=user, deposit_id=deposit, discovered_type=discovered_type)
+            deposit_id=deposit,
+            discovered_type=discovered_type
+        )
         return Response({'success': True}, status=status.HTTP_200_OK)
 
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
-            return Response({'error': 'Vous devez être connecté pour effectuer cette action.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {'error': 'Vous devez être connecté pour effectuer cette action.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         q = (
             DiscoveredSong.objects
@@ -539,8 +533,6 @@ class ManageDiscoveredSongs(APIView):
             })
 
         return Response(payload, status=status.HTTP_200_OK)
-
-
 
 class RevealSong(APIView):
     """
@@ -714,6 +706,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
