@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useEffect, useContext } from "react";
 import { useNavigate as useRouterNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -53,6 +53,9 @@ export default function SongDisplay({
   // Achievements (reçus après POST)
   const [achievements, setAchievements] = useState([]);
 
+  // Empêche de poster plusieurs fois la découverte "main" pour le même premier dépôt
+  const [mainRecordedId, setMainRecordedId] = useState(null);
+
   const totalPoints = useMemo(() => {
     const item = achievements.find(
       (s) => (s?.name || "").toLowerCase() === "total"
@@ -64,6 +67,34 @@ export default function SongDisplay({
     () => achievements.filter((s) => (s?.name || "").toLowerCase() !== "total"),
     [achievements]
   );
+
+  // --- Enregistrer automatiquement le dépôt idx===0 comme "main" si utilisateur connecté ---
+  const firstDepositId = deposits?.[0]?.deposit_id || null;
+
+  useEffect(() => {
+    if (!firstDepositId) return;
+    if (!user || !user.username) return; // réservé aux connectés
+    if (mainRecordedId === firstDepositId) return;
+
+    const csrftoken = getCookie("csrftoken");
+    fetch("/box-management/discovered-songs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+      body: JSON.stringify({ deposit_id: firstDepositId, discovered_type: "main" }),
+      credentials: "same-origin",
+    })
+      .then((res) => {
+        // On considère 200 OK et 400 (déjà découvert / lié ailleurs) comme “traité”
+        if (res.ok || res.status === 400) {
+          setMainRecordedId(firstDepositId);
+        }
+        // On ne bloque pas l’UI sur les erreurs, donc pas d’alert volontairement
+        return res.json().catch(() => ({}));
+      })
+      .catch(() => {
+        // Silence radio : on réessaiera si premier dépôt change
+      });
+  }, [firstDepositId, user?.username, mainRecordedId]);
 
   // --- PLAY ---
   const openPlayFor = (song) => {
@@ -349,7 +380,7 @@ export default function SongDisplay({
       {deposits.map((dep, idx) => {
         const u = dep?.user;
         const s = dep?.song || {};
-        const already = !!dep?.already_discovered;
+        the const already = !!dep?.already_discovered;
         const isRevealed = already || Boolean(s?.title && s?.artist);
 
         const card = (
