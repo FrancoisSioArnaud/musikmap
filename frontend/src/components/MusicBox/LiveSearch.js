@@ -91,25 +91,25 @@ function handleButtonClick(option, boxName) {
     body: JSON.stringify(data),
   })
     .then((data_resp) => {
-      const { added_deposit, successes, points_balance } = data_resp || {};
-    
-      // 1) Notifie le parent (SongDisplay) pour afficher le my_deposit + achievements
-      if (typeof onDepositSuccess === "function") {
-        onDepositSuccess(added_deposit, successes);
-      }
-    
-      // 2) Met à jour le solde dans le UserContext pour que le menu réagisse
-      if (typeof points_balance === "number") {
-        setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-      } else {
-        // Cas anonyme : on peut garder un compteur local si tu veux
-        // (facultatif)
-        // const total = (successes || []).find(s => (s.name||"").toLowerCase()==="total")?.points || 0;
-        // const key = "anon_points";
-        // const cur = parseInt(localStorage.getItem(key) || "0", 10);
-        // localStorage.setItem(key, String(cur + total));
-      }
-    })
+    const { added_deposit, successes, points_balance } = data_resp || {};
+  
+    // 1) Notifie le parent (SongDisplay) pour afficher le my_deposit + achievements
+    if (typeof onDepositSuccess === "function") {
+      onDepositSuccess(added_deposit, successes);
+    }
+  
+    // 2) Met à jour le solde dans le UserContext pour que le menu réagisse
+    if (typeof points_balance === "number") {
+      setUser((prev) => ({ ...(prev || {}), points: points_balance }));
+    } else {
+      // Cas anonyme : on peut garder un compteur local si tu veux
+      // (facultatif)
+      // const total = (successes || []).find(s => (s.name||"").toLowerCase()==="total")?.points || 0;
+      // const key = "anon_points";
+      // const cur = parseInt(localStorage.getItem(key) || "0", 10);
+      // localStorage.setItem(key, String(cur + total));
+    }
+  })
 }
 
   return (
@@ -167,6 +167,7 @@ function handleButtonClick(option, boxName) {
     </Stack>
   );
 }
+
 
 
 
