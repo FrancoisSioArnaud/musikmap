@@ -73,7 +73,17 @@ export default function MusicBox() {
             <Loader/>
           </>
         }
-        {stage === 2 && (
+       {stage === 2 && (
+          <>
+            <SongDisplay
+              dispDeposits={dispDeposits}
+              setDispDeposits={setDispDeposits}
+              achievements={achievements}
+              setAchievements={setAchievements}
+            />
+          </>
+        )}
+        {stage === 3 && (
           <>
             <LiveSearch
               isSpotifyAuthenticated={isSpotifyAuthenticated}
@@ -87,20 +97,12 @@ export default function MusicBox() {
             />
           </>
         )}
-        {stage === 5 && (
-          <>
-            <SongDisplay
-              dispDeposits={dispDeposits}
-              setDispDeposits={setDispDeposits}
-              achievements={achievements}
-              setAchievements={setAchievements}
-            />
-          </>
-        )}
+    
       </Box>
     </>
   );
 }
+
 
 
 
