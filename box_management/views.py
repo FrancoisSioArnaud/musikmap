@@ -69,6 +69,130 @@ class GetBox(APIView):
     lookup_url_kwarg = 'name'
     serializer_class = BoxSerializer
 
+    # --------- Helpers ---------
+
+    def _map_user(u):
+        if not u or isinstance(u, AnonymousUser):
+            return None
+        # Nom d’affichage
+        full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
+        display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+        # Photo
+        profile_pic = (
+            getattr(u, "profile_picture_url", None)
+            or getattr(u, "profile_pic_url", None)
+            or getattr(u, "avatar_url", None)
+            or getattr(getattr(u, "profile", None), "picture_url", None)
+        )
+        return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
+
+
+    def _map_song_full(s, include_id=False):
+        if not s:
+            return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
+        payload = {
+            "title": getattr(s, "title", None),
+            "artist": getattr(s, "artist", None),
+            "spotify_url": getattr(s, "spotify_url", None),
+            "deezer_url": getattr(s, "deezer_url", None),
+            "img_url": getattr(s, "image_url", None),
+        }
+        if include_id:
+            payload["id"] = getattr(s, "id", None)
+        return payload
+
+
+    def _map_song_teaser(s):
+        # Teaser: id + image + cost=300
+        return {
+            "img_url": getattr(s, "image_url", None),
+            "id": getattr(s, "id", None),
+            "cost": 300,
+        }
+
+
+    def _naturaltime(dt):
+        return naturaltime(localtime(dt)) if dt else None
+
+    def _build_deposits_payload(self, box, user, limit=10):
+        """
+        Renvoie jusqu’à `limit` dépôts ordonnés par -deposited_at, -id.
+        idx 0: toujours révélé/complet.
+        idx > 0:
+          - user authentifié -> révélé si présent dans DiscoveredSong, sinon teaser
+          - anonyme -> toujours teaser
+        Pour les anonymes, inclure already_discovered=false et discovered_at=null sur idx>0 (demande explicite).
+        """
+        qs = (
+            Deposit.objects
+            .filter(box_id=box)
+            .select_related('song_id', 'user')
+            .order_by('-deposited_at', '-id')[:limit]
+        )
+
+        deposits = list(qs)
+        if not deposits:
+            return []
+
+        # Map des découvertes utilisateur (lecture seule)
+        discovered_by_dep = {}
+        authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
+        if authed and len(deposits) > 1:
+            dep_ids = [d.id for d in deposits[1:]]  # on ne “révèle” que idx > 0 via discovered
+            for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids):
+                discovered_by_dep[ds.deposit_id_id] = ds
+
+        out = []
+        for idx, d in enumerate(deposits):
+            s = d.song_id
+            u = d.user
+            user_payload = self._map_user(u)
+
+            if idx == 0:
+                # Toujours révélé, complet (sans champs discovered)
+                song_payload = self._map_song_full(s, include_id=False)
+                obj = {
+                    "deposit_id": d.id,
+                    "deposit_date": self._naturaltime(getattr(d, "deposited_at", None)),
+                    "song": song_payload,
+                    "user": user_payload,
+                }
+            else:
+                # idx > 0: révélé/teaser selon règles
+                if authed:
+                    ds = discovered_by_dep.get(d.id)
+                    already_discovered = bool(ds)
+                    if already_discovered:
+                        song_payload = self._map_song_full(s, include_id=True)  # inclure 'id' côté révélé idx>0
+                        discovered_at = self._naturaltime(getattr(ds, "discovered_at", None))
+                    else:
+                        song_payload = self._map_song_teaser(s)
+                        discovered_at = None
+                    obj = {
+                        "deposit_id": d.id,
+                        "deposit_date": self._naturaltime(getattr(d, "deposited_at", None)),
+                        "already_discovered": already_discovered,
+                        "discovered_at": discovered_at,
+                        "song": song_payload,
+                        "user": user_payload,
+                    }
+                else:
+                    # Anonyme: idx>0 toujours teaser + champs présents (false/null)
+                    song_payload = self._map_song_teaser(s)
+                    obj = {
+                        "deposit_id": d.id,
+                        "deposit_date": self._naturaltime(getattr(d, "deposited_at", None)),
+                        "already_discovered": False,
+                        "discovered_at": None,
+                        "song": song_payload,
+                        "user": user_payload,
+                    }
+
+            out.append(obj)
+
+        return out
+
+    # --------- GET ---------
     def get(self, request, format=None):
         name = request.GET.get(self.lookup_url_kwarg)
         if name is None:
@@ -80,40 +204,42 @@ class GetBox(APIView):
 
         box = box_qs[0]
         data = BoxSerializer(box).data
-        deposit_count = Deposit.objects.filter(box_id=box.id).count()
 
-        resp = {'deposit_count': deposit_count, 'box': data}
+        deposit_count = Deposit.objects.filter(box_id=box.id).count()
+        deposits_payload = self._build_deposits_payload(box, request.user, limit=10)
+
+        resp = {'deposit_count': deposit_count, 'box': data, 'deposits': deposits_payload}
         return Response(resp, status=status.HTTP_200_OK)
 
+    # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
         """
-        Crée/MAJ Song (synchrone), crée Deposit (synchrone), retourne:
-          - successes
-          - deposits: 10 dépôts précédents (sans le nouveau)
-              * idx 0 : toutes les infos (incl. spotify_url / deezer_url)
-              * idx > 0 :
-                  - déjà découverts par l'utilisateur -> renvoyés révélés (title/artist/urls)
-                  - sinon -> format allégé (img_url, id, cost)
-                  - champs additionnels: already_discovered (bool), discovered_at (naturaltime ou None)
+        Ne fait que:
+          - upsert Song
+          - créer Deposit
+          - calculer successes (inchangé)
+          - renvoyer: {"successes": list(...), "added_deposit": {...}}  (dernier dépôt ajouté, payload complet)
         """
+
+        # ---- Lecture des paramètres d’entrée
         option = request.data.get('option') or {}
         song_id = option.get('id')
         song_name = option.get('name')
         song_author = option.get('artist')
         song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
         box_name = request.data.get('boxName')
-    
+
         # 1) Box
         box = Box.objects.filter(url=box_name).get()
-    
+
         # 2) User courant
         user = request.user if not isinstance(request.user, AnonymousUser) else None
-    
-        # 3) Succès AVANT écriture
+
+        # 3) Succès AVANT écriture (identique à ton code)
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
         successes['default_deposit'] = {'name': "Pépite", 'desc': "Tu as partagé une chanson", 'points': NB_POINTS_ADD_SONG}
-    
+
         if user and is_first_user_deposit(user, box):
             points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             successes['first_user_deposit_box'] = {
@@ -121,7 +247,7 @@ class GetBox(APIView):
                 'desc': "Tu n'as jamais déposé ici",
                 'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             }
-    
+
         if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             successes['first_song_deposit'] = {
@@ -136,7 +262,7 @@ class GetBox(APIView):
                     'desc': "Ce son n'a jamais été déposé sur notre réseau",
                     'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
                 }
-    
+
         nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
         if nb_consecutive_days:
             consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
@@ -147,9 +273,9 @@ class GetBox(APIView):
                 'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
                 'points': consecutive_days_points
             }
-    
+
         successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
-    
+
         # 4) Upsert Song (clé = title+artist), remplir l'URL selon platform_id
         try:
             song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
@@ -162,27 +288,24 @@ class GetBox(APIView):
                 image_url=option.get('image_url') or "",
                 duration=option.get('duration') or 0,
             )
-    
+
         incoming_url = option.get('url')
         if song_platform_id == 1 and incoming_url:
             song.spotify_url = incoming_url
         elif song_platform_id == 2 and incoming_url:
             song.deezer_url = incoming_url
-    
-        # 4bis) Compléter l'autre URL via l'agrégateur si manquante
+
+        # 4bis) Compléter l'autre URL via l'agrégateur si manquante (best-effort)
         try:
-            # Quelle plateforme manque ?
             if song_platform_id == 1 and not song.deezer_url:
                 request_platform = "deezer"
             elif song_platform_id == 2 and not song.spotify_url:
                 request_platform = "spotify"
             else:
                 request_platform = None
-        
+
             if request_platform:
-                # URL de l'endpoint via reverse (namespace: api_agg)
                 aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
-        
                 payload = {
                     "song": {
                         "title": song.title,
@@ -191,17 +314,12 @@ class GetBox(APIView):
                     },
                     "platform": request_platform,
                 }
-        
-                headers = {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": get_token(request),  # utile si CSRF actif
-                }
-        
+                headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
                 r = requests.post(
                     aggreg_url,
                     data=json.dumps(payload),
                     headers=headers,
-                    cookies=request.COOKIES,  # propage la session/csrf si nécessaire
+                    cookies=request.COOKIES,
                     timeout=6,
                 )
                 if r.ok:
@@ -212,16 +330,14 @@ class GetBox(APIView):
                         elif request_platform == "spotify":
                             song.spotify_url = other_url
         except Exception:
-            # best-effort : on ignore les erreurs d’agrégation
             pass
 
-    
         song.save()
-    
+
         # 5) Créer le nouveau dépôt
         new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
-    
-        # 6) Créditer les points (best-effort)
+
+        # 6) Créditer les points (best-effort, inchangé)
         try:
             csrf_token = get_token(request)
             add_points_url = request.build_absolute_uri(reverse('add-points'))
@@ -235,116 +351,18 @@ class GetBox(APIView):
             )
         except Exception:
             pass
-    
-        # 7) Récupérer les 10 dépôts précédents (sans le nouveau)
-        previous_deposits = list(
-            Deposit.objects
-            .filter(box_id=box)
-            .exclude(pk=new_deposit.pk)
-            .select_related('song_id', 'user')
-            .order_by('-deposited_at', '-id')[:10]
-        )
-    
-        # 7bis) Auto-discovery "main" pour l’idx 0 si user connecté
-        if user and previous_deposits:
-            d0 = previous_deposits[0]
-            already_this_deposit = DiscoveredSong.objects.filter(user_id=user, deposit_id=d0).exists()
-            if not already_this_deposit:
-                existing_same_song = DiscoveredSong.objects.filter(
-                    user_id=user,
-                    deposit_id__song_id__title__iexact=d0.song_id.title,
-                    deposit_id__song_id__artist__iexact=d0.song_id.artist
-                ).order_by('-discovered_at').first()
-    
-                if existing_same_song:
-                    if existing_same_song.discovered_type != "main":
-                        existing_same_song.discovered_type = "main"
-                        existing_same_song.deposit_id = d0
-                        existing_same_song.save(update_fields=["discovered_type", "deposit_id", "discovered_at"])
-                else:
-                    DiscoveredSong.objects.create(user_id=user, deposit_id=d0, discovered_type="main")
-    
-        # Préparer un index {deposit_id: discovered_instance} pour l'utilisateur courant
-        ds_by_dep = {}
-        if user and previous_deposits:
-            dep_ids = [d.id for d in previous_deposits]
-            for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids):
-                ds_by_dep[ds.deposit_id_id] = ds
-    
-        # 8) Construire la réponse
-        cost_series = [500 - 50 * i for i in range(9)]  # 500 → 100
-        deposits_payload = []
-        for idx, d in enumerate(previous_deposits):
-            s = d.song_id
-            u = d.user
-    
-            if u and not isinstance(u, AnonymousUser):
-                full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-                display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-                profile_pic = (
-                    getattr(u, "profile_pic_url", None)
-                    or getattr(u, "avatar_url", None)
-                    or getattr(getattr(u, "profile", None), "picture_url", None)
-                )
-                user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
-            else:
-                user_payload = None
-    
-            # Découverte par dépôt (uniquement idx > 0 demandé)
-            ds = ds_by_dep.get(d.id) if user else None
-            already_discovered = bool(ds) if idx > 0 else False
-            discovered_at_natural = (
-                naturaltime(localtime(ds.discovered_at)) if (idx > 0 and ds and getattr(ds, "discovered_at", None)) else None
-            )
-    
-            if idx == 0:
-                # Premier : toujours complet
-                song_payload = {
-                    "title": getattr(s, "title", None),
-                    "artist": getattr(s, "artist", None),
-                    "url": getattr(s, "url", None),
-                    "spotify_url": getattr(s, "spotify_url", None),
-                    "deezer_url": getattr(s, "deezer_url", None),
-                    "img_url": getattr(s, "image_url", None),
-                }
-                dep_obj = {
-                    "deposit_id": d.id,
-                    "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
-                    "song": song_payload,
-                    "user": user_payload,
-                }
-            else:
-                # Secondaires : si déjà découverts -> renvoyés révélés
-                if already_discovered:
-                    song_payload = {
-                        "id": getattr(s, "id", None),
-                        "title": getattr(s, "title", None),
-                        "artist": getattr(s, "artist", None),
-                        "img_url": getattr(s, "image_url", None),
-                        "spotify_url": getattr(s, "spotify_url", None),
-                        "deezer_url": getattr(s, "deezer_url", None),
-                    }
-                else:
-                    cost_value = cost_series[idx - 1] if (idx - 1) < len(cost_series) else 100
-                    song_payload = {
-                        "img_url": getattr(s, "image_url", None),
-                        "id": getattr(s, "id", None),
-                        "cost": cost_value,
-                    }
-    
-                dep_obj = {
-                    "deposit_id": d.id,
-                    "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
-                    "already_discovered": already_discovered if user else False,
-                    "discovered_at": discovered_at_natural if user else None,
-                    "song": song_payload,
-                    "user": user_payload,
-                }
-    
-            deposits_payload.append(dep_obj)
-    
-        response = {"successes": list(successes.values()), "deposits": deposits_payload}
+
+        # 7) Construire le payload du dépôt nouvellement ajouté (révélé complet)
+        added_deposit = {
+            "deposit_id": new_deposit.id,
+            "deposit_date": self._naturaltime(getattr(new_deposit, "deposited_at", None)),
+            "song": self._map_song_full(song, include_id=False),
+            "user": self._map_user(user),
+        }
+
+        response = {"successes": list(successes.values()), "added_deposit": added_deposit}
         return Response(response, status=status.HTTP_200_OK)
+
 
 class Location(APIView):
     def post(self, request):
@@ -583,6 +601,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
