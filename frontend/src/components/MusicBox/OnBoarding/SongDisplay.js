@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useMemo } from "react";
-import { useNavigate as useRouterNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -24,7 +24,7 @@ export default function SongDisplay({
   boxName,
   user,
 }) {
-  const navigate = useRouterNavigate();
+  const navigate = useNavigate();
 
   // Liste dépôts (sécurise le mapping)
   const deposits = useMemo(
@@ -177,7 +177,9 @@ export default function SongDisplay({
                 mb: 2,
                 cursor: u?.id != null ? "pointer" : "default",
               }}
-              onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
+              onClick={() => {
+                if (u?.id != null) navigate("/profile/" + u.id);
+              }}
             >
               <Avatar
                 src={u?.profile_pic_url || undefined}
