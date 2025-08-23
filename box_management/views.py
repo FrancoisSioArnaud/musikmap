@@ -203,29 +203,40 @@ class GetBox(APIView):
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
         """
-        - Upsert Song
-        - Créer Deposit (atomique avec Song)
-        - Calculer successes
-        - Créditer les points via /users/add-points (best-effort)
-        - Répondre: {"successes": [...], "added_deposit": {...}, "points_balance": <int|None>}
+        Étapes simplifiées :
+          1) Upsert Song
+          2) Créer Deposit (dans la même transaction DB)
+          3) Créditer les points via /users/add-points (best-effort)
+          4) Répondre : {"successes": [...], "added_deposit": {...}, "points_balance": <int|None>}
         """
+        # --- 0) Lecture & validations minimales
         option = request.data.get('option') or {}
-        song_id = option.get('id')
-        song_name = option.get('name')
-        song_author = option.get('artist')
-        song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
         box_name = request.data.get('boxName')
+        if not box_name:
+            return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1) Box
-        box = Box.objects.filter(url=box_name).get()
+        box = Box.objects.filter(url=box_name).first()
+        if not box:
+            return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 2) User courant
+        song_name = (option.get('name') or "").strip()
+        song_author = (option.get('artist') or "").strip()
+        song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
+        incoming_url = option.get('url')
+        if not song_name or not song_author:
+            return Response({"detail": "Titre et artiste requis"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-        # 3) Succès
+        # --- 1) Calcul des succès / points
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
-        successes['default_deposit'] = {'name': "Pépite", 'desc': "Tu as partagé une chanson", 'points': NB_POINTS_ADD_SONG}
+        successes['default_deposit'] = {
+            'name': "Pépite",
+            'desc': "Tu as partagé une chanson",
+            'points': NB_POINTS_ADD_SONG
+        }
 
         if user and is_first_user_deposit(user, box):
             points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
@@ -261,36 +272,39 @@ class GetBox(APIView):
                 'points': consecutive_days_points
             }
 
-        successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
+        successes['points_total'] = {
+            'name': "Total",
+            'desc': "Points gagnés pour ce dépôt",
+            'points': points_to_add
+        }
 
-        # 4) Upsert Song + 5) Créer Deposit (atomique)
+        # --- 2) Upsert Song + 3) Créer Deposit (atomique ensemble)
         with transaction.atomic():
             try:
                 song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
                 song.n_deposits = (song.n_deposits or 0) + 1
             except Song.DoesNotExist:
                 song = Song(
-                    song_id=song_id,
+                    song_id=option.get('id'),
                     title=song_name,
                     artist=song_author,
                     image_url=option.get('image_url') or "",
                     duration=option.get('duration') or 0,
                 )
 
-            incoming_url = option.get('url')
+            # URL de la plateforme utilisée
             if song_platform_id == 1 and incoming_url:
                 song.spotify_url = incoming_url
             elif song_platform_id == 2 and incoming_url:
                 song.deezer_url = incoming_url
 
-            # 4bis) Compléter l'autre URL via agrégateur (best-effort)
+            # Compléter l’autre URL via agrégateur (best-effort)
             try:
+                request_platform = None
                 if song_platform_id == 1 and not song.deezer_url:
                     request_platform = "deezer"
                 elif song_platform_id == 2 and not song.spotify_url:
                     request_platform = "spotify"
-                else:
-                    request_platform = None
 
                 if request_platform:
                     aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
@@ -314,52 +328,41 @@ class GetBox(APIView):
                             elif request_platform == "spotify":
                                 song.spotify_url = other_url
             except Exception:
-                pass
+                pass  # best-effort
 
             song.save()
-
             new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
 
-            # 6) Créditer les points via endpoint (best-effort) + récupérer le solde
-            points_balance = None
-            try:
-                if user and getattr(user, "is_authenticated", False):
-                    # URL correcte (nom = 'add-points' dans users/urls.py)
-                    add_points_url = request.build_absolute_uri(reverse('add-points'))
-    
-                    # IMPORTANT : réutiliser le cookie CSRF existant et l’envoyer aussi en header
-                    csrftoken_cookie = request.COOKIES.get('csrftoken')
-                    csrftoken_header = csrftoken_cookie or get_token(request)
-    
-                    headers_bg = {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": csrftoken_header,
-                        # En HTTPS + CSRF_COOKIE_SECURE, Django exige un Referer cohérent
-                        "Referer": request.build_absolute_uri('/'),
-                    }
-    
-                    r = requests.post(
-                        add_points_url,
-                        cookies=request.COOKIES,        # sessionid + csrftoken
-                        headers=headers_bg,
-                        data=json.dumps({"points": points_to_add}),
-                        timeout=4,
-                    )
-    
-                    if r.ok:
-                        try:
-                            user.refresh_from_db(fields=["points"])
-                        except Exception:
-                            user.refresh_from_db()
-                        points_balance = getattr(user, "points", None)
-                    # (facultatif pour debug)
-                    # else:
-                    #     print("add-points failed:", r.status_code, r.text)
-            except Exception:
-                # silencieux
-                pass
+        # --- 4) Créditer les points via endpoint (best-effort) et récupérer le solde
+        points_balance = None
+        try:
+            if user and getattr(user, "is_authenticated", False):
+                add_points_url = request.build_absolute_uri(reverse('add-points'))
+                csrftoken_cookie = request.COOKIES.get('csrftoken')
+                csrftoken_header = csrftoken_cookie or get_token(request)
 
-        # 7) Payload du dépôt ajouté (révélé complet)
+                headers_bg = {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrftoken_header,
+                    "Referer": request.build_absolute_uri('/'),
+                }
+                r = requests.post(
+                    add_points_url,
+                    cookies=request.COOKIES,
+                    headers=headers_bg,
+                    data=json.dumps({"points": points_to_add}),
+                    timeout=4,
+                )
+                if r.ok:
+                    try:
+                        user.refresh_from_db(fields=["points"])
+                    except Exception:
+                        user.refresh_from_db()
+                    points_balance = getattr(user, "points", None)
+        except Exception:
+            pass  # silencieux
+
+        # --- 5) Réponse
         added_deposit = {
             "deposit_id": new_deposit.id,
             "deposit_date": self._naturaltime(getattr(new_deposit, "deposited_at", None)),
@@ -373,7 +376,6 @@ class GetBox(APIView):
             "points_balance": points_balance,  # None si anonyme ou si ajout échoue
         }
         return Response(response, status=status.HTTP_200_OK)
-
 
 
 class Location(APIView):
@@ -613,6 +615,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
