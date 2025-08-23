@@ -376,7 +376,7 @@ export default function SongDisplay({
           <Card key={`dep-${dep?.deposit_id ?? idx}`} sx={{ p: 2 }}>
             {/* date */}
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + dateSuffix}
+              {"Pépite déposée " + (dep?.deposit_date || "") + ". "+ dateSuffix}
             </Box>
 
             {/* user */}
