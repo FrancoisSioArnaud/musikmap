@@ -209,15 +209,16 @@ class GetBox(APIView):
         return Response(resp, status=status.HTTP_200_OK)
 
     # --------- POST (création d’un dépôt) ---------
-    def post(self, request, format=None):
+   def post(self, request, format=None):
         """
         Ne fait que:
           - upsert Song
           - créer Deposit
           - calculer successes (inchangé)
-          - renvoyer: {"successes": list(...), "added_deposit": {...}}  (dernier dépôt ajouté, payload complet)
+          - incrémenter les points utilisateur de façon atomique (si connecté)
+          - renvoyer: {"successes": list(...), "added_deposit": {...}, "points_balance": <int|None>}
         """
-
+    
         # ---- Lecture des paramètres d’entrée
         option = request.data.get('option') or {}
         song_id = option.get('id')
@@ -225,18 +226,18 @@ class GetBox(APIView):
         song_author = option.get('artist')
         song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
         box_name = request.data.get('boxName')
-
+    
         # 1) Box
         box = Box.objects.filter(url=box_name).get()
-
+    
         # 2) User courant
         user = request.user if not isinstance(request.user, AnonymousUser) else None
-
+    
         # 3) Succès AVANT écriture (identique à ton code)
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
         successes['default_deposit'] = {'name': "Pépite", 'desc': "Tu as partagé une chanson", 'points': NB_POINTS_ADD_SONG}
-
+    
         if user and is_first_user_deposit(user, box):
             points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             successes['first_user_deposit_box'] = {
@@ -244,7 +245,7 @@ class GetBox(APIView):
                 'desc': "Tu n'as jamais déposé ici",
                 'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
             }
-
+    
         if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             successes['first_song_deposit'] = {
@@ -259,7 +260,7 @@ class GetBox(APIView):
                     'desc': "Ce son n'a jamais été déposé sur notre réseau",
                     'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
                 }
-
+    
         nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
         if nb_consecutive_days:
             consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
@@ -270,9 +271,9 @@ class GetBox(APIView):
                 'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
                 'points': consecutive_days_points
             }
-
+    
         successes['points_total'] = {'name': "Total", 'desc': "Points gagnés pour ce dépôt", 'points': points_to_add}
-
+    
         # 4) Upsert Song (clé = title+artist), remplir l'URL selon platform_id
         try:
             song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
@@ -285,13 +286,13 @@ class GetBox(APIView):
                 image_url=option.get('image_url') or "",
                 duration=option.get('duration') or 0,
             )
-
+    
         incoming_url = option.get('url')
         if song_platform_id == 1 and incoming_url:
             song.spotify_url = incoming_url
         elif song_platform_id == 2 and incoming_url:
             song.deezer_url = incoming_url
-
+    
         # 4bis) Compléter l'autre URL via l'agrégateur si manquante (best-effort)
         try:
             if song_platform_id == 1 and not song.deezer_url:
@@ -300,7 +301,7 @@ class GetBox(APIView):
                 request_platform = "spotify"
             else:
                 request_platform = None
-
+    
             if request_platform:
                 aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
                 payload = {
@@ -325,27 +326,26 @@ class GetBox(APIView):
         except Exception:
             # best-effort
             pass
-
-        song.save()
-
-        # 5) Créer le nouveau dépôt
-        new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
-
-        # 6) Créditer les points (best-effort, inchangé)
-        try:
-            csrf_token = get_token(request)
-            add_points_url = request.build_absolute_uri(reverse('add-points'))
-            headers_bg = {"Content-Type": "application/json", "X-CSRFToken": csrf_token}
-            requests.post(
-                add_points_url,
-                cookies=request.COOKIES,
-                headers=headers_bg,
-                data=json.dumps({"points": points_to_add}),
-                timeout=3
-            )
-        except Exception:
-            pass
-
+    
+        # === Transaction: save song + create deposit + add points (si user connecté) ===
+        UserModel = get_user_model()
+        points_balance = None
+    
+        with transaction.atomic():
+            song.save()
+    
+            # 5) Créer le nouveau dépôt
+            new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
+    
+            # 6) Créditer les points (transactionnel, threadsafe via F()) si utilisateur connecté
+            if user and getattr(user, "is_authenticated", False):
+                UserModel.objects.filter(pk=user.pk).update(points=F('points') + points_to_add)
+                # Relire le solde à jour pour le renvoyer
+                points_balance = UserModel.objects.only('points').get(pk=user.pk).points
+            else:
+                # anonyme: pas d'update DB; le front gère un solde éphémère
+                points_balance = None
+    
         # 7) Construire le payload du dépôt nouvellement ajouté (révélé complet)
         added_deposit = {
             "deposit_id": new_deposit.id,
@@ -353,9 +353,14 @@ class GetBox(APIView):
             "song": self._map_song_full(song, include_id=False),
             "user": self._map_user(user),
         }
-
-        response = {"successes": list(successes.values()), "added_deposit": added_deposit}
+    
+        response = {
+            "successes": list(successes.values()),
+            "added_deposit": added_deposit,
+            "points_balance": points_balance,  # None si anonyme
+        }
         return Response(response, status=status.HTTP_200_OK)
+
 
 
 class Location(APIView):
@@ -595,6 +600,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
