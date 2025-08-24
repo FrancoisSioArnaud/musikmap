@@ -191,7 +191,7 @@ export default function SongDisplay({
           alignItems: "center",
         }}
       >
-        <Box sx={{ width: 140, height: 140, borderRadius: 1}}>
+        <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
           {myDeposit?.song?.img_url && (
             <Box
               component="img"
