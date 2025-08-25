@@ -383,8 +383,7 @@ export default function SongDisplay({
               display: "flex",
               alignItems: "center",
               gap: 1.5,
-              maxWidth: 600,
-              width: "calc(100vw - 32px)",
+              maxWidth: "calc(100vw - 32px)",
             }}
             message={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
