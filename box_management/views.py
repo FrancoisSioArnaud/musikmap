@@ -122,8 +122,12 @@ class GetBox(APIView):
 
     @staticmethod
     def _naturaltime(dt):
-        return naturaltime(localtime(dt)) if dt else None
-
+        if not dt:
+            return None
+        text = naturaltime(localtime(dt))
+        # Coupe au premier séparateur "," (s’il existe)
+        return text.split(",")[0].strip()
+    
     def _build_deposits_payload(self, box, user, limit=10):
         qs = (
             Deposit.objects
@@ -717,6 +721,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
