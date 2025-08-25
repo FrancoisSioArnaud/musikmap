@@ -1,13 +1,13 @@
 // frontend/src/components/UserProfileEdit.js
 import React, { useContext, useState } from "react";
-import { UserContext } from "./UserContext";
+import { UserContext } from "../UserContext";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { getCookie } from "./Security/TokensUtils";
-import { checkUserStatus } from "./UsersUtils";
+import { checkUserStatus } from "../UsersUtils";
 import { useNavigate } from "react-router-dom";
 import AvatarCropperModal from "./AvatarCropperModal";
 
