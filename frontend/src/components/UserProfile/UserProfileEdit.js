@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import { getCookie } from "./Security/TokensUtils";
+import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus } from "../UsersUtils";
 import { useNavigate } from "react-router-dom";
 import AvatarCropperModal from "./AvatarCropperModal";
