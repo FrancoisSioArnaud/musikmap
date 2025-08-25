@@ -56,10 +56,3 @@ def delete_old_profile_picture(sender, instance, **kwargs):
             if existing_user.profile_picture:
                 existing_user.profile_picture.delete(False)
                 
-@property
-def profile_picture_url(self):
-    try:
-        return self.profile_picture.url if self.profile_picture else None
-    except ValueError:
-        # ex: fichier manquant sur disque
-        return None
