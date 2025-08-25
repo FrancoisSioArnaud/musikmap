@@ -394,7 +394,7 @@ export default function SongDisplay({
               }}
             >
               <Avatar
-                src={u?.profile_pic_url || u?.profile_picture_url || undefined}
+                src={u?.profile_pic_url || undefined}
                 alt={u?.name || "Anonyme"}
                 sx={{ width: 40, height: 40 }}
               />
