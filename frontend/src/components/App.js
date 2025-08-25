@@ -13,7 +13,7 @@ import SuccessfulLogout from "./SuccessfulLogout";
 // import { Footer } from "./Common/footer";
 import UserPublicProfile from "./UserPublicProfile";
 import UserSettings from "./UserSettings";
-import UserProfileEdit from "./UserProfileEdit";
+import UserProfileEdit from "./UserProfile/UserProfileEdit";
 
 import {
   BrowserRouter as Router,
@@ -105,6 +105,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
