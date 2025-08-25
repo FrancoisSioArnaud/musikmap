@@ -513,14 +513,18 @@ class ManageDiscoveredSongs(APIView):
             if u and not isinstance(u, AnonymousUser):
                 full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
                 display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-                profile_pic = (
-                    getattr(u, "profile_pic_url", None)
-                    or getattr(u, "avatar_url", None)
-                    or getattr(getattr(u, "profile", None), "picture_url", None)
-                )
-                user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
+             
+                profile_pic_url = None
+                if getattr(u, "profile_picture", None):
+                    try:
+                        profile_pic_url = u.profile_picture.url
+                    except Exception:
+                        profile_pic_url = None
+            
+                user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
             else:
                 user_payload = None
+                
 
             song_payload = {
                 "id": getattr(s, "id", None),
@@ -713,6 +717,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
