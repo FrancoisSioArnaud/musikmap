@@ -12,8 +12,6 @@ import { isMobile } from "react-device-detect";
 import SuccessfulLogout from "./SuccessfulLogout";
 // import { Footer } from "./Common/footer";
 import UserPublicProfile from "./UserPublicProfile";
-import UserSettings from "./UserSettings";
-import UserProfileEdit from "./UserProfile/UserProfileEdit";
 
 import {
   BrowserRouter as Router,
@@ -81,7 +79,6 @@ export default function App() {
                 element={isAuthenticated ? <UserProfilePage /> : <SuccessfulLogout />}
                 
               />
-              <Route path="/profile/settings" element={<UserSettings />} />
               <Route path="/profile/edit" element={<UserProfileEdit />} />
               <Route path="/box/:boxName" element={<MusicBox />} />
               <Route path="/profile/:userID" element={<UserPublicProfile />} />
@@ -105,6 +102,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
