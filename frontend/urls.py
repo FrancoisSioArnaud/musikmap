@@ -16,7 +16,8 @@ urlpatterns = [
     path('profile', index, name='profile'),
     path('library', index),
     path('box/<str:boxName>', index),
-    path('profile/<int:userID>', index)
+    path('profile/<int:userName>', index)
 ]
+
 
 
