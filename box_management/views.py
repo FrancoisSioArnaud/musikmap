@@ -457,7 +457,7 @@ class ManageDiscoveredSongs(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # deposit_id désormais OBLIGATOIRE (plus de fallback visible_deposit/song_id)
+        # deposit_id OBLIGATOIRE (pas de fallback visible_deposit/song_id)
         deposit_id = request.data.get('deposit_id')
         if not deposit_id:
             return Response(
@@ -478,7 +478,7 @@ class ManageDiscoveredSongs(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Seule contrainte conservée : un même dépôt ne peut être découvert qu'une fois par user
+        # Un même dépôt ne peut être découvert qu'une fois par user
         if DiscoveredSong.objects.filter(user_id=user, deposit_id=deposit).exists():
             return Response(
                 {'error': 'Ce dépôt est déjà découvert.'},
@@ -491,7 +491,9 @@ class ManageDiscoveredSongs(APIView):
             deposit_id=deposit,
             discovered_type=discovered_type
         )
-        return Response({'success': True}, status=status.HTTP_200_OK)
+        return Response(
+            {'success': True},
+            status=status.HTTP_200_OK)
 
     def get(self, request):
         user = request.user
@@ -721,6 +723,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
