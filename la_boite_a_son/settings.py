@@ -158,12 +158,6 @@ MEDIA_ROOT = Path("/var/www/boite-a-groove/media")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Define media URL for user.profile_picture.url
-MEDIA_URL = '/media/'
-
-# Make folder accessible in static
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # General Social-Auth settings
 # https://python-social-auth.readthedocs.io/en/latest/configuration/django.html
 
@@ -185,6 +179,7 @@ SOCIAL_AUTH_DEEZER_KEY = LOGIN_APP_ID
 SOCIAL_AUTH_DEEZER_SECRET = LOGIN_APP_SECRET
 SOCIAL_AUTH_DEEZER_SCOPE = ['user-read-email']
 SOCIAL_AUTH_DEEZER_EXTRA_DATA = [('email', 'email')]
+
 
 
 
