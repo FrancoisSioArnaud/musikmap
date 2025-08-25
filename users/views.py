@@ -13,6 +13,21 @@ from .models import CustomUser
 from box_management.models import Deposit
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import IntegrityError, transaction
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.utils import timezone
+from django.core.cache import cache
+
+from PIL import Image
+import io, os
+
+MAX_SIZE_BYTES = 2 * 1024 * 1024  # 2 Mo
+OUT_SIZE = 512
+VARIANTS = [256, 64]
+RATE_LIMIT_SECONDS = 10  # simple anti-abus: 1 upload toutes les 10s par user
+
+
 
 class LoginUser(APIView):
     '''
@@ -147,31 +162,97 @@ class ChangePasswordUser(APIView):
             return Response({'errors': ['Ancien mot de passe invalide.']}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+
 class ChangeProfilePicture(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request, format=None):
-        if not request.user.is_authenticated:
+        user = request.user
+        if not user.is_authenticated:
             return Response({'errors': ['Utilisateur non connecté.']}, status=status.HTTP_401_UNAUTHORIZED)
 
+        # anti-abus simple
+        rl_key = f"avatar:rate:{user.id}"
+        if cache.get(rl_key):
+            return Response({'errors': ["Trop d'essais. Réessaie dans quelques secondes."]}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        cache.set(rl_key, 1, RATE_LIMIT_SECONDS)
+
         if 'profile_picture' not in request.FILES:
-            return Response({'errors': ['Aucune image de profil n’a été fournie.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'errors': ['Aucune image fournie.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        file = request.FILES['profile_picture']
-
-        if not (file.content_type or '').startswith('image/'):
+        f = request.FILES['profile_picture']
+        if not (f.content_type or '').lower().startswith('image/'):
             return Response({'errors': ['Le fichier doit être une image.']}, status=status.HTTP_400_BAD_REQUEST)
-        if file.size > 5 * 1024 * 1024:
-            return Response({'errors': ['Image trop volumineuse (max 5 Mo).']}, status=status.HTTP_400_BAD_REQUEST)
+
+        if f.size > MAX_SIZE_BYTES:
+            return Response({'errors': ['Image trop volumineuse (max 2 Mo).']}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = request.user
-            user.profile_picture = file
-            user.save()
-            url = getattr(user.profile_picture, 'url', None)
-            return Response({'status': 'Image de profil mise à jour.', 'profile_picture_url': url},
-                            status=status.HTTP_200_OK)
+            # 1) Ouvre PIL
+            img = Image.open(f)
+            # normalise (supprime alpha, convertit en RGB)
+            if img.mode not in ('RGB', 'RGBA'):
+                img = img.convert('RGB')
+            if img.mode == 'RGBA':
+                # fond blanc
+                bg = Image.new('RGB', img.size, (255, 255, 255))
+                bg.paste(img, mask=img.split()[3])
+                img = bg
+
+            # 2) Sécurité : borne max 512x512 (au cas où)
+            img = img.copy()
+            img.thumbnail((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
+
+            # 3) Encode JPEG qualité 80
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=80, optimize=True)
+            data = buf.getvalue()
+
+            if len(data) > MAX_SIZE_BYTES:
+                return Response({'errors': ['Image finale trop lourde (> 2 Mo).']}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 4) Sauvegarde principale via FileField
+            base_name = "avatar_" + timezone.now().strftime("%Y%m%d_%H%M%S")
+            main_name = f"{base_name}.jpg"
+
+            # affecter le ContentFile au champ pour bénéficier de ta logique de suppression auto
+            user.profile_picture.save(main_name, ContentFile(data), save=True)
+
+            # 5) Génère et sauvegarde variantes 256 / 64 (fichiers à côté)
+            dir_name = os.path.dirname(user.profile_picture.name)  # ex: 'users/avatars/123/'
+            base_stem = os.path.splitext(os.path.basename(user.profile_picture.name))[0]  # avatar_2025...
+            urls = {
+                "main": getattr(user.profile_picture, 'url', None),
+                "variants": {}
+            }
+
+            for size in VARIANTS:
+                v = img.copy()
+                v.thumbnail((size, size), Image.LANCZOS)
+                vbuf = io.BytesIO()
+                v.save(vbuf, format='JPEG', quality=80, optimize=True)
+                vdata = vbuf.getvalue()
+                vname = os.path.join(dir_name, f"{base_stem}_{size}.jpg")
+                # Sauvegarde via storage (pas lié au FileField principal)
+                if default_storage.exists(vname):
+                    default_storage.delete(vname)
+                default_storage.save(vname, ContentFile(vdata))
+                try:
+                    urls["variants"][str(size)] = default_storage.url(vname)
+                except Exception:
+                    urls["variants"][str(size)] = None
+
+            return Response(
+                {
+                    'status': 'Image de profil mise à jour.',
+                    'profile_picture_url': urls["main"],
+                    'variants': urls["variants"],
+                },
+                status=status.HTTP_200_OK
+            )
+
         except Exception as e:
             return Response({'errors': [str(e)]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class ChangePreferredPlatform(APIView):
     '''
@@ -348,4 +429,5 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
