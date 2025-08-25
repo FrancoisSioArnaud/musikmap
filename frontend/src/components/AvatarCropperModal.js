@@ -1,6 +1,5 @@
 // frontend/src/components/AvatarCropperModal.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic"; // Si tu n'es pas en Next, supprime cette ligne
 import Cropper from "react-easy-crop";
 import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
