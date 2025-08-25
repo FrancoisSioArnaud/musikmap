@@ -11,7 +11,7 @@ import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import PlayModal from "./Common/PlayModal";
-import LibraryPage from "./LibraryPage";
+import LibraryPage from "./UserProfile/Library";
 
 function TabPanel({ index, value, children }) {
   return (
@@ -134,4 +134,5 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
