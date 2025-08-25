@@ -21,6 +21,7 @@ class CustomUser(AbstractUser):
         # Modify the file name to ensure uniqueness
         filename = generate_unique_filename(instance, filename)
         return filename
+        
 
     # Add profile_picture field
     profile_picture = models.ImageField(upload_to=profile_picture_path, blank=True, null=True)
@@ -43,7 +44,6 @@ def delete_profile_picture(sender, instance, **kwargs):
     if instance.profile_picture:
         instance.profile_picture.delete(False)
 
-
 @receiver(models.signals.pre_save, sender=CustomUser)
 def delete_old_profile_picture(sender, instance, **kwargs):
     # Check if the user object already exists in the database
@@ -55,3 +55,11 @@ def delete_old_profile_picture(sender, instance, **kwargs):
             # Delete the old profile picture from the database
             if existing_user.profile_picture:
                 existing_user.profile_picture.delete(False)
+                
+@property
+def profile_picture_url(self):
+    try:
+        return self.profile_picture.url if self.profile_picture else None
+    except ValueError:
+        # ex: fichier manquant sur disque
+        return None
