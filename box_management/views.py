@@ -75,19 +75,26 @@ class GetBox(APIView):
 
     # --------- Helpers ---------
 
-    @staticmethod
-    def _map_user(u):
-        if not u or isinstance(u, AnonymousUser):
-            return None
-        full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-        display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-        profile_pic = (
-            getattr(u, "profile_picture_url", None)
-            or getattr(u, "profile_pic_url", None)
-            or getattr(u, "avatar_url", None)
-            or getattr(getattr(u, "profile", None), "picture_url", None)
-        )
-        return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
+@staticmethod
+def _map_user(u):
+    if not u or isinstance(u, AnonymousUser):
+        return None
+
+    full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
+    display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+
+    profile_pic_url = None
+    if getattr(u, "profile_picture", None):
+        try:
+            profile_pic_url = u.profile_picture.url
+        except Exception:
+            profile_pic_url = None
+
+    return {
+        "id": u.id,
+        "name": display_name,
+        "profile_pic_url": profile_pic_url,
+    }
 
     @staticmethod
     def _map_song_full(s, include_id=False):
@@ -706,6 +713,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
