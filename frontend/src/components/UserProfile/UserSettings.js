@@ -1,23 +1,23 @@
 // frontend/src/components/UserSettings.js
 import React, { useState, useContext, useEffect } from "react";
-import { UserContext } from "./UserContext";
+import { UserContext } from "../UserContext";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import { getCookie } from "./Security/TokensUtils";
-import { checkUserStatus, setPreferredPlatform, logoutUser } from "./UsersUtils";
+import { checkUserStatus, setPreferredPlatform, logoutUser } from "../UsersUtils";
 import {
   checkDeezerAuthentication,
   authenticateDeezerUser,
   disconnectDeezerUser,
-} from "./MusicBox/DeezerUtils";
+} from "../MusicBox/DeezerUtils";
 import {
   checkSpotifyAuthentication,
   authenticateSpotifyUser,
   disconnectSpotifyUser,
-} from "./MusicBox/SpotifyUtils";
+} from "../MusicBox/SpotifyUtils";
 
 const styles = {
   root: { flexGrow: 1, padding: "16px" },
