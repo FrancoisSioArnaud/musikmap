@@ -82,10 +82,7 @@ class GetBox(APIView):
         full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
         display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
         profile_pic = (
-            getattr(u, "profile_picture_url", None)
-            or getattr(u, "profile_pic_url", None)
-            or getattr(u, "avatar_url", None)
-            or getattr(getattr(u, "profile", None), "picture_url", None)
+            getattr(u, "profile_picture", None)
         )
         return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic}
 
@@ -706,6 +703,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
