@@ -5,7 +5,6 @@ import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
 import MusicBox from "./MusicBox/MusicBox";
 import UserProfilePage from "./UserProfilePage";
-import LibraryPage from "./LibraryPage";
 import RedirectToMobile from "./RedirectToMobile";
 import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
@@ -84,10 +83,6 @@ export default function App() {
               />
               <Route path="/profile/settings" element={<UserSettings />} />
               <Route path="/profile/edit" element={<UserProfileEdit />} />
-              <Route
-                path="/library"
-                element={isAuthenticated ? <LibraryPage /> : <SuccessfulLogout />}
-              />
               <Route path="/box/:boxName" element={<MusicBox />} />
               <Route path="/profile/:userID" element={<UserPublicProfile />} />
             </Route>
@@ -110,6 +105,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
