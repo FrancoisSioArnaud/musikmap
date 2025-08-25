@@ -1,6 +1,6 @@
 // frontend/src/components/UserProfileEdit.js
 import React, { useContext, useState } from "react";
-import { UserContext } from ".//UserContext";
+import { UserContext } from "./UserContext";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
