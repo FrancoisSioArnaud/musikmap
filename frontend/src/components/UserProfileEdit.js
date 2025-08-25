@@ -9,22 +9,37 @@ import TextField from "@mui/material/TextField";
 import { getCookie } from "./Security/TokensUtils";
 import { checkUserStatus } from "./UsersUtils";
 import { useNavigate } from "react-router-dom";
+import AvatarCropperModal from "./AvatarCropperModal";
 
 export default function UserProfileEdit() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const [cropOpen, setCropOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  const onAvatarChange = async (e) => {
+  const onAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Ouvre la modale de crop
+    setSelectedFile(file);
+    setCropOpen(true);
+  };
+  
+  const onConfirmCropped = async (blob) => {
+    setCropOpen(false);
     setSaving(true);
-  
-    const form = new FormData();
-    form.append("profile_picture", file);
     const csrftoken = getCookie("csrftoken");
-  
+    const form = new FormData();
+    // On envoie le blob JPEG 512x512
+    const namedFile = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+    form.append("profile_picture", namedFile);
+    
+    // MAJ immédiate de l'aperçu (optimisme UI)
+    const localUrl = URL.createObjectURL(blob);
+    setUser((prev) => ({ ...(prev || {}), profile_picture_url: localUrl }));
+    
     try {
       const res = await fetch("/users/change-profile-pic", {
         method: "POST",
@@ -32,30 +47,26 @@ export default function UserProfileEdit() {
         credentials: "same-origin",
         body: form,
       });
-  
       const ct = res.headers.get("content-type") || "";
       const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
-  
       if (!res.ok) {
         const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
         alert(msg);
         return;
       }
-  
-      // Mettre à jour l’UI
-      if (payload?.profile_picture_url) {
-        setUser((prev) => ({ ...prev, profile_picture_url: payload.profile_picture_url }));
-      } else {
+     if (payload?.profile_picture_url) {
+        setUser((prev) => ({ ...(prev || {}), profile_picture_url: payload.profile_picture_url }));
+     } else {
         await checkUserStatus(setUser, setIsAuthenticated);
       }
     } catch (err) {
       console.error(err);
-      alert("Échec de l’envoi de l’image.");
+     alert("Échec de l’envoi de l’image.");
     } finally {
       setSaving(false);
+      setSelectedFile(null);
     }
   };
-
   
    const onSaveUsername = async () => {
     setSaving(true);
@@ -104,6 +115,13 @@ export default function UserProfileEdit() {
         </label>
       </Box>
 
+       <AvatarCropperModal
+          open={cropOpen}
+          file={selectedFile}
+          onCancel={() => { setCropOpen(false); setSelectedFile(null); }}
+          onConfirm={onConfirmCropped}
+      />
+  
       <TextField
         label="Nom d’utilisateur"
         value={username}
