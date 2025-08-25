@@ -6,7 +6,7 @@ import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
-import { getCookie } from "./Security/TokensUtils";
+import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus, setPreferredPlatform, logoutUser } from "../UsersUtils";
 import {
   checkDeezerAuthentication,
