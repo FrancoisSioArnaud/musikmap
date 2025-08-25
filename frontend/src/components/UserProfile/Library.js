@@ -43,7 +43,7 @@ function formatRelativeFr(isoDateString) {
 /**
  * Page qui affiche les dépôts découverts de l'utilisateur (main & revealed).
  */
-export default function LibraryPage() {
+export default function Library() {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
