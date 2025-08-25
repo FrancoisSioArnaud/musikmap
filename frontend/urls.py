@@ -14,11 +14,11 @@ urlpatterns = [
     path('register', index),
     path('login', index),
     path('profile', index, name='profile'),
-    path('profile/edit', index, name='editprofile'),
     path('library', index),
     path('box/<str:boxName>', index),
     path('profile/<int:userID>', index)
 ]
+
 
 
 
