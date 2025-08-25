@@ -13,10 +13,20 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 
+/* === NEW: Snackbar + Slide + Content + Icon === */
+import Snackbar from "@mui/material/Snackbar";
+import SnackbarContent from "@mui/material/SnackbarContent";
+import Slide from "@mui/material/Slide";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+
 import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "../LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
+
+function SlideDownTransition(props) {
+  return <Slide {...props} direction="down" />;
+}
 
 export default function SongDisplay({
   dispDeposits,
@@ -52,6 +62,9 @@ export default function SongDisplay({
 
   // Achievements (reçus après POST)
   const [achievements, setAchievements] = useState([]);
+
+  // === NEW: Snackbar state ===
+  const [snackOpen, setSnackOpen] = useState(false);
 
   const totalPoints = useMemo(() => {
     const item = achievements.find(
@@ -118,6 +131,17 @@ export default function SongDisplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← uniquement au montage, comme demandé
 
+  // === NEW: helper pour afficher la snackbar (fermer l'ancienne puis ouvrir la nouvelle)
+  const showRevealSnackbar = () => {
+    if (snackOpen) {
+      setSnackOpen(false);
+      // Laisse React commit la fermeture puis ré-ouvre aussitôt
+      setTimeout(() => setSnackOpen(true), 0);
+    } else {
+      setSnackOpen(true);
+    }
+  };
+
   // ---- Reveal d’un dépôt (débit + découverte + maj UI + maj points) ----
   const revealDeposit = async (dep) => {
     try {
@@ -167,6 +191,10 @@ export default function SongDisplay({
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
+
+      // 3) === NEW: Snackbar de confirmation
+      showRevealSnackbar();
+
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
     }
@@ -332,6 +360,54 @@ export default function SongDisplay({
             )}
           </Box>
         </Drawer>
+
+        {/* === NEW: Snackbar globale (top-center) === */}
+        <Snackbar
+          open={snackOpen}
+          onClose={() => setSnackOpen(false)}
+          autoHideDuration={5000}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          TransitionComponent={SlideDownTransition}
+          sx={{
+            zIndex: (t) => t.zIndex.drawer + 1, // au-dessus des Drawer
+          }}
+        >
+          <SnackbarContent
+            sx={{
+              bgcolor: "background.paper",
+              color: "text.primary",
+              borderRadius: 2,
+              boxShadow: 3,
+              px: 2,
+              py: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              maxWidth: 600,
+              width: "calc(100vw - 32px)",
+            }}
+            message={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <LibraryMusicIcon fontSize="medium" />
+                <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
+                  Retrouve cette chanson dans ton profil
+                </Typography>
+              </Box>
+            }
+            action={
+              <Button
+                size="small"
+                onClick={() => {
+                  setSnackOpen(false);
+                  navigate("/profile");
+                }}
+                aria-label="Voir la chanson dans mon profil"
+              >
+                Voir
+              </Button>
+            }
+          />
+        </Snackbar>
       </Box>
     );
   }
@@ -376,7 +452,7 @@ export default function SongDisplay({
           <Card key={`dep-${dep?.deposit_id ?? idx}`} sx={{ p: 2 }}>
             {/* date */}
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + ". "+ dateSuffix}
+              {"Pépite déposée " + (dep?.deposit_date || "") + ". " + dateSuffix}
             </Box>
 
             {/* user */}
@@ -608,6 +684,54 @@ export default function SongDisplay({
           )}
         </Box>
       </Drawer>
+
+      {/* === NEW: Snackbar globale (top-center) === */}
+      <Snackbar
+        open={snackOpen}
+        onClose={() => setSnackOpen(false)}
+        autoHideDuration={5000}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        TransitionComponent={SlideDownTransition}
+        sx={{
+          zIndex: (t) => t.zIndex.drawer + 1, // au-dessus des Drawer
+        }}
+      >
+        <SnackbarContent
+          sx={{
+            bgcolor: "background.paper",
+            color: "text.primary",
+            borderRadius: 2,
+            boxShadow: 3,
+            px: 2,
+            py: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            maxWidth: 600,
+            width: "calc(100vw - 32px)",
+          }}
+          message={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <LibraryMusicIcon fontSize="medium" />
+              <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
+                Retrouve cette chanson dans ton profil
+              </Typography>
+            </Box>
+          }
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                setSnackOpen(false);
+                navigate("/profile");
+              }}
+              aria-label="Voir la chanson dans mon profil"
+            >
+              Voir
+            </Button>
+          }
+        />
+      </Snackbar>
     </Box>
   );
 }
