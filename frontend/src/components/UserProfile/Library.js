@@ -1,12 +1,12 @@
 // frontend/src/components/LibraryPage.js
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserContext } from "./UserContext";
+import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
-import PlayModal from "./Common/PlayModal";
+import PlayModal from "../Common/PlayModal";
 
 /** Format relatif FR (ex: "il y a 3 heures") */
 function formatRelativeFr(isoDateString) {
