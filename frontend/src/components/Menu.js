@@ -32,7 +32,7 @@ export default function MenuAppBar() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            MusikBox
+            MusikMap
           </Typography>
         </Box>
 
@@ -101,6 +101,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
