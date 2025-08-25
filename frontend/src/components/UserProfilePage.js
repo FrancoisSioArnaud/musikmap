@@ -11,7 +11,7 @@ import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import PlayModal from "./Common/PlayModal";
-import LibraryPage from "./UserProfile/Library";
+import Library from "./UserProfile/Library";
 
 function TabPanel({ index, value, children }) {
   return (
@@ -75,9 +75,9 @@ export default function UserProfilePage() {
         <Tab label="Partages" />
       </Tabs>
 
-      {/* Tab: Découvertes (rend LibraryPage sans le titre) */}
+      {/* Tab: Découvertes */}
       <TabPanel value={tab} index={0}>
-        <LibraryPage />
+        <Library />
       </TabPanel>
 
       {/* Tab: Partages (mes dépôts) */}
@@ -134,5 +134,6 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
