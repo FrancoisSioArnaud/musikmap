@@ -29,12 +29,12 @@ async function fetchBoxMeta(boxName, navigate) {
   }
 }
 
-async function postLocation(box, coords) {
+async function postLocation(boxName, coords) {
   const csrftoken = getCookie("csrftoken");
   const payload = {
     latitude: coords.latitude,
     longitude: coords.longitude,
-    box: { id: box?.id },
+    box: { name: boxName },
   };
   const res = await fetch(`/box-management/location`, {
     method: "POST",
@@ -138,7 +138,7 @@ export default function MusicBox() {
           });
           if (!pos) return;
 
-          const r = await postLocation(meta.box, pos.coords);
+          const r = await postLocation(boxName, pos.coords);
           if (!r.ok) {
             setInRange(false);
             return;
@@ -205,7 +205,7 @@ export default function MusicBox() {
         return;
       }
 
-      const r = await postLocation(meta.box, pos.coords);
+      const r = await postLocation(boxName, pos.coords);
       const valid = !!(r.ok && r.data?.valid);
       setInRange(valid);
 
@@ -242,7 +242,7 @@ export default function MusicBox() {
         const pos = await getPositionOnce().catch(() => null);
         if (!pos) return;
 
-        const r = await postLocation(meta.box, pos.coords);
+        const r = await postLocation(boxName, pos.coords);
         const valid = !!(r.ok && r.data?.valid);
 
         if (valid) {
@@ -313,7 +313,7 @@ export default function MusicBox() {
       const pos = await getPositionOnce();
       // permission accordée → MAJ state et tentative range + GetBox
       setPermissionState("granted");
-      const r = await postLocation(meta.box, pos.coords);
+      const r = await postLocation(boxName, pos.coords);
       const valid = !!(r.ok && r.data?.valid);
       setInRange(valid);
       if (valid && !boxData) {
@@ -334,7 +334,7 @@ export default function MusicBox() {
     setGeoError("");
     try {
       const pos = await getPositionOnce();
-      const r = await postLocation(meta.box, pos.coords);
+      const r = await postLocation(boxName, pos.coords);
       const valid = !!(r.ok && r.data?.valid);
       setInRange(valid);
       if (valid && !boxData) {
@@ -518,3 +518,4 @@ export default function MusicBox() {
     </Box>
   );
 }
+
