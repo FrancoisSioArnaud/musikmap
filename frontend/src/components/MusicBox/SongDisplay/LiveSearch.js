@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
-import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
+import { getCookie } from "../../Security/TokensUtils";
+import { UserContext } from "../../UserContext";
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
@@ -196,3 +196,4 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
