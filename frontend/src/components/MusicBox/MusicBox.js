@@ -36,7 +36,7 @@ async function postLocation(box, coords) {
     longitude: coords.longitude,
     box: { id: box?.id },
   };
-  const res = await fetch(`/box-management/location`, {
+  const res = await fetch(`/box-management/verify-location`, {
     method: "POST",
     credentials: "same-origin",
     headers: {
@@ -518,3 +518,4 @@ export default function MusicBox() {
     </Box>
   );
 }
+
