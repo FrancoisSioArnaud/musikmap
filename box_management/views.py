@@ -1,3 +1,4 @@
+
 # stdlib
 import json
 import requests
@@ -431,100 +432,30 @@ class GetBox(APIView):
 
 
 class Location(APIView):
-    """
-    POST /box-management/location
-    Body: { "latitude": <float>, "longitude": <float>, "box": {"id": <int>} }
-    Réponse standard:
-      - 200 {"valid": True}
-      - 403 {"valid": False, "lat": ..., "long": ...}
-    En mode debug (admin ou settings.DEBUG): ajoute des champs pour comprendre le refus.
-    """
-    EPSILON_M = 15  # petite marge anti faux-négatifs (précision GPS)
-
     def post(self, request):
-        # --- validations d'entrée
-        try:
-            latitude = float(request.data.get('latitude'))
-            longitude = float(request.data.get('longitude'))
-        except (TypeError, ValueError):
-            return Response({'error': 'Coordonnées invalides'}, status=status.HTTP_400_BAD_REQUEST)
-
-        box_payload = request.data.get('box') or {}
-        box_id = box_payload.get('id')
-        if not box_id:
-            return Response({'error': 'Box id manquant'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            box = Box.objects.get(id=box_id)
-        except Box.DoesNotExist:
-            return Response({'error': 'Box introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        latitude = float(request.data.get('latitude'))
+        longitude = float(request.data.get('longitude'))
+        box = request.data.get('box')
+        box = Box.objects.filter(id=box.get('id')).get()
 
         points = LocationPoint.objects.filter(box_id=box)
         if not points.exists():
             return Response({'error': 'No location points for this box'}, status=status.HTTP_404_NOT_FOUND)
 
-        # --- calcule la distance minimale et si on est dans un des rayons
         is_valid_location = False
-        best = {
-            "point_id": None,
-            "target_lat": None,
-            "target_lon": None,
-            "distance_m": None,
-            "threshold_m": None,
-        }
-
         for point in points:
-            try:
-                max_dist_raw = float(point.dist_location)  # s'il est DecimalField/CharField
-            except (TypeError, ValueError):
-                # si la donnée est foireuse, on saute ce point
-                continue
-
-            # IMPORTANT : max_dist_raw doit être en mètres.
-            threshold_m = max(0.0, max_dist_raw) + self.EPSILON_M
-
-            target_latitude = float(point.latitude)
-            target_longitude = float(point.longitude)
-
-            distance = calculate_distance(latitude, longitude, target_latitude, target_longitude)  # mètres
-
-            # garde la meilleure (min distance)
-            if best["distance_m"] is None or distance < best["distance_m"]:
-                best.update({
-                    "point_id": getattr(point, "id", None),
-                    "target_lat": target_latitude,
-                    "target_lon": target_longitude,
-                    "distance_m": distance,
-                    "threshold_m": threshold_m,
-                })
-
-            if distance <= threshold_m:
+            max_dist = point.dist_location
+            target_latitude = point.latitude
+            target_longitude = point.longitude
+            distance = calculate_distance(latitude, longitude, target_latitude, target_longitude)
+            if distance <= max_dist:
                 is_valid_location = True
-                # on peut break ici si on veut le premier match; on continue pour remplir "best"
-                # break
+                break
 
-        # --- réponse standard
         if is_valid_location:
-            resp = {'valid': True}
-            http_status = status.HTTP_200_OK
+            return Response({'valid': True}, status=status.HTTP_200_OK)
         else:
-            resp = {'valid': False, 'lat': latitude, 'long': longitude}
-            http_status = status.HTTP_403_FORBIDDEN
-
-        # --- payload debug (réservé staff ou DEBUG)
-        want_debug = bool(getattr(settings, "DEBUG", False))
-        user = getattr(request, "user", None)
-        if (user and getattr(user, "is_staff", False)) or want_debug:
-            resp["_debug"] = {
-                "closest_point_id": best["point_id"],
-                "distance_m": round(best["distance_m"], 2) if best["distance_m"] is not None else None,
-                "threshold_m": round(best["threshold_m"], 2) if best["threshold_m"] is not None else None,
-                "epsilon_m": self.EPSILON_M,
-                "points_count": points.count(),
-                "note": "Assure-toi que dist_location est en mètres.",
-            }
-
-        return Response(resp, status=http_status)
+            return Response({'valid': False, 'lat': latitude, 'long': longitude}, status=status.HTTP_403_FORBIDDEN)
 
 
 class CurrentBoxManagement(APIView):
@@ -827,7 +758,6 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
-
 
 
 
