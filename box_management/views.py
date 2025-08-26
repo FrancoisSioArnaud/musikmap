@@ -69,44 +69,38 @@ def get_consecutive_deposit_days(user, box) -> int:
 # Vues
 # -----------------------
 
-class Location(APIView):
-    def post(self, request):
-        latitude = float(request.data.get('latitude'))
-        longitude = float(request.data.get('longitude'))
+class BoxMeta(APIView):
+    """
+    GET /box-management/meta?name=<slug>
+    Réponse: { "box": <BoxSerializer>, "deposit_count": <int> }
+    - 400 si paramètre 'name' manquant
+    - 404 si la boîte n'existe pas
+    """
+    lookup_url_kwarg = 'name'
+    serializer_class = BoxSerializer
 
-        # NEW: accepter soit box.id (legacy), soit box_url
-        box_payload = request.data.get('box') or {}
-        box_id = box_payload.get('id')
-        box_url = request.data.get('box_url')
+    def get(self, request, format=None):
+        name = request.GET.get(self.lookup_url_kwarg)
+        if not name:
+            return Response(
+                {"detail": "Paramètre 'name' manquant."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if box_id:
-            box = Box.objects.filter(id=box_id).first()
-        elif box_url:
-            box = Box.objects.filter(url=box_url).first()
-        else:
-            box = None
-
+        box = Box.objects.filter(url=name).first()
         if not box:
-            return Response({'error': 'Box introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Boîte introuvable."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        points = LocationPoint.objects.filter(box_id=box)
-        if not points.exists():
-            return Response({'error': 'No location points for this box'}, status=status.HTTP_404_NOT_FOUND)
+        data = BoxSerializer(box).data
+        deposit_count = Deposit.objects.filter(box_id=box.id).count()
 
-        is_valid_location = False
-        for point in points:
-            max_dist = point.dist_location
-            target_latitude = point.latitude
-            target_longitude = point.longitude
-            distance = calculate_distance(latitude, longitude, target_latitude, target_longitude)
-            if distance <= max_dist:
-                is_valid_location = True
-                break
-
-        if is_valid_location:
-            return Response({'valid': True}, status=status.HTTP_200_OK)
-        else:
-            return Response({'valid': False, 'lat': latitude, 'long': longitude}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"box": data, "deposit_count": deposit_count},
+            status=status.HTTP_200_OK
+        )
 
 
 class GetBox(APIView):
@@ -763,6 +757,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
