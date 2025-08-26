@@ -72,12 +72,11 @@ def get_consecutive_deposit_days(user, box) -> int:
 class BoxMeta(APIView):
     """
     GET /box-management/meta?name=<slug>
-    Réponse: { "box": <BoxSerializer>, "deposit_count": <int> }
+    Réponse: { "box_name": <str>, "deposit_count": <int> }
     - 400 si paramètre 'name' manquant
     - 404 si la boîte n'existe pas
     """
     lookup_url_kwarg = 'name'
-    serializer_class = BoxSerializer
 
     def get(self, request, format=None):
         name = request.GET.get(self.lookup_url_kwarg)
@@ -94,11 +93,10 @@ class BoxMeta(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        data = BoxSerializer(box).data
         deposit_count = Deposit.objects.filter(box_id=box.id).count()
 
         return Response(
-            {"box": data, "deposit_count": deposit_count},
+            {"box_name": box.name, "deposit_count": deposit_count},
             status=status.HTTP_200_OK
         )
 
@@ -757,6 +755,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
