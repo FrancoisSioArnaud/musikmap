@@ -1,4 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback, lazy, Suspense, useContext } from "react";
+// frontend/src/components/MusicBox/MusicBox.js
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  lazy,
+  Suspense,
+  useContext,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -14,13 +24,18 @@ import { getCookie } from "../Security/TokensUtils";
 // Chargement différé du SongDisplay
 const SongDisplay = lazy(() => import("./OnBoarding/SongDisplay"));
 
-// ---- Helpers API locales (légères)
+/* =======================
+   Helpers API (léger)
+======================= */
 async function fetchBoxMeta(boxName, navigate) {
   try {
-    const res = await fetch(`/box-management/meta?name=${encodeURIComponent(boxName)}`, {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    });
+    const res = await fetch(
+      `/box-management/meta?name=${encodeURIComponent(boxName)}`,
+      {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      }
+    );
     if (!res.ok) throw new Error(`Meta HTTP ${res.status}`);
     return await res.json(); // { box, deposit_count }
   } catch (e) {
@@ -51,15 +66,20 @@ async function postLocation(box, coords) {
 }
 
 async function fetchGetBox(boxName) {
-  const res = await fetch(`/box-management/get-box?name=${encodeURIComponent(boxName)}`, {
-    credentials: "same-origin",
-    headers: { Accept: "application/json" },
-  });
+  const res = await fetch(
+    `/box-management/get-box?name=${encodeURIComponent(boxName)}`,
+    {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    }
+  );
   if (!res.ok) throw new Error(`GetBox HTTP ${res.status}`);
   return await res.json(); // { box, deposit_count, deposits, reveal_cost }
 }
 
-// ---- Géoloc util
+/* =======================
+   Géoloc util
+======================= */
 function getPositionOnce(opts = {}) {
   return new Promise((resolve, reject) => {
     if (!("geolocation" in navigator)) {
@@ -88,7 +108,9 @@ export default function MusicBox() {
   const [sectionOpen, setSectionOpen] = useState(false);
 
   // ---- Permission / in-range
-  const [permissionState, setPermissionState] = useState(/** 'granted' | 'prompt' | 'denied' | 'unknown' */ "unknown");
+  const [permissionState, setPermissionState] = useState(
+    /** 'granted' | 'prompt' | 'denied' | 'unknown' */ "unknown"
+  );
   const [inRange, setInRange] = useState(false);
 
   // ---- Données complètes de la boîte (GetBox)
@@ -101,13 +123,18 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
-  // --- 0) Récup meta (hero)
+  /* =======================
+     0) Récup meta (hero)
+  ======================= */
   useEffect(() => {
     let mounted = true;
     setMetaLoading(true);
     fetchBoxMeta(boxName, navigate).then((m) => {
       if (!mounted) return;
-      setMeta({ box: m?.box || {}, deposit_count: Number(m?.deposit_count || 0) });
+      setMeta({
+        box: m?.box || {},
+        deposit_count: Number(m?.deposit_count || 0),
+      });
       setMetaLoading(false);
     });
     return () => {
@@ -115,89 +142,56 @@ export default function MusicBox() {
     };
   }, [boxName, navigate]);
 
-  // --- 1) Vérif silencieuse de permission au chargement + éventuel pré-chargement
-  useEffect(() => {
-    let cancelled = false;
+  /* =========================================================
+     (SUPPRIMÉ) — AUCUN pré-chargement silencieux de la box.
+     On ne charge le contenu réel que quand l’utilisateur
+     ouvre la section ET que la géoloc+in-range sont validés.
+  ========================================================= */
 
-    async function checkPermissionAndMaybePreload() {
-      try {
-        if (!("permissions" in navigator) || !navigator.permissions.query) {
-          setPermissionState("unknown");
-          return; // pas de prompt auto
-        }
-        const st = await navigator.permissions.query({ name: "geolocation" });
-        if (cancelled) return;
-
-        setPermissionState(st.state); // 'granted' | 'prompt' | 'denied'
-
-        if (st.state === "granted") {
-          // Lire position (sans prompt) et vérifier range
-          const pos = await getPositionOnce().catch((e) => {
-            console.warn("getPosition (granted) error:", e);
-            return null;
-          });
-          if (!pos) return;
-
-          const r = await postLocation(meta.box, pos.coords);
-          if (!r.ok) {
-            setInRange(false);
-            return;
-          }
-          const valid = !!r.data?.valid;
-          setInRange(valid);
-
-          // Pré-charger le GetBox si in-range
-          if (valid && !boxData) {
-            setGetBoxLoading(true);
-            try {
-              const data = await fetchGetBox(boxName);
-              setBoxData(data);
-            } catch (e) {
-              console.error(e);
-            } finally {
-              setGetBoxLoading(false);
-            }
-          }
-        }
-        // écouter les changements de permission (facultatif)
-        try {
-          st.onchange = () => setPermissionState(st.state);
-        } catch {}
-      } catch (e) {
-        console.warn("permissions.query error:", e);
-        setPermissionState("unknown");
-      }
-    }
-
-    checkPermissionAndMaybePreload();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxName, meta.box?.id]); // après meta (pour connaître box.id)
-
-  // --- 2) Click "Ouvrir la boîte" → ouvrir la section
+  /* ================================================
+     1) Click "Ouvrir la boîte" → ouvrir la section
+  ================================================ */
   const openSection = useCallback(() => {
     setSectionOpen(true);
     // scroll jusqu’à l’ancre
     const anchor = document.getElementById("songdisplay-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // On interroge la permission via Permissions API (si dispo)
+    (async () => {
+      try {
+        if (!("permissions" in navigator) || !navigator.permissions.query) {
+          setPermissionState("unknown");
+          return;
+        }
+        const st = await navigator.permissions.query({ name: "geolocation" });
+        setPermissionState(st.state); // 'granted' | 'prompt' | 'denied'
+        try {
+          st.onchange = () => setPermissionState(st.state);
+        } catch {}
+      } catch {
+        setPermissionState("unknown");
+      }
+    })();
   }, []);
 
-  // --- 3) Quand la section s’ouvre : si pas de données et permission accordée → on tente loc + GetBox (ou overlays)
+  /* ======================================================================
+     2) À l’ouverture de la section : on ne fait RIEN tant que la permission
+        n’est pas 'granted'. Dès que 'granted', on check in-range puis on
+        fetch la box et on l’affiche dès réception.
+  ====================================================================== */
   useEffect(() => {
     let cancelled = false;
 
     async function resolveSectionData() {
       if (!sectionOpen) return;
-
-      // Permission non accordée → on laissera les Skeletons + overlay EnableLocation
       if (permissionState !== "granted") return;
 
-      // Permission accordée → vérifier range
+      // Permission accordée → vérifier in-range
       setGeoError("");
       const pos = await getPositionOnce().catch((e) => {
-        if (!cancelled) setGeoError(e?.message || "Impossible d’obtenir ta position.");
+        if (!cancelled)
+          setGeoError(e?.message || "Impossible d’obtenir ta position.");
         return null;
       });
       if (!pos) {
@@ -210,13 +204,12 @@ export default function MusicBox() {
       setInRange(valid);
 
       if (!valid) return;
-      if (boxData) return; // déjà pré-chargé
 
-      // Charger GetBox
+      // === CHARGER LA BOX ET AFFICHER DIRECT DÈS QUE ÇA RÉPOND ===
       setGetBoxLoading(true);
       try {
         const data = await fetchGetBox(boxName);
-        if (!cancelled) setBoxData(data);
+        if (!cancelled) setBoxData(data); // -> rend SongDisplay tout de suite
       } catch (e) {
         console.error(e);
       } finally {
@@ -228,12 +221,20 @@ export default function MusicBox() {
     return () => {
       cancelled = true;
     };
-  }, [sectionOpen, permissionState, meta.box, boxData, boxName]);
+  }, [sectionOpen, permissionState, meta.box, boxName]);
 
-  // --- 4) Re-check périodique (toutes les 5s) si section ouverte, permission accordée et onglet visible
+  /* =================================================================================
+     3) Re-check périodique (toutes les 5s) si section ouverte, permission accordée,
+        et onglet visible. Si on (re)entre in-range et qu’on n’a pas de data, on fetch.
+        Si on sort de la zone, on masque (overlay) mais on garde les data en mémoire.
+  ================================================================================= */
   useEffect(() => {
     function isActive() {
-      return sectionOpen && permissionState === "granted" && document.visibilityState === "visible";
+      return (
+        sectionOpen &&
+        permissionState === "granted" &&
+        document.visibilityState === "visible"
+      );
     }
 
     async function tick() {
@@ -246,24 +247,30 @@ export default function MusicBox() {
         const valid = !!(r.ok && r.data?.valid);
 
         if (valid) {
-          // Si on vient d’entrer in-range et qu’on n’a pas encore les données → fetch GetBox
-          if (!inRange && !boxData) {
-            try {
-              setGetBoxLoading(true);
-              const data = await fetchGetBox(boxName);
-              setBoxData(data);
-            } catch (e) {
-              console.error(e);
-            } finally {
-              setGetBoxLoading(false);
+          if (!inRange) {
+            // On vient d’entrer dans la zone
+            setInRange(true);
+            if (!boxData) {
+              // Pas encore de données → on charge et on affiche dès retour
+              try {
+                setGetBoxLoading(true);
+                const data = await fetchGetBox(boxName);
+                setBoxData(data);
+              } catch (e) {
+                console.error(e);
+              } finally {
+                setGetBoxLoading(false);
+              }
             }
+          } else {
+            // Déjà in-range, on reste comme tel
+            setInRange(true);
           }
-          setInRange(true);
         } else {
           // Hors range → overlay + Skeletons; on garde les données en mémoire
           setInRange(false);
         }
-      } catch (e) {
+      } catch {
         // silencieux
       }
     }
@@ -277,7 +284,6 @@ export default function MusicBox() {
       intervalRef.current = setInterval(tick, 5000); // 5s
     }
 
-    // écoute visibilité onglet pour activer/désactiver sans re-render
     const onVis = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -298,29 +304,32 @@ export default function MusicBox() {
     };
   }, [sectionOpen, permissionState, inRange, boxData, boxName, meta.box]);
 
-  // --- UI dérivés
+  /* =======================
+     UI dérivés
+  ======================= */
   const depositCount = useMemo(() => Number(meta?.deposit_count || 0), [meta]);
   const boxTitle = useMemo(() => meta?.box?.name || "", [meta]);
 
-  // --- Overlays conditionnels
+  // Overlays conditionnels
   const showEnableLocationOverlay = sectionOpen && permissionState !== "granted";
-  const showOutOfRangeOverlay = sectionOpen && permissionState === "granted" && !inRange;
+  const showOutOfRangeOverlay =
+    sectionOpen && permissionState === "granted" && !inRange;
 
-  // --- Handlers overlay
+  // Handlers overlay
   const handleRequestLocation = async () => {
     setGeoError("");
     try {
       const pos = await getPositionOnce();
-      // permission accordée → MAJ state et tentative range + GetBox
       setPermissionState("granted");
       const r = await postLocation(meta.box, pos.coords);
       const valid = !!(r.ok && r.data?.valid);
       setInRange(valid);
-      if (valid && !boxData) {
+
+      if (valid) {
         setGetBoxLoading(true);
         try {
           const data = await fetchGetBox(boxName);
-          setBoxData(data);
+          setBoxData(data); // -> affiche direct
         } finally {
           setGetBoxLoading(false);
         }
@@ -341,7 +350,7 @@ export default function MusicBox() {
         setGetBoxLoading(true);
         try {
           const data = await fetchGetBox(boxName);
-          setBoxData(data);
+          setBoxData(data); // -> affiche direct
         } finally {
           setGetBoxLoading(false);
         }
@@ -352,10 +361,29 @@ export default function MusicBox() {
   };
 
   return (
-    <Box sx={{ display: "grid", gap: 4, pb: 6 }}>
-      {/* ================= HERO (meta light) ================= */}
-      <Paper elevation={3} sx={{ p: { xs: 3, md: 5 }, position: "relative", overflow: "hidden" }}>
-        <Box sx={{ display: "grid", gap: 2, maxWidth: 960, mx: "auto", textAlign: "center" }}>
+    <Box sx={{ display: "grid", gap: 0, pb: 0 }}>
+      {/* ================= HERO plein écran (100vh) ================= */}
+      <Paper
+        elevation={3}
+        sx={{
+          minHeight: "100vh",          // plein écran
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          overflow: "hidden",
+          px: { xs: 2, md: 4 },
+        }}
+      >
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2,
+            maxWidth: 960,
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
           {/* Count au-dessus du titre */}
           {metaLoading ? (
             <Skeleton variant="text" width={180} height={24} sx={{ mx: "auto" }} />
@@ -375,7 +403,7 @@ export default function MusicBox() {
           )}
 
           {/* Bouton Ouvrir la boîte */}
-          <Box>
+          <Box sx={{ mt: 1 }}>
             <Button
               variant="contained"
               size="large"
@@ -387,7 +415,11 @@ export default function MusicBox() {
             >
               ⬇︎ Ouvrir la boîte ⬇︎
             </Button>
-            <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
+            <Typography
+              id="open-box-desc"
+              variant="caption"
+              sx={{ display: "block", mt: 1, opacity: 0.7 }}
+            >
               Fait défiler jusqu’au contenu
             </Typography>
           </Box>
@@ -399,33 +431,43 @@ export default function MusicBox() {
 
       {/* ================= SECTION SONGDISPLAY (skeletons ou contenu) ================= */}
       <Box sx={{ position: "relative", minHeight: 400 }}>
-        {/* 1) Skeletons visibles quand :
-              - section ouverte MAIS pas de données (GetBox pas encore chargé),
-              - ou permission non accordée,
-              - ou hors range.
-            */}
-        {sectionOpen && (!boxData || getBoxLoading || !inRange || permissionState !== "granted") && (
-          <Box sx={{ display: "grid", gap: 2, p: 2 }}>
-            <Skeleton variant="rounded" height={120} />
-            <Skeleton variant="rounded" height={320} />
-            <Skeleton variant="rounded" height={220} />
-          </Box>
-        )}
+        {/* Skeletons :
+            - section ouverte MAIS pas de données (GetBox pas encore chargé),
+            - ou permission non accordée,
+            - ou hors range,
+            - ou en cours de fetch. */}
+        {sectionOpen &&
+          (!boxData ||
+            getBoxLoading ||
+            !inRange ||
+            permissionState !== "granted") && (
+            <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+              <Skeleton variant="rounded" height={120} />
+              <Skeleton variant="rounded" height={320} />
+              <Skeleton variant="rounded" height={220} />
+            </Box>
+          )}
 
-        {/* 2) Contenu réel (SongDisplay) visible seulement si :
-              - section ouverte,
-              - permission accordée,
-              - in-range,
-              - boxData prêt.
-            */}
+        {/* Contenu réel (SongDisplay) uniquement si :
+            - section ouverte,
+            - permission accordée,
+            - in-range,
+            - boxData prêt. */}
         {sectionOpen && permissionState === "granted" && inRange && boxData && (
-          <Suspense fallback={<Box sx={{ p: 2 }}><CircularProgress /></Box>}>
+          <Suspense
+            fallback={
+              <Box sx={{ p: 2 }}>
+                <CircularProgress />
+              </Box>
+            }
+          >
             <SongDisplay
               dispDeposits={Array.isArray(boxData?.deposits) ? boxData.deposits : []}
               setDispDeposits={(updater) => {
                 setBoxData((prev) => {
                   const prevArr = Array.isArray(prev?.deposits) ? prev.deposits : [];
-                  const nextArr = typeof updater === "function" ? updater(prevArr) : updater;
+                  const nextArr =
+                    typeof updater === "function" ? updater(prevArr) : updater;
                   return { ...(prev || {}), deposits: nextArr };
                 });
               }}
@@ -433,14 +475,19 @@ export default function MusicBox() {
               isDeezerAuthenticated={false}
               boxName={boxName}
               user={user}
-              revealCost={typeof boxData?.reveal_cost === "number" ? boxData.reveal_cost : 40}
+              revealCost={
+                typeof boxData?.reveal_cost === "number" ? boxData.reveal_cost : 40
+              }
             />
           </Suspense>
         )}
 
-        {/* 3) Overlay: EnableLocation (permission non accordée) */}
-        {showEnableLocationOverlay && (
-          <Backdrop open sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}>
+        {/* Overlay: EnableLocation (permission non accordée) */}
+        {sectionOpen && showEnableLocationOverlay && (
+          <Backdrop
+            open
+            sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}
+          >
             <Paper
               role="dialog"
               aria-modal="true"
@@ -460,8 +507,8 @@ export default function MusicBox() {
                   Autoriser la localisation
                 </Typography>
                 <Typography variant="body1">
-                  Confirme que tu es bien à côté du spot en partageant ta localisation. Elle est utilisée uniquement
-                  pour ouvrir la boîte.
+                  Confirme que tu es bien à côté du spot en partageant ta localisation.
+                  Elle est utilisée uniquement pour ouvrir la boîte.
                 </Typography>
                 {geoError ? (
                   <Typography variant="body2" color="error">
@@ -476,9 +523,12 @@ export default function MusicBox() {
           </Backdrop>
         )}
 
-        {/* 4) Overlay: Hors range */}
-        {showOutOfRangeOverlay && (
-          <Backdrop open sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}>
+        {/* Overlay: Hors range */}
+        {sectionOpen && showOutOfRangeOverlay && (
+          <Backdrop
+            open
+            sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}
+          >
             <Paper
               role="dialog"
               aria-modal="true"
@@ -506,7 +556,11 @@ export default function MusicBox() {
                   <Button variant="contained" onClick={handleRetryOutOfRange}>
                     Réessayer
                   </Button>
-                  <Button variant="outlined" href="" onClick={(e) => e.preventDefault()}>
+                  <Button
+                    variant="outlined"
+                    href=""
+                    onClick={(e) => e.preventDefault()}
+                  >
                     Voir la box sur la carte
                   </Button>
                 </Stack>
@@ -518,5 +572,3 @@ export default function MusicBox() {
     </Box>
   );
 }
-
-
