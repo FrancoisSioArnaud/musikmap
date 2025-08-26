@@ -481,7 +481,32 @@ class CurrentBoxManagement(APIView):
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
-    GET : liste des dépôts découverts par l'utilisateur courant, triés par discovered_at desc.
+    GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
+
+    - Une session commence à un DiscoveredSong(type="main") (toutes boîtes confondues, tri desc),
+      et contient les "revealed" de la **même boîte** découverts après ce main,
+      jusqu'au prochain "main" (n'importe quelle boîte) **ou** 3600s après le main (le premier des deux).
+
+    - Edge case: s'il existe des "revealed" sans "main" précédent proche, on crée une **session sans main**,
+      qui regroupe les revealed **de la même boîte** qui suivent (jusqu'au prochain main global ou 3600s depuis
+      le **premier revealed** de cette session).
+
+    Pagination par sessions: ?limit=10&offset=0
+    Réponse:
+    {
+      "sessions": [
+        {
+          "session_id": "<id technique (id du main ou 'orph-<idx>')>",
+          "box": { "id": <int>, "name": "...", "url": "..." },
+          "started_at": "ISO-8601",
+          "deposits": [ { ... comme défini ci-dessous ... } ]
+        }
+      ],
+      "limit": <int>,
+      "offset": <int>,
+      "has_more": <bool>,
+      "next_offset": <int>
+    }
     """
 
     def post(self, request):
@@ -491,44 +516,28 @@ class ManageDiscoveredSongs(APIView):
                 {'error': 'Vous devez être connecté pour effectuer cette action.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-
-        # deposit_id OBLIGATOIRE (pas de fallback visible_deposit/song_id)
         deposit_id = request.data.get('deposit_id')
         if not deposit_id:
-            return Response(
-                {'error': 'Identifiant de dépôt manquant.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Identifiant de dépôt manquant.'}, status=status.HTTP_400_BAD_REQUEST)
 
         discovered_type = request.data.get('discovered_type') or "revealed"
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
-        # Vérifie l'existence du dépôt
         try:
             deposit = Deposit.objects.select_related('song_id').get(pk=deposit_id)
         except Deposit.DoesNotExist:
-            return Response(
-                {'error': "Dépôt introuvable."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': "Dépôt introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Un même dépôt ne peut être découvert qu'une fois par user
         if DiscoveredSong.objects.filter(user_id=user, deposit_id=deposit).exists():
-            return Response(
-                {'error': 'Ce dépôt est déjà découvert.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Ce dépôt est déjà découvert.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Création simple
         DiscoveredSong.objects.create(
             user_id=user,
             deposit_id=deposit,
             discovered_type=discovered_type
         )
-        return Response(
-            {'success': True},
-            status=status.HTTP_200_OK)
+        return Response({'success': True}, status=status.HTTP_200_OK)
 
     def get(self, request):
         user = request.user
@@ -538,53 +547,243 @@ class ManageDiscoveredSongs(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+        # --- Params pagination (par sessions)
+        try:
+            limit = int(request.GET.get("limit", 10))
+        except Exception:
+            limit = 10
+        try:
+            offset = int(request.GET.get("offset", 0))
+        except Exception:
+            offset = 0
+        if limit <= 0:
+            limit = 10
+        if offset < 0:
+            offset = 0
+
+        # --- Helpers locaux de mapping (cohérents avec GetBox)
+        def map_user(u):
+            if not u or isinstance(u, AnonymousUser):
+                return None
+            full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
+            display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+            profile_pic_url = None
+            if getattr(u, "profile_picture", None):
+                try:
+                    profile_pic_url = u.profile_picture.url
+                except Exception:
+                    profile_pic_url = None
+            return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
+
+        def map_song_full(s, include_id=True):
+            if not s:
+                return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
+            payload = {
+                "title": getattr(s, "title", None),
+                "artist": getattr(s, "artist", None),
+                "spotify_url": getattr(s, "spotify_url", None),
+                "deezer_url": getattr(s, "deezer_url", None),
+                "img_url": getattr(s, "image_url", None),
+            }
+            if include_id:
+                payload["id"] = getattr(s, "id", None)
+            return payload
+
+        # --- On charge toutes les découvertes de l'user (main + revealed), triées desc
         q = (
             DiscoveredSong.objects
             .filter(user_id=user)
-            .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user')
-            .order_by('-discovered_at')
+            .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user', 'deposit_id__box_id')
+            .order_by('-discovered_at', '-id')
         )
 
-        payload = []
-        for ds in q:
-            d = ds.deposit_id
-            s = d.song_id
-            u = d.user
+        # On veut piloter par les "main" triés desc
+        mains = [ds for ds in q if ds.discovered_type == "main"]
 
-            if u and not isinstance(u, AnonymousUser):
-                full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-                display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-             
-                profile_pic_url = None
-                if getattr(u, "profile_picture", None):
-                    try:
-                        profile_pic_url = u.profile_picture.url
-                    except Exception:
-                        profile_pic_url = None
-            
-                user_payload = {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
-            else:
-                user_payload = None
-                
+        # Itération pilotée pour produire des sessions jusqu'à (offset+limit)
+        sessions = []
+        consumed_ids = set()  # ids de DiscoveredSong déjà packagés (évite les doublons)
+        main_index = 0
+        now_count = 0
 
-            song_payload = {
-                "id": getattr(s, "id", None),
-                "title": getattr(s, "title", None),
-                "artist": getattr(s, "artist", None),
-                "img_url": getattr(s, "image_url", None),
-                "spotify_url": getattr(s, "spotify_url", None),
-                "deezer_url": getattr(s, "deezer_url", None),
+        # Marqueurs pour sessions "orphelines" (revealed sans main proche)
+        # On va repasser sur le flux pour créer des sessions orphelines restantes.
+        def build_session_from_main(main_ds):
+            """Construit une session à partir d'un main donné."""
+            dep_main = main_ds.deposit_id
+            box = dep_main.box_id
+            session_started_at = main_ds.discovered_at
+            time_deadline = session_started_at + timedelta(seconds=3600)
+
+            # Dépôt 'main' en premier
+            s_main = dep_main.song_id
+            u_main = dep_main.user
+            deposits_payload = [{
+                "type": "main",
+                "discovered_at": main_ds.discovered_at.isoformat(),
+                "deposit_id": dep_main.id,
+                "deposit_date": naturaltime(localtime(getattr(dep_main, "deposited_at", None))) if getattr(dep_main, "deposited_at", None) else None,
+                "song": map_song_full(s_main, include_id=True),
+                "user": map_user(u_main),
+            }]
+            consumed_ids.add(main_ds.id)
+
+            # Inclure les revealed de la **même boîte**, découverts APRÈS le main,
+            # jusqu'au prochain main (global) ou 3600s.
+            for ds in q:
+                if ds.id in consumed_ids:
+                    continue
+                if ds.discovered_at < session_started_at:
+                    # on avance dans le temps "vers le passé"
+                    # stop si on tombe sur un main "suivant" (dans l'ordre desc, c'est un main plus ancien)
+                    if ds.discovered_type == "main":
+                        # prochain main toutes boîtes : met fin à la session courante
+                        break
+                    # revealed candidat
+                    if ds.deposit_id.box_id_id != box.id:
+                        continue
+                    if ds.discovered_at > time_deadline:
+                        # dans l'ordre desc, un ds plus "récent" ne devrait pas dépasser la deadline;
+                        # mais si jamais, on ignore
+                        continue
+                    # OK: ajouter
+                    dep = ds.deposit_id
+                    s = dep.song_id
+                    u = dep.user
+                    deposits_payload.append({
+                        "type": "revealed",
+                        "discovered_at": ds.discovered_at.isoformat(),
+                        "deposit_id": dep.id,
+                        "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
+                        "song": map_song_full(s, include_id=True),
+                        "user": map_user(u),
+                    })
+                    consumed_ids.add(ds.id)
+                else:
+                    # ds plus récent que le main (devrait déjà être consommé par une session plus "jeune")
+                    continue
+
+            return {
+                "session_id": str(main_ds.id),
+                "box": {"id": box.id, "name": box.name, "url": box.url},
+                "started_at": session_started_at.isoformat(),
+                "deposits": deposits_payload,
             }
 
-            payload.append({
-                "deposit_id": d.id,
-                "deposit_date": naturaltime(localtime(d.deposited_at)) if getattr(d, "deposited_at", None) else None,
-                "discovered_type": ds.discovered_type,
-                "song": song_payload,
-                "user": user_payload,
-            })
+        # Construit des sessions à partir des mains, en respectant offset/limit
+        produced = 0
+        for main_ds in mains:
+            if produced < offset:
+                # Consommer cette session sans l'ajouter
+                _tmp = build_session_from_main(main_ds)
+                produced += 1
+                continue
+            if len(sessions) >= limit:
+                break
+            sess = build_session_from_main(main_ds)
+            sessions.append(sess)
+            produced += 1
 
+        # Si on n'a pas suffisamment de sessions (moins que limit), essayer de créer des sessions "orphelines"
+        # à partir des revealed restants non consommés.
+        if len(sessions) < limit:
+            # Regrouper par boîte, en créant des fenêtres de 3600s à partir du premier revealed non consommé,
+            # s'arrêtant au prochain main global plus ancien ou à la deadline de 3600s.
+            # On parcourt q dans l'ordre desc, et dès qu'on trouve un revealed non-consommé,
+            # on crée une session orpheline.
+            orph_index = 0
+            for ds in q:
+                if len(sessions) >= limit:
+                    break
+                if ds.id in consumed_ids:
+                    continue
+                if ds.discovered_type == "main":
+                    # ce main a déjà dû être consommé dans la phase précédente,
+                    # sinon il constitue une vraie session "main" et pas orpheline.
+                    continue
+                # Nouveau point de départ orphelin
+                start_revealed = ds
+                box = start_revealed.deposit_id.box_id
+                session_started_at = start_revealed.discovered_at
+                time_deadline = session_started_at + timedelta(seconds=3600)
+
+                deposits_payload = []
+                # Ajouter le revealed de départ
+                dep0 = start_revealed.deposit_id
+                s0 = dep0.song_id
+                u0 = dep0.user
+                deposits_payload.append({
+                    "type": "revealed",
+                    "discovered_at": start_revealed.discovered_at.isoformat(),
+                    "deposit_id": dep0.id,
+                    "deposit_date": naturaltime(localtime(getattr(dep0, "deposited_at", None))) if getattr(dep0, "deposited_at", None) else None,
+                    "song": map_song_full(s0, include_id=True),
+                    "user": map_user(u0),
+                })
+                consumed_ids.add(start_revealed.id)
+
+                # Ajouter les revealed suivants (même boîte), jusqu'au prochain main ou deadline
+                for ds2 in q:
+                    if ds2.id in consumed_ids:
+                        continue
+                    if ds2.discovered_at < session_started_at:
+                        if ds2.discovered_type == "main":
+                            break  # prochain main global → fin de session
+                        if ds2.deposit_id.box_id_id != box.id:
+                            continue
+                        if ds2.discovered_at > time_deadline:
+                            continue
+                        dep = ds2.deposit_id
+                        s = dep.song_id
+                        u = dep.user
+                        deposits_payload.append({
+                            "type": "revealed",
+                            "discovered_at": ds2.discovered_at.isoformat(),
+                            "deposit_id": dep.id,
+                            "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
+                            "song": map_song_full(s, include_id=True),
+                            "user": map_user(u),
+                        })
+                        consumed_ids.add(ds2.id)
+                    else:
+                        continue
+
+                # Pagination par sessions : tenir compte de l'offset restant
+                if produced < offset:
+                    produced += 1
+                    continue
+
+                sessions.append({
+                    "session_id": f"orph-{orph_index}",
+                    "box": {"id": box.id, "name": box.name, "url": box.url},
+                    "started_at": session_started_at.isoformat(),
+                    "deposits": deposits_payload,
+                })
+                orph_index += 1
+                produced += 1
+
+        # has_more / next_offset
+        # Pour déterminer has_more sans tout recalculer, on peut estimer en regardant
+        # s'il reste un "main" ou un "revealed" non consommé qui pourrait initier une nouvelle session.
+        has_more = False
+        # Si un main non consommé existe après 'produced' sessions → has_more
+        # Ou s'il reste au moins un revealed non consommé → peut former une session orpheline
+        for ds in q:
+            if ds.id in consumed_ids:
+                continue
+            # un main ou un revealed peut initier une session
+            has_more = True
+            break
+
+        payload = {
+            "sessions": sessions,
+            "limit": limit,
+            "offset": offset,
+            "has_more": has_more,
+            "next_offset": (offset + len(sessions)) if has_more else (offset + len(sessions)),
+        }
         return Response(payload, status=status.HTTP_200_OK)
+
 
 class RevealSong(APIView):
     """
@@ -758,6 +957,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
