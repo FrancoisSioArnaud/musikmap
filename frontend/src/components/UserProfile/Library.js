@@ -92,13 +92,12 @@ export default function Library() {
   }, []);
 
   useEffect(() => {
-    // premier fetch
     if (sessions.length === 0 && hasMore && !loadingRef.current) {
       fetchSessions();
     }
   }, [sessions.length, hasMore, fetchSessions]);
 
-  // Infinite scroll (window)
+  // Infinite scroll
   useEffect(() => {
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
@@ -123,14 +122,6 @@ export default function Library() {
         key={idx}
         sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
       >
-        {/* Date de découverte */}
-        <Box
-          sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}
-          title={it?.discovered_at ? new Date(it.discovered_at).toLocaleString("fr-FR") : undefined}
-        >
-          Découvert · {formatRelativeFr(it?.discovered_at)}
-        </Box>
-
         {/* Utilisateur du dépôt */}
         <Box
           id="deposit_user"
@@ -217,12 +208,12 @@ export default function Library() {
   }
 
   return (
-    <Box sx={{ p: 2, display: "grid", gap: 2 }}>
+    <Box sx={{ p: 2, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
         const headerText = `Box : ${sess?.box?.name ?? "Inconnue"} · ${formatRelativeFr(sess?.started_at)}`;
         return (
-          <Box key={sess.session_id} sx={{ display: "grid", gap: 1 }}>
-            {/* Header de session (cliquable – on définira la route plus tard) */}
+          <Box key={sess.session_id} sx={{ display: "grid", gap: 3 }}>
+            {/* Header de session */}
             <Box
               role="button"
               tabIndex={0}
@@ -234,29 +225,26 @@ export default function Library() {
                 cursor: "pointer",
                 width: "fit-content",
               }}
-              onClick={() => {/* TODO: définir le lien réel plus tard */}}
-              onKeyDown={(e) => { if (e.key === "Enter") {/* idem */} }}
+              onClick={() => {/* TODO: lien vers /music-box/:url */}}
               title={new Date(sess?.started_at).toLocaleString("fr-FR")}
             >
               {headerText}
             </Box>
 
-            {/* Dépôts de la session */}
-            <Box sx={{ display: "grid", gap: 12 }}>
+            {/* Dépôts */}
+            <Box sx={{ display: "grid", gap: 1.5 }}>
               {Array.isArray(sess?.deposits) && sess.deposits.map((d, idx) => renderDepositCard(d, idx))}
             </Box>
           </Box>
         );
       })}
 
-      {/* Loader simple */}
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
         </Box>
       )}
 
-      {/* Modale de lecture */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
     </Box>
   );
