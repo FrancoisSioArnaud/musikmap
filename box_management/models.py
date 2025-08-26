@@ -25,7 +25,6 @@ class Box(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     client_name = models.CharField(max_length=50)
-    max_deposits = models.IntegerField(default=5)
 
     def __str__(self):
         """
@@ -129,6 +128,7 @@ class DiscoveredSong(models.Model):
 
     def __str__(self):
         return f"{self.user_id} - {self.deposit_id}"
+
 
 
 
