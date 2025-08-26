@@ -546,7 +546,7 @@ class ManageDiscoveredSongs(APIView):
                 {'error': 'Vous devez être connecté pour effectuer cette action.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-
+    
         # --- Params pagination (par sessions)
         try:
             limit = int(request.GET.get("limit", 10))
@@ -556,12 +556,10 @@ class ManageDiscoveredSongs(APIView):
             offset = int(request.GET.get("offset", 0))
         except Exception:
             offset = 0
-        if limit <= 0:
-            limit = 10
-        if offset < 0:
-            offset = 0
-
-        # --- Helpers locaux de mapping (cohérents avec GetBox)
+        limit = 10 if limit <= 0 else limit
+        offset = 0 if offset < 0 else offset
+    
+        # --- Helpers mapping (alignés sur GetBox)
         def map_user(u):
             if not u or isinstance(u, AnonymousUser):
                 return None
@@ -574,7 +572,7 @@ class ManageDiscoveredSongs(APIView):
                 except Exception:
                     profile_pic_url = None
             return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
-
+    
         def map_song_full(s, include_id=True):
             if not s:
                 return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
@@ -588,202 +586,139 @@ class ManageDiscoveredSongs(APIView):
             if include_id:
                 payload["id"] = getattr(s, "id", None)
             return payload
-
-        # --- On charge toutes les découvertes de l'user (main + revealed), triées desc
-        q = (
+    
+        def deposit_payload(ds_obj):
+            dep = ds_obj.deposit_id
+            s = dep.song_id
+            u = dep.user
+            return {
+                "type": ds_obj.discovered_type,
+                "discovered_at": ds_obj.discovered_at.isoformat(),
+                "deposit_id": dep.id,
+                # NB: date d’ajout dans la box — on ne s’en sert pas pour l’ordre,
+                # mais on la garde pour compat :
+                "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
+                "song": map_song_full(s, include_id=True),
+                "user": map_user(u),
+            }
+    
+        # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
+        events = list(
             DiscoveredSong.objects
             .filter(user_id=user)
             .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user', 'deposit_id__box_id')
-            .order_by('-discovered_at', '-id')
+            .order_by('discovered_at', 'id')  # ASC, puis tie-break sur id
         )
-
-        # On veut piloter par les "main" triés desc
-        mains = [ds for ds in q if ds.discovered_type == "main"]
-
-        # Itération pilotée pour produire des sessions jusqu'à (offset+limit)
-        sessions = []
-        consumed_ids = set()  # ids de DiscoveredSong déjà packagés (évite les doublons)
-        main_index = 0
-        now_count = 0
-
-        # Marqueurs pour sessions "orphelines" (revealed sans main proche)
-        # On va repasser sur le flux pour créer des sessions orphelines restantes.
-        def build_session_from_main(main_ds):
-            """Construit une session à partir d'un main donné."""
-            dep_main = main_ds.deposit_id
-            box = dep_main.box_id
-            session_started_at = main_ds.discovered_at
-            time_deadline = session_started_at + timedelta(seconds=3600)
-
-            # Dépôt 'main' en premier
-            s_main = dep_main.song_id
-            u_main = dep_main.user
-            deposits_payload = [{
-                "type": "main",
-                "discovered_at": main_ds.discovered_at.isoformat(),
-                "deposit_id": dep_main.id,
-                "deposit_date": naturaltime(localtime(getattr(dep_main, "deposited_at", None))) if getattr(dep_main, "deposited_at", None) else None,
-                "song": map_song_full(s_main, include_id=True),
-                "user": map_user(u_main),
-            }]
-            consumed_ids.add(main_ds.id)
-
-            # Inclure les revealed de la **même boîte**, découverts APRÈS le main,
-            # jusqu'au prochain main (global) ou 3600s.
-            for ds in q:
-                if ds.id in consumed_ids:
+    
+        # Indices des mains (ASC)
+        main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
+    
+        sessions_all = []
+        consumed = [False] * len(events)
+    
+        # --- 2) Sessions pilotées par 'main'
+        for idx, mi in enumerate(main_indices):
+            main_ds = events[mi]
+            box = main_ds.deposit_id.box_id
+            start = main_ds.discovered_at
+            deadline = start + timedelta(seconds=3600)
+            # borne supérieure = index du prochain main (ou fin de liste)
+            end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
+    
+            # Dépôt 'main' (toujours en tête, puis revealed par ordre chronologique)
+            deposits = [deposit_payload(main_ds)]
+            consumed[mi] = True
+    
+            # revealed après le main, même box, <= +1h, avant le prochain main
+            for j in range(mi + 1, end):
+                ds = events[j]
+                if ds.discovered_type != "revealed":
                     continue
-                if ds.discovered_at < session_started_at:
-                    # on avance dans le temps "vers le passé"
-                    # stop si on tombe sur un main "suivant" (dans l'ordre desc, c'est un main plus ancien)
-                    if ds.discovered_type == "main":
-                        # prochain main toutes boîtes : met fin à la session courante
-                        break
-                    # revealed candidat
-                    if ds.deposit_id.box_id_id != box.id:
-                        continue
-                    if ds.discovered_at > time_deadline:
-                        # dans l'ordre desc, un ds plus "récent" ne devrait pas dépasser la deadline;
-                        # mais si jamais, on ignore
-                        continue
-                    # OK: ajouter
-                    dep = ds.deposit_id
-                    s = dep.song_id
-                    u = dep.user
-                    deposits_payload.append({
-                        "type": "revealed",
-                        "discovered_at": ds.discovered_at.isoformat(),
-                        "deposit_id": dep.id,
-                        "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
-                        "song": map_song_full(s, include_id=True),
-                        "user": map_user(u),
-                    })
-                    consumed_ids.add(ds.id)
-                else:
-                    # ds plus récent que le main (devrait déjà être consommé par une session plus "jeune")
+                if ds.deposit_id.box_id_id != box.id:
                     continue
-
-            return {
+                if ds.discovered_at <= deadline:
+                    deposits.append(deposit_payload(ds))
+                    consumed[j] = True
+    
+            sessions_all.append({
                 "session_id": str(main_ds.id),
                 "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": session_started_at.isoformat(),
-                "deposits": deposits_payload,
-            }
-
-        # Construit des sessions à partir des mains, en respectant offset/limit
-        produced = 0
-        for main_ds in mains:
-            if produced < offset:
-                # Consommer cette session sans l'ajouter
-                _tmp = build_session_from_main(main_ds)
-                produced += 1
+                "started_at": start.isoformat(),
+                "deposits": deposits,  # ordre chrono: main puis revealed de la session
+            })
+    
+        # --- 3) Sessions orphelines (revealed restants), groupées par fenêtre [start, start+1h] et même box,
+        #         et stoppées par le prochain main global.
+        # Pour accélérer : prochaine position d’un main pour un index donné
+        next_main_pos_from = [None] * len(events)
+        next_idx = None
+        for i in range(len(events) - 1, -1, -1):  # parcours inverse pour pré-calcul
+            next_main_pos_from[i] = next_idx
+            if events[i].discovered_type == "main":
+                next_idx = i
+    
+        orph_counter = 0
+        i = 0
+        while i < len(events):
+            if consumed[i] or events[i].discovered_type != "revealed":
+                i += 1
                 continue
-            if len(sessions) >= limit:
-                break
-            sess = build_session_from_main(main_ds)
-            sessions.append(sess)
-            produced += 1
-
-        # Si on n'a pas suffisamment de sessions (moins que limit), essayer de créer des sessions "orphelines"
-        # à partir des revealed restants non consommés.
-        if len(sessions) < limit:
-            # Regrouper par boîte, en créant des fenêtres de 3600s à partir du premier revealed non consommé,
-            # s'arrêtant au prochain main global plus ancien ou à la deadline de 3600s.
-            # On parcourt q dans l'ordre desc, et dès qu'on trouve un revealed non-consommé,
-            # on crée une session orpheline.
-            orph_index = 0
-            for ds in q:
-                if len(sessions) >= limit:
+    
+            # Démarre une session orpheline à partir de ce revealed
+            start_ds = events[i]
+            box = start_ds.deposit_id.box_id
+            start = start_ds.discovered_at
+            deadline = start + timedelta(seconds=3600)
+            stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
+    
+            deposits = [deposit_payload(start_ds)]
+            consumed[i] = True
+    
+            j = i + 1
+            while j is not None and j < stop_at:
+                if consumed[j]:
+                    j += 1
+                    continue
+                ds2 = events[j]
+                # on ne prend que revealed de la même box et <= +1h depuis le premier
+                if ds2.discovered_type == "revealed" and ds2.deposit_id.box_id_id == box.id and ds2.discovered_at <= deadline:
+                    deposits.append(deposit_payload(ds2))
+                    consumed[j] = True
+                    j += 1
+                    continue
+                # si c’est un main, on s’arrête (prochain main global)
+                if ds2.discovered_type == "main":
                     break
-                if ds.id in consumed_ids:
-                    continue
-                if ds.discovered_type == "main":
-                    # ce main a déjà dû être consommé dans la phase précédente,
-                    # sinon il constitue une vraie session "main" et pas orpheline.
-                    continue
-                # Nouveau point de départ orphelin
-                start_revealed = ds
-                box = start_revealed.deposit_id.box_id
-                session_started_at = start_revealed.discovered_at
-                time_deadline = session_started_at + timedelta(seconds=3600)
-
-                deposits_payload = []
-                # Ajouter le revealed de départ
-                dep0 = start_revealed.deposit_id
-                s0 = dep0.song_id
-                u0 = dep0.user
-                deposits_payload.append({
-                    "type": "revealed",
-                    "discovered_at": start_revealed.discovered_at.isoformat(),
-                    "deposit_id": dep0.id,
-                    "deposit_date": naturaltime(localtime(getattr(dep0, "deposited_at", None))) if getattr(dep0, "deposited_at", None) else None,
-                    "song": map_song_full(s0, include_id=True),
-                    "user": map_user(u0),
-                })
-                consumed_ids.add(start_revealed.id)
-
-                # Ajouter les revealed suivants (même boîte), jusqu'au prochain main ou deadline
-                for ds2 in q:
-                    if ds2.id in consumed_ids:
-                        continue
-                    if ds2.discovered_at < session_started_at:
-                        if ds2.discovered_type == "main":
-                            break  # prochain main global → fin de session
-                        if ds2.deposit_id.box_id_id != box.id:
-                            continue
-                        if ds2.discovered_at > time_deadline:
-                            continue
-                        dep = ds2.deposit_id
-                        s = dep.song_id
-                        u = dep.user
-                        deposits_payload.append({
-                            "type": "revealed",
-                            "discovered_at": ds2.discovered_at.isoformat(),
-                            "deposit_id": dep.id,
-                            "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
-                            "song": map_song_full(s, include_id=True),
-                            "user": map_user(u),
-                        })
-                        consumed_ids.add(ds2.id)
-                    else:
-                        continue
-
-                # Pagination par sessions : tenir compte de l'offset restant
-                if produced < offset:
-                    produced += 1
-                    continue
-
-                sessions.append({
-                    "session_id": f"orph-{orph_index}",
-                    "box": {"id": box.id, "name": box.name, "url": box.url},
-                    "started_at": session_started_at.isoformat(),
-                    "deposits": deposits_payload,
-                })
-                orph_index += 1
-                produced += 1
-
-        # has_more / next_offset
-        # Pour déterminer has_more sans tout recalculer, on peut estimer en regardant
-        # s'il reste un "main" ou un "revealed" non consommé qui pourrait initier une nouvelle session.
-        has_more = False
-        # Si un main non consommé existe après 'produced' sessions → has_more
-        # Ou s'il reste au moins un revealed non consommé → peut former une session orpheline
-        for ds in q:
-            if ds.id in consumed_ids:
-                continue
-            # un main ou un revealed peut initier une session
-            has_more = True
-            break
-
+                # sinon (revealed autre box / hors fenêtre), on le saute pour cette session
+                j += 1
+    
+            sessions_all.append({
+                "session_id": f"orph-{orph_counter}",
+                "box": {"id": box.id, "name": box.name, "url": box.url},
+                "started_at": start.isoformat(),
+                "deposits": deposits,  # ordre chrono
+            })
+            orph_counter += 1
+            i = j if j is not None else (i + 1)
+    
+        # --- 4) Tri global des sessions par started_at DESC + pagination par sessions
+        sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
+    
+        total_sessions = len(sessions_all)
+        slice_start = offset
+        slice_end = offset + limit
+        sessions_page = sessions_all[slice_start:slice_end]
+        has_more = slice_end < total_sessions
+        next_offset = slice_end if has_more else slice_end  # avance « plat »
+    
         payload = {
-            "sessions": sessions,
+            "sessions": sessions_page,
             "limit": limit,
             "offset": offset,
             "has_more": has_more,
-            "next_offset": (offset + len(sessions)) if has_more else (offset + len(sessions)),
+            "next_offset": next_offset,
         }
         return Response(payload, status=status.HTTP_200_OK)
-
 
 class RevealSong(APIView):
     """
@@ -957,6 +892,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
