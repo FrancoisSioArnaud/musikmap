@@ -15,27 +15,21 @@ function formatRelativeFr(isoDateString) {
   const d = new Date(isoDateString);
   if (isNaN(d)) return "";
   const now = new Date();
-  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000); // signé
+  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000);
   const rtf = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
 
   const abs = Math.abs(diffSec);
   if (abs < 60) return rtf.format(diffSec, "second");
-
   const diffMin = Math.round(diffSec / 60);
   if (Math.abs(diffMin) < 60) return rtf.format(diffMin, "minute");
-
   const diffHr = Math.round(diffSec / 3600);
   if (Math.abs(diffHr) < 24) return rtf.format(diffHr, "hour");
-
   const diffDay = Math.round(diffSec / 86400);
   if (Math.abs(diffDay) < 7) return rtf.format(diffDay, "day");
-
   const diffWeek = Math.round(diffDay / 7);
   if (Math.abs(diffWeek) < 5) return rtf.format(diffWeek, "week");
-
   const diffMonth = Math.round(diffDay / 30);
   if (Math.abs(diffMonth) < 12) return rtf.format(diffMonth, "month");
-
   const diffYear = Math.round(diffDay / 365);
   return rtf.format(diffYear, "year");
 }
@@ -44,7 +38,7 @@ export default function Library() {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
 
-  const [sessions, setSessions] = useState([]); // [{ session_id, box, started_at, deposits: [...] }]
+  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
@@ -84,7 +78,6 @@ export default function Library() {
     }
   }, [limit, nextOffset, hasMore]);
 
-  // Initial load
   useEffect(() => {
     setSessions([]);
     setHasMore(true);
@@ -97,7 +90,6 @@ export default function Library() {
     }
   }, [sessions.length, hasMore, fetchSessions]);
 
-  // Infinite scroll
   useEffect(() => {
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
@@ -122,6 +114,8 @@ export default function Library() {
         key={idx}
         sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
       >
+        {/* Suppression de "Découvert · ..." */}
+
         {/* Utilisateur du dépôt */}
         <Box
           id="deposit_user"
@@ -212,39 +206,33 @@ export default function Library() {
       {sessions.map((sess) => {
         const headerText = `Box : ${sess?.box?.name ?? "Inconnue"} · ${formatRelativeFr(sess?.started_at)}`;
         return (
-          <Box key={sess.session_id} sx={{ display: "grid", gap: 3 }}>
+          <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
-            <Box
-              role="button"
-              tabIndex={0}
-              sx={{
-                px: 1,
-                py: 0.5,
-                fontSize: 14,
-                color: "text.secondary",
-                cursor: "pointer",
-                width: "fit-content",
-              }}
-              onClick={() => {/* TODO: lien vers /music-box/:url */}}
-              title={new Date(sess?.started_at).toLocaleString("fr-FR")}
+            <Typography
+              variant="h6"
+              component="h2"
+              sx={{ mb: 1, cursor: "pointer" }}
+              onClick={() => {/* TODO: lien vers /music-box/:box.url */}}
             >
               {headerText}
-            </Box>
+            </Typography>
 
-            {/* Dépôts */}
-            <Box sx={{ display: "grid", gap: 1.5 }}>
+            {/* Dépôts de la session */}
+            <Box sx={{ display: "grid", gap: 1.5 }}> {/* 12px entre dépôts */}
               {Array.isArray(sess?.deposits) && sess.deposits.map((d, idx) => renderDepositCard(d, idx))}
             </Box>
           </Box>
         );
       })}
 
+      {/* Loader simple */}
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
         </Box>
       )}
 
+      {/* Modale de lecture */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
     </Box>
   );
