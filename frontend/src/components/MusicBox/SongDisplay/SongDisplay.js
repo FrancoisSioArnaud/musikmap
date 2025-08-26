@@ -20,7 +20,7 @@ import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 
 import PlayModal from "../../Common/PlayModal.js";
-import LiveSearch from "../LiveSearch.js";
+import LiveSearch from "./LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
 
