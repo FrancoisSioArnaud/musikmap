@@ -51,7 +51,7 @@ async function postLocation(box, coords) {
 }
 
 async function fetchGetBox(boxName) {
-  const res = await fetch(`/box-management/getbox?name=${encodeURIComponent(boxName)}`, {
+  const res = await fetch(`/box-management/get-box?name=${encodeURIComponent(boxName)}`, {
     credentials: "same-origin",
     headers: { Accept: "application/json" },
   });
@@ -518,4 +518,5 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
