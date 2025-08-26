@@ -124,11 +124,7 @@ export default function MusicBox() {
     };
   }, [boxName]);
 
-  // ================== 1) Auto-ouverture au chargement (sans sectionOpen) ==================
-  // Dès que meta.box.id est connu :
-  // - vérifie la permission via navigator.permissions.query
-  // - si 'granted' => lit la position, appelle /verify-location
-  // - si in-range => fetch /get-box et affiche SongDisplay dès réception
+  // ================== 1) Auto-ouverture au chargement ==================
   useEffect(() => {
     let cancelled = false;
 
@@ -299,54 +295,58 @@ export default function MusicBox() {
   const showOutOfRangeOverlay = permissionState === "granted" && !inRange;
 
   return (
-    <Box sx={{ display: "grid", gap: 4, pb: 6 }}>
-      {/* ================= HERO (meta light) – 100vh ================= */}
+    <Box sx={{ display: "grid", gap: 0, pb: 0 }}>
+      {/* ================= HERO (meta light) – height: calc(100vh - 64px), contenu en bas ================= */}
       <Paper
         elevation={3}
         sx={{
-          minHeight: "100vh",
-          display: "grid",
-          alignItems: "center",
+          height: "calc(100vh - 64px)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
           p: { xs: 3, md: 5 },
           position: "relative",
           overflow: "hidden",
         }}
       >
-        <Box sx={{ display: "grid", gap: 2, maxWidth: 960, mx: "auto", textAlign: "center" }}>
-          {/* Count au-dessus du titre */}
-          {metaLoading ? (
-            <Skeleton variant="text" width={180} height={24} sx={{ mx: "auto" }} />
-          ) : (
-            <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>
-              {depositCount} Dépôts
-            </Typography>
-          )}
+        {/* Contenu poussé en bas */}
+        <Box sx={{ mt: "auto" }}>
+          <Box sx={{ display: "grid", gap: 2, maxWidth: 960, mx: "auto", textAlign: "center" }}>
+            {/* Count au-dessus du titre */}
+            {metaLoading ? (
+              <Skeleton variant="text" width={180} height={24} sx={{ mx: "auto" }} />
+            ) : (
+              <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>
+                {depositCount} Dépôts
+              </Typography>
+            )}
 
-          {/* Titre H1 */}
-          {metaLoading ? (
-            <Skeleton variant="text" width={260} height={40} sx={{ mx: "auto" }} />
-          ) : (
-            <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>
-              {boxTitle}
-            </Typography>
-          )}
+            {/* Titre H1 */}
+            {metaLoading ? (
+              <Skeleton variant="text" width={260} height={40} sx={{ mx: "auto" }} />
+            ) : (
+              <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>
+                {boxTitle}
+              </Typography>
+            )}
 
-          {/* Bouton Ouvrir la boîte (scroll only) */}
-          <Box>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={scrollToContent}
-              aria-describedby="open-box-desc"
-              fullWidth
-              disabled={metaLoading}
-              sx={{ py: 1.25 }}
-            >
-              ⬇︎ Ouvrir la boîte ⬇︎
-            </Button>
-            <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
-              Fait défiler jusqu’au contenu
-            </Typography>
+            {/* Bouton Ouvrir la boîte (scroll only) */}
+            <Box sx={{ pb: { xs: 1, md: 0 } }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={scrollToContent}
+                aria-describedby="open-box-desc"
+                fullWidth
+                disabled={metaLoading}
+                sx={{ py: 1.25 }}
+              >
+                ⬇︎ Ouvrir la boîte ⬇︎
+              </Button>
+              <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
+                Fait défiler jusqu’au contenu
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Paper>
@@ -405,7 +405,7 @@ export default function MusicBox() {
               elevation={3}
               sx={{
                 p: 3,
-                maxWidth: 560,
+                maxWidth: "calc(100vw - 32px)",
                 mx: "auto",
                 textAlign: "center",
               }}
@@ -443,7 +443,7 @@ export default function MusicBox() {
               elevation={3}
               sx={{
                 p: 3,
-                maxWidth: 560,
+                maxWidth: "calc(100vw - 32px)",
                 mx: "auto",
                 textAlign: "center",
               }}
