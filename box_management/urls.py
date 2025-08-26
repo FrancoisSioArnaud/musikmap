@@ -4,6 +4,7 @@ from .views import *
 
 
 urlpatterns = [
+    path("meta", BoxMeta.as_view(), name="box-meta"),
     path('get-box', GetBox.as_view()),
     path('verify-location', Location.as_view()),
     path('current-box-management', CurrentBoxManagement.as_view()),
@@ -11,6 +12,7 @@ urlpatterns = [
     path('revealSong', RevealSong.as_view(), name="reveal-song"),
     path('user-deposits', UserDepositsView.as_view(), name="user-deposits"), 
 ]
+
 
 
 
