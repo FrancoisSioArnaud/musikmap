@@ -22,7 +22,7 @@ import { UserContext } from "../UserContext";
 import { getCookie } from "../Security/TokensUtils";
 
 // Chargement différé du SongDisplay
-const SongDisplay = lazy(() => import("./OnBoarding/SongDisplay"));
+const SongDisplay = lazy(() => import("./SongDisplay/SongDisplay"));
 
 // ---- Helpers API locales (légères)
 async function fetchBoxMeta(boxName) {
@@ -476,3 +476,4 @@ export default function MusicBox() {
     </Box>
   );
 }
+
