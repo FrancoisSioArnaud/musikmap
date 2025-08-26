@@ -461,12 +461,13 @@ export default function MusicBox() {
                   </Typography>
                 ) : null}
                 <Stack direction="row" spacing={1} justifyContent="center">
-                  <Button variant="contained" onClick={handleRetryOutOfRange}>
-                    Réessayer
-                  </Button>
                   <Button variant="outlined" href="" onClick={(e) => e.preventDefault()}>
                     Voir la box sur la carte
                   </Button>
+                  <Button variant="contained" onClick={handleRetryOutOfRange}>
+                    Réessayer
+                  </Button>
+                 
                 </Stack>
               </Stack>
             </Paper>
@@ -476,4 +477,5 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
