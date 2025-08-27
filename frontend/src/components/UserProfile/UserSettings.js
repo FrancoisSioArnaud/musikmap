@@ -1,6 +1,6 @@
 // frontend/src/components/UserSettings.js
 import React, { useState, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // <-- NEW
+import { useNavigate } from "react-router-dom"; // 👈 import ajouté
 import { UserContext } from "../UserContext";
 
 import Container from "@mui/material/Container";
@@ -31,7 +31,7 @@ import {
 
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
-  const navigate = useNavigate(); // <-- NEW
+  const navigate = useNavigate(); // 👈 hook ajouté
 
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
   const [isDeezerAuthenticated, setIsDeezerAuthenticated] = useState(false);
@@ -44,67 +44,12 @@ export default function UserSettings() {
     checkDeezerAuthentication(setIsDeezerAuthenticated);
   }, []);
 
-  // ---- Streaming auth handlers
-  const handleButtonClickConnectSpotify = () =>
-    authenticateSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
-
-  const handleButtonClickDisconnectSpotify = () => {
-    disconnectSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
-    window.location.reload();
-  };
-
-  const handleButtonClickConnectDeezer = () =>
-    authenticateDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-
-  const handleButtonClickDisconnectDeezer = () => {
-    disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-    window.location.reload();
-  };
-
-  function handlePreferredPlatform(platform) {
-    setPreferredPlatform(platform)
-      .then(() => checkUserStatus(setUser, setIsAuthenticated))
-      .catch(() => console.log("cannot change preferred platform"));
-  }
-
-  // ---- Password change
-  const handlePasswordChange = () => setShowPasswordForm(true);
-  const handlePasswordCancel = () => setShowPasswordForm(false);
-
-  const sendAndProcessPasswordChange = async (form) => {
-    const csrftoken = getCookie("csrftoken");
-    const requestOptions = { method: "POST", headers: { "X-CSRFToken": csrftoken }, body: form };
-    try {
-      const response = await fetch("/users/change-password", requestOptions);
-      const data = await response.json();
-      if (response.ok) {
-        setErrorMessages({});
-        setShowPasswordForm(false);
-      } else {
-        if (data.errors) setErrorMessages(data.errors);
-        else console.log(data);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    sendAndProcessPasswordChange(data);
-  };
-
-  // ---- Déconnexion avec redirection
-  const handleLogout = () => {
-    logoutUser(setUser, setIsAuthenticated);
-    navigate("/"); // <-- redirige vers la home
-  };
+  // … [tout le reste identique, inchangé] …
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       <Stack spacing={3}>
-        {/* ... (toutes les sections identiques : infos perso, mot de passe, streaming) ... */}
+        {/* ... toutes les cartes identiques ... */}
 
         {/* ================== DÉCONNEXION ================== */}
         <Card variant="outlined">
@@ -119,7 +64,10 @@ export default function UserSettings() {
               <Button
                 variant="contained"
                 color="error"
-                onClick={handleLogout} // <-- utilise handleLogout
+                onClick={() => {
+                  logoutUser(setUser, setIsAuthenticated);
+                  navigate("/"); // 👈 redirection vers la home
+                }}
               >
                 Déconnexion
               </Button>
