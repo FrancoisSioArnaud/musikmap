@@ -229,7 +229,7 @@ export default function SongDisplay({
       {deposits[0] && (
         <Card sx={{ p: 2 }}>
           {/* dépôt idx=0 */}
-          <Typography component="h1" variant="h5" sx={{ fontWeight: 700, mb: 2, textAlign: "left" }}>
+          <Typography component="h2" variant="h5" sx={{ fontWeight: 700, mb: 2, textAlign: "left" }}>
             La dernière chanson déposée ici
           </Typography>
           <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
