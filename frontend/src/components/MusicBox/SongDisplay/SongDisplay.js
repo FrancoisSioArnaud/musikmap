@@ -12,8 +12,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-/* === NEW: Snackbar + Slide + Content + Icon === */
+/* Snackbar + Slide + Content + Icon */
 import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
@@ -30,19 +31,19 @@ function SlideDownTransition(props) {
 
 export default function SongDisplay({
   dispDeposits,
-  setDispDeposits, // utilisé pour maj après reveal
+  setDispDeposits, // maj après reveal
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxName,
   user,
-  revealCost, // ← nouveau (reçu du parent)
+  revealCost, // coût serveur pour reveal
 }) {
   const navigate = useRouterNavigate();
   const { setUser } = useContext(UserContext) || {};
 
   const cost = typeof revealCost === "number" ? revealCost : 40;
 
-  // Sécurise la liste
+  // Liste sécurisée
   const deposits = useMemo(
     () => (Array.isArray(dispDeposits) ? dispDeposits : []),
     [dispDeposits]
@@ -53,30 +54,36 @@ export default function SongDisplay({
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
 
-  // Drawer (full page mobile)
+  // Drawer (LiveSearch / Achievements)
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [drawerView, setDrawerView] = useState("search"); // 'search' | 'achievements'
 
-  // Dépôt tout juste ajouté (NON injecté dans dispDeposits)
+  // Dépôt tout juste ajouté (retour POST add-song)
   const [myDeposit, setMyDeposit] = useState(null);
 
-  // Achievements (reçus après POST)
+  // Succès + total points
   const [achievements, setAchievements] = useState([]);
-
-  // === NEW: Snackbar state ===
-  const [snackOpen, setSnackOpen] = useState(false);
-
   const totalPoints = useMemo(() => {
     const item = achievements.find(
       (s) => (s?.name || "").toLowerCase() === "total"
     );
     return item?.points ?? 0;
   }, [achievements]);
-
   const displaySuccesses = useMemo(
     () => achievements.filter((s) => (s?.name || "").toLowerCase() !== "total"),
     [achievements]
   );
+
+  // Snackbar confirm
+  const [snackOpen, setSnackOpen] = useState(false);
+  const showRevealSnackbar = () => {
+    if (snackOpen) {
+      setSnackOpen(false);
+      setTimeout(() => setSnackOpen(true), 0);
+    } else {
+      setSnackOpen(true);
+    }
+  };
 
   // --- PLAY ---
   const openPlayFor = (song) => {
@@ -97,14 +104,12 @@ export default function SongDisplay({
   const closeSearch = () => {
     setIsSearchOpen(false);
   };
-
-  // Rouvre le drawer en mode achievements
   const reopenAchievements = () => {
     setDrawerView("achievements");
     setIsSearchOpen(true);
   };
 
-  // Callback après POST réussi (LiveSearch)
+  // Callback après POST add-song (LiveSearch)
   const handleDepositSuccess = (addedDeposit, successes) => {
     setMyDeposit(addedDeposit || null);
     setAchievements(Array.isArray(successes) ? successes : []);
@@ -112,14 +117,12 @@ export default function SongDisplay({
     setIsSearchOpen(true);
   };
 
-  // ---- Enregistrer automatiquement le dépôt #0 comme "main" à l’ouverture (montage uniquement) ----
+  // ---- Auto-enregistrer le dépôt #0 comme "main" au montage ----
   useEffect(() => {
-    // Conditions : user connecté + présence d'un dépôt #0 avec un id
     if (!user || !user.username) return;
     const first = Array.isArray(dispDeposits) && dispDeposits.length > 0 ? dispDeposits[0] : null;
     const firstId = first?.deposit_id;
     if (!firstId) return;
-
     const csrftoken = getCookie("csrftoken");
     fetch("/box-management/discovered-songs", {
       method: "POST",
@@ -129,18 +132,7 @@ export default function SongDisplay({
       .then(() => {})
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← uniquement au montage, comme demandé
-
-  // === NEW: helper pour afficher la snackbar (fermer l'ancienne puis ouvrir la nouvelle)
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      // Laisse React commit la fermeture puis ré-ouvre aussitôt
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
-  };
+  }, []);
 
   // ---- Reveal d’un dépôt (débit + découverte + maj UI + maj points) ----
   const revealDeposit = async (dep) => {
@@ -187,120 +179,134 @@ export default function SongDisplay({
         return arr;
       });
 
-      // 2) MAJ du solde (menu)
+      // 2) MAJ du solde (UserContext)
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
 
-      // 3) === NEW: Snackbar de confirmation
+      // 3) Snackbar OK
       showRevealSnackbar();
-
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
     }
   };
 
-  // ---- Composant interne : carte "ma pépite" (révélée, compacte)
-  const MyDepositCard = () => (
-    <Card sx={{ p: 2, border: "1px dashed #e5e7eb" }}>
-      {/* Titre H1 demandé */}
-      <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-        La chanson que tu as déposée
+  /* ===========================
+     SECTION — MY_DEPOSIT
+     =========================== */
+
+  // Avant dépôt : H1 + paragraphe + box vide pointillée ratio 5:2 + bouton centré
+  const MyDepositEmpty = () => (
+    <Box sx={{ display: "grid", gap: 1.5 }}>
+      <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+        Dépose une chanson
+      </Typography>
+      <Typography variant="body1">
+        Ajoute une chanson et gagne des crédits pour pouvoir révéler des pépites plus anciennes.
       </Typography>
 
-      {/* deposit_song (layout compact révélé) */}
-      <Box
-        id="deposit_song"
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "140px 1fr",
-          gap: 2,
-          mb: 1,
-          alignItems: "center",
-        }}
-      >
-        <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-          {myDeposit?.song?.img_url && (
-            <Box
-              component="img"
-              src={myDeposit.song.img_url}
-              alt={`${myDeposit.song.title} - ${myDeposit.song.artist}`}
-              sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          )}
-        </Box>
-
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-          <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
-            {myDeposit?.song?.title}
-          </Typography>
-          <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-            {myDeposit?.song?.artist}
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => openPlayFor(myDeposit.song)}
-            sx={{ alignSelf: "flex-start", mt: 0.5 }}
-          >
-            Play
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Ligne d’info + points cliquables (à gauche texte, à droite points) */}
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          justifyContent: "space-between",
           mt: 1,
+          width: "100%",
+          border: "1px dashed",
+          borderColor: "divider",
+          borderRadius: 2,
+          display: "grid",
+          placeItems: "center",
+          p: 1.5,
+          // Ratio 5:2
+          aspectRatio: "5 / 2",
         }}
       >
-        <Typography variant="body2" sx={{ flex: 1 }}>
-          Utilise tes points pour révéler d&apos;autres pépites dans la boîte ou sur les profils d&apos;autres utilisateurs
-        </Typography>
-
-        <Box
-          role="button"
-          tabIndex={0}
-          onClick={reopenAchievements}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && reopenAchievements()}
-          sx={{
-            px: 2,
-            py: 1,
-            borderRadius: 1.5,
-            fontWeight: 700,
-            bgcolor: "primary.main",
-            color: "primary.contrastText",
-            userSelect: "none",
-          }}
-        >
-          +{totalPoints}
-        </Box>
+        <Button variant="contained" size="large" onClick={openSearch}>
+          Déposer une chanson
+        </Button>
       </Box>
-    </Card>
+    </Box>
   );
 
-  // ====== CASE: AUCUN DÉPÔT (boîte vide) ======
+  // Après dépôt : H1 + check + paragraphe + bouton points (ouvre achievements) + box pointillée avec la chanson
+  const MyDepositAfter = () => (
+    <Box sx={{ display: "grid", gap: 1.5 }}>
+      <Typography component="h1" variant="h5" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
+        Ta chanson est déposée
+        <CheckCircleIcon sx={{ color: "success.main" }} fontSize="medium" />
+      </Typography>
+
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+        <Typography variant="body1" sx={{ flex: 1 }}>
+          Révèle d’autres chansons avec les crédits que tu as gagnés.
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={reopenAchievements}
+          aria-label="Ouvrir les succès"
+        >
+          +{totalPoints}
+        </Button>
+      </Box>
+
+      <Box
+        sx={{
+          mt: 0.5,
+          border: "1px dashed",
+          borderColor: "divider",
+          borderRadius: 2,
+          p: 1.5, // 12px
+        }}
+      >
+        {/* Section chanson (layout compact) */}
+        <Box
+          id="my_deposit_song"
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "140px 1fr",
+            gap: 2,
+            alignItems: "center",
+          }}
+        >
+          <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+            {myDeposit?.song?.img_url && (
+              <Box
+                component="img"
+                src={myDeposit.song.img_url}
+                alt={`${myDeposit.song.title} - ${myDeposit.song.artist}`}
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            )}
+          </Box>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
+              {myDeposit?.song?.title}
+            </Typography>
+            <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+              {myDeposit?.song?.artist}
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => openPlayFor(myDeposit?.song)}
+              sx={{ alignSelf: "flex-start", mt: 0.5 }}
+            >
+              Play
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  );
+
+  /* ===========================
+     RENDU
+     =========================== */
+
+  // AUCUN dépôt côté boîte → on montre uniquement my_deposit (avant/après)
   if (deposits.length === 0) {
     return (
       <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-        {!myDeposit ? (
-          // --- Avant dépôt ---
-          <Card sx={{ p: 2 }}>
-            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-              Ajoute chanson à ton tour et gagne des crédits pour pouvoir révéler d&apos;autres pépites.
-            </Typography>
-            <Button variant="contained" onClick={openSearch} fullWidth>
-              Déposer une chanson
-            </Button>
-          </Card>
-        ) : (
-          // --- Après dépôt ---
-          <MyDepositCard />
-        )}
+        {!myDeposit ? <MyDepositEmpty /> : <MyDepositAfter />}
 
         {/* Drawer LiveSearch / Achievements */}
         <Drawer
@@ -361,16 +367,14 @@ export default function SongDisplay({
           </Box>
         </Drawer>
 
-        {/* === NEW: Snackbar globale (top-center) === */}
+        {/* Snackbar globale */}
         <Snackbar
           open={snackOpen}
           onClose={() => setSnackOpen(false)}
           autoHideDuration={5000}
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
           TransitionComponent={SlideDownTransition}
-          sx={{
-            zIndex: (t) => t.zIndex.drawer + 1, // au-dessus des Drawer
-          }}
+          sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
         >
           <SnackbarContent
             sx={{
@@ -411,10 +415,10 @@ export default function SongDisplay({
     );
   }
 
-  // ====== CASE: AVEC DÉPÔTS ======
+  // AVEC dépôts → liste + my_deposit insérée après le premier dépôt
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
-      {/* HERO */}
+      {/* Intro courte */}
       <Box
         id="intro"
         sx={{
@@ -444,17 +448,9 @@ export default function SongDisplay({
         const s = dep?.song || {};
         const isRevealed = Boolean(s?.title && s?.artist);
 
-        const dateSuffix =
-          dep?.discovered_at ? ` (Tu as découvert cette chanson ici ${dep.discovered_at})` : "";
-
         const card = (
           <Card key={`dep-${dep?.deposit_id ?? idx}`} sx={{ p: 2 }}>
-            {/* date */}
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + ". " + dateSuffix}
-            </Box>
-
-            {/* user */}
+            {/* Utilisateur */}
             <Box
               id="deposit_user"
               sx={{
@@ -476,11 +472,10 @@ export default function SongDisplay({
               <Typography>{u?.name || "Anonyme"}</Typography>
             </Box>
 
-            {/* song */}
+            {/* Song */}
             {idx === 0 ? (
-              // ----- DÉPÔT #1 (plein format) -----
+              // Dépôt #1 (plein format)
               <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-                {/* cover carré full width */}
                 <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
                   {s?.img_url && (
                     <Box
@@ -498,7 +493,6 @@ export default function SongDisplay({
                   )}
                 </Box>
 
-                {/* titres + Play */}
                 <Box
                   sx={{
                     display: "flex",
@@ -530,7 +524,7 @@ export default function SongDisplay({
                 </Box>
               </Box>
             ) : (
-              // ----- DÉPÔTS SUIVANTS (layout compact) -----
+              // Dépôts suivants (compact)
               <Box
                 id="deposit_song"
                 sx={{
@@ -581,7 +575,7 @@ export default function SongDisplay({
               </Box>
             )}
 
-            {/* actions secondaires */}
+            {/* Actions secondaires */}
             <Box id="deposit_interact" sx={{ mt: 0 }}>
               {idx > 0 && !isRevealed ? (
                 <Button
@@ -597,24 +591,12 @@ export default function SongDisplay({
           </Card>
         );
 
-        // Après le premier dépôt, on insère le CTA (avant dépôt) ou le bloc "ma pépite" (après dépôt).
+        // Après le premier dépôt, on insère my_deposit (nouvelle section)
         if (idx === 0) {
           return (
             <React.Fragment key={`first-frag`}>
               {card}
-
-              {!myDeposit ? (
-                <Card sx={{ p: 2 }}>
-                  <Typography component="h1" variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                    Dépose une chanson à ton tour pour gagner des crédits et pouvoir révéler d&apos;autres pépites.
-                  </Typography>
-                  <Button variant="contained" onClick={openSearch}>
-                    Déposer une chanson
-                  </Button>
-                </Card>
-              ) : (
-                <MyDepositCard />
-              )}
+              {!myDeposit ? <MyDepositEmpty /> : <MyDepositAfter />}
             </React.Fragment>
           );
         }
@@ -684,16 +666,14 @@ export default function SongDisplay({
         </Box>
       </Drawer>
 
-      {/* === NEW: Snackbar globale (top-center) === */}
+      {/* Snackbar globale */}
       <Snackbar
         open={snackOpen}
         onClose={() => setSnackOpen(false)}
         autoHideDuration={5000}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         TransitionComponent={SlideDownTransition}
-        sx={{
-          zIndex: (t) => t.zIndex.drawer + 1, // au-dessus des Drawer
-        }}
+        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
       >
         <SnackbarContent
           sx={{
