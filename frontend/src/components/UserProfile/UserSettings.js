@@ -19,37 +19,7 @@ import {
   disconnectSpotifyUser,
 } from "../MusicBox/SpotifyUtils";
 
-const styles = {
-  root: { flexGrow: 1, padding: "16px" },
-  textField: { marginBottom: "16px" },
-  buttonGroup: { marginBottom: "16px" },
-  buttonConnect: { backgroundColor: "transparent", color: "gray" },
-  buttonPlatform: {
-    backgroundColor: "transparent",
-    color: "gray",
-    textTransform: "none",
-    fontStyle: "italic",
-  },
-  image: { width: "100px", height: "50px", marginRight: "8px" },
-  streamingTitle: { marginTop: "24px" },
-  basicButton: {
-    borderRadius: "20px",
-    backgroundImage: "linear-gradient(to right, #fa9500, #fa4000)",
-    color: "white",
-    border: "none",
-    textTransform: "none",
-    "&:hover": { border: "none" },
-  },
-  disconnectButton: {
-    margin: "10px 10px",
-    borderRadius: "20px",
-    backgroundImage: "linear-gradient(to right, #fa9500, #fa4000)",
-    color: "white",
-    border: "none",
-    textTransform: "none",
-    "&:hover": { border: "none" },
-  },
-};
+
 
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
