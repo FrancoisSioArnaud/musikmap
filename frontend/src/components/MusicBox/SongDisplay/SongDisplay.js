@@ -254,7 +254,6 @@ export default function SongDisplay({
                 // ratio 5:2 (largeur/hauteur)
                 aspectRatio: "5 / 2",
                 width: "100%",
-                minHeight: 160,
                 bgcolor: "transparent",
               }}
             >
