@@ -49,10 +49,6 @@ export default function SongDisplay({
     [dispDeposits]
   );
 
-  // Découpage : 0..9 en principal, >9 en section dédiée
-  const topDeposits = useMemo(() => deposits.slice(0, 10), [deposits]);
-  const olderDeposits = useMemo(() => deposits.slice(10), [deposits]);
-
   // === ÉTATS LOCAUX ===
   // Play
   const [playOpen, setPlayOpen] = useState(false);
@@ -219,7 +215,8 @@ export default function SongDisplay({
           display: "grid",
           placeItems: "center",
           p: 1.5,
-          aspectRatio: "5 / 2", // Ratio 5:2
+          // Ratio 5:2
+          aspectRatio: "5 / 2",
         }}
       >
         <Button variant="contained" size="large" onClick={openSearch}>
@@ -281,7 +278,7 @@ export default function SongDisplay({
           </Box>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-            <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
+            <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
               {myDeposit?.song?.title}
             </Typography>
             <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
@@ -302,159 +299,6 @@ export default function SongDisplay({
   );
 
   /* ===========================
-     HELPERS RENDU DÉPÔT
-     =========================== */
-  const renderDepositCard = (dep, originalIndex) => {
-    const u = dep?.user;
-    const s = dep?.song || {};
-    const isRevealed = Boolean(s?.title && s?.artist);
-    const isFirst = originalIndex === 0;
-
-    return (
-      <Card key={`dep-${dep?.deposit_id ?? originalIndex}`} sx={{ p: 2 }}>
-        {/* Utilisateur */}
-        <Box
-          id="deposit_user"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mb: 2,
-            cursor: u?.id != null ? "pointer" : "default",
-          }}
-          onClick={() => {
-            if (u?.id != null) navigate("/profile/" + u.id);
-          }}
-        >
-          <Avatar
-            src={u?.profile_pic_url || undefined}
-            alt={u?.name || "Anonyme"}
-            sx={{ width: 40, height: 40 }}
-          />
-          <Typography>{u?.name || "Anonyme"}</Typography>
-        </Box>
-
-        {/* Song */}
-        {isFirst ? (
-          // Dépôt #1 (plein format)
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-            <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
-              {s?.img_url && (
-                <Box
-                  component="img"
-                  src={s.img_url}
-                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    display: "block",
-                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                  }}
-                />
-              )}
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 2,
-              }}
-            >
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                {isRevealed && (
-                  <>
-                    <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                      {s.title}
-                    </Typography>
-                    <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                      {s.artist}
-                    </Typography>
-                  </>
-                )}
-              </Box>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                disabled={!isRevealed}
-              >
-                Play
-              </Button>
-            </Box>
-          </Box>
-        ) : (
-          // Dépôts suivants (compact)
-          <Box
-            id="deposit_song"
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "140px 1fr",
-              gap: 2,
-              mb: 2,
-              alignItems: "center",
-            }}
-          >
-            <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-              {s?.img_url && (
-                <Box
-                  component="img"
-                  src={s.img_url}
-                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                  }}
-                />
-              )}
-            </Box>
-
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-              {isRevealed && (
-                <>
-                  <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700 }}>
-                    {s.title}
-                  </Typography>
-                  <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                    {s.artist}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                  >
-                    Play
-                  </Button>
-                </>
-              )}
-            </Box>
-          </Box>
-        )}
-
-        {/* Actions secondaires */}
-        <Box id="deposit_interact" sx={{ mt: 0 }}>
-          {originalIndex > 0 && !isRevealed ? (
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => revealDeposit(dep)}
-              disabled={!user || !user.username}
-            >
-              {`Découvrir — ${cost}`}
-            </Button>
-          ) : null}
-        </Box>
-      </Card>
-    );
-  };
-
-  /* ===========================
      RENDU
      =========================== */
 
@@ -462,7 +306,7 @@ export default function SongDisplay({
   if (deposits.length === 0) {
     return (
       <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-        {/* Marges autour de la section my_deposit */}
+        {/* marges 42px autour de la section */}
         <Box sx={{ mt: "42px", mb: "42px" }}>
           {!myDeposit ? <MyDepositEmpty /> : <MyDepositAfter />}
         </Box>
@@ -574,7 +418,160 @@ export default function SongDisplay({
     );
   }
 
-  // AVEC dépôts → top 10 + my_deposit + section dédiée pour >9
+  // AVEC dépôts → on rend les 10 premiers, puis my_deposit (avec marges 42px),
+  // puis une section dédiée pour idx > 9 avec un titre H2.
+  const firstTen = deposits.slice(0, 10);
+  const olderDeposits = deposits.slice(10);
+
+  const renderDepositCard = (dep, idxGlobal) => {
+    const u = dep?.user;
+    const s = dep?.song || {};
+    const isRevealed = Boolean(s?.title && s?.artist);
+
+    return (
+      <Card key={`dep-${dep?.deposit_id ?? idxGlobal}`} sx={{ p: 2 }}>
+        {/* Utilisateur */}
+        <Box
+          id="deposit_user"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            mb: 2,
+            cursor: u?.id != null ? "pointer" : "default",
+          }}
+          onClick={() => {
+            if (u?.id != null) navigate("/profile/" + u.id);
+          }}
+        >
+          <Avatar
+            src={u?.profile_pic_url || undefined}
+            alt={u?.name || "Anonyme"}
+            sx={{ width: 40, height: 40 }}
+          />
+          <Typography>{u?.name || "Anonyme"}</Typography>
+        </Box>
+
+        {/* Song */}
+        {idxGlobal === 0 ? (
+          // Dépôt #1 (plein format)
+          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
+            <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
+              {s?.img_url && (
+                <Box
+                  component="img"
+                  src={s.img_url}
+                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                  sx={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                  }}
+                />
+              )}
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 2,
+              }}
+            >
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                {isRevealed && (
+                  <>
+                    <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                      {s.title}
+                    </Typography>
+                    <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                      {s.artist}
+                    </Typography>
+                  </>
+                )}
+              </Box>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => (isRevealed ? openPlayFor(s) : null)}
+                disabled={!isRevealed}
+              >
+                Play
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          // Dépôts suivants (compact)
+          <Box
+            id="deposit_song"
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "140px 1fr",
+              gap: 2,
+              mb: 2,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+              {s?.img_url && (
+                <Box
+                  component="img"
+                  src={s.img_url}
+                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                  }}
+                />
+              )}
+            </Box>
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+              {isRevealed && (
+                <>
+                  <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                    {s.title}
+                  </Typography>
+                  <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                    {s.artist}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                  >
+                    Play
+                  </Button>
+                </>
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {/* Actions secondaires */}
+        <Box id="deposit_interact" sx={{ mt: 0 }}>
+          {idxGlobal > 0 && !isRevealed ? (
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => revealDeposit(dep)}
+              disabled={!user || !user.username}
+            >
+              {`Découvrir — ${cost}`}
+            </Button>
+          ) : null}
+        </Box>
+      </Card>
+    );
+  };
+
   return (
     <Box sx={{ display: "grid", gap: 2, p: 2 }}>
       {/* Intro courte */}
@@ -602,39 +599,25 @@ export default function SongDisplay({
         </Box>
       </Box>
 
-      {/* TOP 10 (0..9) */}
-      {topDeposits.map((dep, idx) => {
-        const originalIndex = idx; // 0..9
-        const card = renderDepositCard(dep, originalIndex);
+      {/* 10 premiers dépôts */}
+      {firstTen.map((dep, idx) => renderDepositCard(dep, idx))}
 
-        if (originalIndex === 0) {
-          // Après le premier dépôt : my_deposit avec marges 42px
-          return (
-            <React.Fragment key={`first-frag`}>
-              {card}
-              <Box sx={{ mt: "42px", mb: "42px" }}>
-                {!myDeposit ? <MyDepositEmpty /> : <MyDepositAfter />}
-              </Box>
-            </React.Fragment>
-          );
-        }
-        return <React.Fragment key={`dep-wrap-${dep?.deposit_id ?? originalIndex}`}>{card}</React.Fragment>;
-      })}
+      {/* Section MY_DEPOSIT avec marges 42px */}
+      <Box sx={{ mt: "42px", mb: "42px" }}>
+        {!myDeposit ? <MyDepositEmpty /> : <MyDepositAfter />}
+      </Box>
 
-      {/* SECTION DÉDIÉE : >9 */}
+      {/* Section dédiée pour les dépôts > 9 */}
       {olderDeposits.length > 0 && (
         <Box sx={{ display: "grid", gap: 2 }}>
-          <Typography component="h2" variant="h6" sx={{ fontWeight: 700 }}>
-            Révèle d'autre chansons déposées plus tôt
+          <Typography component="h2" variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+            Chansons déposées plus tôt à révéler
           </Typography>
 
-          {olderDeposits.map((dep, idx) => {
-            const originalIndex = idx + 10; // 10..N
-            return (
-              <React.Fragment key={`older-${dep?.deposit_id ?? originalIndex}`}>
-                {renderDepositCard(dep, originalIndex)}
-              </React.Fragment>
-            );
+          {olderDeposits.map((dep, subIdx) => {
+            // subIdx part de 0 ici, mais l'index global est 10 + subIdx
+            const idxGlobal = 10 + subIdx;
+            return renderDepositCard(dep, idxGlobal);
           })}
         </Box>
       )}
