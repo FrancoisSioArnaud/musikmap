@@ -86,7 +86,7 @@ export default function UserSettings() {
   };
 
   return (
-    <div style={styles.root}>
+    <div>
       {/* --- Infos personnelles --- */}
       <Grid container spacing={2} sx={{ mt: 1 }}>
         <Grid item xs={12}>
@@ -97,7 +97,6 @@ export default function UserSettings() {
 
         <Grid item xs={12} sm={6}>
           <TextField
-            style={styles.textField}
             label="Email"
             variant="outlined"
             fullWidth
@@ -109,7 +108,6 @@ export default function UserSettings() {
         {!user.is_social_auth ? (
           <Grid item xs={12} sm={6}>
             <TextField
-              style={styles.textField}
               label="Mot de passe"
               variant="outlined"
               fullWidth
@@ -136,10 +134,10 @@ export default function UserSettings() {
                 <TextField required fullWidth name="new_password2" label="Confirmation" type="password" />
               </Grid>
             </Grid>
-            <Button type="submit" variant="contained" sx={{ mt: 3 }} style={styles.basicButton}>
+            <Button type="submit" variant="contained" sx={{ mt: 3 }} >
               Modifier
             </Button>
-            <Button variant="contained" sx={{ ml: 2, mt: 3 }} onClick={handlePasswordCancel} style={styles.basicButton}>
+            <Button variant="contained" sx={{ ml: 2, mt: 3 }} onClick={handlePasswordCancel}>
               Annuler
             </Button>
             {Object.keys(errorMessages).map((k) => (
@@ -149,7 +147,7 @@ export default function UserSettings() {
             ))}
           </Box>
         ) : (
-          <Button variant="contained" onClick={handlePasswordChange} style={styles.basicButton} sx={{ mt: 1 }}>
+          <Button variant="contained" onClick={handlePasswordChange} sx={{ mt: 1 }}>
             Modifier le mot de passe
           </Button>
         )
@@ -160,9 +158,9 @@ export default function UserSettings() {
       )}
 
       {/* --- Services de streaming --- */}
-      <Grid container spacing={2} alignItems="center" style={styles.buttonGroup} sx={{ mt: 3 }}>
+      <Grid container spacing={2} alignItems="center" sx={{ mt: 3 }}>
         <Grid item xs={12}>
-          <Typography variant="h6" style={styles.streamingTitle}>
+          <Typography variant="h6">
             Tes services de streaming
           </Typography>
           <Typography variant="subtitle1" gutterBottom>
@@ -171,17 +169,17 @@ export default function UserSettings() {
         </Grid>
 
         {/* Spotify */}
-        <Grid container spacing={2} alignItems="center" style={styles.buttonGroup}>
+        <Grid container spacing={2} alignItems="center">
           <Grid item>
-            <img src="../static/images/spotify_logo.svg" alt="Spotify" style={styles.image} />
+            <img src="../static/images/spotify_logo.svg" alt="Spotify"/>
           </Grid>
           <Grid item>
             {isSpotifyAuthenticated ? (
-              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickDisconnectSpotify}>
+              <Button variant="contained" onClick={handleButtonClickDisconnectSpotify}>
                 Se déconnecter
               </Button>
             ) : (
-              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickConnectSpotify}>
+              <Button variant="contained" onClick={handleButtonClickConnectSpotify}>
                 Se connecter
               </Button>
             )}
@@ -192,7 +190,6 @@ export default function UserSettings() {
             ) : (
               <Button
                 variant="contained"
-                style={styles.buttonPlatform}
                 onClick={() => handlePreferredPlatform("spotify")}
               >
                 Choisir comme plateforme principale
@@ -202,17 +199,17 @@ export default function UserSettings() {
         </Grid>
 
         {/* Deezer */}
-        <Grid container spacing={2} alignItems="center" style={styles.buttonGroup}>
+        <Grid container spacing={2} alignItems="center">
           <Grid item>
-            <img src="../static/images/deezer_logo.svg" alt="Deezer" style={styles.image} />
+            <img src="../static/images/deezer_logo.svg" alt="Deezer" />
           </Grid>
           <Grid item>
             {isDeezerAuthenticated ? (
-              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickDisconnectDeezer}>
+              <Button variant="contained" onClick={handleButtonClickDisconnectDeezer}>
                 Se déconnecter
               </Button>
             ) : (
-              <Button variant="contained" style={styles.buttonConnect} onClick={handleButtonClickConnectDeezer}>
+              <Button variant="contained" onClick={handleButtonClickConnectDeezer}>
                 Se connecter
               </Button>
             )}
@@ -223,7 +220,6 @@ export default function UserSettings() {
             ) : (
               <Button
                 variant="contained"
-                style={styles.buttonPlatform}
                 onClick={() => handlePreferredPlatform("deezer")}
               >
                 Choisir comme plateforme principale
@@ -237,7 +233,6 @@ export default function UserSettings() {
       <Button
         variant="contained"
         onClick={() => logoutUser(setUser, setIsAuthenticated)}
-        style={styles.disconnectButton}
       >
         Déconnexion
       </Button>
