@@ -1,7 +1,19 @@
 // frontend/src/components/MusicBox/LiveSearch.js
 import React, { useState, useEffect, useContext } from "react";
-import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Paper from "@mui/material/Paper";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import ToggleButton from "@mui/material/ToggleButton";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchIcon from "@mui/icons-material/Search";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
+
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
 
@@ -11,189 +23,282 @@ export default function LiveSearch({
   boxName,
   user,
   onDepositSuccess, // (addedDeposit, successes) => void
-  onClose,          // parent ferme le drawer, ici on ne l'utilise pas directement
+  onClose,          // non utilisé ici, conservé pour compat
 }) {
   const { setUser } = useContext(UserContext) || {};
 
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
   const [selectedStreamingService, setSelectedStreamingService] = useState(
-    user?.preferred_platform || "spotify"
+    user?.preferred_platform || "spotify" // par défaut Spotify
   );
 
-  // Mettre à jour le service sélectionné quand la préférence user change
+  // états UI
+  const [isSearching, setIsSearching] = useState(false);
+  const [postingId, setPostingId] = useState(null); // id du track en cours de POST (désactive le bouton)
+
+  // Met à jour le service sélectionné si la préférence user change
   useEffect(() => {
     if (user?.preferred_platform) {
       setSelectedStreamingService(user.preferred_platform);
     }
   }, [user?.preferred_platform]);
 
-  // Charger récents / rechercher selon service + saisie
+  // Charger récents / rechercher selon service + saisie (debounce 400ms)
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (selectedStreamingService === "spotify") {
-        if (searchValue === "") {
-          if (isSpotifyAuthenticated) {
-            fetch("/spotify/recent-tracks")
-              .then((r) => r.json())
-              .then(setJsonResults)
-              .catch(() => setJsonResults([]));
-          } else {
-            setJsonResults([]);
-          }
-        } else {
-          const csrftoken = getCookie("csrftoken");
-          fetch("/spotify/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-            body: JSON.stringify({ search_query: searchValue }),
-          })
-            .then((r) => r.json())
-            .then(setJsonResults)
-            .catch(() => setJsonResults([]));
-        }
-      }
+      const doFetch = async () => {
+        try {
+          setIsSearching(true);
 
-      if (selectedStreamingService === "deezer") {
-        if (searchValue === "") {
-          if (isDeezerAuthenticated) {
-            fetch("/deezer/recent-tracks")
-              .then((r) => r.json())
-              .then(setJsonResults)
-              .catch(() => setJsonResults([]));
-          } else {
-            setJsonResults([]);
+          // --- SPOTIFY ---
+          if (selectedStreamingService === "spotify") {
+            if (searchValue === "") {
+              if (isSpotifyAuthenticated) {
+                const r = await fetch("/spotify/recent-tracks");
+                const j = await r.json();
+                setJsonResults(Array.isArray(j) ? j : []);
+              } else {
+                // Non-auth + pas de recherche : rien (conforme à tes consignes)
+                setJsonResults([]);
+              }
+            } else {
+              const csrftoken = getCookie("csrftoken");
+              const r = await fetch("/spotify/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+                body: JSON.stringify({ search_query: searchValue }),
+              });
+              const j = await r.json();
+              setJsonResults(Array.isArray(j) ? j : []);
+            }
           }
-        } else {
-          const csrftoken = getCookie("csrftoken");
-          fetch("/deezer/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-            body: JSON.stringify({ search_query: searchValue }),
-          })
-            .then((r) => r.json())
-            .then(setJsonResults)
-            .catch(() => setJsonResults([]));
+
+          // --- DEEZER ---
+          if (selectedStreamingService === "deezer") {
+            if (searchValue === "") {
+              if (isDeezerAuthenticated) {
+                const r = await fetch("/deezer/recent-tracks");
+                const j = await r.json();
+                setJsonResults(Array.isArray(j) ? j : []);
+              } else {
+                setJsonResults([]);
+              }
+            } else {
+              const csrftoken = getCookie("csrftoken");
+              const r = await fetch("/deezer/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+                body: JSON.stringify({ search_query: searchValue }),
+              });
+              const j = await r.json();
+              setJsonResults(Array.isArray(j) ? j : []);
+            }
+          }
+        } catch {
+          setJsonResults([]);
+        } finally {
+          setIsSearching(false);
         }
-      }
+      };
+
+      doFetch();
     }, 400);
 
     return () => clearTimeout(timer);
   }, [searchValue, selectedStreamingService, isDeezerAuthenticated, isSpotifyAuthenticated]);
 
-  function handleStreamingServiceChange(service) {
-    setSelectedStreamingService(service);
-  }
+  const handleStreamingServiceChange = (_e, value) => {
+    if (!value) return; // ToggleButtonGroup peut renvoyer null
+    setSelectedStreamingService(value);
+    // on efface les résultats pour éviter un mélange de plateformes
+    setJsonResults([]);
+  };
 
-  // Dépôt POST
-  function handleButtonClick(option, boxName) {
-    const csrftoken = getCookie("csrftoken");
+  // Dépôt POST (Choisir)
+  async function handleButtonClick(option, boxName) {
+    try {
+      setPostingId(option?.id ?? "__posting__");
+      const csrftoken = getCookie("csrftoken");
 
-    // Garantir platform_id attendu par le back
-    const platformId =
-      option.platform_id ??
-      (selectedStreamingService === "spotify" ? 1 : 2);
+      // Garantir platform_id attendu par le back
+      const platformId =
+        option.platform_id ??
+        (selectedStreamingService === "spotify" ? 1 : 2);
 
-    const data = {
-      option: { ...option, platform_id: platformId },
-      boxName,
-    };
+      const data = {
+        option: { ...option, platform_id: platformId },
+        boxName,
+      };
 
-    fetch("/box-management/get-box?name=" + boxName, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
-      },
-      body: JSON.stringify(data),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then((payload) => {
-        const { added_deposit, successes, points_balance } = payload || {};
-
-        // 1) Notifie SongDisplay -> affichage du my_deposit + bascule "achievements"
-        if (typeof onDepositSuccess === "function") {
-          onDepositSuccess(added_deposit, successes);
-        }
-
-        // 2) Met à jour le solde global si possible, sinon cumule local pour anonymes
-        if (typeof points_balance === "number" && setUser) {
-          setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-        } else {
-          const total =
-            (successes || []).find(
-              (s) => (s.name || "").toLowerCase() === "total"
-            )?.points || 0;
-          const key = "anon_points";
-          const cur = parseInt(localStorage.getItem(key) || "0", 10);
-          localStorage.setItem(key, String(cur + total));
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Impossible de déposer cette chanson pour le moment.");
+      const res = await fetch("/box-management/get-box?name=" + boxName, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify(data),
       });
+
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const payload = await res.json();
+      const { added_deposit, successes, points_balance } = payload || {};
+
+      // 1) Notifie SongDisplay -> affichage my_deposit + Achievements
+      if (typeof onDepositSuccess === "function") {
+        onDepositSuccess(added_deposit, successes);
+      }
+
+      // 2) Met à jour le solde global si possible, sinon cumule local pour anonymes
+      if (typeof points_balance === "number" && setUser) {
+        setUser((prev) => ({ ...(prev || {}), points: points_balance }));
+      } else {
+        const total =
+          (successes || []).find(
+            (s) => (s.name || "").toLowerCase() === "total"
+          )?.points || 0;
+        const key = "anon_points";
+        const cur = parseInt(localStorage.getItem(key) || "0", 10);
+        localStorage.setItem(key, String(cur + total));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de déposer cette chanson pour le moment.");
+    } finally {
+      setPostingId(null);
+    }
   }
 
   return (
-    <Stack>
-      <div className="search-song">
-        <h2>Choisis ta chanson à déposer</h2>
+    <Stack spacing={2}>
+      {/* En-tête + sélecteur plateforme */}
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Typography component="h2" variant="h6" sx={{ fontWeight: 700 }}>
+            Choisis ta chanson à déposer
+          </Typography>
 
-        <div className="search-song__wrapper">
-          <div className="d-flex">
-            <button
-              className="btn-spotify"
-              onClick={() => handleStreamingServiceChange("spotify")}
-              aria-pressed={selectedStreamingService === "spotify"}
-            >
+          <ToggleButtonGroup
+            color="primary"
+            exclusive
+            value={selectedStreamingService}
+            onChange={handleStreamingServiceChange}
+            aria-label="Choix du service de streaming"
+            size="small"
+            sx={{ alignSelf: "flex-start" }}
+          >
+            <ToggleButton value="spotify" aria-pressed={selectedStreamingService === "spotify"}>
               Spotify
-            </button>
-            <button
-              className="btn-deezer"
-              onClick={() => handleStreamingServiceChange("deezer")}
-              aria-pressed={selectedStreamingService === "deezer"}
-            >
+            </ToggleButton>
+            <ToggleButton value="deezer" aria-pressed={selectedStreamingService === "deezer"}>
               Deezer
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
 
-          <div className="input-wrapper">
-            <input
-              type="text"
-              placeholder="Search for a song"
-              onChange={(e) => setSearchValue(e.target.value)}
-              value={searchValue}
-            />
-          </div>
-        </div>
-      </div>
+          <TextField
+            fullWidth
+            placeholder="Cherche une chanson"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Stack>
+      </Paper>
 
-      <ul className="search-results">
-        {jsonResults.map((option) => (
-          <Box component="li" key={option.id}>
-            <div className="img-container">
-              <img src={option.image_url} alt={option.name} />
-            </div>
+      {/* Loader recherche */}
+      {isSearching && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+          <CircularProgress size={28} />
+        </Box>
+      )}
 
-            <div className="song">
-              <p className="song-title">{option.name}</p>
-              <p className="song-subtitle">{option.artist}</p>
-            </div>
+      {/* Résultats */}
+      <Paper variant="outlined">
+        <List disablePadding>
+          {jsonResults.map((option) => {
+            const isPosting = postingId === (option?.id ?? "__posting__");
 
-            <button
-              className="btn-tertiary"
-              onClick={() => handleButtonClick(option, boxName)}
-            >
-              <span>Choisir</span>
-            </button>
-          </Box>
-        ))}
-      </ul>
+            return (
+              <ListItem
+                key={option.id}
+                divider
+                secondaryAction={
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={isPosting}
+                    onClick={() => handleButtonClick(option, boxName)}
+                    sx={{ minWidth: 112 }}
+                  >
+                    {isPosting ? (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CircularProgress size={16} />
+                        Choisir
+                      </Box>
+                    ) : (
+                      "Choisir"
+                    )}
+                  </Button>
+                }
+              >
+                {/* Vignette 64px à gauche, carrée, fallback gris clair */}
+                <Box
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    bgcolor: "action.hover", // gris light fallback
+                    mr: 2,
+                  }}
+                >
+                  {option?.image_url ? (
+                    <Box
+                      component="img"
+                      src={option.image_url}
+                      alt={option.name || "Cover"}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  ) : null}
+                </Box>
+
+                {/* Titre (h3) + Artiste (paragraphe) */}
+                <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, mr: 2 }}>
+                  <Typography
+                    component="h3"
+                    variant="h6"
+                    noWrap
+                    sx={{ fontWeight: 700, textAlign: "left" }}
+                    title={option?.name || ""}
+                  >
+                    {option?.name || ""}
+                  </Typography>
+                  <Typography
+                    component="p"
+                    variant="body2"
+                    color="text.secondary"
+                    noWrap
+                    sx={{ textAlign: "left" }}
+                    title={option?.artist || ""}
+                  >
+                    {option?.artist || ""}
+                  </Typography>
+                </Box>
+              </ListItem>
+            );
+          })}
+        </List>
+
+        {/* Si pas de résultats: on n’affiche rien (conforme à tes consignes) */}
+        {(!isSearching && jsonResults.length === 0) ? null : null}
+      </Paper>
     </Stack>
   );
 }
-
