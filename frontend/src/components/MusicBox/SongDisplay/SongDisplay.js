@@ -175,7 +175,7 @@ export default function SongDisplay({
           width: "100%",
           border: "1px dashed",
           borderColor: "#888888",
-          backgroundColor : "#999999"
+          backgroundColor : "#999999",
           borderRadius: 2,
           display: "grid",
           placeItems: "center",
