@@ -253,7 +253,6 @@ export default function SongDisplay({
                 placeItems: "center",
                 // ratio 5:2 (largeur/hauteur)
                 aspectRatio: "5 / 2",
-                width: "100%",
                 bgcolor: "transparent",
               }}
             >
