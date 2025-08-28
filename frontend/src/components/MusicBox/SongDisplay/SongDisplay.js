@@ -457,7 +457,7 @@ export default function SongDisplay({
       <Box id="older_deposits" sx={{ 
         mt: "32px", 
         display: "grid",
-        gap: "12px", 
+        gap: 0, 
         pb : 2,
       }}>
         <Typography
