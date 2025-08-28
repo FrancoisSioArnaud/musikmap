@@ -232,6 +232,7 @@ export default function SongDisplay({
           mb: "42px",
           display: "grid",
           gap: 2,
+          px: 2, // 16px gauche/droite demandé
         }}
       >
         {before ? (
@@ -327,125 +328,10 @@ export default function SongDisplay({
   };
 
   /* =========================================================
-     RENDU — CAS AUCUNE PÉPITE
-  ========================================================= */
-  if (deposits.length === 0) {
-    return (
-      <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-        {/* Section my_deposit seule (avant ou après) */}
-        <MyDepositSection />
-
-        {/* Drawer LiveSearch / Achievements */}
-        <Drawer
-          anchor="right"
-          open={isSearchOpen}
-          onClose={() => {}}
-          ModalProps={{ keepMounted: true, disableRestoreFocus: true }}
-          PaperProps={{ sx: { width: "100vw" } }}
-        >
-          <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <IconButton aria-label="Fermer" onClick={closeSearch}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-
-            {drawerView === "search" ? (
-              <LiveSearch
-                isSpotifyAuthenticated={isSpotifyAuthenticated}
-                isDeezerAuthenticated={isDeezerAuthenticated}
-                boxName={boxName}
-                user={user}
-                onDepositSuccess={handleDepositSuccess}
-                onClose={closeSearch}
-              />
-            ) : (
-              <Box sx={{ display: "grid", gap: 1 }}>
-                <Typography variant="h6">Bravo !</Typography>
-
-                <List sx={{ mt: 1 }}>
-                  {displaySuccesses.length === 0 && (
-                    <ListItem>
-                      <ListItemText primary="Aucun succès (hors Total)" />
-                    </ListItem>
-                  )}
-                  {displaySuccesses.map((ach, i) => (
-                    <ListItem key={i} divider>
-                      <ListItemText primary={ach.name} secondary={ach.desc} />
-                      <Typography variant="body2">+{ach.points}</Typography>
-                    </ListItem>
-                  ))}
-                </List>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Total
-                  </Typography>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    +{totalPoints}
-                  </Typography>
-                </Box>
-
-                <Button variant="contained" onClick={closeSearch} sx={{ mt: 2 }}>
-                  Revenir à la boîte
-                </Button>
-              </Box>
-            )}
-          </Box>
-        </Drawer>
-
-        <Snackbar
-          open={snackOpen}
-          onClose={() => setSnackOpen(false)}
-          autoHideDuration={5000}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-          TransitionComponent={SlideDownTransition}
-          sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
-        >
-          <SnackbarContent
-            sx={{
-              bgcolor: "background.paper",
-              color: "text.primary",
-              borderRadius: 2,
-              boxShadow: 3,
-              px: 2,
-              py: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              maxWidth: "calc(100vw - 32px)",
-            }}
-            message={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <LibraryMusicIcon fontSize="medium" />
-                <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
-                  Retrouve cette chanson dans ton profil
-                </Typography>
-              </Box>
-            }
-            action={
-              <Button
-                size="small"
-                onClick={() => {
-                  setSnackOpen(false);
-                  navigate("/profile");
-                }}
-                aria-label="Voir la chanson dans mon profil"
-              >
-                Voir
-              </Button>
-            }
-          />
-        </Snackbar>
-      </Box>
-    );
-  }
-
-  /* =========================================================
      RENDU — CAS AVEC PÉPITES
   ========================================================= */
   return (
-    <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+    <Box sx={{ display: "grid", gap: 2 /* pas de padding root */ }}>
       {/* HERO simple */}
       <Box
         id="intro"
@@ -459,6 +345,7 @@ export default function SongDisplay({
           mt: "16px",
           mb: "16px",
           py: 2,
+          px: 2, // 16px gauche/droite demandé
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
@@ -479,86 +366,88 @@ export default function SongDisplay({
         const isRevealed = Boolean(s?.title && s?.artist);
 
         return (
-          <Card key={`dep-${dep?.deposit_id ?? 0}`} sx={{ p: 2 }}>
-            {/* date dépôt */}
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-            </Box>
-
-            {/* user */}
-            <Box
-              id="deposit_user"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mb: 2,
-                cursor: u?.id != null ? "pointer" : "default",
-              }}
-              onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
-            >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.name || "Anonyme"}
-                sx={{ width: 40, height: 40 }}
-              />
-              <Typography>{u?.name || "Anonyme"}</Typography>
-            </Box>
-
-            {/* song */}
-            <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-              {/* cover carré full width */}
-              <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
-                {s?.img_url && (
-                  <Box
-                    component="img"
-                    src={s.img_url}
-                    alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                    sx={{
-                      width: "100%",
-                      aspectRatio: "1 / 1",
-                      objectFit: "cover",
-                      display: "block",
-                      filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                    }}
-                  />
-                )}
+          <Box sx={{ px: 2 /* 16px gauche/droite demandé */ }}>
+            <Card key={`dep-${dep?.deposit_id ?? 0}`} sx={{ p: 2 }}>
+              {/* date dépôt */}
+              <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+                {"Pépite déposée " + (dep?.deposit_date || "") + "."}
               </Box>
 
-              {/* titres + Play */}
+              {/* user */}
               <Box
+                id="deposit_user"
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 2,
+                  gap: 1,
+                  mb: 2,
+                  cursor: u?.id != null ? "pointer" : "default",
                 }}
+                onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
               >
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  {isRevealed && (
-                    <>
-                      <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                        {s.title}
-                      </Typography>
-                      <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                        {s.artist}
-                      </Typography>
-                    </>
+                <Avatar
+                  src={u?.profile_pic_url || undefined}
+                  alt={u?.name || "Anonyme"}
+                  sx={{ width: 40, height: 40 }}
+                />
+                <Typography>{u?.name || "Anonyme"}</Typography>
+              </Box>
+
+              {/* song */}
+              <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
+                {/* cover carré full width */}
+                <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
+                  {s?.img_url && (
+                    <Box
+                      component="img"
+                      src={s.img_url}
+                      alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                      sx={{
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        objectFit: "cover",
+                        display: "block",
+                        filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                      }}
+                    />
                   )}
                 </Box>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                  disabled={!isRevealed}
-                >
-                  Play
-                </Button>
-              </Box>
-            </Box>
 
-            {/* actions secondaires (rien pour le #0) */}
-          </Card>
+                {/* titres + Play */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    {isRevealed && (
+                      <>
+                        <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                          {s.title}
+                        </Typography>
+                        <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                          {s.artist}
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => (isRevealed ? openPlayFor(s) : null)}
+                    disabled={!isRevealed}
+                  >
+                    Play
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* actions secondaires (rien pour le #0) */}
+            </Card>
+          </Box>
         );
       })()}
 
@@ -567,7 +456,11 @@ export default function SongDisplay({
 
       {/* SECTION — OLDER DEPOSITS (idx > 0) */}
       <Box id="older_deposits" sx={{ mt: "32px", display: "grid", gap: "12px" }}>
-        <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left", mb: "8px" }}>
+        <Typography
+          component="h2"
+          variant="h6"
+          sx={{ fontWeight: 700, textAlign: "left", mb: "8px", px: 2 /* padding X sur le titre uniquement */ }}
+        >
           Chansons déposées plus tôt à révéler
         </Typography>
 
