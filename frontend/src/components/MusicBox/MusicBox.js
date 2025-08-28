@@ -146,8 +146,7 @@ export default function MusicBox() {
   const intervalRef = useRef(null);
 
   const realVH = useRealViewportHeight(); // <— déclenche la mise à jour de --vhpx / --vh
-  const HEADER_PX = 64; // ta barre fixe
-  const heroHeight = `calc(var(--vhpx, 100dvh) - ${HEADER_PX}px)`;
+  const heroHeight = `calc(var(--vhpx, 100dvh)`;
   
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
@@ -525,6 +524,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
