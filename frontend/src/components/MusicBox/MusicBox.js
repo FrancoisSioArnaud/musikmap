@@ -85,25 +85,32 @@ function getPositionOnce(opts = {}) {
   });
 }
 
-// Hook: hauteur viewport fiable (visualViewport > innerHeight) + CSS var --vhpx
+// Hook: hauteur viewport fiable (corrigée du menu 64px) + CSS var --vhpx
 function useRealViewportHeight() {
-  const [vh, setVh] = React.useState(
-    typeof window !== "undefined"
+  const MENU_PX = 64;
+
+  const getH = () => {
+    const raw = typeof window !== "undefined"
       ? (window.visualViewport?.height ?? window.innerHeight)
-      : 0
-  );
+      : 0;
+    // Soustrait le menu et évite les valeurs négatives
+    return Math.max(0, raw - MENU_PX);
+  };
+
+  const [vh, setVh] = React.useState(getH());
 
   React.useEffect(() => {
     const update = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
+      const h = getH();
       setVh(h);
-      // Deux variantes: en px et en "vh corrigé"
+      // h est déjà "corrigé menu", on pose des variables prêtes à l'emploi
       document.documentElement.style.setProperty("--vhpx", `${h}px`);
       document.documentElement.style.setProperty("--vh", `${h * 0.01}px`);
     };
+
     update();
 
-    // Écoute les changements de barre d'URL, zoom, orientation
+    // Écoute les changements (barre d'URL, orientation, zoom)
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
     window.visualViewport?.addEventListener("resize", update);
@@ -116,9 +123,10 @@ function useRealViewportHeight() {
       window.visualViewport?.removeEventListener("scroll", update);
     };
   }, []);
-  vh = vh - 64; //on soustrait le menu
-  return vh; // en px
+
+  return vh; // hauteur en px déjà corrigée (menu soustrait)
 }
+
 
 export default function MusicBox() {
   const navigate = useNavigate();
@@ -524,6 +532,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
