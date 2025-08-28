@@ -454,13 +454,18 @@ export default function SongDisplay({
       <MyDepositSection />
 
       {/* SECTION — OLDER DEPOSITS (idx > 0) */}
-      <Box id="older_deposits" sx={{ mt: "32px", display: "grid", gap: "12px" }}>
+      <Box id="older_deposits" sx={{ 
+        mt: "32px", 
+        display: "grid",
+        gap: "12px", 
+        pb : 2,
+      }}>
         <Typography
           component="h2"
           variant="h6"
           sx={{ fontWeight: 700, textAlign: "left", mb: "8px", px: 2 /* padding X sur le titre uniquement */ }}
         >
-          Chansons déposées plus tôt à révéler
+          Pépites déposées plus tôt à révéler
         </Typography>
 
         {/* Scroller horizontal */}
@@ -472,7 +477,7 @@ export default function SongDisplay({
             gap: "12px",
             overflowX: "auto",
             overflowY: "hidden",
-            py:2;
+            py:2,
             // cacher la scrollbar (WebKit/Firefox/Edge/IE)
             scrollbarWidth: "none",
             msOverflowStyle: "none",
