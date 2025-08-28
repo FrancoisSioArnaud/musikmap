@@ -463,7 +463,7 @@ export default function SongDisplay({
         <Typography
           component="h2"
           variant="h6"
-          sx={{ fontWeight: 700, textAlign: "left", mb: "8px", px: 2 /* padding X sur le titre uniquement */ }}
+          sx={{ fontWeight: 700, textAlign: "left", px: 2 /* padding X sur le titre uniquement */ }}
         >
           Pépites déposées plus tôt à révéler
         </Typography>
@@ -477,7 +477,7 @@ export default function SongDisplay({
             gap: "12px",
             overflowX: "auto",
             overflowY: "hidden",
-            px:2,
+            p:2,
             // cacher la scrollbar (WebKit/Firefox/Edge/IE)
             scrollbarWidth: "none",
             msOverflowStyle: "none",
