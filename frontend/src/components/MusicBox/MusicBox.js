@@ -1,3 +1,4 @@
+
 // frontend/src/components/MusicBox/MusicBox.js
 import React, {
   useEffect,
@@ -85,49 +86,6 @@ function getPositionOnce(opts = {}) {
   });
 }
 
-// Hook: hauteur viewport fiable (corrigée du menu 64px) + CSS var --vhpx
-function useRealViewportHeight() {
-  const MENU_PX = 64;
-
-  const getH = () => {
-    const raw = typeof window !== "undefined"
-      ? (window.visualViewport?.height ?? window.innerHeight)
-      : 0;
-    // Soustrait le menu et évite les valeurs négatives
-    return Math.max(0, raw - MENU_PX);
-  };
-
-  const [vh, setVh] = React.useState(getH());
-
-  React.useEffect(() => {
-    const update = () => {
-      const h = getH();
-      setVh(h);
-      // h est déjà "corrigé menu", on pose des variables prêtes à l'emploi
-      document.documentElement.style.setProperty("--vhpx", `${h}px`);
-      document.documentElement.style.setProperty("--vh", `${h * 0.01}px`);
-    };
-
-    update();
-
-    // Écoute les changements (barre d'URL, orientation, zoom)
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    window.visualViewport?.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("scroll", update);
-
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
-    };
-  }, []);
-
-  return vh; // hauteur en px déjà corrigée (menu soustrait)
-}
-
-
 export default function MusicBox() {
   const navigate = useNavigate();
   const { boxName } = useParams();
@@ -153,9 +111,6 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
-  const realVH = useRealViewportHeight();  // <- déclenche la maj de --vhpx
-  const heroHeight = `var(--vhpx, 100dvh)`;   
-  
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
     let mounted = true;
@@ -346,8 +301,7 @@ export default function MusicBox() {
       <Paper
         elevation={3}
         sx={{
-          minHeight: heroHeight,
-          height: heroHeight,
+          height: "calc(100vh - 64px)",
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
@@ -390,6 +344,9 @@ export default function MusicBox() {
               >
                 ⬇︎ Ouvrir la boîte ⬇︎
               </Button>
+              <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
+                Fait défiler jusqu’au contenu
+              </Typography>
             </Box>
           </Box>
         </Box>
@@ -521,14 +478,5 @@ export default function MusicBox() {
     </Box>
   );
 }
-
-
-
-
-
-
-
-
-
 
 
