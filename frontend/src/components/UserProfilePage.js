@@ -21,20 +21,31 @@ function TabPanel({ index, value, children }) {
   );
 }
 
+// --- API helpers ---
 async function fetchPublicUserInfoByUsername(username) {
-  const res = await fetch(`/users/get-user-info?username=${encodeURIComponent(username)}`, {
+  const res = await fetch(`/box-management/get-user-info?username=${encodeURIComponent(username)}`, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
   });
   if (!res.ok) throw new Error(`get-user-info HTTP ${res.status}`);
-  return res.json(); // { id, username, profile_picture_url, total_deposits, ... }
+  return res.json(); // { id, username, profile_picture_url, ... }
 }
 
-async function fetchUserDeposits(userId) {
-  const url = typeof userId === "number"
-    ? `/box-management/user-deposits?user_id=${userId}`
+// ✔️ Prend string | number | null ; ajoute ?user_id= si présent
+async function fetchUserDepositsFor(userIdOrNull) {
+  const hasId =
+    userIdOrNull !== null &&
+    userIdOrNull !== undefined &&
+    String(userIdOrNull).trim().length > 0;
+
+  const url = hasId
+    ? `/box-management/user-deposits?user_id=${encodeURIComponent(userIdOrNull)}`
     : `/box-management/user-deposits`;
-  const res = await fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" });
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
   if (!res.ok) throw new Error(`user-deposits HTTP ${res.status}`);
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -42,28 +53,32 @@ async function fetchUserDeposits(userId) {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
-  const params = useParams();         // { username? }
+  const params = useParams(); // { username? }
   const { user } = useContext(UserContext) || {};
 
-  // 1) Détection "owner" vs "public"
+  // === 1) Détection propriétaire vs public (par username)
   const urlUsername = params?.username?.trim();
   const isOwner = !urlUsername || (user?.username && urlUsername === user.username);
 
-  // 2) Header user (avatar + username) et cible des données
+  // === 2) Header user (avatar + username affiché)
   const [headerLoading, setHeaderLoading] = useState(!isOwner);
-  const [headerUser, setHeaderUser] = useState(() => {
-    return isOwner
+  const [headerUser, setHeaderUser] = useState(() =>
+    isOwner
       ? { id: user?.id, username: user?.username, profile_picture_url: user?.profile_picture_url }
-      : null;
-  });
-  const targetUserId = headerUser?.id ?? (isOwner ? user?.id : undefined);
+      : null
+  );
 
   useEffect(() => {
     let cancelled = false;
-    async function run() {
+
+    async function loadHeader() {
       if (isOwner) {
         setHeaderLoading(false);
-        setHeaderUser({ id: user?.id, username: user?.username, profile_picture_url: user?.profile_picture_url });
+        setHeaderUser({
+          id: user?.id,
+          username: user?.username,
+          profile_picture_url: user?.profile_picture_url,
+        });
         return;
       }
       if (!urlUsername) return;
@@ -71,7 +86,11 @@ export default function UserProfilePage() {
       try {
         const info = await fetchPublicUserInfoByUsername(urlUsername);
         if (!cancelled) {
-          setHeaderUser({ id: info?.id, username: info?.username, profile_picture_url: info?.profile_picture_url });
+          setHeaderUser({
+            id: info?.id,
+            username: info?.username,
+            profile_picture_url: info?.profile_picture_url,
+          });
         }
       } catch (e) {
         if (!cancelled) setHeaderUser(null);
@@ -79,37 +98,55 @@ export default function UserProfilePage() {
         if (!cancelled) setHeaderLoading(false);
       }
     }
-    run();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlUsername, isOwner, user?.id, user?.username, user?.profile_picture_url]);
 
-  // 3) Dépôts (Partages)
+    loadHeader();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, urlUsername, user?.id, user?.username, user?.profile_picture_url]);
+
+  // === 3) Dépôts (Partages) — privé ou public
   const [deposits, setDeposits] = useState([]);
   const [depositsLoading, setDepositsLoading] = useState(false);
 
-  const loadDeposits = useCallback(async () => {
-    try {
-      setDepositsLoading(true);
-      const data = await fetchUserDeposits(isOwner ? undefined : headerUser?.id);
-      setDeposits(data);
-    } catch (e) {
-      console.error(e);
-      setDeposits([]);
-    } finally {
-      setDepositsLoading(false);
+  // Reset à chaque changement de username (évite l'affichage transitoire d'un autre profil)
+  useEffect(() => {
+    setDeposits([]);
+  }, [urlUsername, isOwner]);
+
+  const loadDeposits = useCallback(
+    async (targetUserIdOrNull) => {
+      try {
+        setDepositsLoading(true);
+        const data = await fetchUserDepositsFor(targetUserIdOrNull);
+        setDeposits(data);
+      } catch (e) {
+        console.error(e);
+        setDeposits([]);
+      } finally {
+        setDepositsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Privé: pas de param → API renvoie mes dépôts
+  // Public: attendre d'avoir headerUser.id, puis passer ?user_id=<id>
+  useEffect(() => {
+    if (isOwner) {
+      loadDeposits(null);
+    } else if (headerUser?.id !== undefined && headerUser?.id !== null) {
+      loadDeposits(headerUser.id); // <-- filtre strict sur CE user
     }
-  }, [isOwner, headerUser?.id]);
+  }, [isOwner, headerUser?.id, loadDeposits]);
 
-  useEffect(() => { if (isOwner || headerUser?.id) loadDeposits(); }, [isOwner, headerUser?.id, loadDeposits]);
-
-  // 4) Play modal
+  // === 4) Play modal
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
   const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
   const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
-  // 5) UI : privé (tabs) vs public (pas de tabs)
+  // === 5) UI : privé (tabs) vs public (pas de tabs)
   const [tab, setTab] = useState(0);
 
   return (
@@ -290,4 +327,3 @@ export default function UserProfilePage() {
     </Box>
   );
 }
-
