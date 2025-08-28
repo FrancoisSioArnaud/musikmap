@@ -339,23 +339,22 @@ export default function SongDisplay({
           width: "100%",
           borderRadius: 2,
           display: "flex",
+          flexDirection: "column",
+          gap: 0.5,
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
           mt: "16px",
           mb: "16px",
           py: 2,
-          px: 2, // 16px gauche/droite demandé
         }}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-            La dernière chanson déposée ici
-          </Typography>
-          <Typography component="span" variant="subtitle2" sx={{ opacity: 0.8 }}>
-            (par un vrai humain.e)
-          </Typography>
-        </Box>
+        <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+          La dernière chanson déposée ici
+        </Typography>
+        <Typography component="span" variant="subtitle2" sx={{ opacity: 0.8 }}>
+          (par un vrai humain.e)
+        </Typography>
       </Box>
 
       {/* Dépôt idx === 0 (plein format) */}
