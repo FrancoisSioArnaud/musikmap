@@ -12,7 +12,7 @@ import { checkUserStatus } from "./UsersUtils";
 import { isMobile } from "react-device-detect";
 import SuccessfulLogout from "./SuccessfulLogout";
 // import { Footer } from "./Common/footer";
-import UserPublicProfile from "./UserPublicProfile";
+//import UserPublicProfile from "./UserPublicProfile";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 
@@ -102,6 +102,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
