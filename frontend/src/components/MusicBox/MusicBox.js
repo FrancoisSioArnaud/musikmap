@@ -85,6 +85,41 @@ function getPositionOnce(opts = {}) {
   });
 }
 
+// Hook: hauteur viewport fiable (visualViewport > innerHeight) + CSS var --vhpx
+function useRealViewportHeight() {
+  const [vh, setVh] = React.useState(
+    typeof window !== "undefined"
+      ? (window.visualViewport?.height ?? window.innerHeight)
+      : 0
+  );
+
+  React.useEffect(() => {
+    const update = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setVh(h);
+      // Deux variantes: en px et en "vh corrigé"
+      document.documentElement.style.setProperty("--vhpx", `${h}px`);
+      document.documentElement.style.setProperty("--vh", `${h * 0.01}px`);
+    };
+    update();
+
+    // Écoute les changements de barre d'URL, zoom, orientation
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  return vh; // en px
+}
+
 export default function MusicBox() {
   const navigate = useNavigate();
   const { boxName } = useParams();
@@ -110,6 +145,10 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
+  const realVH = useRealViewportHeight(); // <— déclenche la mise à jour de --vhpx / --vh
+  const HEADER_PX = 64; // ta barre fixe
+  const heroHeight = `calc(var(--vhpx, 100dvh) - ${HEADER_PX}px)`;
+  
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
     let mounted = true;
@@ -300,13 +339,22 @@ export default function MusicBox() {
       <Paper
         elevation={3}
         sx={{
-          height: "calc(100vh - 64px)",
+          // ⬇️ Hauteur fiable (CSS var si dispo, sinon 100dvh moderne)
+          minHeight: heroHeight,
+          height: heroHeight,
+      
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
           p: { xs: 3, md: 5 },
           position: "relative",
           overflow: "hidden",
+      
+          // Confort iOS : évite le contenu sous la barre gestuelle
+          paddingBottom: "env(safe-area-inset-bottom)",
+      
+          // Évite certains rebonds sur iOS
+          overscrollBehavior: "contain",
         }}
       >
         {/* Contenu poussé en bas */}
@@ -477,5 +525,6 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
