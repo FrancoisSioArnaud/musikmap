@@ -23,7 +23,7 @@ function TabPanel({ index, value, children }) {
 
 // --- API helpers ---
 async function fetchPublicUserInfoByUsername(username) {
-  const res = await fetch(`/box-management/get-user-info?username=${encodeURIComponent(username)}`, {
+  const res = await fetch(`/users/get-user-info?username=${encodeURIComponent(username)}`, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
   });
@@ -327,3 +327,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
