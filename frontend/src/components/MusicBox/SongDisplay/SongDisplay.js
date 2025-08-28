@@ -472,7 +472,7 @@ export default function SongDisplay({
             gap: "12px",
             overflowX: "auto",
             overflowY: "hidden",
-            my:2;
+            py:2;
             // cacher la scrollbar (WebKit/Firefox/Edge/IE)
             scrollbarWidth: "none",
             msOverflowStyle: "none",
