@@ -126,7 +126,7 @@ export default function Library() {
             mb: 2,
             cursor: canClickProfile ? "pointer" : "default",
           }}
-          onClick={() => { if (canClickProfile) navigate("/profile/" + u.id); }}
+          onClick={() => { if (canClickProfile) navigate("/profile/" + u.username); }}
         >
           <Avatar
             src={u?.profile_pic_url || undefined}
