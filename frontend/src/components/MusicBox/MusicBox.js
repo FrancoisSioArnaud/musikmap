@@ -153,8 +153,8 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
-  const realVH = useRealViewportHeight(); // <— déclenche la mise à jour de --vhpx / --vh
-  const heroHeight = `calc(var(--vhpx, 100dvh)`;
+  const realVH = useRealViewportHeight();  // <- déclenche la maj de --vhpx
+  const heroHeight = `var(--vhpx, 100dvh)`;   
   
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
@@ -524,6 +524,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
