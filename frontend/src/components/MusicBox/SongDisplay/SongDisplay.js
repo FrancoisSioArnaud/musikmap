@@ -580,7 +580,6 @@ export default function SongDisplay({
             gap: "12px",
             overflowX: "auto",
             overflowY: "hidden",
-            px: 2, // padding latéral 16px
             // cacher la scrollbar (WebKit/Firefox/Edge/IE)
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -597,7 +596,7 @@ export default function SongDisplay({
                 key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
                 sx={{
                   p: 2,
-                  width: "80vw",
+                  width: "calc(80vw-32px)",
                   maxWidth: 720,
                   flex: "0 0 auto", // empêche la réduction ; important pour carrousel
                 }}
