@@ -116,8 +116,8 @@ function useRealViewportHeight() {
       window.visualViewport?.removeEventListener("scroll", update);
     };
   }, []);
-
-  return vh-64; // en px
+  vh = vh - 64 //on soustrait le menu
+  return vh; // en px
 }
 
 export default function MusicBox() {
@@ -525,6 +525,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
