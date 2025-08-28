@@ -368,25 +368,32 @@ class GetUserPoints(APIView):
         return Response({'points': points}, status=status.HTTP_200_OK)
 
 
+
 class GetUserInfo(APIView):
-    '''
-    Class goal : get users info
-    '''
+    """
+    GET /box-management/get-user-info?userID=<int> | ?username=<str>
+    Retourne les infos publiques + total_deposits
+    """
     lookup_url_kwarg = 'userID'
     serializer_class = CustomUserSerializer
 
     def get(self, request, format=None):
         user_id = request.GET.get(self.lookup_url_kwarg)
-        if user_id is not None:
+        username = request.GET.get('username')
+
+        if username:
+            user = get_object_or_404(CustomUser, username=username)
+        elif user_id is not None:
             user = get_object_or_404(CustomUser, id=user_id)
-            serializer = CustomUserSerializer(user)
-            total_deposits = Deposit.objects.filter(user=user).count()
-            response = {}
-            response = serializer.data
-            response['total_deposits'] = total_deposits
-            return Response(response, status=status.HTTP_200_OK)
         else:
-            return Response({'Bad Request': 'User ID not found in request'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'Bad Request': 'username or userID required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CustomUserSerializer(user, context={'request': request})
+        total_deposits = Deposit.objects.filter(user=user).count()
+        data = serializer.data
+        data['total_deposits'] = total_deposits
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class ChangeUsername(APIView):
     """
@@ -429,5 +436,6 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
