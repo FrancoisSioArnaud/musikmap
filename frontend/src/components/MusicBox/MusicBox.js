@@ -117,7 +117,7 @@ function useRealViewportHeight() {
     };
   }, []);
 
-  return vh; // en px
+  return vh-64; // en px
 }
 
 export default function MusicBox() {
@@ -525,6 +525,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
