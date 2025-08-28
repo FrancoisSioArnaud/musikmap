@@ -346,22 +346,14 @@ export default function MusicBox() {
       <Paper
         elevation={3}
         sx={{
-          // ⬇️ Hauteur fiable (CSS var si dispo, sinon 100dvh moderne)
           minHeight: heroHeight,
           height: heroHeight,
-      
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
           p: { xs: 3, md: 5 },
           position: "relative",
           overflow: "hidden",
-      
-          // Confort iOS : évite le contenu sous la barre gestuelle
-          paddingBottom: "env(safe-area-inset-bottom)",
-      
-          // Évite certains rebonds sur iOS
-          overscrollBehavior: "contain",
         }}
       >
         {/* Contenu poussé en bas */}
@@ -532,6 +524,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
