@@ -390,9 +390,6 @@ export default function MusicBox() {
               >
                 ⬇︎ Ouvrir la boîte ⬇︎
               </Button>
-              <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
-                Fait défiler jusqu’au contenu
-              </Typography>
             </Box>
           </Box>
         </Box>
@@ -524,6 +521,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
