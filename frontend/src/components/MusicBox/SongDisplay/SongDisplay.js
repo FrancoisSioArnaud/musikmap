@@ -19,6 +19,7 @@ import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import Skeleton from "@mui/material/Skeleton";
 
 import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "./LiveSearch.js";
@@ -565,109 +566,161 @@ export default function SongDisplay({
       <MyDepositSection />
 
       {/* SECTION — OLDER DEPOSITS (idx > 0) */}
-      <Box id="older_deposits" sx={{ display: "grid", gap: "12px", mt: "32px" }}>
+      <Box id="older_deposits" sx={{ mt: "32px", display: "grid", gap: "12px" }}>
         <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left", mb: "8px" }}>
           Chansons déposées plus tôt à révéler
         </Typography>
 
-        {deposits.slice(1).map((dep, idx) => {
-          const u = dep?.user;
-          const s = dep?.song || {};
-          const isRevealed = Boolean(s?.title && s?.artist);
+        {/* Scroller horizontal */}
+        <Box
+          id="older_deposits_scroller"
+          aria-label="Liste horizontale des dépôts plus anciens"
+          sx={{
+            display: "flex",
+            gap: "12px",
+            overflowX: "auto",
+            overflowY: "hidden",
+            px: 2, // padding latéral 16px
+            // cacher la scrollbar (WebKit/Firefox/Edge/IE)
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          {deposits.slice(1).map((dep, idx) => {
+            const u = dep?.user;
+            const s = dep?.song || {};
+            const isRevealed = Boolean(s?.title && s?.artist);
 
-          return (
-            <Card key={`dep-${dep?.deposit_id ?? `older-${idx}`}`} sx={{ p: 2 }}>
-              {/* date dépôt */}
-              <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-                {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-              </Box>
-
-              {/* user */}
-              <Box
-                id="deposit_user"
+            return (
+              <Card
+                key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  mb: 2,
-                  cursor: u?.id != null ? "pointer" : "default",
-                }}
-                onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
-              >
-                <Avatar
-                  src={u?.profile_pic_url || undefined}
-                  alt={u?.name || "Anonyme"}
-                  sx={{ width: 40, height: 40 }}
-                />
-                <Typography>{u?.name || "Anonyme"}</Typography>
-              </Box>
-
-              {/* layout compact */}
-              <Box
-                id="deposit_song"
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "140px 1fr",
-                  gap: 2,
-                  mb: 2,
-                  alignItems: "center",
+                  p: 2,
+                  width: "80vw",
+                  maxWidth: 720,
+                  flex: "0 0 auto", // empêche la réduction ; important pour carrousel
                 }}
               >
-                <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-                  {s?.img_url && (
-                    <Box
-                      component="img"
-                      src={s.img_url}
-                      alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                      sx={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                        filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                      }}
-                    />
-                  )}
+                {/* date dépôt */}
+                <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+                  {"Pépite déposée " + (dep?.deposit_date || "") + "."}
                 </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                  {isRevealed && (
-                    <>
-                      <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                        {s.title}
-                      </Typography>
-                      <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                        {s.artist}
-                      </Typography>
+                {/* user */}
+                <Box
+                  id="deposit_user"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 2,
+                    cursor: u?.id != null ? "pointer" : "default",
+                  }}
+                  onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
+                >
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.name || "Anonyme"}
+                    sx={{ width: 40, height: 40 }}
+                  />
+                  <Typography>{u?.name || "Anonyme"}</Typography>
+                </Box>
+
+                {/* layout compact (zone avec overlay si non révélé) */}
+                <Box
+                  id="deposit_song"
+                  sx={{
+                    position: "relative", // nécessaire pour l'overlay
+                    display: "grid",
+                    gridTemplateColumns: "140px 1fr",
+                    gap: 2,
+                    mb: 2,
+                    alignItems: "center",
+                  }}
+                >
+                  {/* cover */}
+                  <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+                    {s?.img_url && (
+                      <Box
+                        component="img"
+                        src={s.img_url}
+                        alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                          filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  {/* textes + Play (ou Skeleton si non révélé) */}
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                    {isRevealed ? (
+                      <>
+                        <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                          {s.title}
+                        </Typography>
+                        <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                          {s.artist}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          size="large"
+                          onClick={() => openPlayFor(s)}
+                          sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                        >
+                          Play
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Skeleton variant="text" width="80%" height={28} />
+                        <Skeleton variant="text" width="50%" height={24} />
+                        <Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1, mt: 0.5 }} />
+                      </>
+                    )}
+                  </Box>
+
+                  {/* === OVERLAY CTA DÉCOUVRIR — uniquement si non révélé === */}
+                  {!isRevealed && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "grid",
+                        placeItems: "center",
+                        // voile + léger flou pour simuler "derrière l'overlay"
+                        background:
+                          "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
+                        borderRadius: 1,
+                        px: 2,
+                      }}
+                    >
                       <Button
                         variant="contained"
                         size="large"
-                        onClick={() => openPlayFor(s)}
-                        sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                        onClick={() => revealDeposit(dep)}
+                        disabled={!user || !user.username}
+                        sx={{
+                          fontWeight: 700,
+                          backdropFilter: "blur(2px)",
+                        }}
                       >
-                        Play
+                        {`Découvrir — ${cost}`}
                       </Button>
-                    </>
+                    </Box>
                   )}
                 </Box>
-              </Box>
 
-              {/* CTA reveal si non révélé */}
-              {!isRevealed ? (
-                <Box id="deposit_interact" sx={{ mt: 0 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={() => revealDeposit(dep)}
-                    disabled={!user || !user.username}
-                  >
-                    {`Découvrir — ${cost}`}
-                  </Button>
-                </Box>
-              ) : null}
-            </Card>
-          );
-        })}
+                {/* Plus de CTA en bas : le CTA est désormais dans l'overlay */}
+              </Card>
+            );
+          })}
+        </Box>
       </Box>
 
       {/* PLAY MODAL */}
