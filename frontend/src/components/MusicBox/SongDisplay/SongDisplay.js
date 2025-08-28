@@ -458,7 +458,7 @@ export default function SongDisplay({
           textAlign: "center",
           mt: "16px",
           mb: "16px",
-          p: 2,
+          py: 2,
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
