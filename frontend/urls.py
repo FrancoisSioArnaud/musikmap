@@ -14,10 +14,11 @@ urlpatterns = [
     path('register', index),
     path('login', index),
     path('profile', index, name='profile'),            # profil connecté (privé)
-    path('profile/<str:username>', index),             # profil public par username
+    path('profile/<str:name>', index),             # profil public par name
     path('library', index),
     path('box/<str:boxName>', index),
 ]
+
 
 
 
