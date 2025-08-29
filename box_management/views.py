@@ -837,73 +837,73 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
+
 class UserDepositsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # garde/retire selon le besoin d'accès public
 
     def get(self, request):
-        user = request.user
+        user_id = request.GET.get("user_id", "").strip()
 
-        # Tri correct: ton modèle expose 'deposited_at' (pas 'created_at')
-        qs = (Deposit.objects
-              .filter(user=user)
-              .order_by("-deposited_at")[:500])
+        # 1) Validation présence + format
+        if not user_id:
+            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Essaie de détecter le nom de la FK vers Song (song vs song_id)
+        # 2) Lookup utilisateur
+        target_user = CustomUser.objects.filter(id=user_id).first()
+        if not target_user:
+            return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
+
+        # 3) Récup dépôts de CE user uniquement (ordre du plus récent au plus ancien)
+        qs = Deposit.objects.filter(user=target_user).order_by("-deposited_at")[:500]
+
+        # 4) select_related si la FK s'appelle "song" (sinon on reste safe)
         rel_candidates = [
-            f.name for f in Deposit._meta.get_fields()
+            f.name
+            for f in Deposit._meta.get_fields()
             if getattr(f, "is_relation", False)
             and getattr(f, "many_to_one", False)
             and not getattr(f, "auto_created", False)
         ]
-        song_rel_name = None
-        for cand in ("song", "song_id", "track", "track_id"):
-            if cand in rel_candidates:
-                song_rel_name = cand
-                break
-
+        song_rel_name = "song" if "song" in rel_candidates else None
         if song_rel_name:
             qs = qs.select_related(song_rel_name)
 
+        # 5) Sérialisation simple compatible front
+        def pick(obj, *names):
+            for n in names:
+                if obj is not None and hasattr(obj, n):
+                    val = getattr(obj, n)
+                    if val not in (None, ""):
+                        return val
+            return None
+
         items = []
         for d in qs:
-            # Récupère l’instance de chanson si relation trouvée
             s = getattr(d, song_rel_name, None) if song_rel_name else None
-
-            def pick(obj, *names):
-                """Renvoie la première propriété existante et non vide parmi names, sur obj."""
-                for n in names:
-                    if obj is not None and hasattr(obj, n):
-                        val = getattr(obj, n)
-                        if val not in (None, ""):
-                            return val
-                return None
-
-            # Essaie d’abord sur l’objet Song (s), puis en fallback sur Deposit (d) si tu as dénormalisé
-            title  = pick(s, "title", "name") or pick(d, "song_title")
+            title = pick(s, "title", "name") or pick(d, "song_title")
             artist = pick(s, "artist", "artist_name") or pick(d, "song_artist")
-            img    = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
+            img = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
 
             deposited = getattr(d, "deposited_at", None)
             items.append({
-                "id": d.id,
-                "song": {"title": title, "artist": artist, "img_url": img},
-                "deposited_at": deposited.isoformat() if deposited else None,
+                "deposit_id": getattr(d, "id", None),
+                "deposit_date": deposited.isoformat() if deposited else None,
+                "user": {
+                    "username": target_user.username,
+                    "profile_pic_url": getattr(getattr(target_user, "profile_picture", None), "url", None),
+                },
+                "song": {
+                    "title": title,
+                    "artist": artist,
+                    "img_url": img,
+                },
             })
 
-        return Response(items, status=200)
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return Response(items, status=status.HTTP_200_OK)
 
 
 
