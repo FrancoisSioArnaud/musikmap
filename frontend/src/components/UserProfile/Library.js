@@ -1,13 +1,12 @@
 // frontend/src/components/UserProfile/Library.js
 import React, { useState, useEffect, useRef, useContext, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
-import Avatar from "@mui/material/Avatar";
 import CircularProgress from "@mui/material/CircularProgress";
-import PlayModal from "../Common/PlayModal";
+
+/** Nouveau: on réutilise le composant générique */
+import Deposit from "../Common/Deposit";
 
 /** Format relatif FR (ex: "il y a 3 heures") */
 function formatRelativeFr(isoDateString) {
@@ -36,7 +35,6 @@ function formatRelativeFr(isoDateString) {
 
 export default function Library() {
   const { user } = useContext(UserContext);
-  const navigate = useNavigate();
 
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,13 +42,7 @@ export default function Library() {
   const [nextOffset, setNextOffset] = useState(0);
   const [limit] = useState(10);
 
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null);
-
   const loadingRef = useRef(false);
-
-  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
-  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
   const fetchSessions = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
@@ -102,97 +94,6 @@ export default function Library() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [fetchSessions, hasMore]);
 
-  const renderDepositCard = (it, idx) => {
-    const t = (it?.type || "").toLowerCase();
-    const s = it?.song || {};
-    const isMain = t === "main";
-    const u = it?.user;
-    const canClickProfile = u?.id != null;
-
-    return (
-      <Box
-        key={idx}
-        sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
-      >
-        {/* Suppression de "Découvert · ..." */}
-
-        {/* Utilisateur du dépôt */}
-        <Box
-          id="deposit_user"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mb: 2,
-            cursor: canClickProfile ? "pointer" : "default",
-          }}
-          onClick={() => { if (canClickProfile) navigate("/profile/" + u.username); }}
-        >
-          <Avatar
-            src={u?.profile_pic_url || undefined}
-            alt={u?.name || "Anonyme"}
-            sx={{ width: 40, height: 40 }}
-          />
-          <Typography>{u?.name || "Anonyme"}</Typography>
-        </Box>
-
-        {/* MAIN */}
-        {isMain ? (
-          <Box sx={{ display: "grid", gap: 1, mb: 1 }}>
-            <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
-              {s?.img_url && (
-                <Box
-                  component="img"
-                  src={s.img_url}
-                  alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
-                  sx={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
-                />
-              )}
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-              <Box sx={{ minWidth: 0, flex: 1, textAlign: "left" }}>
-                <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                  {s.title}
-                </Typography>
-                <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                  {s.artist}
-                </Typography>
-              </Box>
-              <Button variant="contained" size="large" onClick={() => openPlayFor(s)}>
-                Play
-              </Button>
-            </Box>
-          </Box>
-        ) : (
-          // REVEALED
-          <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 2, alignItems: "center" }}>
-            <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-              {s?.img_url && (
-                <Box
-                  component="img"
-                  src={s.img_url}
-                  alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
-                  sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              )}
-            </Box>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-              <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                {s.title}
-              </Typography>
-              <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                {s.artist}
-              </Typography>
-              <Button variant="contained" size="large" onClick={() => openPlayFor(s)} sx={{ alignSelf: "flex-start", mt: 0.5 }}>
-                Play
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </Box>
-    );
-  };
-
   if (!sessions.length && !hasMore && !loading) {
     return (
       <Box sx={{ p: 2 }}>
@@ -205,21 +106,37 @@ export default function Library() {
     <Box sx={{ p: 2, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
         const headerText = `Box : ${sess?.box?.name ?? "Inconnue"} · ${formatRelativeFr(sess?.started_at)}`;
+
         return (
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
             <Typography
               variant="h6"
               component="h2"
-              sx={{ mb: 1, cursor: "pointer" }}
-              onClick={() => {/* TODO: lien vers /music-box/:box.url */}}
+              sx={{ mb: 1, cursor: "default" }}
             >
               {headerText}
             </Typography>
 
             {/* Dépôts de la session */}
-            <Box sx={{ display: "grid", gap: 1.5 }}> {/* 12px entre dépôts */}
-              {Array.isArray(sess?.deposits) && sess.deposits.map((d, idx) => renderDepositCard(d, idx))}
+            <Box sx={{ display: "grid", gap: 1.5 }}>
+              {Array.isArray(sess?.deposits) && sess.deposits.map((d, idx) => {
+                const t = (d?.type || "").toLowerCase();
+                const isMain = t === "main";
+
+                return (
+                  <Deposit
+                    key={`${sess.session_id}-${idx}`}
+                    dep={d}
+                    user={user}
+                    // Aucun reveal dans Library: tout est déjà révélé
+                    variant={isMain ? "main" : "list"}
+                    showDate={false}
+                    showUser={true}
+                    fitContainer={true}
+                  />
+                );
+              })}
             </Box>
           </Box>
         );
@@ -231,9 +148,6 @@ export default function Library() {
           <CircularProgress />
         </Box>
       )}
-
-      {/* Modale de lecture */}
-      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
     </Box>
   );
 }
