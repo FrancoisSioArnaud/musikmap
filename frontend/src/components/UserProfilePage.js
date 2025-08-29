@@ -13,6 +13,7 @@ import Tab from "@mui/material/Tab";
 import Skeleton from "@mui/material/Skeleton";
 
 import Library from "./UserProfile/Library";
+/** Réutilisation du composant Deposit pour la section Partages */
 import Deposit from "./Common/Deposit";
 
 function TabPanel({ index, value, children }) {
@@ -34,30 +35,29 @@ async function fetchPublicUserInfoByUsername(username) {
 }
 
 /**
- * Récupère les dépôts. Si userIdOrNull fourni => ajoute ?user_id.
- * Si usernameOrNull fourni => ajoute ?username (fallback si le back l'accepte).
- * On fera de toute façon un filtre strict côté client ensuite.
+ * Récupère les dépôts d'un user.
+ * - Si owner: sans filtre (l'API renvoie mes dépôts)
+ * - Si public: on envoie TANT QUE POSSIBLE user_id ET/OU username pour couvrir les 2 cas backend
  */
-async function fetchUserDepositsFor(userIdOrNull, usernameOrNull) {
-  const params = new URLSearchParams();
-  if (userIdOrNull !== null && userIdOrNull !== undefined && String(userIdOrNull).trim() !== "") {
-    params.set("user_id", String(userIdOrNull));
-  } else if (usernameOrNull) {
-    // au cas où l'API supporte ?username= ; sinon on filtrera côté client
-    params.set("username", usernameOrNull);
+async function fetchUserDepositsFor({ userId, username } = {}) {
+  const qs = new URLSearchParams();
+  if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
+    qs.set("user_id", String(userId));
   }
-
-  const url =
-    params.toString().length > 0
-      ? `/box-management/user-deposits?${params.toString()}`
-      : `/box-management/user-deposits`;
+  if (username && String(username).trim() !== "") {
+    qs.set("username", String(username).trim());
+  }
+  const url = `/box-management/user-deposits${qs.toString() ? `?${qs.toString()}` : ""}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(`user-deposits HTTP ${res.status}`);
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    console.error("user-deposits HTTP", res.status, data);
+    return [];
+  }
   return Array.isArray(data) ? data : [];
 }
 
@@ -66,11 +66,11 @@ export default function UserProfilePage() {
   const params = useParams(); // { username? }
   const { user } = useContext(UserContext) || {};
 
-  // === 1) Proprio vs public
-  const urlUsername = params?.username?.trim();
+  // === 1) Détection propriétaire vs public (par username)
+  const urlUsername = (params?.username || "").trim();
   const isOwner = !urlUsername || (user?.username && urlUsername === user.username);
 
-  // === 2) Header user (avatar + username)
+  // === 2) Header user (avatar + username affiché)
   const [headerLoading, setHeaderLoading] = useState(!isOwner);
   const [headerUser, setHeaderUser] = useState(() =>
     isOwner
@@ -115,41 +115,21 @@ export default function UserProfilePage() {
     };
   }, [isOwner, urlUsername, user?.id, user?.username, user?.profile_picture_url]);
 
-  // === 3) Dépôts (Partages)
+  // === 3) Dépôts (Partages) — privé ou public
   const [deposits, setDeposits] = useState([]);
   const [depositsLoading, setDepositsLoading] = useState(false);
 
+  // Reset à chaque changement de username (évite l'affichage transitoire d'un autre profil)
   useEffect(() => {
     setDeposits([]);
   }, [urlUsername, isOwner]);
 
   const loadDeposits = useCallback(
-    async (targetUserIdOrNull, targetUsernameOrNull) => {
+    async ({ userId, username } = {}) => {
       try {
         setDepositsLoading(true);
-        const data = await fetchUserDepositsFor(targetUserIdOrNull, targetUsernameOrNull);
-
-        // 🔒 Filtre strict côté client en mode PUBLIC
-        // (robuste si l'API ignore le query param ou si le shape des objets varie)
-        let filtered = data;
-        if (!isOwner) {
-          filtered = data.filter((d) => {
-            const du = d?.user || {};
-            const byId =
-              targetUserIdOrNull !== null &&
-              targetUserIdOrNull !== undefined &&
-              du?.id !== undefined &&
-              String(du.id) === String(targetUserIdOrNull);
-
-            const byUsername =
-              !!targetUsernameOrNull &&
-              ((du?.username && String(du.username) === String(targetUsernameOrNull)));
-
-            return byId || byUsername;
-          });
-        }
-
-        setDeposits(filtered);
+        const data = await fetchUserDepositsFor({ userId, username });
+        setDeposits(data);
       } catch (e) {
         console.error(e);
         setDeposits([]);
@@ -157,24 +137,30 @@ export default function UserProfilePage() {
         setDepositsLoading(false);
       }
     },
-    [isOwner]
+    []
   );
 
-  // Charge la bonne liste
+  // Privé: pas de param → API renvoie mes dépôts
+  // Public: on envoie username tout de suite, puis (quand dispo) user_id — l'API prendra ce qu'elle comprend
   useEffect(() => {
     if (isOwner) {
-      loadDeposits(null, null);
-    } else if (headerUser?.id !== undefined && headerUser?.id !== null) {
-      loadDeposits(headerUser.id, headerUser.username);
+      loadDeposits({});
+    } else {
+      if (urlUsername) {
+        loadDeposits({ username: urlUsername });
+      }
+      if (headerUser?.id !== undefined && headerUser?.id !== null) {
+        loadDeposits({ userId: headerUser.id, username: urlUsername });
+      }
     }
-  }, [isOwner, headerUser?.id, headerUser?.username, loadDeposits]);
+  }, [isOwner, urlUsername, headerUser?.id, loadDeposits]);
 
   // === 4) UI : privé (tabs) vs public (pas de tabs)
   const [tab, setTab] = useState(0);
 
   return (
     <Box sx={{ p: 2, pb: 8 }}>
-      {/* Bouton réglages (owner only) */}
+      {/* Bandeau boutons (réglages seulement si owner) */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
@@ -217,7 +203,7 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      {/* ===== PRIVÉ (owner) ===== */}
+      {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
       {isOwner ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
@@ -225,7 +211,7 @@ export default function UserProfilePage() {
             <Tab label="Partages" />
           </Tabs>
 
-          {/* Tab: Découvertes */}
+          {/* Tab: Découvertes (privé seulement) */}
           <TabPanel value={tab} index={0}>
             <Library />
           </TabPanel>
@@ -249,7 +235,7 @@ export default function UserProfilePage() {
                     variant="list"
                     fitContainer={true}
                     showDate={false}
-                    showUser={false}
+                    showUser={false} // header déjà en haut de la page profil
                   />
                 ))}
               </Box>
@@ -257,7 +243,7 @@ export default function UserProfilePage() {
           </TabPanel>
         </>
       ) : (
-        /* ===== PUBLIC (autre user) : uniquement Partages ===== */
+        /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
         <>
           <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>
             {`Partages de ${headerUser?.username ?? urlUsername ?? ""}`}
@@ -280,7 +266,7 @@ export default function UserProfilePage() {
                   variant="list"
                   fitContainer={true}
                   showDate={false}
-                  showUser={false}
+                  showUser={false} // header déjà visible au-dessus
                 />
               ))}
             </Box>
@@ -290,4 +276,3 @@ export default function UserProfilePage() {
     </Box>
   );
 }
-
