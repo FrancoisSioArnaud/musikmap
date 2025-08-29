@@ -201,6 +201,7 @@ export default function MusicBox() {
               setGetBoxLoading(true);
               const data = await fetchGetBox(boxName);
               setBoxData(data);
+              console.log(data);
             } catch (e) {
               console.error(e);
             } finally {
@@ -478,5 +479,6 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
