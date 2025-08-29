@@ -85,6 +85,7 @@ export default function UserProfilePage() {
 
     async function loadHeader() {
       if (isOwner) {
+        // Profil propriétaire : on s'appuie sur le UserContext
         setHeaderLoading(false);
         setHeaderUser({
           id: user?.id,
@@ -93,6 +94,8 @@ export default function UserProfilePage() {
         });
         return;
       }
+
+      // Profil public : résoudre via get-user-info
       if (!urlUsername) return;
 
       setHeaderLoading(true);
@@ -109,7 +112,7 @@ export default function UserProfilePage() {
               : null
           );
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setHeaderUser(null);
       } finally {
         if (!cancelled) setHeaderLoading(false);
@@ -144,15 +147,26 @@ export default function UserProfilePage() {
     }
   }, []);
 
-  // Privé: pas de param → mes dépôts
-  // Public: après résolution du header (id), on filtre strictement
+  // Privé (owner) : pas de param → mes dépôts
   useEffect(() => {
     if (isOwner) {
       loadDeposits(null);
-    } else if (headerUser?.id !== undefined && headerUser?.id !== null) {
-      loadDeposits(headerUser.id);
     }
-  }, [isOwner, headerUser?.id, loadDeposits]);
+  }, [isOwner, loadDeposits]);
+
+  // Public : NE CHARGER que si headerUser !== null ET headerUser.username défini
+  //          -> on passe STRICTEMENT l'id à l'API pour filtrer
+  useEffect(() => {
+    if (!isOwner) {
+      if (headerUser != null && typeof headerUser?.username !== "undefined") {
+        // On a bien résolu le user public -> on filtre par son ID
+        loadDeposits(headerUser.id);
+      } else {
+        // Sinon, ne rien charger (évite de tomber sur "tous les dépôts")
+        setDeposits([]);
+      }
+    }
+  }, [isOwner, headerUser, loadDeposits]);
 
   // --- 4) UI : privé (tabs) vs public (pile simple) ---
   const [tab, setTab] = useState(0);
