@@ -839,28 +839,35 @@ class RevealSong(APIView):
 
 
 class UserDepositsView(APIView):
-    permission_classes = []  # garde/retire selon le besoin d'accès public
+    # Laisse vide pour accès public, ou mets [IsAuthenticated] si tu veux restreindre
+    permission_classes = []
 
     def get(self, request):
-        user_id = request.GET.get("user_id", "").strip()
+        user_id_raw = (request.GET.get("user_id") or "").strip()
 
         # 1) Validation présence + format
-        if not user_id:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id_raw:
+            return Response(
+                {"errors": ["Pas d'utilisateur spécifié"]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
-            user_id = int(user_id)
-        except ValueError:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+            user_id = int(user_id_raw)
+        except (TypeError, ValueError):
+            return Response(
+                {"errors": ["Pas d'utilisateur spécifié"]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # 2) Lookup utilisateur
+        # 2) Lookup utilisateur ciblé
         target_user = CustomUser.objects.filter(id=user_id).first()
         if not target_user:
-            return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"errors": ["Utilisateur inexistant"]},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        # 3) Récup dépôts de CE user uniquement (ordre du plus récent au plus ancien)
-        qs = Deposit.objects.filter(user=target_user).order_by("-deposited_at")[:500]
-
-        # 4) select_related si la FK s'appelle "song" (sinon on reste safe)
+        # 3) Détecte la FK vers Song et prépare la requête
         rel_candidates = [
             f.name
             for f in Deposit._meta.get_fields()
@@ -868,11 +875,28 @@ class UserDepositsView(APIView):
             and getattr(f, "many_to_one", False)
             and not getattr(f, "auto_created", False)
         ]
-        song_rel_name = "song" if "song" in rel_candidates else None
-        if song_rel_name:
-            qs = qs.select_related(song_rel_name)
+        has_song_fk = "song" in rel_candidates
 
-        # 5) Sérialisation simple compatible front
+        qs = Deposit.objects.filter(user=target_user)
+
+        # 4) Ordre robuste selon les champs existants (évite FieldError → 500)
+        model_field_names = {
+            f.name for f in Deposit._meta.get_fields()
+            if not getattr(f, "many_to_many", False)
+        }
+        if "deposited_at" in model_field_names:
+            qs = qs.order_by("-deposited_at")
+        elif "deposit_date" in model_field_names:
+            qs = qs.order_by("-deposit_date")
+        elif "created_at" in model_field_names:
+            qs = qs.order_by("-created_at")
+        else:
+            qs = qs.order_by("-id")
+
+        if has_song_fk:
+            qs = qs.select_related("song")
+
+        # 5) Helpers sûrs
         def pick(obj, *names):
             for n in names:
                 if obj is not None and hasattr(obj, n):
@@ -881,20 +905,44 @@ class UserDepositsView(APIView):
                         return val
             return None
 
+        # Photo de profil : .url seulement si un fichier est présent
+        pf = getattr(target_user, "profile_picture", None)
+        profile_url = None
+        if pf and getattr(pf, "name", ""):
+            try:
+                profile_url = pf.url
+            except Exception:
+                profile_url = None
+
+        # 6) Sérialisation → shape attendu par le front (Deposit.js)
         items = []
-        for d in qs:
-            s = getattr(d, song_rel_name, None) if song_rel_name else None
+        for d in qs[:500]:
+            s = getattr(d, "song", None) if has_song_fk else None
+
             title = pick(s, "title", "name") or pick(d, "song_title")
             artist = pick(s, "artist", "artist_name") or pick(d, "song_artist")
-            img = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
+            img = (
+                pick(s, "img_url", "image_url", "cover_url")
+                or pick(d, "song_img_url", "song_image_url")
+            )
 
-            deposited = getattr(d, "deposited_at", None)
+            # date: supporte datetime, date ou string
+            dep_dt = (
+                getattr(d, "deposited_at", None)
+                or getattr(d, "deposit_date", None)
+                or getattr(d, "created_at", None)
+            )
+            if hasattr(dep_dt, "isoformat"):
+                dep_str = dep_dt.isoformat()
+            else:
+                dep_str = str(dep_dt) if dep_dt else None
+
             items.append({
                 "deposit_id": getattr(d, "id", None),
-                "deposit_date": deposited.isoformat() if deposited else None,
+                "deposit_date": dep_str,
                 "user": {
                     "username": target_user.username,
-                    "profile_pic_url": getattr(getattr(target_user, "profile_picture", None), "url", None),
+                    "profile_pic_url": profile_url,
                 },
                 "song": {
                     "title": title,
@@ -904,6 +952,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=status.HTTP_200_OK)
+
 
 
 
