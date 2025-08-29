@@ -16,7 +16,7 @@ import Slide from "@mui/material/Slide";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Skeleton from "@mui/material/Skeleton";
 
-import PlayModal from "../../Common/PlayModal";
+import PlayModal from "../../Common/PlayModal.js";
 import LiveSearch from "./LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
@@ -162,7 +162,7 @@ export default function SongDisplay({
           mb: "42px",
           display: "grid",
           gap: 2,
-          px: 2, // 16px gauche/droite demandé
+          px: 2, // 16px gauche/droite
         }}
       >
         {before ? (
@@ -196,13 +196,7 @@ export default function SongDisplay({
         ) : (
           <>
             {/* Après dépôt */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography component="h1" variant="h5" sx={{ fontWeight: 700, textAlign: "left" }}>
                 Ta chanson est déposée
               </Typography>
@@ -242,13 +236,7 @@ export default function SongDisplay({
               </Box>
             </Box>
 
-            <Box
-              sx={{
-                border: "2px dashed #cbd5e1",
-                borderRadius: 2,
-                p: "12px",
-              }}
-            >
+            <Box sx={{ border: "2px dashed #cbd5e1", borderRadius: 2, p: "12px" }}>
               <MyDepositSongCompact />
             </Box>
           </>
@@ -261,7 +249,7 @@ export default function SongDisplay({
      RENDU — CAS AVEC PÉPITES
   ========================================================= */
   return (
-    <Box sx={{ display: "grid", gap: 2 /* pas de padding root */ }}>
+    <Box sx={{ display: "grid", gap: 2, overflowX: "hidden" /* filet anti-overflow */ }}>
       {/* HERO simple */}
       <Box
         id="intro"
@@ -289,7 +277,7 @@ export default function SongDisplay({
 
       {/* Dépôt idx === 0 (plein format) → via <Deposit variant="main" /> */}
       {deposits[0] && (
-        <Box sx={{ px: 2 /* 16px gauche/droite demandé */ }}>
+        <Box sx={{ px: 2, maxWidth: "100%", overflow: "hidden" }}>
           <Deposit
             variant="main"
             dep={deposits[0]}
@@ -304,12 +292,7 @@ export default function SongDisplay({
       <MyDepositSection />
 
       {/* SECTION — OLDER DEPOSITS (idx > 0) — via <Deposit /> (list) */}
-      <Box id="older_deposits" sx={{ 
-        mt: "32px", 
-        display: "grid",
-        gap: 0, 
-        pb : 2,
-      }}>
+      <Box id="older_deposits" sx={{ mt: "32px", display: "grid", gap: 0, pb: 2 }}>
         <Typography
           component="h2"
           variant="h6"
