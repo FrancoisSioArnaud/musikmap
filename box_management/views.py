@@ -839,7 +839,7 @@ class RevealSong(APIView):
 
 
 class UserDepositsView(APIView):
-    permission_classes = [IsAuthenticated]  # garde/retire selon le besoin d'accès public
+    permission_classes = []  # garde/retire selon le besoin d'accès public
 
     def get(self, request):
         user_id = request.GET.get("user_id", "").strip()
@@ -904,6 +904,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=status.HTTP_200_OK)
+
 
 
 
