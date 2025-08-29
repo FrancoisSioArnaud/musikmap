@@ -369,18 +369,29 @@ class GetUserPoints(APIView):
 
 
 
-class GetUserId(APIView):
+class GetUserInfo(APIView):
     """
-    GET /users/get-user-id?username=<str>
-    Retourne uniquement l'ID numérique du user correspondant.
+    GET /users/get-user-info?username=<str>
+    Retourne les infos publiques + total_deposits
     """
-    def get(self, request, format=None):
-        username = (request.GET.get('username') or '').strip()
-        if not username:
-            return Response({'error': 'username required'}, status=status.HTTP_400_BAD_REQUEST)
+    serializer_class = CustomUserSerializer
 
+    def get(self, request, format=None):
+        username = request.GET.get('username')
+        if not username:
+            return Response({'errors': ['username query param is required']},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # 404 automatique si l'utilisateur n'existe pas
         user = get_object_or_404(CustomUser, username=username)
-        return Response({'id': user.id}, status=status.HTTP_200_OK)
+
+        serializer = CustomUserSerializer(user, context={'request': request})
+        total_deposits = Deposit.objects.filter(user=user).count()
+
+        data = serializer.data
+        data['total_deposits'] = total_deposits
+        return Response(data, status=status.HTTP_200_OK)
+
 
 
 class ChangeUsername(APIView):
@@ -424,6 +435,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
