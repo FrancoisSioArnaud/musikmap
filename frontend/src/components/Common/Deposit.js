@@ -130,7 +130,15 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Card sx={{ p: 2, width: "100%" }}>
+        <Card
+          sx={{
+            p: 2,
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            overflow: "hidden",
+          }}
+        >
           {/* date dépôt */}
           <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
             {"Pépite déposée " + (dep?.deposit_date || "") + "."}
@@ -145,20 +153,23 @@ export default function Deposit({
               gap: 1,
               mb: 2,
               cursor: u?.username ? "pointer" : "default",
+              minWidth: 0,
             }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
             <Avatar
               src={u?.profile_pic_url || undefined}
               alt={u?.username || "Anonyme"}
-              sx={{ width: 40, height: 40 }}
+              sx={{ width: 40, height: 40, flex: "0 0 auto" }}
             />
-            <Typography>{u?.username || "Anonyme"}</Typography>
+            <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {u?.username || "Anonyme"}
+            </Typography>
           </Box>
 
           {/* song (cover pleine largeur, titres si révélé) */}
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-            <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
+          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
+            <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
               {s?.img_url && (
                 <Box
                   component="img"
@@ -166,10 +177,10 @@ export default function Deposit({
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                   sx={{
                     width: "100%",
+                    maxWidth: "100%",
                     aspectRatio: "1 / 1",
                     objectFit: "cover",
                     display: "block",
-                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
                   }}
                 />
               )}
@@ -181,6 +192,7 @@ export default function Deposit({
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 2,
+                minWidth: 0,
               }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -222,6 +234,8 @@ export default function Deposit({
           width: "calc(80vw - 32px)", // scroller a p:2 => 32px total → 80vw perçu
           maxWidth: 720,
           flex: "0 0 auto",
+          boxSizing: "border-box",
+          overflow: "hidden",
         }}
       >
         {/* date dépôt */}
@@ -238,15 +252,18 @@ export default function Deposit({
             gap: 1,
             mb: 2,
             cursor: u?.username ? "pointer" : "default",
+            minWidth: 0,
           }}
           onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
         >
           <Avatar
             src={u?.profile_pic_url || undefined}
             alt={u?.username || "Anonyme"}
-            sx={{ width: 40, height: 40 }}
+            sx={{ width: 40, height: 40, flex: "0 0 auto" }}
           />
-          <Typography>{u?.username || "Anonyme"}</Typography>
+          <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {u?.username || "Anonyme"}
+          </Typography>
         </Box>
 
         {/* zone chanson (grille + overlay éventuel) */}
@@ -259,10 +276,11 @@ export default function Deposit({
             gap: 2,
             mb: 2,
             alignItems: "center",
+            minWidth: 0,
           }}
         >
           {/* cover */}
-          <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
+          <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden", flex: "0 0 auto" }}>
             {s?.img_url && (
               <Box
                 component="img"
