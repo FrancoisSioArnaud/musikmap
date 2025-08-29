@@ -144,17 +144,6 @@ export default function RegisterPage() {
             sx={{ mt: 3 }}
           >
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography variant="subtitle1">
-                  Choisir une image de profile
-                </Typography>
-                <input
-                  type="file"
-                  id="profilePicture"
-                  accept=".jpg, .jpeg, .png"
-                  onChange={handleProfilePictureChange}
-                />
-              </Grid>
 
               <Grid item xs={12}>
                 <TextField
@@ -199,6 +188,17 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle1">
+                  Choisir une image de profile
+                </Typography>
+                <input
+                  type="file"
+                  id="profilePicture"
+                  accept=".jpg, .jpeg, .png"
+                  onChange={handleProfilePictureChange}
+                />
+              </Grid>
             </Grid>
             <Button
               type="submit"
@@ -232,3 +232,4 @@ export default function RegisterPage() {
     </Container>
   );
 }
+
