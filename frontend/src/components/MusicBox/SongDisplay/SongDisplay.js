@@ -27,7 +27,7 @@ import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
 
 /* === NEW: composant factorisé pour la liste des dépôts === */
-import Deposit from "../../Deposit/Deposit";
+import Deposit from "../../Common/Deposit";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
