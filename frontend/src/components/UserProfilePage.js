@@ -143,8 +143,7 @@ export default function UserProfilePage() {
 
             const byUsername =
               !!targetUsernameOrNull &&
-              ((du?.username && String(du.username) === String(targetUsernameOrNull)) ||
-                (du?.name && String(du.name) === String(targetUsernameOrNull)));
+              ((du?.username && String(du.username) === String(targetUsernameOrNull)));
 
             return byId || byUsername;
           });
@@ -291,3 +290,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
