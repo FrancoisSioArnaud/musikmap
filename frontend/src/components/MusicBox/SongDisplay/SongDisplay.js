@@ -26,6 +26,9 @@ import LiveSearch from "./LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
 
+/* === NEW: composant factorisé pour la liste des dépôts === */
+import Deposit from "../../Deposit/Deposit";
+
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
@@ -453,7 +456,7 @@ export default function SongDisplay({
       {/* SECTION — MY_DEPOSIT (42px marges) */}
       <MyDepositSection />
 
-      {/* SECTION — OLDER DEPOSITS (idx > 0) */}
+      {/* SECTION — OLDER DEPOSITS (idx > 0) —>>> remplacée pour appeler <Deposit /> */}
       <Box id="older_deposits" sx={{ 
         mt: "32px", 
         display: "grid",
@@ -477,146 +480,22 @@ export default function SongDisplay({
             gap: "12px",
             overflowX: "auto",
             overflowY: "hidden",
-            p:2,
+            p: 2,
             // cacher la scrollbar (WebKit/Firefox/Edge/IE)
             scrollbarWidth: "none",
             msOverflowStyle: "none",
             "&::-webkit-scrollbar": { display: "none" },
           }}
         >
-          {deposits.slice(1).map((dep, idx) => {
-            const u = dep?.user;
-            const s = dep?.song || {};
-            const isRevealed = Boolean(s?.title && s?.artist);
-
-            return (
-              <Card
-                key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
-                sx={{
-                  p: 2,
-                  width: "calc(80vw-32px)",
-                  maxWidth: 720,
-                  flex: "0 0 auto", // empêche la réduction ; important pour carrousel
-                }}
-              >
-                {/* date dépôt */}
-                <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-                  {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-                </Box>
-
-                {/* user */}
-                <Box
-                  id="deposit_user"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 2,
-                    cursor: u?.id != null ? "pointer" : "default",
-                  }}
-                  onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
-                >
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.name || "Anonyme"}
-                    sx={{ width: 40, height: 40 }}
-                  />
-                  <Typography>{u?.name || "Anonyme"}</Typography>
-                </Box>
-
-                {/* layout compact (zone avec overlay si non révélé) */}
-                <Box
-                  id="deposit_song"
-                  sx={{
-                    position: "relative", // nécessaire pour l'overlay
-                    display: "grid",
-                    gridTemplateColumns: "140px 1fr",
-                    gap: 2,
-                    mb: 2,
-                    alignItems: "center",
-                  }}
-                >
-                  {/* cover */}
-                  <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-                    {s?.img_url && (
-                      <Box
-                        component="img"
-                        src={s.img_url}
-                        alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                          filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                        }}
-                      />
-                    )}
-                  </Box>
-
-                  {/* textes + Play (ou Skeleton si non révélé) */}
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                    {isRevealed ? (
-                      <>
-                        <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                          {s.title}
-                        </Typography>
-                        <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                          {s.artist}
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          size="large"
-                          onClick={() => openPlayFor(s)}
-                          sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                        >
-                          Play
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Skeleton variant="text" width="80%" height={28} />
-                        <Skeleton variant="text" width="50%" height={24} />
-                        <Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1, mt: 0.5 }} />
-                      </>
-                    )}
-                  </Box>
-
-                  {/* === OVERLAY CTA DÉCOUVRIR — uniquement si non révélé === */}
-                  {!isRevealed && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "grid",
-                        placeItems: "center",
-                        // voile + léger flou pour simuler "derrière l'overlay"
-                        background:
-                          "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
-                        borderRadius: 1,
-                        px: 2,
-                      }}
-                    >
-                      <Button
-                        variant="contained"
-                        size="large"
-                        onClick={() => revealDeposit(dep)}
-                        disabled={!user || !user.username}
-                        sx={{
-                          fontWeight: 700,
-                          backdropFilter: "blur(2px)",
-                        }}
-                      >
-                        {`Découvrir — ${cost}`}
-                      </Button>
-                    </Box>
-                  )}
-                </Box>
-
-                {/* Plus de CTA en bas : le CTA est désormais dans l'overlay */}
-              </Card>
-            );
-          })}
+          {deposits.slice(1).map((dep, idx) => (
+            <Deposit
+              key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
+              dep={dep}
+              user={user}
+              setDispDeposits={setDispDeposits}
+              cost={cost}
+            />
+          ))}
         </Box>
       </Box>
 
