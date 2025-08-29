@@ -33,6 +33,9 @@ function SlideDownTransition(props) {
  * - setDispDeposits: setter parent pour muter la liste après reveal (utile pour "list")
  * - cost: nombre (crédits) — défaut 40 (utile pour "list")
  * - variant: "list" | "main" — défaut "list"
+ * - showDate: bool — affiche la ligne “Pépite déposée …” (défaut true)
+ * - showUser: bool — affiche l’en-tête avatar + username (défaut true)
+ * - fitContainer: bool — card en largeur 100% (pile), sinon largeur carrousel (défaut false)
  */
 export default function Deposit({
   dep,
@@ -40,6 +43,9 @@ export default function Deposit({
   setDispDeposits,
   cost = 40,
   variant = "list",
+  showDate = true,
+  showUser = true,
+  fitContainer = false,
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -122,6 +128,11 @@ export default function Deposit({
     }
   };
 
+  // Styles largeur card (pile vs carrousel)
+  const cardWidthStyles = fitContainer
+    ? { width: "100%", maxWidth: "100%" }
+    : { width: "calc(80vw - 32px)", maxWidth: 720, flex: "0 0 auto" };
+
   // =========================
   // RENDUS PAR VARIANTES
   // =========================
@@ -133,39 +144,42 @@ export default function Deposit({
         <Card
           sx={{
             p: 2,
-            width: "100%",
-            maxWidth: "100%",
+            ...cardWidthStyles,
             boxSizing: "border-box",
             overflow: "hidden",
           }}
         >
           {/* date dépôt */}
-          <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-            {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-          </Box>
+          {showDate && (
+            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+            </Box>
+          )}
 
           {/* user */}
-          <Box
-            id="deposit_user"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mb: 2,
-              cursor: u?.username ? "pointer" : "default",
-              minWidth: 0,
-            }}
-            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-          >
-            <Avatar
-              src={u?.profile_pic_url || undefined}
-              alt={u?.username || "Anonyme"}
-              sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-            />
-            <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {u?.username || "Anonyme"}
-            </Typography>
-          </Box>
+          {showUser && (
+            <Box
+              id="deposit_user"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 2,
+                cursor: u?.username ? "pointer" : "default",
+                minWidth: 0,
+              }}
+              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+            >
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.username || "Anonyme"}
+                sx={{ width: 40, height: 40, flex: "0 0 auto" }}
+              />
+              <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {u?.username || "Anonyme"}
+              </Typography>
+            </Box>
+          )}
 
           {/* song (cover pleine largeur, titres si révélé) */}
           <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
@@ -181,6 +195,7 @@ export default function Deposit({
                     aspectRatio: "1 / 1",
                     objectFit: "cover",
                     display: "block",
+                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
                   }}
                 />
               )}
@@ -219,7 +234,7 @@ export default function Deposit({
           </Box>
         </Card>
 
-        {/* PlayModal (toujours local) */}
+        {/* PlayModal (local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
@@ -231,40 +246,42 @@ export default function Deposit({
       <Card
         sx={{
           p: 2,
-          width: "calc(80vw - 32px)", // scroller a p:2 => 32px total → 80vw perçu
-          maxWidth: 720,
-          flex: "0 0 auto",
+          ...cardWidthStyles,
           boxSizing: "border-box",
           overflow: "hidden",
         }}
       >
         {/* date dépôt */}
-        <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-          {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-        </Box>
+        {showDate && (
+          <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+            {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+          </Box>
+        )}
 
         {/* user */}
-        <Box
-          id="deposit_user"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mb: 2,
-            cursor: u?.username ? "pointer" : "default",
-            minWidth: 0,
-          }}
-          onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-        >
-          <Avatar
-            src={u?.profile_pic_url || undefined}
-            alt={u?.username || "Anonyme"}
-            sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-          />
-          <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {u?.username || "Anonyme"}
-          </Typography>
-        </Box>
+        {showUser && (
+          <Box
+            id="deposit_user"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 2,
+              cursor: u?.username ? "pointer" : "default",
+              minWidth: 0,
+            }}
+            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+          >
+            <Avatar
+              src={u?.profile_pic_url || undefined}
+              alt={u?.username || "Anonyme"}
+              sx={{ width: 40, height: 40, flex: "0 0 auto" }}
+            />
+            <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {u?.username || "Anonyme"}
+            </Typography>
+          </Box>
+        )}
 
         {/* zone chanson (grille + overlay éventuel) */}
         <Box
