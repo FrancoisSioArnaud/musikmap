@@ -16,7 +16,7 @@ import Slide from "@mui/material/Slide";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Skeleton from "@mui/material/Skeleton";
 
-import PlayModal from "../../Common/PlayModal.js";
+import PlayModal from "../../Common/PlayModal";
 import LiveSearch from "./LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
