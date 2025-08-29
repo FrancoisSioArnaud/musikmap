@@ -28,13 +28,13 @@ function SlideDownTransition(props) {
  * - "main" : rendu plein-format (premier dépôt), pas de CTA overlay, pas de Snackbar
  *
  * Props:
- * - dep: { deposit_id, deposit_date, user:{ username, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
+ * - dep: { deposit_id, deposit_date, user:{ name, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
  * - user: utilisateur courant (pour savoir si connecté)
  * - setDispDeposits: setter parent pour muter la liste après reveal (utile pour "list")
  * - cost: nombre (crédits) — défaut 40 (utile pour "list")
  * - variant: "list" | "main" — défaut "list"
  * - showDate: bool — affiche la ligne “Pépite déposée …” (défaut true)
- * - showUser: bool — affiche l’en-tête avatar + username (défaut true)
+ * - showUser: bool — affiche l’en-tête avatar + name (défaut true)
  * - fitContainer: bool — card en largeur 100% (pile), sinon largeur carrousel (défaut false)
  */
 export default function Deposit({
@@ -165,18 +165,18 @@ export default function Deposit({
                 alignItems: "center",
                 gap: 1,
                 mb: 2,
-                cursor: u?.username ? "pointer" : "default",
+                cursor: u?.name ? "pointer" : "default",
                 minWidth: 0,
               }}
-              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+              onClick={() => { if (u?.name) navigate("/profile/" + u.name); }}
             >
               <Avatar
                 src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
+                alt={u?.name || "Anonyme"}
                 sx={{ width: 40, height: 40, flex: "0 0 auto" }}
               />
               <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {u?.username || "Anonyme"}
+                {u?.name || "Anonyme"}
               </Typography>
             </Box>
           )}
@@ -267,18 +267,18 @@ export default function Deposit({
               alignItems: "center",
               gap: 1,
               mb: 2,
-              cursor: u?.username ? "pointer" : "default",
+              cursor: u?.name ? "pointer" : "default",
               minWidth: 0,
             }}
-            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+            onClick={() => { if (u?.name) navigate("/profile/" + u.name); }}
           >
             <Avatar
               src={u?.profile_pic_url || undefined}
-              alt={u?.username || "Anonyme"}
+              alt={u?.name || "Anonyme"}
               sx={{ width: 40, height: 40, flex: "0 0 auto" }}
             />
             <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {u?.username || "Anonyme"}
+              {u?.name || "Anonyme"}
             </Typography>
           </Box>
         )}
