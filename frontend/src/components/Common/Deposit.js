@@ -1,6 +1,26 @@
-// ...imports identiques
+import React, { useState, useContext, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { useNavigate } from "react-router-dom"
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Avatar from "@mui/material/Avatar";
+import Skeleton from "@mui/material/Skeleton";
+import Snackbar from "@mui/material/Snackbar";
+import SnackbarContent from "@mui/material/SnackbarContent";
+import Slide from "@mui/material/Slide";
+
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+
+import PlayModal from "../Common/PlayModal";
+import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
+function SlideDownTransition(props) {
+  return <Slide {...props} direction="down" />;
+}
+
+
 export default function Deposit({
   dep,
   user,
@@ -11,6 +31,7 @@ export default function Deposit({
   showUser = true,
   fitContainer = false,
 }) {
+  
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
 
