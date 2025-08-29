@@ -10,8 +10,10 @@ import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Skeleton from "@mui/material/Skeleton";
-import PlayModal from "./Common/PlayModal";
+
 import Library from "./UserProfile/Library";
+/** Nouveau: on réutilise Deposit pour la section Partages */
+import Deposit from "./Common/Deposit";
 
 function TabPanel({ index, value, children }) {
   return (
@@ -140,13 +142,7 @@ export default function UserProfilePage() {
     }
   }, [isOwner, headerUser?.id, loadDeposits]);
 
-  // === 4) Play modal
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null);
-  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
-  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
-
-  // === 5) UI : privé (tabs) vs public (pas de tabs)
+  // === 4) UI : privé (tabs) vs public (pas de tabs)
   const [tab, setTab] = useState(0);
 
   return (
@@ -218,49 +214,19 @@ export default function UserProfilePage() {
               <Typography>Aucun partage pour l’instant.</Typography>
             ) : (
               <Box sx={{ display: "grid", gap: 2 }}>
-                {deposits.map((it, idx) => {
-                  const s = it?.song || {};
-                  return (
-                    <Box
-                      key={idx}
-                      sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
-                    >
-                      <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 2, alignItems: "center" }}>
-                        <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-                          {s?.img_url && (
-                            <Box
-                              component="img"
-                              src={s.img_url}
-                              alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
-                              sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                            />
-                          )}
-                        </Box>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                          <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                            {s.title}
-                          </Typography>
-                          <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                            {s.artist}
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            size="large"
-                            onClick={() => openPlayFor(s)}
-                            sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                          >
-                            Play
-                          </Button>
-                        </Box>
-                      </Box>
-                    </Box>
-                  );
-                })}
+                {deposits.map((it, idx) => (
+                  <Deposit
+                    key={idx}
+                    dep={it}
+                    user={user}
+                    variant="list"
+                    fitContainer={true}
+                    showDate={false}
+                    showUser={false} // header déjà en haut de la page profil
+                  />
+                ))}
               </Box>
             )}
-
-            {/* Modale Play */}
-            <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
           </TabPanel>
         </>
       ) : (
@@ -279,52 +245,21 @@ export default function UserProfilePage() {
             <Typography>Aucun partage pour l’instant.</Typography>
           ) : (
             <Box sx={{ display: "grid", gap: 2 }}>
-              {deposits.map((it, idx) => {
-                const s = it?.song || {};
-                return (
-                  <Box
-                    key={idx}
-                    sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 2, background: "#fff" }}
-                  >
-                    <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 2, alignItems: "center" }}>
-                      <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden" }}>
-                        {s?.img_url && (
-                          <Box
-                            component="img"
-                            src={s.img_url}
-                            alt={`${s.title ?? ""} - ${s.artist ?? ""}`}
-                            sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                          />
-                        )}
-                      </Box>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                        <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                          {s.title}
-                        </Typography>
-                        <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                          {s.artist}
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          size="large"
-                          onClick={() => openPlayFor(s)}
-                          sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                        >
-                          Play
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              })}
+              {deposits.map((it, idx) => (
+                <Deposit
+                  key={idx}
+                  dep={it}
+                  user={user}
+                  variant="list"
+                  fitContainer={true}
+                  showDate={false}
+                  showUser={false} // header déjà visible au-dessus
+                />
+              ))}
             </Box>
           )}
-
-          {/* Modale Play */}
-          <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
         </>
       )}
     </Box>
   );
 }
-
