@@ -1,3 +1,4 @@
+// frontend/src/components/Common/Deposit.js
 import React, { useState, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -28,14 +29,14 @@ function SlideDownTransition(props) {
  * - "main" : rendu plein-format (premier dépôt), pas de CTA overlay, pas de Snackbar
  *
  * Props:
- * - dep: { deposit_id, deposit_date, user:{ name, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
+ * - dep: { deposit_id, deposit_date, user:{ username, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
  * - user: utilisateur courant (pour savoir si connecté)
  * - setDispDeposits: setter parent pour muter la liste après reveal (utile pour "list")
  * - cost: nombre (crédits) — défaut 40 (utile pour "list")
  * - variant: "list" | "main" — défaut "list"
- * - showDate: bool — affiche la ligne “Pépite déposée …” (défaut true)
- * - showUser: bool — affiche l’en-tête avatar + name (défaut true)
- * - fitContainer: bool — card en largeur 100% (pile), sinon largeur carrousel (défaut false)
+ * - showDate: bool (défaut true)
+ * - showUser: bool (défaut true)
+ * - fitContainer: bool (défaut false) → width:100% au lieu du format carrousel
  */
 export default function Deposit({
   dep,
@@ -128,10 +129,9 @@ export default function Deposit({
     }
   };
 
-  // Styles largeur card (pile vs carrousel)
-  const cardWidthStyles = fitContainer
-    ? { width: "100%", maxWidth: "100%" }
-    : { width: "calc(80vw - 32px)", maxWidth: 720, flex: "0 0 auto" };
+  // Styles partagés
+  const listCardWidth = fitContainer ? "100%" : "calc(80vw - 32px)";
+  const listMaxWidth = fitContainer ? "100%" : 720;
 
   // =========================
   // RENDUS PAR VARIANTES
@@ -144,7 +144,8 @@ export default function Deposit({
         <Card
           sx={{
             p: 2,
-            ...cardWidthStyles,
+            width: "100%",
+            maxWidth: "100%",
             boxSizing: "border-box",
             overflow: "hidden",
           }}
@@ -165,18 +166,18 @@ export default function Deposit({
                 alignItems: "center",
                 gap: 1,
                 mb: 2,
-                cursor: u?.name ? "pointer" : "default",
+                cursor: u?.username ? "pointer" : "default",
                 minWidth: 0,
               }}
-              onClick={() => { if (u?.name) navigate("/profile/" + u.name); }}
+              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
             >
               <Avatar
                 src={u?.profile_pic_url || undefined}
-                alt={u?.name || "Anonyme"}
+                alt={u?.username || "Anonyme"}
                 sx={{ width: 40, height: 40, flex: "0 0 auto" }}
               />
               <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {u?.name || "Anonyme"}
+                {u?.username || "Anonyme"}
               </Typography>
             </Box>
           )}
@@ -195,7 +196,6 @@ export default function Deposit({
                     aspectRatio: "1 / 1",
                     objectFit: "cover",
                     display: "block",
-                    filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
                   }}
                 />
               )}
@@ -234,7 +234,7 @@ export default function Deposit({
           </Box>
         </Card>
 
-        {/* PlayModal (local) */}
+        {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
@@ -246,7 +246,9 @@ export default function Deposit({
       <Card
         sx={{
           p: 2,
-          ...cardWidthStyles,
+          width: listCardWidth,        // carrousel ou pile
+          maxWidth: listMaxWidth,
+          flex: "0 0 auto",
           boxSizing: "border-box",
           overflow: "hidden",
         }}
@@ -267,18 +269,18 @@ export default function Deposit({
               alignItems: "center",
               gap: 1,
               mb: 2,
-              cursor: u?.name ? "pointer" : "default",
+              cursor: u?.username ? "pointer" : "default",
               minWidth: 0,
             }}
-            onClick={() => { if (u?.name) navigate("/profile/" + u.name); }}
+            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
             <Avatar
               src={u?.profile_pic_url || undefined}
-              alt={u?.name || "Anonyme"}
+              alt={u?.username || "Anonyme"}
               sx={{ width: 40, height: 40, flex: "0 0 auto" }}
             />
             <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {u?.name || "Anonyme"}
+              {u?.username || "Anonyme"}
             </Typography>
           </Box>
         )}
