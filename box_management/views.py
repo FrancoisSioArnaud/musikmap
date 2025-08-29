@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction
+from django.contrib.auth import get_user_model
 
 # DRF
 from rest_framework import status
@@ -32,6 +33,7 @@ from utils import (
 )
 from api_aggregation.views import ApiAggregation
 
+User = get_user_model()
 
 
 # -----------------------
@@ -952,6 +954,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=status.HTTP_200_OK)
+
 
 
 
