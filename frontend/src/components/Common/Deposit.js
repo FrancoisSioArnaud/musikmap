@@ -1,4 +1,6 @@
 // ...imports identiques
+
+import { useNavigate } from "react-router-dom"
 export default function Deposit({
   dep,
   user,
