@@ -113,70 +113,7 @@ export default function SongDisplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
-  };
 
-  // ---- Reveal d’un dépôt ----
-  const revealDeposit = async (dep) => {
-    try {
-      if (!user || !user.username) {
-        alert("Connecte-toi pour révéler cette pépite.");
-        return;
-      }
-      const csrftoken = getCookie("csrftoken");
-      const res = await fetch("/box-management/revealSong", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: dep.deposit_id }),
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
-        } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-        }
-        return;
-      }
-
-      // MAJ visuelle
-      const revealed = payload?.song || {};
-      setDispDeposits?.((prev) => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
-        if (idx >= 0) {
-          arr[idx] = {
-            ...arr[idx],
-            discovered_at: "à l'instant",
-            song: {
-              ...(arr[idx]?.song || {}),
-              title: revealed.title,
-              artist: revealed.artist,
-              spotify_url: revealed.spotify_url,
-              deezer_url: revealed.deezer_url,
-            },
-          };
-        }
-        return arr;
-      });
-
-      // MAJ points (menu)
-      if (typeof payload?.points_balance === "number" && setUser) {
-        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
-      }
-
-      showRevealSnackbar();
-    } catch {
-      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-    }
-  };
 
   /* =========================================================
      COMPOSANTS SECONDAIRES (UI)
