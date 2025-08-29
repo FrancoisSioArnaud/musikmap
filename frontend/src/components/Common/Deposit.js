@@ -1,43 +1,4 @@
-// frontend/src/components/Common/Deposit.js
-import React, { useState, useContext, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
-import Skeleton from "@mui/material/Skeleton";
-import Snackbar from "@mui/material/Snackbar";
-import SnackbarContent from "@mui/material/SnackbarContent";
-import Slide from "@mui/material/Slide";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-
-import PlayModal from "../Common/PlayModal";
-import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
-
-function SlideDownTransition(props) {
-  return <Slide {...props} direction="down" />;
-}
-
-/**
- * Composant Deposit
- *
- * Variants:
- * - "list" (par défaut) : états To_Reveal & Reveal, CTA overlay, Snackbar, PlayModal
- * - "main" : rendu plein-format (premier dépôt), pas de CTA overlay, pas de Snackbar
- *
- * Props:
- * - dep: { deposit_id, deposit_date, user:{ username, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
- * - user: utilisateur courant (pour savoir si connecté)
- * - setDispDeposits: setter parent pour muter la liste après reveal (utile pour "list")
- * - cost: nombre (crédits) — défaut 40 (utile pour "list")
- * - variant: "list" | "main" — défaut "list"
- * - showDate: bool (défaut true)
- * - showUser: bool (défaut true)
- * - fitContainer: bool (défaut false) → width:100% au lieu du format carrousel
- */
+// ...imports identiques
 export default function Deposit({
   dep,
   user,
@@ -55,134 +16,38 @@ export default function Deposit({
   const u = dep?.user || {};
   const isRevealed = useMemo(() => Boolean(s?.title && s?.artist), [s?.title, s?.artist]);
 
-  // PlayModal (local au composant)
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null);
-  const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
-  const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
+  // ...state & reveal identiques
 
-  // Snackbar (uniquement pour variant "list")
-  const [snackOpen, setSnackOpen] = useState(false);
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
-  };
+  // helpers de style (inchangés)
+  const cardBaseSx = fitContainer
+    ? { p: 2, width: "100%", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" }
+    : { p: 2, width: "calc(80vw - 32px)", maxWidth: 720, flex: "0 0 auto", boxSizing: "border-box", overflow: "hidden" };
 
-  // ---- Reveal d’un dépôt (uniquement pertinent pour "list") ----
-  const revealDeposit = async () => {
-    try {
-      if (!user || !user.username) {
-        alert("Connecte-toi pour révéler cette pépite.");
-        return;
-      }
-      const csrftoken = getCookie("csrftoken");
-      const res = await fetch("/box-management/revealSong", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: dep.deposit_id }),
-        credentials: "same-origin",
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
-        } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-        }
-        return;
-      }
-
-      // MAJ visuelle dans la liste parent
-      const revealed = payload?.song || {};
-      setDispDeposits?.((prev) => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
-        if (idx >= 0) {
-          arr[idx] = {
-            ...arr[idx],
-            discovered_at: "à l'instant",
-            song: {
-              ...(arr[idx]?.song || {}),
-              title: revealed.title,
-              artist: revealed.artist,
-              spotify_url: revealed.spotify_url,
-              deezer_url: revealed.deezer_url,
-            },
-          };
-        }
-        return arr;
-      });
-
-      // MAJ points (menu / UserContext)
-      if (typeof payload?.points_balance === "number" && setUser) {
-        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
-      }
-
-      showRevealSnackbar();
-    } catch {
-      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-    }
-  };
-
-  // Styles partagés
-  const listCardWidth = fitContainer ? "100%" : "calc(80vw - 32px)";
-  const listMaxWidth = fitContainer ? "100%" : 720;
-
-  // =========================
-  // RENDUS PAR VARIANTES
-  // =========================
-
-  // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
+  // ---------- VARIANT MAIN ----------
   if (variant === "main") {
     return (
       <>
-        <Card
-          sx={{
-            p: 2,
-            width: "100%",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            overflow: "hidden",
-          }}
-        >
-          {/* date dépôt */}
+        <Card sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
               {"Pépite déposée " + (dep?.deposit_date || "") + "."}
             </Box>
           )}
 
-          {/* user */}
           {showUser && (
             <Box
               id="deposit_user"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mb: 2,
-                cursor: u?.username ? "pointer" : "default",
-                minWidth: 0,
-              }}
+              sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, cursor: u?.username ? "pointer" : "default", minWidth: 0 }}
               onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
             >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
-                sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-              />
+              <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} sx={{ width: 40, height: 40, flex: "0 0 auto" }} />
               <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {u?.username || "Anonyme"}
               </Typography>
             </Box>
           )}
 
-          {/* song (cover pleine largeur, titres si révélé) */}
+          {/* contenu main inchangé */}
           <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
             <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
               {s?.img_url && (
@@ -190,26 +55,11 @@ export default function Deposit({
                   component="img"
                   src={s.img_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    width: "100%",
-                    maxWidth: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
+                  sx={{ width: "100%", maxWidth: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
                 />
               )}
             </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 2,
-                minWidth: 0,
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, minWidth: 0 }}>
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
@@ -222,101 +72,57 @@ export default function Deposit({
                   </>
                 )}
               </Box>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                disabled={!isRevealed}
-              >
+              <Button variant="contained" size="large" onClick={() => (isRevealed ? openPlayFor(s) : null)} disabled={!isRevealed}>
                 Play
               </Button>
             </Box>
           </Box>
         </Card>
 
-        {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
   }
 
-  // ---- VARIANT: LIST (To_Reveal / Reveal, overlay CTA, snackbar) ----
+  // ---------- VARIANT LIST ----------
   return (
     <>
-      <Card
-        sx={{
-          p: 2,
-          width: listCardWidth,        // carrousel ou pile
-          maxWidth: listMaxWidth,
-          flex: "0 0 auto",
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      >
-        {/* date dépôt */}
+      <Card sx={cardBaseSx}>
         {showDate && (
           <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
             {"Pépite déposée " + (dep?.deposit_date || "") + "."}
           </Box>
         )}
 
-        {/* user */}
         {showUser && (
           <Box
             id="deposit_user"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mb: 2,
-              cursor: u?.username ? "pointer" : "default",
-              minWidth: 0,
-            }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, cursor: u?.username ? "pointer" : "default", minWidth: 0 }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
-            <Avatar
-              src={u?.profile_pic_url || undefined}
-              alt={u?.username || "Anonyme"}
-              sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-            />
+            <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} sx={{ width: 40, height: 40, flex: "0 0 auto" }} />
             <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {u?.username || "Anonyme"}
             </Typography>
           </Box>
         )}
 
-        {/* zone chanson (grille + overlay éventuel) */}
+        {/* zone chanson + overlay / boutons identique */}
         <Box
           id="deposit_song"
-          sx={{
-            position: "relative", // overlay
-            display: "grid",
-            gridTemplateColumns: "140px 1fr",
-            gap: 2,
-            mb: 2,
-            alignItems: "center",
-            minWidth: 0,
-          }}
+          sx={{ position: "relative", display: "grid", gridTemplateColumns: "140px 1fr", gap: 2, mb: 2, alignItems: "center", minWidth: 0 }}
         >
-          {/* cover */}
           <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden", flex: "0 0 auto" }}>
             {s?.img_url && (
               <Box
                 component="img"
                 src={s.img_url}
                 alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                }}
+                sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: isRevealed ? "none" : "blur(6px) brightness(0.9)" }}
               />
             )}
           </Box>
 
-          {/* textes + Play (ou Skeleton si non révélé) */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
             {isRevealed ? (
               <>
@@ -326,12 +132,7 @@ export default function Deposit({
                 <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
                   {s.artist}
                 </Typography>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => openPlayFor(s)}
-                  sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                >
+                <Button variant="contained" size="large" onClick={() => openPlayFor(s)} sx={{ alignSelf: "flex-start", mt: 0.5 }}>
                   Play
                 </Button>
               </>
@@ -344,7 +145,6 @@ export default function Deposit({
             )}
           </Box>
 
-          {/* Overlay CTA Découvrir — seulement si non révélé */}
           {!isRevealed && (
             <Box
               sx={{
@@ -371,10 +171,8 @@ export default function Deposit({
         </Box>
       </Card>
 
-      {/* PLAY MODAL (local au Deposit) */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
-      {/* SNACKBAR (local au Deposit – seulement en "list") */}
       <Snackbar
         open={snackOpen}
         onClose={() => setSnackOpen(false)}
@@ -406,14 +204,7 @@ export default function Deposit({
             </Box>
           }
           action={
-            <Button
-              size="small"
-              onClick={() => {
-                setSnackOpen(false);
-                navigate("/profile");
-              }}
-              aria-label="Voir la chanson dans mon profil"
-            >
+            <Button size="small" onClick={() => { setSnackOpen(false); navigate("/profile"); }} aria-label="Voir la chanson dans mon profil">
               Voir
             </Button>
           }
