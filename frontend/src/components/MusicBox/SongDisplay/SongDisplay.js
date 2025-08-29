@@ -1,14 +1,8 @@
 import React, { useMemo, useEffect } from "react";
-
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-
 import { getCookie } from "../../Security/TokensUtils";
-
-/* Dépôt factorisé (gère Main + List) */
 import Deposit from "../../Common/Deposit";
-
-/* Nouvelle section factorisée "my_deposit" */
 import MyDeposit from "./MyDeposit";
 
 export default function SongDisplay({
