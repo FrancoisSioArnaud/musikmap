@@ -42,9 +42,10 @@ async function fetchPublicUserInfoByUsername(username) {
 
 /** Récupère les dépôts d’un user. Si userId est défini → filtre strict côté backend. */
 async function fetchUserDepositsFor(userId) {
-  const url = userId != null
-    ? `/box-management/user-deposits?user_id=${encodeURIComponent(userId)}`
-    : `/box-management/user-deposits`;
+  const url =
+    userId != null
+      ? `/box-management/user-deposits?user_id=${encodeURIComponent(userId)}`
+      : `/box-management/user-deposits`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -108,7 +109,7 @@ export default function UserProfilePage() {
               : null
           );
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) setHeaderUser(null);
       } finally {
         if (!cancelled) setHeaderLoading(false);
