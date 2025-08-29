@@ -12,12 +12,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
-
-/* === Snackbar + Slide + Content + Icon === */
-import Snackbar from "@mui/material/Snackbar";
-import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Skeleton from "@mui/material/Skeleton";
 
@@ -26,7 +21,7 @@ import LiveSearch from "./LiveSearch.js";
 import { getCookie } from "../../Security/TokensUtils";
 import { UserContext } from "../../UserContext";
 
-/* === NEW: composant factorisé pour la liste des dépôts === */
+/* Dépôts factorisés */
 import Deposit from "../../Common/Deposit";
 
 function SlideDownTransition(props) {
@@ -63,9 +58,6 @@ export default function SongDisplay({
   const [myDeposit, setMyDeposit] = useState(null);
   const [achievements, setAchievements] = useState([]);
 
-  // Snackbar confirm
-  const [snackOpen, setSnackOpen] = useState(false);
-
   const totalPoints = useMemo(() => {
     const item = achievements.find((s) => (s?.name || "").toLowerCase() === "total");
     return item?.points ?? 0;
@@ -76,7 +68,7 @@ export default function SongDisplay({
     [achievements]
   );
 
-  // --- PLAY ---
+  // --- PLAY (uniquement pour MyDepositSection ici) ---
   const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
   const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
@@ -112,71 +104,6 @@ export default function SongDisplay({
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
-  };
-
-  // ---- Reveal d’un dépôt ----
-  const revealDeposit = async (dep) => {
-    try {
-      if (!user || !user.username) {
-        alert("Connecte-toi pour révéler cette pépite.");
-        return;
-      }
-      const csrftoken = getCookie("csrftoken");
-      const res = await fetch("/box-management/revealSong", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: dep.deposit_id }),
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
-        } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-        }
-        return;
-      }
-
-      // MAJ visuelle
-      const revealed = payload?.song || {};
-      setDispDeposits?.((prev) => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
-        if (idx >= 0) {
-          arr[idx] = {
-            ...arr[idx],
-            discovered_at: "à l'instant",
-            song: {
-              ...(arr[idx]?.song || {}),
-              title: revealed.title,
-              artist: revealed.artist,
-              spotify_url: revealed.spotify_url,
-              deezer_url: revealed.deezer_url,
-            },
-          };
-        }
-        return arr;
-      });
-
-      // MAJ points (menu)
-      if (typeof payload?.points_balance === "number" && setUser) {
-        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
-      }
-
-      showRevealSnackbar();
-    } catch {
-      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-    }
-  };
 
   /* =========================================================
      COMPOSANTS SECONDAIRES (UI)
@@ -360,103 +287,23 @@ export default function SongDisplay({
         </Typography>
       </Box>
 
-      {/* Dépôt idx === 0 (plein format) */}
-      {(() => {
-        const dep = deposits[0];
-        const u = dep?.user;
-        const s = dep?.song || {};
-        const isRevealed = Boolean(s?.title && s?.artist);
-
-        return (
-          <Box sx={{ px: 2 /* 16px gauche/droite demandé */ }}>
-            <Card key={`dep-${dep?.deposit_id ?? 0}`} sx={{ p: 2 }}>
-              {/* date dépôt */}
-              <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-                {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-              </Box>
-
-              {/* user */}
-              <Box
-                id="deposit_user"
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  mb: 2,
-                  cursor: u?.id != null ? "pointer" : "default",
-                }}
-                onClick={() => { if (u?.id != null) navigate("/profile/" + u.id); }}
-              >
-                <Avatar
-                  src={u?.profile_pic_url || undefined}
-                  alt={u?.name || "Anonyme"}
-                  sx={{ width: 40, height: 40 }}
-                />
-                <Typography>{u?.name || "Anonyme"}</Typography>
-              </Box>
-
-              {/* song */}
-              <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2 }}>
-                {/* cover carré full width */}
-                <Box sx={{ width: "100%", borderRadius: 1, overflow: "hidden" }}>
-                  {s?.img_url && (
-                    <Box
-                      component="img"
-                      src={s.img_url}
-                      alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                      sx={{
-                        width: "100%",
-                        aspectRatio: "1 / 1",
-                        objectFit: "cover",
-                        display: "block",
-                        filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
-                      }}
-                    />
-                  )}
-                </Box>
-
-                {/* titres + Play */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 2,
-                  }}
-                >
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    {isRevealed && (
-                      <>
-                        <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
-                          {s.title}
-                        </Typography>
-                        <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
-                          {s.artist}
-                        </Typography>
-                      </>
-                    )}
-                  </Box>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                    disabled={!isRevealed}
-                  >
-                    Play
-                  </Button>
-                </Box>
-              </Box>
-
-              {/* actions secondaires (rien pour le #0) */}
-            </Card>
-          </Box>
-        );
-      })()}
+      {/* Dépôt idx === 0 (plein format) → via <Deposit variant="main" /> */}
+      {deposits[0] && (
+        <Box sx={{ px: 2 /* 16px gauche/droite demandé */ }}>
+          <Deposit
+            variant="main"
+            dep={deposits[0]}
+            user={user}
+            setDispDeposits={setDispDeposits}
+            cost={cost}
+          />
+        </Box>
+      )}
 
       {/* SECTION — MY_DEPOSIT (42px marges) */}
       <MyDepositSection />
 
-      {/* SECTION — OLDER DEPOSITS (idx > 0) —>>> remplacée pour appeler <Deposit /> */}
+      {/* SECTION — OLDER DEPOSITS (idx > 0) — via <Deposit /> (list) */}
       <Box id="older_deposits" sx={{ 
         mt: "32px", 
         display: "grid",
@@ -499,7 +346,7 @@ export default function SongDisplay({
         </Box>
       </Box>
 
-      {/* PLAY MODAL */}
+      {/* PLAY MODAL — seulement pour MyDepositSection */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
       {/* DRAWER (LiveSearch / Achievements) */}
@@ -560,52 +407,6 @@ export default function SongDisplay({
           )}
         </Box>
       </Drawer>
-
-      {/* SNACKBAR */}
-      <Snackbar
-        open={snackOpen}
-        onClose={() => setSnackOpen(false)}
-        autoHideDuration={5000}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        TransitionComponent={SlideDownTransition}
-        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
-      >
-        <SnackbarContent
-          sx={{
-            bgcolor: "background.paper",
-            color: "text.primary",
-            borderRadius: 2,
-            boxShadow: 3,
-            px: 2,
-            py: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            maxWidth: 600,
-            width: "calc(100vw - 32px)",
-          }}
-          message={
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <LibraryMusicIcon fontSize="medium" />
-              <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
-                Retrouve cette chanson dans ton profil
-              </Typography>
-            </Box>
-          }
-          action={
-            <Button
-              size="small"
-              onClick={() => {
-                setSnackOpen(false);
-                navigate("/profile");
-              }}
-              aria-label="Voir la chanson dans mon profil"
-            >
-              Voir
-            </Button>
-          }
-        />
-      </Snackbar>
     </Box>
   );
 }
