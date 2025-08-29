@@ -115,8 +115,7 @@ class GetBox(APIView):
         if not u or isinstance(u, AnonymousUser):
             return None
     
-        full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-        display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
+        display_name = getattr(u, "username", None)
     
         profile_pic_url = None
         if getattr(u, "profile_picture", None):
@@ -127,7 +126,7 @@ class GetBox(APIView):
     
         return {
             "id": u.id,
-            "name": display_name,
+            "username": display_name,
             "profile_pic_url": profile_pic_url,
         }
 
@@ -892,6 +891,7 @@ class UserDepositsView(APIView):
             })
 
         return Response(items, status=200)
+
 
 
 
