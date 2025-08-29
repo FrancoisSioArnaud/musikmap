@@ -37,15 +37,13 @@ async function fetchPublicUserInfoByUsername(username) {
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`get-user-info HTTP ${res.status}`);
-  return res.json();
+  return res.json(); // { id, username, profile_picture_url, total_deposits, ... }
 }
 
-/** Récupère les dépôts d’un user. Si userId est défini → filtre strict côté backend. */
+/** Récupère les dépôts d’un user. Exige un userId non nul. */
 async function fetchUserDepositsFor(userId) {
-  const url =
-    userId != null
-      ? `/box-management/user-deposits?user_id=${encodeURIComponent(userId)}`
-      : `/box-management/user-deposits`;
+  if (userId == null) return [];
+  const url = `/box-management/user-deposits?user_id=${encodeURIComponent(userId)}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -68,76 +66,25 @@ export default function UserProfilePage() {
   const params = useParams(); // { username? }
   const { user } = useContext(UserContext) || {};
 
-  // --- 1) Propriétaire vs public ---
+  // --- 1) Détection propriétaire vs public ---
   const urlUsername = (params?.username || "").trim();
   const isOwner = !urlUsername || (user?.username && urlUsername === user.username);
 
+  // Username cible à résoudre (public => param route, privé => username du contexte)
+  const resolvedUsername = urlUsername || user?.username || "";
+
   // --- 2) Header (avatar + username affiché) ---
-  const [headerLoading, setHeaderLoading] = useState(!isOwner);
-  const [headerUser, setHeaderUser] = useState(() =>
-    isOwner
-      ? { id: user?.id, username: user?.username, profile_picture_url: user?.profile_picture_url }
-      : null
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadHeader() {
-      if (isOwner) {
-        // Profil propriétaire : on s'appuie sur le UserContext
-        setHeaderLoading(false);
-        setHeaderUser({
-          id: user?.id,
-          username: user?.username,
-          profile_picture_url: user?.profile_picture_url,
-        });
-        return;
-      }
-
-      // Profil public : résoudre via get-user-info
-      if (!urlUsername) return;
-
-      setHeaderLoading(true);
-      try {
-        const info = await fetchPublicUserInfoByUsername(urlUsername); // null si 404
-        if (!cancelled) {
-          setHeaderUser(
-            info
-              ? {
-                  id: info?.id,
-                  username: info?.username,
-                  profile_picture_url: info?.profile_picture_url,
-                }
-              : null
-          );
-        }
-      } catch {
-        if (!cancelled) setHeaderUser(null);
-      } finally {
-        if (!cancelled) setHeaderLoading(false);
-      }
-    }
-
-    loadHeader();
-    return () => {
-      cancelled = true;
-    };
-  }, [isOwner, urlUsername, user?.id, user?.username, user?.profile_picture_url]);
+  const [headerLoading, setHeaderLoading] = useState(true);
+  const [headerUser, setHeaderUser] = useState(null); // { id, username, profile_picture_url }
 
   // --- 3) Dépôts (Partages) ---
   const [deposits, setDeposits] = useState([]);
   const [depositsLoading, setDepositsLoading] = useState(false);
 
-  // Reset quand on change de profil
-  useEffect(() => {
-    setDeposits([]);
-  }, [urlUsername, isOwner]);
-
-  const loadDeposits = useCallback(async (targetUserIdOrNull) => {
+  const loadDeposits = useCallback(async (targetUserId) => {
+    setDepositsLoading(true);
     try {
-      setDepositsLoading(true);
-      const data = await fetchUserDepositsFor(targetUserIdOrNull);
+      const data = await fetchUserDepositsFor(targetUserId);
       setDeposits(data);
     } catch (e) {
       console.error(e);
@@ -147,26 +94,67 @@ export default function UserProfilePage() {
     }
   }, []);
 
-  // Privé (owner) : pas de param → mes dépôts
+  // ===========================
+  //  Résoudre l'ID via get-user-info AVANT de charger les dépôts
+  // ===========================
   useEffect(() => {
-    if (isOwner) {
-      loadDeposits(null);
-    }
-  }, [isOwner, loadDeposits]);
+    let cancelled = false;
 
-  // Public : NE CHARGER que si headerUser !== null ET headerUser.username défini
-  //          -> on passe STRICTEMENT l'id à l'API pour filtrer
-  useEffect(() => {
-    if (!isOwner) {
-      if (headerUser != null && typeof headerUser?.username !== "undefined") {
-        // On a bien résolu le user public -> on filtre par son ID
-        loadDeposits(headerUser.id);
-      } else {
-        // Sinon, ne rien charger (évite de tomber sur "tous les dépôts")
-        setDeposits([]);
+    async function resolveThenLoad() {
+      // Reset UI avant de relancer une résolution
+      setHeaderLoading(true);
+      setHeaderUser(null);
+      setDeposits([]);
+      setDepositsLoading(false);
+
+      // Pas de username -> rien à faire (ex: /profile sans login)
+      if (!resolvedUsername) {
+        setHeaderLoading(false);
+        return;
+      }
+
+      try {
+        const info = await fetchPublicUserInfoByUsername(resolvedUsername); // null si 404
+        if (cancelled) return;
+
+        if (!info) {
+          // Profil introuvable
+          setHeaderUser(null);
+          setHeaderLoading(false);
+          setDeposits([]);
+          return;
+        }
+
+        // On a bien résolu l'utilisateur (public ou owner)
+        const hdr = {
+          id: info?.id,
+          username: info?.username,
+          profile_picture_url: info?.profile_picture_url,
+        };
+        setHeaderUser(hdr);
+        setHeaderLoading(false);
+
+        // Charger les dépôts UNIQUEMENT quand l'id est connu
+        if (hdr.id != null) {
+          await loadDeposits(hdr.id);
+        } else {
+          setDeposits([]);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error(e);
+          setHeaderUser(null);
+          setHeaderLoading(false);
+          setDeposits([]);
+        }
       }
     }
-  }, [isOwner, headerUser, loadDeposits]);
+
+    resolveThenLoad();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedUsername, loadDeposits]);
 
   // --- 4) UI : privé (tabs) vs public (pile simple) ---
   const [tab, setTab] = useState(0);
