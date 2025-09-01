@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo, useEffect } from "react";
+import React, { useState, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -70,21 +70,9 @@ export default function Deposit({
     }
   };
 
-  // ---- Auto-enregistrement "main" au montage (découverte de la #0) ----
-  useEffect(() => {
-    if (variant !== "main") return;
-    if (!user || !user.username) return;
-    const depositId = dep?.deposit_id;
-    if (!depositId) return;
-
-    const csrftoken = getCookie("csrftoken");
-    fetch("/box-management/discovered-songs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-      credentials: "same-origin",
-      body: JSON.stringify({ deposit_id: depositId, discovered_type: "main" }),
-    }).catch(() => {});
-  }, [variant, user?.username, dep?.deposit_id]);
+  // NOTE: L'auto-enregistrement "main" (discovered-songs type="main") a été
+  // déplacé dans MainDeposit.js pour éviter les doublons.
+  // Ici, on ne poste rien au montage.
 
   // ---- Reveal d’un dépôt (uniquement pertinent pour "list") ----
   const revealDeposit = async () => {
