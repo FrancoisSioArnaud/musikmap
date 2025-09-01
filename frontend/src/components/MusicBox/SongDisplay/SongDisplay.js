@@ -4,7 +4,7 @@ import Typography from "@mui/material/Typography";
 
 /* Composants factorisés */
 import Deposit from "../../Common/Deposit";
-import MyDeposit from "./MyDeposit";
+import MainDeposit from "./MainDeposit";
 
 export default function SongDisplay({
   dispDeposits,
@@ -22,6 +22,8 @@ export default function SongDisplay({
     () => (Array.isArray(dispDeposits) ? dispDeposits : []),
     [dispDeposits]
   );
+
+  const dep0 = deposits[0] || null;
 
   return (
     <Box sx={{ display: "grid", gap: 2 /* pas de padding root */ }}>
@@ -50,24 +52,9 @@ export default function SongDisplay({
         </Typography>
       </Box>
 
-      {/* Dépôt idx === 0 (plein format via <Deposit variant="main" />) */}
-      {deposits[0] && (
-        <Box sx={{ px: 2 /* 16px gauche/droite demandé */ }}>
-          <Deposit
-            dep={deposits[0]}
-            user={user}
-            setDispDeposits={setDispDeposits}
-            cost={cost}
-            variant="main"
-            fitContainer={true}
-            showDate={true}
-            showUser={true}
-          />
-        </Box>
-      )}
-
-      {/* SECTION — MY_DEPOSIT (gérée par le composant dédié, avec son Drawer & PlayModal internes) */}
-      <MyDeposit
+      {/* SECTION — MAIN (encart pointillé avec le main, bouton déposer, et état post-dépôt) */}
+      <MainDeposit
+        dep0={dep0}
         user={user}
         boxName={boxName}
         isSpotifyAuthenticated={isSpotifyAuthenticated}
