@@ -85,14 +85,8 @@ export default function App() {
             </Route>
 
             {/* ====== Routes SANS header (auth) ====== */}
-            <Route
-              path="/register"
-              element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}
-            />
-            <Route
-              path="/login"
-              element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}
-            />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}/>
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}/>
           </Routes>
         </UserContext.Provider>
       </Router>
@@ -102,6 +96,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
