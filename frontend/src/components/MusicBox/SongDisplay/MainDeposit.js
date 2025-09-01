@@ -14,11 +14,11 @@ import AchievementModal from "./AchievementModal";
 import { getCookie } from "../../Security/TokensUtils";
 
 /**
- * MainDeposit : nouvelle section qui englobe
- *  - l'affichage du dépôt idx 0 dans un encart pointillé (via <Deposit variant="main" />)
- *  - le bloc "Remplace..." + bouton full-width "Déposer une chanson" (ouvre Drawer LiveSearch)
- *  - le flux post-dépôt (AchievementModal, affichage myDeposit à la place du main,
- *    puis re-affichage de l'ancien main en carte <Deposit variant="list" fitContainer />)
+ * MainDeposit : section principale
+ *  - Affiche le dépôt idx 0 (ou myDeposit après dépôt) dans un encart pointillé qui entoure
+ *    UNIQUEMENT la card <Deposit variant="main" /> (pas le reste).
+ *  - Avant dépôt : titre + bouton full-width sous l’encart pointillé.
+ *  - Après dépôt : bloc succès + ex-main rendu en <Deposit variant="list" fitContainer /> sous l’encart.
  *
  * Props :
  * - dep0: objet dépôt à l'index 0 (ou null)
@@ -44,7 +44,6 @@ export default function MainDeposit({
   // Points total affiché dans le bouton "Voir mes points"
   const totalPoints = useMemo(() => {
     const arr = Array.isArray(successes) ? successes : [];
-    // Back renvoie un item nommé "Total"
     const byName = (name) => arr.find((s) => (s?.name || "").toLowerCase() === name);
     return byName("total")?.points ?? 0;
   }, [successes]);
@@ -84,18 +83,15 @@ export default function MainDeposit({
 
   return (
     <>
-      {/* Encart pointillé qui englobe TOUT le main (sans changer la card Deposit interne) */}
-      <Box sx={{ px: 2 }}>
+      <Box sx={{ px: 2, display: "grid", gap: 2 }}>
+        {/* 1) Encart pointillé entourant UNIQUEMENT la card Deposit main */}
         <Box
           sx={{
             border: "2px dashed #cbd5e1",
             borderRadius: 2,
             p: 2,
-            display: "grid",
-            gap: 2,
           }}
         >
-          {/* Zone chanson principale */}
           <Deposit
             dep={hasMyDeposit ? myDeposit : dep0}
             user={user}
@@ -104,72 +100,72 @@ export default function MainDeposit({
             showDate={true}
             showUser={true}
           />
+        </Box>
 
-          {/* Avant dépôt : titre + bouton full-width */}
-          {!hasMyDeposit && (
-            <Box sx={{ display: "grid", gap: 1 }}>
-              <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700, textAlign: "left" }}>
-                Remplace cette chanson et révèle des chansons précédentes
+        {/* 2) Avant dépôt : titre + bouton full-width (en dehors du pointillé) */}
+        {!hasMyDeposit && (
+          <Box sx={{ display: "grid", gap: 1 }}>
+            <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700, textAlign: "left" }}>
+              Remplace cette chanson et révèle des chansons précédentes
+            </Typography>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              onClick={openSearch}
+              disabled={!boxName}
+            >
+              Déposer une chanson
+            </Button>
+          </Box>
+        )}
+
+        {/* 3) Après dépôt : bloc succès + ex-main (en dehors du pointillé) */}
+        {hasMyDeposit && (
+          <Box sx={{ display: "grid", gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
+                Ta chanson a été déposée
               </Typography>
+              <CheckCircleIcon color="success" fontSize="medium" />
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+              }}
+            >
+              <Typography variant="body1" sx={{ textAlign: "left", flex: "1 1 auto", minWidth: 220 }}>
+                Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
+              </Typography>
+
               <Button
-                fullWidth
                 variant="contained"
-                size="large"
-                onClick={openSearch}
-                disabled={!boxName}
+                onClick={() => setIsAchOpen(true)}
+                aria-label="Voir mes points"
               >
-                Déposer une chanson
+                Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
               </Button>
             </Box>
-          )}
 
-          {/* Après dépôt : check + textes + bouton "Voir mes points" + ex-main en dessous */}
-          {hasMyDeposit && (
-            <Box sx={{ display: "grid", gap: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
-                  Ta chanson a été déposée
-                </Typography>
-                <CheckCircleIcon color="success" fontSize="medium" />
-              </Box>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Typography variant="body1" sx={{ textAlign: "left", flex: "1 1 auto", minWidth: 220 }}>
-                  Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
-                </Typography>
-
-                <Button
-                  variant="contained"
-                  onClick={() => setIsAchOpen(true)}
-                  aria-label="Voir mes points"
-                >
-                  Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
-                </Button>
-              </Box>
-
-              {/* Ancien main affiché juste sous le bloc succès, en carte "list" plein conteneur */}
-              {dep0 && (
-                <Deposit
-                  dep={dep0}
-                  user={user}
-                  cost={40}
-                  variant="list"
-                  showDate={true}
-                  showUser={true}
-                  fitContainer={true}
-                />
-              )}
-            </Box>
-          )}
-        </Box>
+            {/* Ancien main affiché juste sous le bloc succès, en carte "list" plein conteneur */}
+            {dep0 && (
+              <Deposit
+                dep={dep0}
+                user={user}
+                cost={40}
+                variant="list"
+                showDate={true}
+                showUser={true}
+                fitContainer={true}
+              />
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* Drawer — LiveSearch */}
