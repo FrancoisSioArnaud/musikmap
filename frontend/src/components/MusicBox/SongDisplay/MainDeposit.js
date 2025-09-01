@@ -13,15 +13,12 @@ import LiveSearch from "./LiveSearch";
 import AchievementModal from "./AchievementModal";
 import { getCookie } from "../../Security/TokensUtils";
 
-// Emplacement supposé du composant "revealed" projet (à adapter si besoin)
-import DepositProjectsFormatRevealed from "../../Common/DepositProjectsFormatRevealed";
-
 /**
  * MainDeposit : nouvelle section qui englobe
  *  - l'affichage du dépôt idx 0 dans un encart pointillé (via <Deposit variant="main" />)
  *  - le bloc "Remplace..." + bouton full-width "Déposer une chanson" (ouvre Drawer LiveSearch)
  *  - le flux post-dépôt (AchievementModal, affichage myDeposit à la place du main,
- *    puis re-affichage de l'ancien main dans une carte DepositProjectsFormatRevealed)
+ *    puis re-affichage de l'ancien main en carte <Deposit variant="list" fitContainer />)
  *
  * Props :
  * - dep0: objet dépôt à l'index 0 (ou null)
@@ -44,14 +41,12 @@ export default function MainDeposit({
   const [successes, setSuccesses] = useState([]);
   const [isAchOpen, setIsAchOpen] = useState(false);
 
-  // Points total affiché dans le badge du bouton "Voir mes points"
+  // Points total affiché dans le bouton "Voir mes points"
   const totalPoints = useMemo(() => {
-    const item = (Array.isArray(successes) ? successes : []).find(
-      (s) => (s?.name || "").toLowerCase() === "total" || (s?.name || "").toLowerCase() === "points gagnés pour ce dépôt"
-    );
-    return item?.points ?? (
-      (Array.isArray(successes) ? successes : []).find((s) => (s?.name || "").toLowerCase() === "total")?.points ?? 0
-    );
+    const arr = Array.isArray(successes) ? successes : [];
+    // Back renvoie un item nommé "Total"
+    const byName = (name) => arr.find((s) => (s?.name || "").toLowerCase() === name);
+    return byName("total")?.points ?? 0;
   }, [successes]);
 
   // ---- Enregistrement "main" (découverte de la #0) déplacé ici ----
@@ -128,7 +123,7 @@ export default function MainDeposit({
             </Box>
           )}
 
-          {/* Après dépôt : check + textes + bouton "Voir mes points" + ex-main révélé dessous */}
+          {/* Après dépôt : check + textes + bouton "Voir mes points" + ex-main en dessous */}
           {hasMyDeposit && (
             <Box sx={{ display: "grid", gap: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -160,9 +155,9 @@ export default function MainDeposit({
                 </Button>
               </Box>
 
-              {/* Ancien main affiché en format "revealed project" juste sous le bloc succès */}
+              {/* Ancien main affiché juste sous le bloc succès, en carte "list" plein conteneur */}
               {dep0 && (
-                <DepositProjectsFormatRevealed
+                <Deposit
                   dep={dep0}
                   user={user}
                   cost={40}
