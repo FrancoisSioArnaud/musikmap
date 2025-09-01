@@ -105,7 +105,7 @@ export default function MainDeposit({
         {/* 2) Avant dépôt : titre + bouton full-width (en dehors du pointillé) */}
         {!hasMyDeposit && (
           <Box sx={{ display: "grid", gap: 1 }}>
-            <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700, textAlign: "left" }}>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
               Remplace cette chanson et révèle des chansons précédentes
             </Typography>
             <Button
