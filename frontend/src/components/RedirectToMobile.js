@@ -22,7 +22,7 @@ export default function RedirectToMobile() {
       <Typography
         variant="h1"
         sx={{
-          color: "#fff",
+          color: "text.primary",
           marginBottom: "1rem",
           fontSize: "3rem",
           fontWeight: "bold",
@@ -35,14 +35,13 @@ export default function RedirectToMobile() {
       </Typography>
       <Typography
         variant="subtitle1"
-        sx={{ color: "#fff", marginBottom: "2rem" }}
+        sx={{ color: "text.primary", marginBottom: "2rem" }}
       >
         Vous devez obligatoirement utiliser un smartphone pour accéder à la
         boîte.
       </Typography>
       <Button
         variant="contained"
-        sx={{ backgroundColor: "#fa4000", color: "#fff" }}
         onClick={() => {
           navigate("/");
         }}
@@ -52,3 +51,4 @@ export default function RedirectToMobile() {
     </Box>
   );
 }
+
