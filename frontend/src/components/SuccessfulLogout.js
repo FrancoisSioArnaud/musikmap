@@ -21,27 +21,16 @@ export default function SuccessfulLogout() {
     >
       <Typography
         variant="h1"
-        sx={{
-          color: "#fff",
-          marginBottom: "1rem",
-          fontSize: "3rem",
-          fontWeight: "bold",
-          textAlign: "center",
-          textTransform: "uppercase",
-          letterSpacing: "0.3rem",
-        }}
       >
         La déconnexion a été effectuée avec succès.
       </Typography>
       <Typography
         variant="subtitle1"
-        sx={{ color: "#fff", marginBottom: "2rem" }}
       >
         Pour découvrir d'autres chansons, scanne une boîte !
       </Typography>
       <Button
         variant="contained"
-        sx={{ backgroundColor: "#fa4000", color: "#fff" }}
         onClick={() => {
           navigate("/");
         }}
@@ -51,3 +40,4 @@ export default function SuccessfulLogout() {
     </Box>
   );
 }
+
