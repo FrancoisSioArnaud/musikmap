@@ -247,7 +247,7 @@ export default function LiveSearch({
                     size="small"
                     disabled={isPosting}
                     onClick={() => handleButtonClick(option, boxName)}
-                    sx={{ minWidth: 112 }}
+                    sx={{ minWidth: 0 }}
                   >
                     {isPosting ? (
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -337,3 +337,4 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
