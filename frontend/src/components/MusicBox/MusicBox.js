@@ -1,3 +1,4 @@
+// frontend/src/components/MusicBox/MusicBox.js
 import React, {
   useEffect,
   useMemo,
@@ -115,6 +116,9 @@ export default function MusicBox() {
   // ---- ref pour éviter double déclenchement (click + touch)
   const geoRequestInFlightRef = useRef(false);
 
+  // ---- ref: éviter scrollIntoView multiple quand SongDisplay devient visible
+  const hasAutoScrolledRef = useRef(false);
+
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
     let mounted = true;
@@ -127,6 +131,11 @@ export default function MusicBox() {
     return () => {
       mounted = false;
     };
+  }, [boxName]);
+
+  // Reset auto-scroll flag quand on change de box
+  useEffect(() => {
+    hasAutoScrolledRef.current = false;
   }, [boxName]);
 
   // ================== 1) Auto-ouverture au chargement ==================
@@ -230,6 +239,15 @@ export default function MusicBox() {
     const anchor = document.getElementById("songdisplay-anchor");
     if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  // >>> Auto-scroll en haut de SongDisplay dès qu'il est affiché <<<
+  useEffect(() => {
+    if (permissionState === "granted" && inRange && boxData && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+      // Double rAF pour laisser le temps à <Suspense> de peindre SongDisplay
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToContent()));
+    }
+  }, [permissionState, inRange, boxData, scrollToContent]);
 
   // ================== 3) Re-check périodique (5s) si permission accordée & onglet visible ==================
   useEffect(() => {
@@ -512,7 +530,15 @@ export default function MusicBox() {
 
         {/* Overlay: EnableLocation (permission non accordée) */}
         {showEnableLocationOverlay && (
-          <Backdrop open sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}>
+          <Backdrop
+            open
+            sx={{
+              position: "absolute",
+              inset: 0,
+              // ▼ Met l'overlay SOUS le menu (AppBar)
+              zIndex: (t) => t.zIndex.appBar - 1,
+            }}
+          >
             <Paper
               role="dialog"
               aria-modal="true"
@@ -555,7 +581,15 @@ export default function MusicBox() {
 
         {/* Overlay: Hors range */}
         {showOutOfRangeOverlay && (
-          <Backdrop open sx={{ position: "absolute", inset: 0, zIndex: (t) => t.zIndex.modal + 1 }}>
+          <Backdrop
+            open
+            sx={{
+              position: "absolute",
+              inset: 0,
+              // ▼ Met l'overlay SOUS le menu (AppBar)
+              zIndex: (t) => t.zIndex.appBar - 1,
+            }}
+          >
             <Paper
               role="dialog"
               aria-modal="true"
