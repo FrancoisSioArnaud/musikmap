@@ -109,8 +109,11 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
-  // ---- watchPosition id
+  // ---- watchPosition id (Patch 2)
   const watchIdRef = useRef(null);
+
+  // ---- ref pour éviter double déclenchement (click + touch)
+  const geoRequestInFlightRef = useRef(false);
 
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
@@ -266,7 +269,7 @@ export default function MusicBox() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    // ⬇️ PATCH 2 : n'active le polling que si aucun watchPosition actif
+    // n'active le polling que si aucun watchPosition actif
     if (isActive() && !watchIdRef.current) {
       intervalRef.current = setInterval(tick, 5000); // 5s
     }
@@ -276,7 +279,7 @@ export default function MusicBox() {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      // ⬇️ idem : relance seulement si pas de watch
+      // idem : relance seulement si pas de watch
       if (isActive() && !watchIdRef.current) {
         intervalRef.current = setInterval(tick, 5000);
       }
@@ -293,10 +296,10 @@ export default function MusicBox() {
   }, [permissionState, inRange, boxData, boxName, meta?.box?.id]);
 
   // ================== 4) Overlays actions (CTA) ==================
-  const handleRequestLocation = async () => {
-    setGeoError("");
-    try {
-      const pos = await getPositionOnce();
+
+  // Helper : traite une position reçue (success getCurrent / watch)
+  const processPosition = useCallback(
+    async (pos) => {
       setPermissionState("granted");
       const r = await postLocation(meta.box, pos.coords);
       const valid = !!(r.ok && r.data?.valid);
@@ -310,10 +313,67 @@ export default function MusicBox() {
           setGetBoxLoading(false);
         }
       }
+    },
+    [meta?.box, boxData, boxName]
+  );
+
+  // iOS-friendly: appel direct dans le handler + fallback watchPosition
+  const handleRequestLocation = useCallback(() => {
+    if (geoRequestInFlightRef.current) return;
+    geoRequestInFlightRef.current = true;
+    setGeoError("");
+
+    try {
+      if (!("geolocation" in navigator)) {
+        setGeoError("Geolocation non supportée");
+        geoRequestInFlightRef.current = false;
+        return;
+      }
+
+      const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 };
+
+      // 1) Tentative immédiate : getCurrentPosition (lié au geste utilisateur)
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          geoRequestInFlightRef.current = false;
+          await processPosition(pos);
+        },
+        (err) => {
+          // 2) Fallback iOS : petit watchPosition pour forcer le prompt
+          try {
+            const wid = navigator.geolocation.watchPosition(
+              async (pos2) => {
+                navigator.geolocation.clearWatch(wid);
+                geoRequestInFlightRef.current = false;
+                await processPosition(pos2);
+              },
+              (err2) => {
+                navigator.geolocation.clearWatch(wid);
+                geoRequestInFlightRef.current = false;
+                setGeoError(err2?.message || "Impossible d’obtenir ta position.");
+              },
+              { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
+            );
+
+            // Sécurité : stop le watch après 15s
+            setTimeout(() => {
+              try {
+                navigator.geolocation.clearWatch(wid);
+              } catch {}
+              geoRequestInFlightRef.current = false;
+            }, 15000);
+          } catch (e2) {
+            geoRequestInFlightRef.current = false;
+            setGeoError(err?.message || "Impossible d’obtenir ta position.");
+          }
+        },
+        opts
+      );
     } catch (e) {
+      geoRequestInFlightRef.current = false;
       setGeoError(e?.message || "Impossible d’obtenir ta position.");
     }
-  };
+  }, [processPosition]);
 
   const handleRetryOutOfRange = async () => {
     setGeoError("");
@@ -475,7 +535,12 @@ export default function MusicBox() {
                     {geoError}
                   </Typography>
                 ) : null}
-                <Button variant="contained" size="large" onClick={handleRequestLocation}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleRequestLocation}
+                  onTouchStart={handleRequestLocation}
+                >
                   Autoriser
                 </Button>
               </Stack>
