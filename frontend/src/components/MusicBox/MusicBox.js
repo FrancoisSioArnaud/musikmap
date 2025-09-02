@@ -137,16 +137,21 @@ export default function MusicBox() {
       if (!meta?.box?.id) return;
 
       try {
+        // --- iOS: Permissions API peut être absente ou retourner toujours "prompt".
         if (!("permissions" in navigator) || !navigator.permissions.query) {
-          setPermissionState("unknown");
+          // ⚠️ Ne pas rétrograder si déjà "granted"
+          setPermissionState((prev) => (prev === "granted" ? "granted" : "unknown"));
           return;
         }
+
         const st = await navigator.permissions.query({ name: "geolocation" });
         if (cancelled) return;
 
-        setPermissionState(st.state); // 'granted' | 'prompt' | 'denied'
+        const nextState = st?.state || "unknown";
+        // ⚠️ NE JAMAIS rétrograder: si on a déjà "granted", on garde "granted"
+        setPermissionState((prev) => (prev === "granted" ? "granted" : nextState));
 
-        if (st.state !== "granted") return;
+        if (nextState !== "granted") return;
 
         const pos = await getPositionOnce().catch(() => null);
         if (!pos) return;
