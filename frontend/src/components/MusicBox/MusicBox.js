@@ -1,5 +1,3 @@
-
-// frontend/src/components/MusicBox/MusicBox.js
 import React, {
   useEffect,
   useMemo,
@@ -111,6 +109,9 @@ export default function MusicBox() {
   // ---- Re-check interval (5s) + visibilité onglet
   const intervalRef = useRef(null);
 
+  // ---- watchPosition id
+  const watchIdRef = useRef(null);
+
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
     let mounted = true;
@@ -172,6 +173,50 @@ export default function MusicBox() {
     };
   }, [boxName, meta?.box?.id, boxData]);
 
+  // ================== 1.bis) WatchPosition (Patch 2)
+  useEffect(() => {
+    // Démarre un watch uniquement si permission accordée + box connue + API dispo
+    if (permissionState !== "granted" || !meta?.box?.id) return;
+    if (!("geolocation" in navigator) || !navigator.geolocation.watchPosition) return;
+
+    // Évite de démarrer plusieurs watchers
+    if (watchIdRef.current != null) return;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        try {
+          const r = await postLocation(meta.box, pos.coords);
+          const valid = !!(r.ok && r.data?.valid);
+          setInRange(valid);
+
+          // Si on devient in-range et qu'on n'a pas encore les données → fetch GetBox
+          if (valid && !boxData && !getBoxLoading) {
+            setGetBoxLoading(true);
+            try {
+              const data = await fetchGetBox(boxName);
+              setBoxData(data);
+            } finally {
+              setGetBoxLoading(false);
+            }
+          }
+        } catch {
+          // silencieux
+        }
+      },
+      () => {
+        // erreurs watchPosition ignorées (ex: timeout, user cancel)
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
+    );
+
+    return () => {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [permissionState, meta?.box?.id, boxData, getBoxLoading, boxName]);
+
   // ================== 2) Bouton “Ouvrir la boîte” => scroll uniquement ==================
   const scrollToContent = useCallback(() => {
     const anchor = document.getElementById("songdisplay-anchor");
@@ -221,7 +266,8 @@ export default function MusicBox() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (isActive()) {
+    // ⬇️ PATCH 2 : n'active le polling que si aucun watchPosition actif
+    if (isActive() && !watchIdRef.current) {
       intervalRef.current = setInterval(tick, 5000); // 5s
     }
 
@@ -230,7 +276,8 @@ export default function MusicBox() {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      if (isActive()) {
+      // ⬇️ idem : relance seulement si pas de watch
+      if (isActive() && !watchIdRef.current) {
         intervalRef.current = setInterval(tick, 5000);
       }
     };
@@ -469,7 +516,6 @@ export default function MusicBox() {
                   <Button variant="contained" onClick={handleRetryOutOfRange}>
                     Réessayer
                   </Button>
-                 
                 </Stack>
               </Stack>
             </Paper>
@@ -479,6 +525,3 @@ export default function MusicBox() {
     </Box>
   );
 }
-
-
-
