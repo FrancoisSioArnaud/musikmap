@@ -26,7 +26,7 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box sx={{ display: "grid", gap: 2 /* pas de padding root */ }}>
+    <Box sx={{ display: "grid", gap: 2, pt:"64px" ,/* pas de padding root */ }}>
       {/* HERO simple */}
       <Box
         id="intro"
