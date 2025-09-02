@@ -1,4 +1,3 @@
-// frontend/src/components/MusicBox/LiveSearch.js
 import React, { useState, useEffect, useContext } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -170,7 +169,7 @@ export default function LiveSearch({
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ maxWidth: "100%" }}>
       {/* En-tête + sélecteur plateforme */}
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={2}>
@@ -197,15 +196,25 @@ export default function LiveSearch({
 
           <TextField
             fullWidth
+            type="search"
             placeholder="Cherche une chanson"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
+            inputProps={{
+              inputMode: "search",
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
                   <SearchIcon fontSize="small" />
                 </InputAdornment>
               ),
+            }}
+            // iOS anti-zoom: police >= 16px sur l'input
+            sx={{
+              "& .MuiInputBase-input": {
+                fontSize: 16,
+              },
             }}
           />
         </Stack>
@@ -219,7 +228,7 @@ export default function LiveSearch({
       )}
 
       {/* Résultats */}
-      <Paper variant="outlined">
+      <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const isPosting = postingId === (option?.id ?? "__posting__");
@@ -228,6 +237,10 @@ export default function LiveSearch({
               <ListItem
                 key={option.id}
                 divider
+                sx={{
+                  overflow: "hidden",           // empêche l'étirement horizontal
+                  alignItems: "center",
+                }}
                 secondaryAction={
                   <Button
                     variant="contained"
@@ -270,12 +283,28 @@ export default function LiveSearch({
                 </Box>
 
                 {/* Titre (h3) + Artiste (paragraphe) */}
-                <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, mr: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                    mr: 2,
+                    flex: 1,
+                    overflow: "hidden", // protège contre les très longues chaînes sans espace
+                  }}
+                >
                   <Typography
                     component="h3"
                     variant="h6"
                     noWrap
-                    sx={{ fontWeight: 700, textAlign: "left" }}
+                    sx={{
+                      fontWeight: 700,
+                      textAlign: "left",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                    }}
                     title={option?.name || ""}
                   >
                     {option?.name || ""}
@@ -285,7 +314,13 @@ export default function LiveSearch({
                     variant="body2"
                     color="text.secondary"
                     noWrap
-                    sx={{ textAlign: "left" }}
+                    sx={{
+                      textAlign: "left",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                    }}
                     title={option?.artist || ""}
                   >
                     {option?.artist || ""}
