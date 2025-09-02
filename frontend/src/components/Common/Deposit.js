@@ -176,7 +176,7 @@ export default function Deposit({
           )}
 
           {/* song (cover pleine largeur, titres si révélé) */}
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
+          <Box id="deposit_song" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
             <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
               {s?.img_url && (
                 <Box
@@ -275,7 +275,6 @@ export default function Deposit({
             display: "grid",
             gridTemplateColumns: "140px 1fr",
             gap: 2,
-            mb: 2,
             alignItems: "center",
             minWidth: 0,
           }}
