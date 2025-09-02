@@ -20,7 +20,7 @@ export default function MenuAppBar() {
     useContext(UserContext);
 
   return (
-    <AppBar position="fixed" height="58px" sx={{ backgroundColor: "white" }}>
+    <AppBar position="fixed">
       <Toolbar>
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography
@@ -101,6 +101,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
