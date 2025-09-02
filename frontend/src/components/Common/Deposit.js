@@ -140,43 +140,13 @@ export default function Deposit({
   // RENDUS PAR VARIANTES
   // =========================
 
-  // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
+   // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
   if (variant === "main") {
     return (
       <>
         <Card sx={cardBaseSx}>
-          {showDate && (
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-            </Box>
-          )}
-
-          {showUser && (
-            <Box
-              id="deposit_user"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mb: 2,
-                cursor: u?.username ? "pointer" : "default",
-                minWidth: 0,
-              }}
-              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-            >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
-                sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-              />
-              <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {u?.username || "Anonyme"}
-              </Typography>
-            </Box>
-          )}
-
-          {/* song (cover pleine largeur, titres si révélé) */}
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
+          {/* deposit_song */}
+          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
             <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
               {s?.img_url && (
                 <Box
@@ -193,7 +163,7 @@ export default function Deposit({
                 />
               )}
             </Box>
-
+  
             <Box
               sx={{
                 display: "flex",
@@ -225,8 +195,40 @@ export default function Deposit({
               </Button>
             </Box>
           </Box>
+  
+          {/* deposit_user */}
+          {showUser && (
+            <Box
+              id="deposit_user"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 2,
+                cursor: u?.username ? "pointer" : "default",
+                minWidth: 0,
+              }}
+              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+            >
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.username || "Anonyme"}
+                sx={{ width: 40, height: 40, flex: "0 0 auto" }}
+              />
+              <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {u?.username || "Anonyme"}
+              </Typography>
+            </Box>
+          )}
+  
+          {/* deposit_date */}
+          {showDate && (
+            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+            </Box>
+          )}
         </Card>
-
+  
         {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
