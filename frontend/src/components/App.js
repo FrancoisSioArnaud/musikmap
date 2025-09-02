@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "../theme/brandTheme";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
@@ -70,7 +72,7 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <ThemeProvider theme={theme}>
       <Router>
         <UserContext.Provider value={providerValue}>
           <Routes>
@@ -90,12 +92,13 @@ export default function App() {
           </Routes>
         </UserContext.Provider>
       </Router>
-    </>
+    </ThemeProvider>
   );
 }
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
