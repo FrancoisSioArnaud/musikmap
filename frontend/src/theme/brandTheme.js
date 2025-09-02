@@ -106,52 +106,19 @@ let theme = createTheme({
   // ---------------------------------------------------------------------------
   typography: {
     fontFamily: `"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
-  
-    h1: {
-      fontWeight: 900,           // "black"
-      fontSize: "40px",
-      lineHeight: "48px",
-      letterSpacing: 0,
-    },
-  
-    h3: {
-      fontWeight: 700,           // "bold"
-      fontSize: "32px",
-      lineHeight: "38.4px",
-      letterSpacing: 0,
-    },
-  
-    h6: {
-      fontWeight: 600,           // "semi-bold"
-      fontSize: "16px",
-      lineHeight: "19.2px",
-      letterSpacing: 0,
-    },
-  
-    body1: {
-      fontWeight: 400,           // "regular"
-      fontSize: "16px",
-      lineHeight: "19.2px",
-      letterSpacing: 0,
-    },
-  
-    body2: {
-      fontWeight: 300,           // "light"
-      fontSize: "12px",
-      lineHeight: "14.4px",
-      letterSpacing: 0,
-    },
-  
-    button: {
-      textTransform: "none",
-      fontWeight: 700,           // "bold"
-      fontSize: "20px",
-      lineHeight: "24px",
-      letterSpacing: 0,
-    },
+    h1: { fontWeight: 700, fontSize: "clamp(2rem, 1.2rem + 2vw, 3rem)", lineHeight: 1.1 },
+    h2: { fontWeight: 700, fontSize: "clamp(1.75rem, 1.15rem + 1.5vw, 2.375rem)", lineHeight: 1.15 },
+    h3: { fontWeight: 700, fontSize: "1.75rem" },
+    h4: { fontWeight: 700, fontSize: "1.375rem" },
+    h5: { fontWeight: 600, fontSize: "1.125rem" },
+    h6: { fontWeight: 600, fontSize: "1rem" },
+    body1: { fontSize: "1rem", lineHeight: 1.6 },
+    body2: { fontSize: "0.875rem", lineHeight: 1.55 },
+    button: { textTransform: "none", fontWeight: 600, letterSpacing: 0.2 },
+    caption: { color: "rgba(255,255,255,0.65)" },
+    overline: { textTransform: "none" },
   },
 
-  
   // Shape/Shadows globaux
   shape,
   shadows,
