@@ -119,6 +119,59 @@ let theme = createTheme({
     overline: { textTransform: "none" },
   },
 
+  typography: {
+    fontFamily: `"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
+  
+    h1: {
+      fontWeight: 900,           // "black"
+      fontSize: "40px",
+      lineHeight: "48px",
+      letterSpacing: 0,
+    },
+
+    h2: { fontWeight: 700, fontSize: "clamp(1.75rem, 1.15rem + 1.5vw, 2.375rem)", lineHeight: 1.15 },
+    
+    h3: {
+      fontWeight: 700,           // "bold"
+      fontSize: "32px",
+      lineHeight: "38.4px",
+      letterSpacing: 0,
+    },
+
+    h4: { fontWeight: 700, fontSize: "1.375rem" },
+
+    h5: { fontWeight: 600, fontSize: "1.125rem" },
+    
+    h6: {
+      fontWeight: 600,           // "semi-bold"
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      letterSpacing: 0,
+    },
+  
+    body1: {
+      fontWeight: 400,           // "regular"
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      letterSpacing: 0,
+    },
+  
+    body2: {
+      fontWeight: 300,           // "light"
+      fontSize: "12px",
+      lineHeight: "14.4px",
+      letterSpacing: 0,
+    },
+  
+    button: {
+      textTransform: "none",
+      fontWeight: 700,           // "bold"
+      fontSize: "20px",
+      lineHeight: "24px",
+      letterSpacing: 0,
+    },
+  }
+
   // Shape/Shadows globaux
   shape,
   shadows,
