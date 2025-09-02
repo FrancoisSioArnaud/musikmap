@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "../theme/brandTheme";
-import "@fontsource/exo-2";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
@@ -99,6 +98,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
