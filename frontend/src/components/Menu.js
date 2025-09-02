@@ -45,14 +45,14 @@ export default function MenuAppBar() {
                 flexDirection: "row",
                 justifyContent: "flex-end",
                 alignItems: "center",
-                gap: "8px",
+                gap: "1",
               }}
             >
               <Typography
                 variant="body1"
                 component="div"
                 sx={{
-                  color: "black",
+                  color: "text.primary",
                 }}
               >
                 {user.points}
@@ -85,7 +85,7 @@ export default function MenuAppBar() {
             to="/login"
             sx={{
               borderRadius: "20px",
-              backgroundColor: "white",
+              backgroundColor: "background.paper",
               color: "orange",
               border: "none",
               textTransform: "none",
@@ -101,6 +101,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
