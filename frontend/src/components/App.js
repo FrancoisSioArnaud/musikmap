@@ -39,7 +39,7 @@ function LayoutWithHeader() {
           flex: 1,
           Height: "calc(100vh - 64px)",
           Width: "100vw",
-          padding: "64px 0 0 0",
+          padding: "58px 0 0 0",
         }}
       >
         <Outlet />
@@ -96,6 +96,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
