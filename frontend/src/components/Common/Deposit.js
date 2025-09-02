@@ -140,13 +140,19 @@ export default function Deposit({
   // RENDUS PAR VARIANTES
   // =========================
 
-   // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
+  // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
   if (variant === "main") {
     return (
       <>
         <Card sx={cardBaseSx}>
-          {/* deposit_song */}
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, mb: 2, minWidth: 0 }}>
+          {showDate && (
+            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
+              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+            </Box>
+          )}
+
+          {/* song (cover pleine largeur, titres si révélé) */}
+          <Box id="deposit_song" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
             <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
               {s?.img_url && (
                 <Box
@@ -163,7 +169,7 @@ export default function Deposit({
                 />
               )}
             </Box>
-  
+
             <Box
               sx={{
                 display: "flex",
@@ -195,8 +201,7 @@ export default function Deposit({
               </Button>
             </Box>
           </Box>
-  
-          {/* deposit_user */}
+
           {showUser && (
             <Box
               id="deposit_user"
@@ -204,7 +209,7 @@ export default function Deposit({
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                mb: 2,
+                mt: 2, // <— déplacé sous la chanson (remplace l’ancien mb: 2)
                 cursor: u?.username ? "pointer" : "default",
                 minWidth: 0,
               }}
@@ -220,15 +225,8 @@ export default function Deposit({
               </Typography>
             </Box>
           )}
-  
-          {/* deposit_date */}
-          {showDate && (
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
-            </Box>
-          )}
         </Card>
-  
+
         {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
