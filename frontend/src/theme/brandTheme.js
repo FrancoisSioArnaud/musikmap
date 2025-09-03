@@ -170,10 +170,12 @@ let theme = createTheme({
     MuiChip: {
       styleOverrides: { root: { borderRadius: 9999 } },
     },
-    MuiAvatar-root: {
-      outline: "2px solid #ffffff",
-      outlineOffset: "2px", // décale l’outline vers l’extérieur
-      styleOverrides: { root: { width: 40, height: 40 } },
+    MuiAvatar: {
+      styleOverrides: { root: { width: 40,
+                                 height: 40,
+                                 outline: "2px solid #ffffff",
+                                outlineOffset: "2px", // décale l’outline vers l’extérieur
+                                } },
     },
   },
 });
