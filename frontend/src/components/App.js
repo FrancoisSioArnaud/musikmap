@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "../theme/brandTheme";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
@@ -17,6 +16,7 @@ import SuccessfulLogout from "./SuccessfulLogout";
 //import UserPublicProfile from "./UserPublicProfile";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
+import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
 
 import {
   BrowserRouter as Router,
@@ -25,7 +25,7 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
-import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
+
 
 function LayoutWithHeader() {
   return (
@@ -98,6 +98,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
