@@ -22,12 +22,6 @@ export default function MenuAppBar() {
   return (
     <AppBar
       position="fixed"
-      sx={{
-        bgcolor: "rgba(0,0,0,0.3)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(255,255,255,0.12)",
-      }}
     >
       <Toolbar>
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
@@ -108,6 +102,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
