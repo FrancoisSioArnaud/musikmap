@@ -25,7 +25,7 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
-import MenuAppBar from "./Menu"; // <-- ton menu fixed (64px)
+import MenuAppBar from "../Common/Menu"; // <-- ton menu fixed (64px)
 
 function LayoutWithHeader() {
   return (
@@ -98,6 +98,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
