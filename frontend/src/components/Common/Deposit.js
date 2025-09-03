@@ -134,7 +134,7 @@ export default function Deposit({
   // helpers de style
   const cardBaseSx = fitContainer
     ? { p: 2, width: "100%", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" }
-    : { p: 2, width: "calc(80vw - 32px)", maxWidth: 720, flex: "0 0 auto", boxSizing: "border-box", overflow: "hidden" };
+    : { p: 2, width: "calc(90vw - 32px)", maxWidth: 720, flex: "0 0 auto", boxSizing: "border-box", overflow: "hidden" };
 
   // =========================
   // RENDUS PAR VARIANTES
