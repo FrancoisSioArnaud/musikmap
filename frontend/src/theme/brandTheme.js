@@ -1,15 +1,15 @@
 // frontend/src/theme/brandTheme.js
 import { createTheme, responsiveFontSizes } from "@mui/material/styles";
 
-// === Couleurs "brand" (adaptées pour un thème sombre constant) ===
+// === Couleurs "brand" (thème sombre constant) ===
 const brandColors = {
-  primary: { main: "#FC7800", light: "#FF9738", dark: "#CC6100", contrastText: "#FFFFFF" },
+  primary:   { main: "#FC7800", light: "#FF9738", dark: "#CC6100", contrastText: "#FFFFFF" },
   secondary: { main: "#FC7800", light: "#FF9738", dark: "#CC6100", contrastText: "#FFFFFF" },
-  success: { main: "#22C55E" },
-  warning: { main: "#F59E0B" },
-  error:   { main: "#EF4444" },
-  info:    { main: "#06B6D4" },
-  neutral: { main: "#98A2B3" },
+  success:   { main: "#22C55E" },
+  warning:   { main: "#F59E0B" },
+  error:     { main: "#EF4444" },
+  info:      { main: "#06B6D4" },
+  neutral:   { main: "#98A2B3" },
 };
 
 // === Shape global ===
@@ -23,7 +23,7 @@ shadows[3] = "0 6px 20px rgba(0,0,0,0.45)";
 
 let theme = createTheme({
   palette: {
-    mode: "dark", // ⚫️ Dark mode constant
+    mode: "dark",
     primary: brandColors.primary,
     secondary: brandColors.secondary,
     success: brandColors.success,
@@ -44,8 +44,8 @@ let theme = createTheme({
       900: "#E5E7EB",
     },
     background: {
-      default: "black",
-      paper: "black",
+      default: "#000000",
+      paper: "#000000",
     },
     text: {
       primary: "#FFFFFF",
@@ -54,49 +54,48 @@ let theme = createTheme({
     divider: "rgba(255,255,255,0.08)",
   },
 
-  // === Typographie — Exo 2 + valeurs exactes demandées ===
+  // === Typographie — Exo 2, tailles en rem, line-height unitless ===
   typography: {
     fontFamily: `"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
-  
+
     h1: {
-      fontWeight: 900,       // black
-      fontSize: "2.5rem",    // 40px
+      fontWeight: 900,      // black
+      fontSize: "2.5rem",   // 40px
       lineHeight: 1.2,
       letterSpacing: 0,
     },
     h3: {
-      fontWeight: 700,       // bold
-      fontSize: "2rem",      // 32px
+      fontWeight: 700,      // bold
+      fontSize: "2rem",     // 32px
       lineHeight: 1.2,
       letterSpacing: 0,
     },
     h6: {
-      fontWeight: 600,       // semi-bold
-      fontSize: "1rem",      // 16px
+      fontWeight: 600,      // semi-bold
+      fontSize: "1rem",     // 16px
       lineHeight: 1.2,
       letterSpacing: 0,
     },
     body1: {
-      fontWeight: 400,       // regular
-      fontSize: "1rem",      // 16px
+      fontWeight: 400,      // regular
+      fontSize: "1rem",     // 16px
       lineHeight: 1.2,
       letterSpacing: 0,
     },
     body2: {
-      fontWeight: 300,       // light
-      fontSize: "0.75rem",   // 12px
+      fontWeight: 300,      // light
+      fontSize: "0.75rem",  // 12px
       lineHeight: 1.2,
       letterSpacing: 0,
     },
     button: {
-      fontWeight: 700,       // bold
-      fontSize: "1.25rem",   // 20px
+      fontWeight: 700,      // bold
+      fontSize: "1.25rem",  // 20px
       lineHeight: 1.2,
       letterSpacing: 0,
       textTransform: "none",
     },
   },
-
 
   shape,
   shadows,
@@ -110,10 +109,11 @@ let theme = createTheme({
   },
 
   components: {
+    // ⚠️ Pas d’accès à `theme` ici (sinon référence circulaire)
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: theme.palette.background.default,
+          backgroundColor: "#000000",
           color: "#FFFFFF",
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
@@ -128,7 +128,7 @@ let theme = createTheme({
       defaultProps: { elevation: 0, color: "default" },
       styleOverrides: {
         root: {
-          bgcolor: "rgba(0,0,0,0.3)",
+          backgroundColor: "rgba(0,0,0,0.3)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           borderBottom: "1px solid rgba(255,255,255,0.12)",
@@ -194,14 +194,14 @@ let theme = createTheme({
       styleOverrides: { root: { borderRadius: 9999, background: "rgba(255,255,255,0.08)" } },
     },
 
-    // Avatar : contour extérieur blanc via outline (shadow non souhaité)
+    // Avatar : contour extérieur blanc via outline
     MuiAvatar: {
       styleOverrides: {
         root: {
           width: 40,
           height: 40,
           outline: "2px solid #ffffff",
-          outlineOffset: "2px", // pousse la bordure vers l'extérieur
+          outlineOffset: "2px",
           backgroundColor: "#0F172A",
         },
       },
