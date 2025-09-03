@@ -1,79 +1,105 @@
 // frontend/src/theme/brandTheme.js
 import { createTheme, responsiveFontSizes } from "@mui/material/styles";
 
-// === À PERSONNALISER SELON TA DA ===
-// Mets ici tes vraies couleurs de maquette Figma.
-// Astuce : garde aussi des teintes "light/dark/contrastText" pour l’accessibilité.
+// === Couleurs marque (adaptées au dark mode) ===
 const brandColors = {
-  primary: { main: "#2E6EF7", light: "#5A8BFF", dark: "#1E49B4", contrastText: "#FFFFFF" },
-  secondary: { main: "#F75C2E", light: "#FF8C67", dark: "#B43F1E", contrastText: "#FFFFFF" },
-  success: { main: "#22C55E" },
-  warning: { main: "#F59E0B" },
-  error:   { main: "#EF4444" },
-  info:    { main: "#06B6D4" },
-  // Une “neutral” utile pour gris UI
-  neutral: { main: "#667085" },
+  primary:   { main: "#5A8BFF", light: "#7AA2FF", dark: "#2E6EF7", contrastText: "#FFFFFF" },
+  secondary: { main: "#FF8C67", light: "#FFA684", dark: "#F75C2E", contrastText: "#0B1220" },
+  success:   { main: "#22C55E" },
+  warning:   { main: "#F59E0B" },
+  error:     { main: "#EF4444" },
+  info:      { main: "#06B6D4" },
+  neutral:   { main: "#98A2B3" },
 };
 
-// Rayon, ombres et spacing “brand”
-const shape = { borderRadius: 14 };               // Cartes/boutons arrondis
-const shadows = [...Array(25)].map(() => "none"); // On repart d’une base clean
-// Ex. ombres douces :
-shadows[1] = "0 1px 2px rgba(16,24,40,0.06), 0 1px 1px rgba(16,24,40,0.04)";
-shadows[2] = "0 2px 8px rgba(16,24,40,0.08)";
-shadows[3] = "0 6px 20px rgba(16,24,40,0.10)";
+// Rayon global
+const shape = { borderRadius: 6 };
+
+// Ombres sobres (optionnelles en dark)
+const shadows = [...Array(25)].map(() => "none");
+shadows[1] = "0 1px 2px rgba(0,0,0,0.35), 0 1px 1px rgba(0,0,0,0.25)";
+shadows[2] = "0 2px 8px rgba(0,0,0,0.40)";
+shadows[3] = "0 6px 20px rgba(0,0,0,0.45)";
 
 let theme = createTheme({
   palette: {
-    mode: "light",
+    mode: "dark", // ✅ dark mode constant
     primary: brandColors.primary,
     secondary: brandColors.secondary,
     success: brandColors.success,
     warning: brandColors.warning,
     error: brandColors.error,
     info: brandColors.info,
-    // On mappe “neutral” sur grey MUI pour l’intégration sx (grey.500 etc.)
     grey: {
-      25: "#FCFCFD",
-      50: "#F9FAFB",
-      100: "#F2F4F7",
-      200: "#E4E7EC",
-      300: "#D0D5DD",
-      400: "#98A2B3",
-      500: "#667085", // brand neutral
-      600: "#475467",
-      700: "#344054",
-      800: "#1D2939",
-      900: "#0B1220",
+      25:  "#0B1220",
+      50:  "#111827",
+      100: "#0F172A",
+      200: "#111827",
+      300: "#1F2937",
+      400: "#334155",
+      500: "#64748B",
+      600: "#94A3B8",
+      700: "#CBD5E1",
+      800: "#E2E8F0",
+      900: "#F8FAFC",
     },
     background: {
-      default: "#FFFFFF",
-      paper: "#FFFFFF",
+      default: "#0B1220",
+      paper:   "#121826",
     },
     text: {
-      primary: "#0B1220",
-      secondary: "#475467",
+      primary:   "#FFFFFF",
+      secondary: "rgba(255,255,255,0.72)",
+      disabled:  "rgba(255,255,255,0.38)",
+    },
+    divider: "rgba(255,255,255,0.12)",
+  },
+
+  // ✅ Typographie demandée
+  typography: {
+    fontFamily: `"InterVariable", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
+    h1: {
+      fontWeight: 900,       // black
+      fontSize: "40px",
+      lineHeight: "48px",
+      letterSpacing: 0,
+    },
+    h3: {
+      fontWeight: 700,       // bold
+      fontSize: "32px",
+      lineHeight: "38.4px",
+      letterSpacing: 0,
+    },
+    h6: {
+      fontWeight: 600,       // semi-bold
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      letterSpacing: 0,
+    },
+    body1: {
+      fontWeight: 400,       // regular
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      letterSpacing: 0,
+    },
+    body2: {
+      fontWeight: 300,       // light
+      fontSize: "12px",
+      lineHeight: "14.4px",
+      letterSpacing: 0,
+    },
+    button: {
+      fontWeight: 700,       // bold
+      fontSize: "20px",
+      lineHeight: "24px",
+      letterSpacing: 0,
+      textTransform: "none",
     },
   },
 
-  typography: {
-    // Utilise ta police : installe @fontsource-* puis importe-la (cf. étape 3)
-    fontFamily: `"InterVariable", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
-    h1: { fontWeight: 700, fontSize: "clamp(2rem, 1.2rem + 2vw, 3rem)", lineHeight: 1.1 },
-    h2: { fontWeight: 700, fontSize: "clamp(1.75rem, 1.15rem + 1.5vw, 2.375rem)", lineHeight: 1.15 },
-    h3: { fontWeight: 700, fontSize: "1.75rem" },
-    h4: { fontWeight: 700, fontSize: "1.375rem" },
-    h5: { fontWeight: 600, fontSize: "1.125rem" },
-    h6: { fontWeight: 600, fontSize: "1rem" },
-    body1: { fontSize: "1rem", lineHeight: 1.6 },
-    body2: { fontSize: "0.875rem", lineHeight: 1.55 },
-    button: { textTransform: "none", fontWeight: 600, letterSpacing: 0.2 },
-    caption: { color: "#667085" },
-  },
+  shape,
+  shadows,
 
-  shape, shadows,
-
-  // Hiérarchie zIndex pratique pour que le menu reste au-dessus de tes overlays
   zIndex: {
     appBar: 1200,
     drawer: 1100,
@@ -83,103 +109,111 @@ let theme = createTheme({
   },
 
   components: {
-    // Reset global + couleur de fond + scrollbars, etc.
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#0B1220",
+          color: "#FFFFFF",
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
         },
-        // Scrollbar (Chrome/Edge)
         "*::-webkit-scrollbar": { width: 10, height: 10 },
-        "*::-webkit-scrollbar-thumb": { borderRadius: 8, backgroundColor: "rgba(0,0,0,0.18)" },
+        "*::-webkit-scrollbar-thumb": {
+          borderRadius: 8,
+          backgroundColor: "rgba(255,255,255,0.18)",
+        },
       },
     },
 
-    // AppBar blanc par défaut, hauteur cohérente avec ton code (58px)
     MuiAppBar: {
-      defaultProps: { elevation: 0, color: "default" },
+      defaultProps: { elevation: 0, color: "transparent" },
       styleOverrides: {
         root: {
-          backgroundColor: "#FFFFFF",
-          color: "#0B1220",
-          borderBottom: "1px solid #EEF2F6",
+          backgroundColor: "rgba(13,18,32,0.72)",
+          backdropFilter: "saturate(120%) blur(8px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
           height: 58,
           justifyContent: "center",
         },
       },
     },
 
-    // Boutons : arrondis + hauteurs + variantes secondaires brandées
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { borderRadius: shape.borderRadius, fontWeight: 600 },
+        root: { borderRadius: shape.borderRadius },
         sizeLarge: { height: 48, paddingInline: 20 },
         sizeMedium: { height: 40, paddingInline: 18 },
-        sizeSmall: { height: 32, paddingInline: 14, fontWeight: 600 },
+        sizeSmall: { height: 32, paddingInline: 14 },
       },
       variants: [
         {
           props: { variant: "soft", color: "primary" },
           style: {
-            backgroundColor: "rgba(46,110,247,0.10)",
-            color: "#1E49B4",
-            "&:hover": { backgroundColor: "rgba(46,110,247,0.16)" },
+            backgroundColor: "rgba(90,139,255,0.16)",
+            color: "#DCE6FF",
+            "&:hover": { backgroundColor: "rgba(90,139,255,0.22)" },
           },
         },
         {
           props: { variant: "soft", color: "secondary" },
           style: {
-            backgroundColor: "rgba(247,92,46,0.10)",
-            color: "#B43F1E",
-            "&:hover": { backgroundColor: "rgba(247,92,46,0.16)" },
+            backgroundColor: "rgba(255,140,103,0.16)",
+            color: "#FFE1D5",
+            "&:hover": { backgroundColor: "rgba(255,140,103,0.22)" },
           },
         },
       ],
     },
 
-    // Cards plus “soft”
     MuiCard: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
         root: {
           borderRadius: shape.borderRadius,
           boxShadow: shadows[2],
-          border: "1px solid #EEF2F6",
+          backgroundColor: "#121826",
+          border: "1px solid rgba(255,255,255,0.06)",
         },
       },
     },
 
-    // Drawer / Modal pour être sous l’AppBar si besoin
     MuiDrawer: {
-      styleOverrides: { paper: { borderRadius: "16px 16px 0 0" } },
+      styleOverrides: { paper: { borderRadius: "16px 16px 0 0", backgroundColor: "#0F1523" } },
     },
 
-    // Inputs
-    MuiTextField: {
-      defaultProps: { variant: "outlined", size: "medium" },
-    },
     MuiOutlinedInput: {
       styleOverrides: {
-        root: { borderRadius: shape.borderRadius },
+        root: { borderRadius: shape.borderRadius, backgroundColor: "rgba(255,255,255,0.03)" },
         input: { paddingTop: 12, paddingBottom: 12 },
+        notchedOutline: { borderColor: "rgba(255,255,255,0.18)" },
       },
     },
+
     MuiChip: {
-      styleOverrides: { root: { borderRadius: 9999 } },
+      styleOverrides: {
+        root: {
+          borderRadius: 9999,
+          backgroundColor: "rgba(255,255,255,0.06)",
+        },
+      },
     },
+
+    // Avatar avec bordure blanche à l'extérieur (outline)
     MuiAvatar: {
-      styleOverrides: { root: { width: 40,
-                                 height: 40,
-                                 boxShadow: "0 0 0 2px #ffffff", // équivalent d'une bordure extérieure blanche
-                                } },
+      styleOverrides: {
+        root: {
+          width: 40,
+          height: 40,
+          outline: "2px solid #FFFFFF",
+          outlineOffset: "2px",
+          backgroundColor: "#1A2235",
+        },
+      },
     },
   },
 });
 
-// Ajuste la typo responsive automatiquement
 theme = responsiveFontSizes(theme);
 
 export default theme;
