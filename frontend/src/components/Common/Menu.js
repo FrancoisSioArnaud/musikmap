@@ -20,14 +20,21 @@ export default function MenuAppBar() {
     useContext(UserContext);
 
   return (
-    <AppBar position="fixed">
+    <AppBar
+      position="fixed"
+      sx={{
+        bgcolor: "rgba(0,0,0,0.3)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: "1px solid rgba(255,255,255,0.12)",
+      }}
+    >
       <Toolbar>
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography
             variant="h6"
             component="div"
             sx={{
-              backgroundImage: "linear-gradient(to right, #fa9500, #fa4000)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -101,6 +108,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
