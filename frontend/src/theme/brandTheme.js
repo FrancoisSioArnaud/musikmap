@@ -171,7 +171,8 @@ let theme = createTheme({
       styleOverrides: { root: { borderRadius: 9999 } },
     },
     MuiAvatar: {
-      boxShadow: "0 0 0 2px #ffffff", // équivalent d'une bordure extérieure blanche
+      outline: "2px solid #ffffff",
+      outlineOffset: "2px", // décale l’outline vers l’extérieur
       styleOverrides: { root: { width: 40, height: 40 } },
     },
   },
