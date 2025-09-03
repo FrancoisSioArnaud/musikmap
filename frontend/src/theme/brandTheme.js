@@ -3,8 +3,8 @@ import { createTheme, responsiveFontSizes } from "@mui/material/styles";
 
 // === Couleurs "brand" (adaptées pour un thème sombre constant) ===
 const brandColors = {
-  primary: { main: "#2E6EF7", light: "#5A8BFF", dark: "#1E49B4", contrastText: "#FFFFFF" },
-  secondary: { main: "#F75C2E", light: "#FF8C67", dark: "#B43F1E", contrastText: "#FFFFFF" },
+  primary: { main: "#FC7800", light: "#FF9738", dark: "#CC6100", contrastText: "#FFFFFF" },
+  secondary: { main: "#FC7800", light: "#FF9738", dark: "#CC6100", contrastText: "#FFFFFF" },
   success: { main: "#22C55E" },
   warning: { main: "#F59E0B" },
   error:   { main: "#EF4444" },
