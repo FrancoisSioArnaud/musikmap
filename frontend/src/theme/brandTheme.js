@@ -173,8 +173,7 @@ let theme = createTheme({
     MuiAvatar: {
       styleOverrides: { root: { width: 40,
                                  height: 40,
-                                 outline: "2px solid #ffffff",
-                                outlineOffset: "2px", // décale l’outline vers l’extérieur
+                                 boxShadow: "0 0 0 2px #ffffff", // équivalent d'une bordure extérieure blanche
                                 } },
     },
   },
