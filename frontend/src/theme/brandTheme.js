@@ -49,7 +49,7 @@ let theme = createTheme({
     },
     text: {
       primary: "#FFFFFF",
-      secondary: "#CBD5E1",
+      secondary: "#DADADA",
     },
     divider: "rgba(255,255,255,0.08)",
   },
@@ -113,7 +113,7 @@ let theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: "#0B1220",
+          backgroundColor: theme.palette.background.default,
           color: "#FFFFFF",
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
@@ -128,9 +128,10 @@ let theme = createTheme({
       defaultProps: { elevation: 0, color: "default" },
       styleOverrides: {
         root: {
-          backgroundColor: "#111827",
-          color: "#FFFFFF",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          bgcolor: "rgba(0,0,0,0.3)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(255,255,255,0.12)",
           height: 58,
           justifyContent: "center",
         },
