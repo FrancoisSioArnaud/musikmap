@@ -44,8 +44,8 @@ let theme = createTheme({
       900: "#E5E7EB",
     },
     background: {
-      default: "#0B1220",
-      paper: "#111827",
+      default: "black",
+      paper: "black",
     },
     text: {
       primary: "#FFFFFF",
