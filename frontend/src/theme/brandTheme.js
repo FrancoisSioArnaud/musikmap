@@ -56,52 +56,47 @@ let theme = createTheme({
 
   // === Typographie — Exo 2 + valeurs exactes demandées ===
   typography: {
-    // Assure-toi d’avoir importé la police, par ex. dans index.js :
-    // import "@fontsource/exo-2/300.css";
-    // import "@fontsource/exo-2/400.css";
-    // import "@fontsource/exo-2/600.css";
-    // import "@fontsource/exo-2/700.css";
-    // import "@fontsource/exo-2/900.css";
     fontFamily: `"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji"`,
-
+  
     h1: {
-      fontWeight: 900,        // black
-      fontSize: "40px",
-      lineHeight: "48px",
-      letterSpacing: "0",
+      fontWeight: 900,       // black
+      fontSize: "2.5rem",    // 40px
+      lineHeight: 1.2,
+      letterSpacing: 0,
     },
     h3: {
-      fontWeight: 700,        // bold
-      fontSize: "32px",
-      lineHeight: "38.4px",
-      letterSpacing: "0",
+      fontWeight: 700,       // bold
+      fontSize: "2rem",      // 32px
+      lineHeight: 1.2,
+      letterSpacing: 0,
     },
     h6: {
-      fontWeight: 600,        // semi-bold
-      fontSize: "16px",
-      lineHeight: "19.2px",
-      letterSpacing: "0",
+      fontWeight: 600,       // semi-bold
+      fontSize: "1rem",      // 16px
+      lineHeight: 1.2,
+      letterSpacing: 0,
     },
     body1: {
-      fontWeight: 400,        // regular
-      fontSize: "16px",
-      lineHeight: "19.2px",
-      letterSpacing: "0",
+      fontWeight: 400,       // regular
+      fontSize: "1rem",      // 16px
+      lineHeight: 1.2,
+      letterSpacing: 0,
     },
     body2: {
-      fontWeight: 300,        // light
-      fontSize: "12px",
-      lineHeight: "14.4px",
-      letterSpacing: "0",
+      fontWeight: 300,       // light
+      fontSize: "0.75rem",   // 12px
+      lineHeight: 1.2,
+      letterSpacing: 0,
     },
     button: {
-      fontWeight: 700,        // bold
-      fontSize: "20px",
-      lineHeight: "24px",
-      letterSpacing: "0",
+      fontWeight: 700,       // bold
+      fontSize: "1.25rem",   // 20px
+      lineHeight: 1.2,
+      letterSpacing: 0,
       textTransform: "none",
     },
   },
+
 
   shape,
   shadows,
