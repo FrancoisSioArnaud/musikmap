@@ -15,6 +15,8 @@ import Typography from "@mui/material/Typography";
 import Skeleton from "@mui/material/Skeleton";
 import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+
 import { UserContext } from "../UserContext";
 import { getCookie } from "../Security/TokensUtils";
 
@@ -457,6 +459,7 @@ export default function MusicBox() {
                 aria-describedby="open-box-desc"
                 fullWidth
                 disabled={metaLoading}
+                startIcon={<PlayArrowIcon />}
               >
                 Ouvrir la boîte
               </Button>
