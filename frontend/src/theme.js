@@ -119,6 +119,14 @@ const theme = createTheme({
             filter: "brightness(0.9)",
           },
         },
+        outlinedPrimary: {
+          backgroundColor: "#000000",
+          color: "#FFFFFF",
+          border : "2px solid rgba(255,255,255,0.3)
+          "&:active": {
+            filter: "brightness(0.9)",
+          },
+        },
       },
     },
   },
