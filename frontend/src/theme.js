@@ -44,7 +44,12 @@ const theme = createTheme({
       fontWeight: 600,
     },
 
-
+    // Thicktext : 16 bold
+    subtitle1: {
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      fontWeight: 700,
+    },
 
     // p : 16 regular
     body1: {
