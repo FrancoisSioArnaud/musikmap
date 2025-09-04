@@ -44,12 +44,7 @@ const theme = createTheme({
       fontWeight: 600,
     },
 
-    // Boutons : 20 bold
-    button: {
-      fontSize: "20px",
-      fontWeight: 700,
-      textTransform: "none",
-    },
+
 
     // p : 16 regular
     body1: {
@@ -112,6 +107,9 @@ const theme = createTheme({
           height: 48,
           borderRadius: 6,
           borderBottom: "4px solid #E2E2E2",
+          fontSize: "20px",
+          fontWeight: 700,
+          textTransform: "none",
         },
 
         containedPrimary: {
