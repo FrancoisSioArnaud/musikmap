@@ -29,10 +29,10 @@ export default function SongDisplay({
     <Box sx={{ display: "grid", gap: 2, pt:"64px" ,/* pas de padding root */ }}>
       {/* HERO simple */}
       <Box id="intro">
-        <Typography component="h1" variant="h1" sx={{ fontWeight: 700 }}>
+        <Typography component="h1" variant="h1">
           La dernière chanson déposée ici
         </Typography>
-        <Typography component="span" variant="subtitle2" sx={{ opacity: 0.8 }}>
+        <Typography component="span" variant="h5">
           (par un vrai humain.e)
         </Typography>
       </Box>
@@ -56,11 +56,7 @@ export default function SongDisplay({
           pb: 2,
         }}
       >
-        <Typography
-          component="h2"
-          variant="h6"
-          sx={{ fontWeight: 700, textAlign: "left", px: 2 /* padding X sur le titre uniquement */ }}
-        >
+        <Typography component="h2" variant="h3" >
           Pépites déposées plus tôt à révéler
         </Typography>
 
