@@ -106,7 +106,6 @@ const theme = createTheme({
           borderRadius : 6,
           height: 48,
           borderRadius: 6,
-          borderBottom: "4px solid #E2E2E2",
           fontSize: "20px",
           fontWeight: 700,
           textTransform: "none",
@@ -115,6 +114,7 @@ const theme = createTheme({
         containedPrimary: {
           backgroundColor: "#FFFFFF",
           color: "#000000",
+          borderBottom: "4px solid #E2E2E2",
           "&:active": {
             filter: "brightness(0.9)",
           },
