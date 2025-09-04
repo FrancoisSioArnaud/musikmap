@@ -147,7 +147,9 @@ export default function Deposit({
         <Card sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+              <Typography component="h3" variant="h6">              
+                {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+              </Typography>
             </Box>
           )}
 
@@ -239,7 +241,9 @@ export default function Deposit({
       <Card sx={cardBaseSx}>
         {showDate && (
           <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-            {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+            <Typography component="h3" variant="h6">              
+              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+            </Typography>
           </Box>
         )}
 
