@@ -37,14 +37,12 @@ export default function SongDisplay({
           flexDirection: "column",
           gap: 0.5,
           alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
           mt: "16px",
           mb: "16px",
           py: 2,
         }}
       >
-        <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+        <Typography component="h1" variant="h1" sx={{ fontWeight: 700 }}>
           La dernière chanson déposée ici
         </Typography>
         <Typography component="span" variant="subtitle2" sx={{ opacity: 0.8 }}>
