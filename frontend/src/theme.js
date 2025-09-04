@@ -5,7 +5,7 @@ const theme = createTheme({
   palette: {
     mode: "dark",
     // Couleurs principales : on met un "main" cohérent (milieu du gradient)
-    primary: { main: "#000000", contrastText: "#FFFFFF" },
+    primary: { main: "#FFFFFF", contrastText: "#000000" },
     background: { default: "#000000", paper: "#000000" },
     text: { primary: "#FFFFFF", secondary: "rgba(255,255,255,0.7)" },
     error: { main: "#FB0000" },
@@ -118,12 +118,18 @@ const theme = createTheme({
           "&:active": {
             filter: "brightness(0.9)",
           },
+          "&:hover": {
+            filter: "brightness(0.9)",
+          },
         },
         outlinedPrimary: {
           backgroundColor: "#000000",
           color: "#FFFFFF",
           border : "2px solid rgba(255,255,255,0.3)",
           "&:active": {
+            filter: "brightness(0.9)",
+          },
+          "&:hover": {
             filter: "brightness(0.9)",
           },
         },
