@@ -118,9 +118,8 @@ const theme = createTheme({
 
         // Bouton primaire "contained" → gradient
         containedPrimary: {
-          backgroundImage:
-            "linear-gradient(90deg, #FF9900 0%, #FF6900 50%, #FF3D00 100%)",
-          color: "#111111",
+          backgroundColor: "#FFFFFF",
+          color: "#000000",
           // On évite que :hover remplace le background par la couleur principale
           "&:hover": {
             backgroundImage:
