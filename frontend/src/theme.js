@@ -17,6 +17,8 @@ const theme = createTheme({
 
   typography: {
     fontFamily: '"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+    textAlign: "Left",
+
 
     // h1 : 40px (spec "h1: 40px black"). ATTENTION : couleur noire sur fond noir.
     // On garde la taille/hauteur ici. Pour la couleur noire (#000), applique-la
