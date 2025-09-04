@@ -30,20 +30,18 @@ export default function EnableLocation({ setStage, boxInfo, className }) {
           variant="outlined"
           color="secondary"
           disabled
-          sx={{ mb: 2 }}
         >
           {boxInfo.box.name}
         </Button>
 
         {/* Titre */}
-        <Typography variant="h1" component="h1" gutterBottom>
-          Autoriser la localisation
+        <Typography variant="h3" component="h2">
+          Localisation
         </Typography>
 
         {/* Texte d’explication */}
-        <Typography variant="body1" sx={{ mb: 3 }}>
-          Confirme que tu es bien à côté du spot en partageant ta localisation.
-          Ta localisation est uniquement utilisée pour ouvrir la boîte.
+        <Typography variant="body1">
+          Pour éviter les tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.
         </Typography>
 
         {/* Bouton principal */}
@@ -52,10 +50,14 @@ export default function EnableLocation({ setStage, boxInfo, className }) {
           color="primary"
           onClick={handleButtonClick}
           disabled={loading}
-          sx={{ width: "100%", mb: 2 }}
+          sx={{ width: "100%"}}
         >
           {loading ? "Vérification..." : "Autoriser"}
         </Button>
+
+        <Typography variant="body2">
+          Ta localisation est utilisée uniquement sur la page de la boîte.
+        </Typography>
 
         {/* Loader */}
         {loading && (
@@ -67,3 +69,4 @@ export default function EnableLocation({ setStage, boxInfo, className }) {
     </Box>
   );
 }
+
