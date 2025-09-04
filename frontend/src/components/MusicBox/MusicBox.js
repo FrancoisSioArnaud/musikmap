@@ -457,7 +457,6 @@ export default function MusicBox() {
                 aria-describedby="open-box-desc"
                 fullWidth
                 disabled={metaLoading}
-                startIcon={<PlayArrowIcon />}
               >
                 Ouvrir la boîte
               </Button>
@@ -527,6 +526,5 @@ export default function MusicBox() {
     </Box>
   );
 }
-
 
 
