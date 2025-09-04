@@ -20,13 +20,11 @@ const theme = createTheme({
     textAlign: "Left",
 
 
-    // h1 : 40px (spec "h1: 40px black"). ATTENTION : couleur noire sur fond noir.
-    // On garde la taille/hauteur ici. Pour la couleur noire (#000), applique-la
-    // dans les composants posés sur surface claire (sinon invisible en dark).
+    // h1 : 40px black
     h1: {
       fontSize: "40px",
       lineHeight: "48px",
-      fontWeight: 400,
+      fontWeight: 900,
       // color: "#000000", // <- à activer SEULEMENT pour des surfaces claires
     },
 
