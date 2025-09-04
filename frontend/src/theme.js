@@ -85,6 +85,7 @@ const theme = createTheme({
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
           boxShadow: "none",
+          height: "56px",
         },
       },
     },
