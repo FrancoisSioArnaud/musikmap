@@ -36,10 +36,10 @@ export default function SongDisplay({
           display: "flex",
           flexDirection: "column",
           gap: 0.5,
-          alignItems: "center",
+          alignItems: "left",
           mt: "16px",
           mb: "16px",
-          py: 2,
+          p: 2,
         }}
       >
         <Typography component="h1" variant="h1" sx={{ fontWeight: 700 }}>
