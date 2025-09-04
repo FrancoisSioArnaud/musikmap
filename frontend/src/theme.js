@@ -108,24 +108,12 @@ const theme = createTheme({
         root: {
           height: 48,
           borderRadius: 6,
-          // Ombre demandée : 0 16px 14px 0 black 12%
-          // (sur dark UI, les ombres se voient moins, mais on respecte la spec)
-          boxShadow: "0px 16px 14px 0 rgba(0,0,0,0.12)",
-          // Bord inférieur 4px solide #E2E2E2
           borderBottom: "4px solid #E2E2E2",
-          // width: "auto" (= "hug") par défaut, donc rien à faire
         },
 
-        // Bouton primaire "contained" → gradient
         containedPrimary: {
           backgroundColor: "#FFFFFF",
           color: "#000000",
-          // On évite que :hover remplace le background par la couleur principale
-          "&:hover": {
-            backgroundImage:
-              "linear-gradient(90deg, #FF9900 0%, #FF6900 50%, #FF3D00 100%)",
-            filter: "brightness(0.95)",
-          },
           "&:active": {
             filter: "brightness(0.9)",
           },
