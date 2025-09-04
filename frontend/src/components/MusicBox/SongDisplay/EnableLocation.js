@@ -1,7 +1,7 @@
 // frontend/src/components/MusicBox/SongDisplay/EnableLocation.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import CircularProgress from "@mui/material/CircularProgress";
+import { Box, Button, Typography, CircularProgress } from "@mui/material";
 import { checkLocation } from "../BoxUtils";
 
 export default function EnableLocation({ setStage, boxInfo, className }) {
@@ -23,34 +23,47 @@ export default function EnableLocation({ setStage, boxInfo, className }) {
   if (!boxInfo || !boxInfo.box) return null;
 
   return (
-    <div className={className}>
-      <div className="enable-location__wrapper">
-        <button className="btn-secondary" type="button" disabled>
-          <span>{boxInfo.box.name}</span>
-        </button>
+    <Box className={className}>
+      <Box className="enable-location__wrapper">
+        {/* Bouton affichant le nom du spot (désactivé) */}
+        <Button
+          variant="outlined"
+          color="secondary"
+          disabled
+          sx={{ mb: 2 }}
+        >
+          {boxInfo.box.name}
+        </Button>
 
-        <h1>Autoriser la localisation</h1>
+        {/* Titre */}
+        <Typography variant="h1" component="h1" gutterBottom>
+          Autoriser la localisation
+        </Typography>
 
-        <p>
+        {/* Texte d’explication */}
+        <Typography variant="body1" sx={{ mb: 3 }}>
           Confirme que tu es bien à côté du spot en partageant ta localisation.
           Ta localisation est uniquement utilisée pour ouvrir la boîte.
-        </p>
+        </Typography>
 
-        <button
-          className="btn-primary"
-          type="button"
+        {/* Bouton principal */}
+        <Button
+          variant="contained"
+          color="primary"
           onClick={handleButtonClick}
           disabled={loading}
+          sx={{ width: "100%", mb: 2 }}
         >
-          <span>{loading ? "Vérification..." : "Autoriser"}</span>
-        </button>
+          {loading ? "Vérification..." : "Autoriser"}
+        </Button>
 
+        {/* Loader */}
         {loading && (
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+          <Box display="flex" justifyContent="center" mt={1.5}>
             <CircularProgress size={22} />
-          </div>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
