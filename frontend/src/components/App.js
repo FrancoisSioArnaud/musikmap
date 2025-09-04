@@ -92,12 +92,13 @@ export default function App() {
           </Routes>
         </UserContext.Provider>
       </Router>
-    <ThemeProvider>
+    </ThemeProvider>
   );
 }
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
