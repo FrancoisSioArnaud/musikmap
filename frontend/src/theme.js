@@ -5,7 +5,7 @@ const theme = createTheme({
   palette: {
     mode: "dark",
     // Couleurs principales : on met un "main" cohérent (milieu du gradient)
-    primary: { main: "#FF6900", contrastText: "#111111" },
+    primary: { main: "#000000", contrastText: "#FFFFFF" },
     background: { default: "#000000", paper: "#000000" },
     text: { primary: "#FFFFFF", secondary: "rgba(255,255,255,0.7)" },
     error: { main: "#FB0000" },
