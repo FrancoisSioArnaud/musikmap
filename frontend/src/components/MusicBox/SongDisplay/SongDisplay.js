@@ -28,20 +28,7 @@ export default function SongDisplay({
   return (
     <Box sx={{ display: "grid", gap: 2, pt:"64px" ,/* pas de padding root */ }}>
       {/* HERO simple */}
-      <Box
-        id="intro"
-        sx={{
-          width: "100%",
-          borderRadius: 2,
-          display: "flex",
-          flexDirection: "column",
-          gap: 0.5,
-          alignItems: "left",
-          mt: "16px",
-          mb: "16px",
-          p: 2,
-        }}
-      >
+      <Box id="intro">
         <Typography component="h1" variant="h1" sx={{ fontWeight: 700 }}>
           La dernière chanson déposée ici
         </Typography>
