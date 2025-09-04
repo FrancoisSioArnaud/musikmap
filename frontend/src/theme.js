@@ -13,7 +13,7 @@ const theme = createTheme({
     divider: "rgba(255,255,255,0.12)",
   },
 
-  shape: { borderRadius: 6 },
+  shape: { borderRadius: 0 },
 
   typography: {
     fontFamily: '"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
@@ -106,6 +106,7 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
+          borderRadius : 6,
           height: 48,
           borderRadius: 6,
           borderBottom: "4px solid #E2E2E2",
