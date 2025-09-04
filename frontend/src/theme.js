@@ -1,0 +1,123 @@
+// src/theme.js
+import { createTheme } from "@mui/material/styles";
+
+const theme = createTheme({
+  palette: {
+    mode: "dark",
+    // Couleurs principales : on met un "main" cohérent (milieu du gradient)
+    primary: { main: "#FF6900", contrastText: "#111111" },
+    background: { default: "#000000", paper: "#000000" },
+    text: { primary: "#FFFFFF", secondary: "rgba(255,255,255,0.7)" },
+    error: { main: "#FB0000" },
+    success: { main: "#0FCC0A" }, // (= validation)
+    divider: "rgba(255,255,255,0.12)",
+  },
+
+  shape: { borderRadius: 6 },
+
+  typography: {
+    fontFamily: 'Exo 2, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+
+    // h1 : 40px (spec "h1: 40px black"). ATTENTION : couleur noire sur fond noir.
+    // On garde la taille/hauteur ici. Pour la couleur noire (#000), applique-la
+    // dans les composants posés sur surface claire (sinon invisible en dark).
+    h1: {
+      fontSize: "40px",
+      lineHeight: "48px",
+      fontWeight: 400,
+      // color: "#000000", // <- à activer SEULEMENT pour des surfaces claires
+    },
+
+    // h3 : 32 bold
+    h3: {
+      fontSize: "32px",
+      lineHeight: "38.4px",
+      fontWeight: 700,
+    },
+
+    // h5 : 16 semi-bold
+    h5: {
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      fontWeight: 600,
+    },
+
+    // Boutons : 20 bold
+    button: {
+      fontSize: "20px",
+      fontWeight: 700,
+      textTransform: "none",
+    },
+
+    // p : 16 regular
+    body1: {
+      fontSize: "16px",
+      lineHeight: "19.2px",
+      fontWeight: 400,
+    },
+
+    // small text : 12 light
+    body2: {
+      fontSize: "12px",
+      lineHeight: "14.4px",
+      fontWeight: 300,
+    },
+  },
+
+  components: {
+    // Forcer fond / texte globaux propres au dark "noir/blanc"
+    MuiCssBaseline: {
+      styleOverrides: {
+        "html, body, #root": {
+          backgroundColor: "#000000",
+          color: "#FFFFFF",
+          minHeight: "100%",
+        },
+      },
+    },
+
+    // AppBar (menuAppBar)
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "rgba(0,0,0,0.30)", // black 30%
+          borderBottom: "1px solid rgba(255,255,255,0.12)", // white 12%
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          boxShadow: "none",
+        },
+      },
+    },
+
+    // Avatar
+    MuiAvatar: {
+      styleOverrides: {
+        root: {
+          border: "2px solid #FFFFFF",
+        },
+      },
+    },
+
+    // Boutons
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true, // on gère l’ombre manuellement
+      },
+      styleOverrides: {
+        root: {
+          height: 48,
+          borderRadius: 6,
+          // Ombre demandée : 0 16px 14px 0 black 12%
+          // (sur dark UI, les ombres se voient moins, mais on respecte la spec)
+          boxShadow: "0px 16px 14px 0 rgba(0,0,0,0.12)",
+          // Bord inférieur 4px solide #E2E2E2
+          borderBottom: "4px solid #E2E2E2",
+          // width: "auto" (= "hug") par défaut, donc rien à faire
+        },
+
+        // Bouton primaire "contained" → gradient
+        containedPrimary: {
+          backgroundImage:
+            "linear-gradient(90deg, #FF9900 0%, #FF6900 50%, #FF3D00 100%)",
+          color: "#111111",
+          // On évite que :ho
