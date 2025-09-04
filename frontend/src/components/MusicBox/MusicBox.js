@@ -429,21 +429,21 @@ export default function MusicBox() {
       >
         {/* Contenu poussé en bas */}
         <Box sx={{ mt: "auto" }}>
-          <Box sx={{ display: "grid", gap: 2, maxWidth: 960, mx: "auto", textAlign: "center" }}>
+          <Box sx={{ display: "grid"}}>
             {/* Count au-dessus du titre */}
             {metaLoading ? (
-              <Skeleton variant="text" width={180} height={24} sx={{ mx: "auto" }} />
+              <Skeleton variant="text" width={180} height={24} />
             ) : (
-              <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>
+              <Typography variant="subtitle1">
                 {depositCount} Dépôts
               </Typography>
             )}
 
             {/* Titre H1 */}
             {metaLoading ? (
-              <Skeleton variant="text" width={260} height={40} sx={{ mx: "auto" }} />
+              <Skeleton variant="text" width={260} height={40} />
             ) : (
-              <Typography component="h1" variant="h1" sx={{ fontWeight: 700 }}>
+              <Typography component="h1" variant="h1">
                 {boxTitle}
               </Typography>
             )}
@@ -457,9 +457,8 @@ export default function MusicBox() {
                 aria-describedby="open-box-desc"
                 fullWidth
                 disabled={metaLoading}
-                sx={{ py: 1.25 }}
               >
-                ⬇︎ Ouvrir la boîte ⬇︎
+                Ouvrir la boîte
               </Button>
             </Box>
           </Box>
@@ -527,4 +526,5 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
