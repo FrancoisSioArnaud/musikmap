@@ -17,12 +17,7 @@ import SuccessfulLogout from "./SuccessfulLogout";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
-import "@fontsource/exo-2/200.css";
-import "@fontsource/exo-2/300.css";
-import "@fontsource/exo-2/400.css";
-import "@fontsource/exo-2/500.css";
-import "@fontsource/exo-2/600.css";
-import "@fontsource/exo-2/700.css";
+
 
 import {
   BrowserRouter as Router,
@@ -104,6 +99,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
