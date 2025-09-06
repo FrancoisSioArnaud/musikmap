@@ -29,16 +29,7 @@ export default function SongDisplay({
 
   return (
     <Box sx={{ display: "grid", gap: 2, pt: "64px" }}>
-      {/* HERO simple */}
-      <Box id="intro">
-        <Typography component="h1" variant="h1">
-          La dernière chanson déposée ici
-        </Typography>
-        <Typography component="span" variant="h5">
-          (par un vrai humain.e)
-        </Typography>
-      </Box>
-
+      
       {/* SECTION — MAIN */}
       <MainDeposit
         dep0={dep0}
