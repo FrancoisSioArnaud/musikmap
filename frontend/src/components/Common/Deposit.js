@@ -11,6 +11,8 @@ import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
@@ -141,15 +143,37 @@ export default function Deposit({
         <Card sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              <Typography component="h3" variant="h6">
-                {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+              <Typography component="h3" variant="subtitle1">
+                {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
           )}
 
+        {showUser && (
+          <Box
+            id="deposit_user"
+            sx={{
+              display: "flex",
+              minWidth: 0,
+            }}
+            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+          >
+            <Avatar
+              src={u?.profile_pic_url || undefined}
+              alt={u?.username || "Anonyme"}
+            />
+            <Typography variant="subtitle1">
+              {u?.username || "Anonyme"}
+            </Typography>
+            {u?.username && (
+              <ArrowForwardIosIcon fontSize="small" />
+            )}
+          </Box>
+        )}
+
           {/* song (cover pleine largeur, titres si révélé) */}
-          <Box id="deposit_song" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
-            <Box sx={{ width: "100%", maxWidth: "100%", borderRadius: 1, overflow: "hidden" }}>
+          <Box id="deposit_song" sx={{ display: "grid", minWidth: 0 }}>
+            <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
               {s?.img_url && (
                 <Box
                   component="img"
@@ -169,19 +193,18 @@ export default function Deposit({
             <Box
               sx={{
                 display: "flex",
-                alignItems: "center",
                 justifyContent: "space-between",
-                gap: 2,
+                gap: 0,
                 minWidth: 0,
               }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
-                    <Typography component="h1" variant="h5" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                    <Typography component="h1" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography component="h2" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                    <Typography component="h2" variant="body">
                       {s.artist}
                     </Typography>
                   </>
@@ -192,35 +215,12 @@ export default function Deposit({
                 size="large"
                 onClick={() => (isRevealed ? openPlayFor(s) : null)}
                 disabled={!isRevealed}
+                startIcon={<PlayArrowIcon />}
               >
                 Play
               </Button>
             </Box>
           </Box>
-
-          {showUser && (
-            <Box
-              id="deposit_user"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mt: 2,
-                cursor: u?.username ? "pointer" : "default",
-                minWidth: 0,
-              }}
-              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-            >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
-                sx={{ width: 40, height: 40, flex: "0 0 auto" }}
-              />
-              <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {u?.username || "Anonyme"}
-              </Typography>
-            </Box>
-          )}
         </Card>
 
         {/* PlayModal (toujours local) */}
