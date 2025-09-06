@@ -10,19 +10,13 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import Deposit from "../../Common/Deposit";
 import LiveSearch from "./LiveSearch";
-import AchievementModal from "./AchievementModal";
 import { getCookie } from "../../Security/TokensUtils";
 
 /**
  * MainDeposit : section principale
- *  - Affiche le dépôt idx 0 (ou myDeposit après dépôt) dans un encart pointillé qui entoure
- *    UNIQUEMENT la card <Deposit variant="main" /> (pas le reste).
- *  - Avant dépôt : titre + bouton full-width sous l’encart pointillé.
- *  - Après dépôt : bloc succès + ex-main rendu en <Deposit variant="list" fitContainer /> sous l’encart.
- *
- * Props :
- * - dep0: objet dépôt à l'index 0 (ou null)
- * - user, boxName, isSpotifyAuthenticated, isDeezerAuthenticated
+ *  - Encart pointillé qui entoure uniquement <Deposit variant="main" />.
+ *  - Drawer unique côté droit : LiveSearch puis (après succès) Achievements (swap de contenu).
+ *  - older_deposits est en arrière-plan (vertical full-width) et reste visible derrière le drawer.
  */
 export default function MainDeposit({
   dep0,
@@ -31,24 +25,22 @@ export default function MainDeposit({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
 }) {
-  // Dépôt tout juste ajouté (non injecté dans dispDeposits parent, scope local)
   const [myDeposit, setMyDeposit] = useState(null);
 
-  // Drawer LiveSearch
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Drawer unique
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerView, setDrawerView] = useState("search"); // "search" | "achievements"
 
-  // Succès / points (pour Achievements)
+  // Succès / points pour achievements
   const [successes, setSuccesses] = useState([]);
-  const [isAchOpen, setIsAchOpen] = useState(false);
 
-  // Points total affiché dans le bouton "Voir mes points"
   const totalPoints = useMemo(() => {
     const arr = Array.isArray(successes) ? successes : [];
     const byName = (name) => arr.find((s) => (s?.name || "").toLowerCase() === name);
-    return byName("total")?.points ?? 0;
+    return byName("total")?.points ?? byName("points_total")?.points ?? 0;
   }, [successes]);
 
-  // ---- Enregistrement "main" (découverte de la #0) déplacé ici ----
+  // Enregistrement "main" (découverte #0) ici
   useEffect(() => {
     if (!dep0 || !dep0.deposit_id) return;
     if (!user || !user.username) return;
@@ -60,23 +52,33 @@ export default function MainDeposit({
       credentials: "same-origin",
       body: JSON.stringify({ deposit_id: dep0.deposit_id, discovered_type: "main" }),
     }).catch(() => {
-      // silencieux, tolère le 400 "déjà découvert"
+      // best-effort, silencieux
     });
   }, [dep0?.deposit_id, user?.username]);
 
-  // ---- Drawer handlers ----
+  // Ouvrir/fermer drawer
   const openSearch = () => {
-    if (myDeposit) return; // un seul dépôt possible par session d'affichage
-    setIsSearchOpen(true);
+    if (myDeposit) return; // un seul dépôt par session d’affichage
+    setDrawerView("search");
+    setIsDrawerOpen(true);
   };
-  const closeSearch = () => setIsSearchOpen(false);
+  const closeDrawer = () => setIsDrawerOpen(false);
 
-  // ---- Après POST réussi (LiveSearch) ----
+  // Après POST réussi (LiveSearch)
   const handleDepositSuccess = (addedDeposit, succ) => {
     setMyDeposit(addedDeposit || null);
     setSuccesses(Array.isArray(succ) ? succ : []);
-    setIsSearchOpen(false); // ferme le drawer
-    setIsAchOpen(true);     // ouvre l’overlay achievements
+    setDrawerView("achievements"); // swap contenu dans le même drawer
+    setIsDrawerOpen(true); // s’assure qu’il reste ouvert
+  };
+
+  const handleBackToBox = () => {
+    // ferme le drawer PUIS scroll au haut de older_deposits
+    setIsDrawerOpen(false);
+    requestAnimationFrame(() => {
+      const el = document.getElementById("older_deposits");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const hasMyDeposit = Boolean(myDeposit);
@@ -84,7 +86,7 @@ export default function MainDeposit({
   return (
     <>
       <Box sx={{ px: 2, display: "grid", gap: 2 }}>
-        {/* 1) Encart pointillé entourant UNIQUEMENT la card Deposit main */}
+        {/* 1) Encart pointillé (uniquement la card main) */}
         <Box
           sx={{
             border: "2px dashed #cbd5e1",
@@ -102,7 +104,7 @@ export default function MainDeposit({
           />
         </Box>
 
-        {/* 2) Avant dépôt : titre + bouton full-width (en dehors du pointillé) */}
+        {/* 2) Avant dépôt : CTA pleine largeur */}
         {!hasMyDeposit && (
           <Box sx={{ display: "grid", gap: 1 }}>
             <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
@@ -120,7 +122,7 @@ export default function MainDeposit({
           </Box>
         )}
 
-        {/* 3) Après dépôt : bloc succès + ex-main (en dehors du pointillé) */}
+        {/* 3) Après dépôt : bloc succès + ex-main (list, full) */}
         {hasMyDeposit && (
           <Box sx={{ display: "grid", gap: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -145,14 +147,14 @@ export default function MainDeposit({
 
               <Button
                 variant="contained"
-                onClick={() => setIsAchOpen(true)}
+                onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
                 aria-label="Voir mes points"
               >
                 Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
               </Button>
             </Box>
 
-            {/* Ancien main affiché juste sous le bloc succès, en carte "list" plein conteneur */}
+            {/* Ancien main affiché juste sous le bloc succès */}
             {dep0 && (
               <Deposit
                 dep={dep0}
@@ -168,39 +170,101 @@ export default function MainDeposit({
         )}
       </Box>
 
-      {/* Drawer — LiveSearch */}
+      {/* Drawer unique — Search <-> Achievements */}
       <Drawer
         anchor="right"
-        open={isSearchOpen}
+        open={isDrawerOpen}
         onClose={() => {}} // pas de fermeture backdrop/ESC
-        ModalProps={{ keepMounted: true, disableRestoreFocus: true }}
-        PaperProps={{ sx: { width: "100vw" } }}
+        ModalProps={{
+          keepMounted: true,
+          // Scroll du fond bloqué par défaut (ne pas mettre disableScrollLock: true)
+        }}
+        PaperProps={{ sx: { width: "100vw", maxWidth: 560 } }}
       >
-        <Box sx={{ p: 2, display: "grid", gap: 2 }}>
+        <Box sx={{ p: 2, display: "grid", gap: 2, height: "100%", boxSizing: "border-box" }}>
+          {/* Header Drawer */}
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <IconButton aria-label="Fermer" onClick={closeSearch}>
+            <IconButton aria-label="Fermer" onClick={closeDrawer}>
               <CloseIcon />
             </IconButton>
           </Box>
 
-          <LiveSearch
-            isSpotifyAuthenticated={isSpotifyAuthenticated}
-            isDeezerAuthenticated={isDeezerAuthenticated}
-            boxName={boxName}
-            user={user}
-            onDepositSuccess={handleDepositSuccess}
-            onClose={closeSearch}
-          />
+          {/* Contenu Drawer */}
+          {drawerView === "search" ? (
+            <LiveSearch
+              isSpotifyAuthenticated={isSpotifyAuthenticated}
+              isDeezerAuthenticated={isDeezerAuthenticated}
+              boxName={boxName}
+              user={user}
+              onDepositSuccess={handleDepositSuccess}
+              onClose={closeDrawer}
+            />
+          ) : (
+            <AchievementsPanel
+              successes={Array.isArray(successes) ? successes : []}
+              onPrimaryCta={handleBackToBox}
+            />
+          )}
         </Box>
       </Drawer>
-
-      {/* Overlay Succès / Points */}
-      <AchievementModal
-        open={isAchOpen}
-        successes={Array.isArray(successes) ? successes : []}
-        onClose={() => setIsAchOpen(false)}
-        primaryCtaLabel="Revenir à la boîte"
-      />
     </>
+  );
+}
+
+/* Contenu Achievements dans le drawer (swap avec LiveSearch) */
+function AchievementsPanel({ successes = [], onPrimaryCta }) {
+  const totalPoints =
+    successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
+    successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
+    0;
+
+  const items = successes.filter((s) => {
+    const n = (s?.name || "").toLowerCase();
+    return n !== "total" && n !== "points_total";
+  });
+
+  return (
+    <Box sx={{ display: "grid", gap: 2 }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, textAlign: "center" }}>
+        Bravo !
+      </Typography>
+
+      <Box sx={{ textAlign: "center", mt: 1 }}>
+        <Typography variant="overline" sx={{ opacity: 0.7 }}>
+          Points gagnés
+        </Typography>
+        <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
+          {totalPoints}
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: "grid", gap: 1 }}>
+        {items.length === 0 ? (
+          <Typography variant="body2" sx={{ opacity: 0.8, textAlign: "center" }}>
+            Aucun succès détaillé
+          </Typography>
+        ) : (
+          items.map((ach, idx) => (
+            <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1, borderBottom: "1px solid", borderColor: "divider" }}>
+              <Box sx={{ pr: 2, minWidth: 0 }}>
+                <Typography variant="subtitle2" noWrap title={ach.name}>{ach.name}</Typography>
+                {ach.desc ? (
+                  <Typography variant="caption" sx={{ opacity: 0.8 }} noWrap title={ach.desc}>
+                    {ach.desc}
+                  </Typography>
+                ) : null}
+              </Box>
+              <Typography variant="body2">+{ach.points}</Typography>
+            </Box>
+          ))
+        )}
+      </Box>
+
+      <Box sx={{ mt: 1 }}>
+        <Button fullWidth variant="contained" onClick={onPrimaryCta}>
+          Revenir à la boîte
+        </Button>
+      </Box>
+    </Box>
   );
 }
