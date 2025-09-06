@@ -26,7 +26,7 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box sx={{ display: "grid", gap: 2, pt:"64px" ,/* pas de padding root */ }}>
+    <Box sx={{ display: "grid", gap: 2, pt: "64px" }}>
       {/* HERO simple */}
       <Box id="intro">
         <Typography component="h1" variant="h1">
@@ -37,7 +37,7 @@ export default function SongDisplay({
         </Typography>
       </Box>
 
-      {/* SECTION — MAIN (encart pointillé avec le main, bouton déposer, et état post-dépôt) */}
+      {/* SECTION — MAIN */}
       <MainDeposit
         dep0={dep0}
         user={user}
@@ -46,34 +46,25 @@ export default function SongDisplay({
         isDeezerAuthenticated={isDeezerAuthenticated}
       />
 
-      {/* SECTION — OLDER DEPOSITS (idx > 0) — utilise <Deposit variant="list" /> */}
+      {/* SECTION — OLDER DEPOSITS (vertical full-width) */}
       <Box
         id="older_deposits"
         sx={{
           mt: "32px",
           display: "grid",
-          gap: 0,
+          gap: 2,
           pb: 2,
         }}
       >
-        <Typography component="h2" variant="h3" >
+        <Typography component="h2" variant="h3">
           Pépites déposées plus tôt à révéler
         </Typography>
 
-        {/* Scroller horizontal */}
         <Box
-          id="older_deposits_scroller"
-          aria-label="Liste horizontale des dépôts plus anciens"
+          id="older_deposits_list"
           sx={{
-            display: "flex",
-            gap: "12px",
-            overflowX: "auto",
-            overflowY: "hidden",
-            p: 2,
-            // cacher la scrollbar (WebKit/Firefox/Edge/IE)
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            "&::-webkit-scrollbar": { display: "none" },
+            display: "grid",
+            gap: 2,
           }}
         >
           {deposits.slice(1).map((dep, idx) => (
@@ -86,7 +77,7 @@ export default function SongDisplay({
               variant="list"
               showDate={true}
               showUser={true}
-              fitContainer={false}
+              fitContainer={true} // toujours pleine largeur (Deposit est full-width)
             />
           ))}
         </Box>
