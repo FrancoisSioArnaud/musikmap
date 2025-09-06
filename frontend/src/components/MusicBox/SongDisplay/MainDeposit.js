@@ -92,7 +92,7 @@ export default function MainDeposit({
   return (
     <>
 
-      <Box class="intro">
+      <Box className="intro">
         <Typography component="h1" variant="h1">
           Bonne écoute !
         </Typography>
@@ -258,13 +258,13 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
 
   return (
     <Box sx={{ display: "grid", gap: 1 }}>
-      <Box class="intro">
+      <Box className="intro">
         <CheckIcon color="success" />
         <Typography variant="h1">
           Pépite Déposé
         </Typography>
   
-        <Typography class="points" variant="h4">
+        <Typography className="points" variant="h4">
           +{totalPoints}
         </Typography>
       </Box>
