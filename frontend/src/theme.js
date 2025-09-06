@@ -72,14 +72,15 @@ const theme = createTheme({
       styleOverrides: {
         "html, body, #root": {
           minHeight: "100%",
-        },
-        body: {
           backgroundColor: "#000000",
           color: "#FFFFFF", // ← tous les textes par défaut en blanc
         },
+        body: {
+         
+        },
         // Optionnel : liens en blanc par défaut (sinon ils héritent déjà du body)
         a: {
-          color: "#FFFFFF",
+          
         },
       },
     },
