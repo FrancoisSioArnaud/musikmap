@@ -1,15 +1,12 @@
-// Présentationnel : Dialog "Autoriser la localisation"
+// Bottom Sheet "Autoriser la localisation" (full width, fixed bottom)
 import React from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Box,
   Button,
   Typography,
   CircularProgress,
   Stack,
+  Drawer,
 } from "@mui/material";
 
 export default function EnableLocation({
@@ -21,18 +18,31 @@ export default function EnableLocation({
   onClose,
 }) {
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle sx={{ textAlign: "center" }}>
-        <Typography variant="h5" component="h2" sx={{ fontWeight: 700 }}>
-          Autoriser la localisation
-        </Typography>
-      </DialogTitle>
-
-      <DialogContent>
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: "center", pt: 1 }}>
+    <Drawer
+      anchor="bottom"
+      open={open}
+      onClose={onClose}
+      ModalProps={{
+        keepMounted: true,
+      }}
+      PaperProps={{
+        sx: {
+          width: "100vw",
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          pb: "env(safe-area-inset-bottom)",
+        },
+      }}
+    >
+      <Box sx={{ p: 2 }}>
+        <Stack spacing={2} alignItems="center" sx={{ textAlign: "center" }}>
           <Button variant="outlined" disabled>
             {boxTitle}
           </Button>
+
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 700 }}>
+            Autoriser la localisation
+          </Typography>
 
           <Typography variant="body1">
             Confirme que tu es bien à côté du spot en partageant ta localisation.
@@ -44,20 +54,17 @@ export default function EnableLocation({
               {error}
             </Typography>
           ) : null}
-        </Stack>
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Box sx={{ width: "100%" }}>
           <Button
             variant="contained"
             color="primary"
             onClick={onAuthorize}
             disabled={loading}
             fullWidth
+            sx={{ mt: 1 }}
           >
             {loading ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
                 <CircularProgress size={18} />
                 Vérification...
               </Box>
@@ -65,8 +72,8 @@ export default function EnableLocation({
               "Autoriser"
             )}
           </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
+        </Stack>
+      </Box>
+    </Drawer>
   );
 }
