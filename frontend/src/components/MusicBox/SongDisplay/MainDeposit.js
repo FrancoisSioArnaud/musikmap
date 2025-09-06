@@ -284,8 +284,8 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
       </List>
 
       <Box sx={{ mt: 1 }}>
-        <Button fullWidth variant="contained" onClick={onClose}>
-          {primaryCtaLabel}
+        <Button fullWidth variant="contained" onClick={onPrimaryCta}>
+          Retour à la boîte
         </Button>
       </Box>
     </Box>
