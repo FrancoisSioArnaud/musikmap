@@ -234,9 +234,9 @@ export default function Deposit({
     <>
       <Card sx={cardBaseSx}>
         {showDate && (
-          <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-            <Typography component="h3" variant="h6">
-              {"Pépite déposée " + (dep?.deposit_date || "") + "."}
+          <Box id="deposit_date">
+            <Typography component="h3" variant="subtitle1">
+              {"Déposée " + (dep?.deposit_date || "")}
             </Typography>
           </Box>
         )}
@@ -246,10 +246,6 @@ export default function Deposit({
             id="deposit_user"
             sx={{
               display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mb: 2,
-              cursor: u?.username ? "pointer" : "default",
               minWidth: 0,
             }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
@@ -257,11 +253,13 @@ export default function Deposit({
             <Avatar
               src={u?.profile_pic_url || undefined}
               alt={u?.username || "Anonyme"}
-              sx={{ width: 40, height: 40, flex: "0 0 auto" }}
             />
-            <Typography sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Typography>
               {u?.username || "Anonyme"}
             </Typography>
+            {u?.username && (
+              <ArrowForwardIosIcon fontSize="small" />
+            )}
           </Box>
         )}
 
@@ -271,14 +269,12 @@ export default function Deposit({
           sx={{
             position: "relative",
             display: "grid",
-            gridTemplateColumns: "140px 1fr",
-            gap: 2,
-            alignItems: "center",
+            gridTemplateColumns: "160px 1fr",
             minWidth: 0,
           }}
         >
           {/* cover */}
-          <Box sx={{ width: 140, height: 140, borderRadius: 1, overflow: "hidden", flex: "0 0 auto" }}>
+          <Box sx={{ width: 160, height: 160}}>
             {s?.img_url && (
               <Box
                 component="img"
@@ -289,7 +285,7 @@ export default function Deposit({
                   height: "100%",
                   objectFit: "cover",
                   display: "block",
-                  filter: isRevealed ? "none" : "blur(6px) brightness(0.9)",
+                  filter: isRevealed ? "none" : "blur(6px)",
                 }}
               />
             )}
@@ -299,54 +295,35 @@ export default function Deposit({
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
             {isRevealed ? (
               <>
-                <Typography component="h2" variant="h6" noWrap sx={{ fontWeight: 700, textAlign: "left" }}>
+                <Typography component="h2" variant="h4">
                   {s.title}
                 </Typography>
-                <Typography component="h3" variant="subtitle1" color="text.secondary" noWrap sx={{ textAlign: "left" }}>
+                <Typography component="h3" variant="body">
                   {s.artist}
                 </Typography>
                 <Button
                   variant="contained"
                   size="large"
                   onClick={() => openPlayFor(s)}
-                  sx={{ alignSelf: "flex-start", mt: 0.5 }}
+                  startIcon={<PlayArrowIcon />}
                 >
                   Play
                 </Button>
               </>
             ) : (
               <>
-                <Skeleton variant="text" width="80%" height={28} />
-                <Skeleton variant="text" width="50%" height={24} />
-                <Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1, mt: 0.5 }} />
+                <Button
+                  variant="contained"
+                  onClick={revealDeposit}
+                  disabled={!user || !user.username}
+                >
+                  <Typography className="points" variant="h4">
+                    {cost}
+                  </Typography>
+                  Découvrir
+                </Button>
               </>
             )}
-          </Box>
-
-          {/* Overlay CTA Découvrir — seulement si non révélé */}
-          {!isRevealed && (
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                display: "grid",
-                placeItems: "center",
-                background: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
-                borderRadius: 1,
-                px: 2,
-              }}
-            >
-              <Button
-                variant="contained"
-                size="large"
-                onClick={revealDeposit}
-                disabled={!user || !user.username}
-                sx={{ fontWeight: 700, backdropFilter: "blur(2px)" }}
-              >
-                {`Découvrir — ${cost}`}
-              </Button>
-            </Box>
-          )}
         </Box>
       </Card>
 
