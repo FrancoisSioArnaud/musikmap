@@ -4,7 +4,7 @@ import { createTheme } from "@mui/material/styles";
 const theme = createTheme({
   palette: {
     mode: "dark",
-    // Couleurs principales : on met un "main" cohérent (milieu du gradient)
+    // Couleurs principales
     primary: { main: "#FFFFFF", contrastText: "#000000" },
     background: { default: "#000000", paper: "#000000" },
     text: { primary: "#FFFFFF", secondary: "rgba(255,255,255,0.7)" },
@@ -13,19 +13,21 @@ const theme = createTheme({
     divider: "rgba(255,255,255,0.12)",
   },
 
+  // Bordures globales (tu as choisi 0 ici)
   shape: { borderRadius: 0 },
 
   typography: {
     fontFamily: '"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-    textAlign: "Left",
+    // textAlign n'est pas un champ supporté globalement par MUI typography,
+    // on le gère plutôt localement via sx si besoin.
+    // textAlign: "Left",
 
-
-    // h1 : 40px black
+    // h1 : 40px black (attention : en dark, #000 est invisible ; laisse la couleur au composant si fond clair)
     h1: {
       fontSize: "40px",
       lineHeight: "48px",
       fontWeight: 900,
-      // color: "#000000", // <- à activer SEULEMENT pour des surfaces claires
+      // color: "#000000", // à activer localement seulement sur surface claire
     },
 
     // h3 : 32 bold
@@ -42,7 +44,7 @@ const theme = createTheme({
       fontWeight: 600,
     },
 
-    // Thicktext : 16 bold
+    // Thicktext : 16 bold → map sur subtitle1
     subtitle1: {
       fontSize: "16px",
       lineHeight: "19.2px",
@@ -65,13 +67,19 @@ const theme = createTheme({
   },
 
   components: {
-    // Forcer fond / texte globaux propres au dark "noir/blanc"
+    // Global : fond noir + texte blanc
     MuiCssBaseline: {
       styleOverrides: {
         "html, body, #root": {
-          backgroundColor: "#000000",
-          color: "#FFFFFF",
           minHeight: "100%",
+        },
+        body: {
+          backgroundColor: "#000000",
+          color: "#FFFFFF", // ← tous les textes par défaut en blanc
+        },
+        // Optionnel : liens en blanc par défaut (sinon ils héritent déjà du body)
+        a: {
+          color: "#FFFFFF",
         },
       },
     },
@@ -102,18 +110,18 @@ const theme = createTheme({
     // Boutons
     MuiButton: {
       defaultProps: {
-        disableElevation: true, // on gère l’ombre manuellement
+        disableElevation: true, // on gère l’ombre et autres effets à la main
       },
       styleOverrides: {
         root: {
-          borderRadius : 6,
-          height: 48,
           borderRadius: 6,
+          height: 48,
           fontSize: "20px",
           fontWeight: 700,
           textTransform: "none",
         },
 
+        // Bouton plein (primary)
         containedPrimary: {
           backgroundColor: "#FFFFFF",
           color: "#000000",
@@ -125,10 +133,12 @@ const theme = createTheme({
             filter: "brightness(0.9)",
           },
         },
+
+        // Bouton outlined (primary)
         outlinedPrimary: {
           backgroundColor: "#000000",
           color: "#FFFFFF",
-          border : "2px solid rgba(255,255,255,0.3)",
+          border: "2px solid rgba(255,255,255,0.3)",
           "&:active": {
             filter: "brightness(0.9)",
           },
