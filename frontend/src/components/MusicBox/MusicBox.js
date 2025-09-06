@@ -15,12 +15,12 @@ import Typography from "@mui/material/Typography";
 import Skeleton from "@mui/material/Skeleton";
 import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
 import { UserContext } from "../UserContext";
 import { getCookie } from "../Security/TokensUtils";
 
-// Composants modales
+// Dialogs UX
 import EnableLocation from "./SongDisplay/EnableLocation";
 import OutOfRange from "./SongDisplay/OutOfRange";
 
@@ -107,20 +107,19 @@ export default function MusicBox() {
   const [boxData, setBoxData] = useState(null); // { box, deposit_count, deposits, reveal_cost }
   const [getBoxLoading, setGetBoxLoading] = useState(false);
 
-  // ---- UI overlays état
-  const [geoError, setGeoError] = useState(""); // message d’erreur dernier getCurrentPosition
+  // ---- UI / flow
+  const [geoError, setGeoError] = useState("");
+  const [flowStarted, setFlowStarted] = useState(false); // onboarding démarré par clic
+  const [showHero, setShowHero] = useState(true);
 
-  // ---- Re-check interval (5s) + visibilité onglet
+  // ---- Re-check interval (5s) — activé seulement après démarrage du flow
   const intervalRef = useRef(null);
 
-  // ---- watchPosition id (Patch 2)
-  const watchIdRef = useRef(null);
-
-  // ---- ref pour éviter double déclenchement (click + touch)
-  const geoRequestInFlightRef = useRef(false);
-
-  // ---- ref pour auto-scroll une seule fois
+  // ---- auto scroll quand SongDisplay apparaît
   const hasAutoScrolledRef = useRef(false);
+
+  // ---- ref pour éviter double déclenchement
+  const geoRequestInFlightRef = useRef(false);
 
   // ================== 0) Récup meta (hero) ==================
   useEffect(() => {
@@ -136,119 +135,43 @@ export default function MusicBox() {
     };
   }, [boxName]);
 
-  // ================== 1) Auto-ouverture au chargement ==================
-  useEffect(() => {
-    let cancelled = false;
+  // ================== 1) Bouton “Ouvrir la boîte” ==================
+  const handleOpenBox = useCallback(async () => {
+    setFlowStarted(true);
+    setGeoError("");
 
-    async function autoOpenIfAlreadyInRange() {
-      if (!meta?.box?.id) return;
+    try {
+      const pos = await getPositionOnce(); // déclenche le prompt système si nécessaire
+      setPermissionState("granted");
+      const r = await postLocation(meta.box, pos.coords);
+      const valid = !!(r.ok && r.data?.valid);
+      setInRange(valid);
 
-      try {
-        if (!("permissions" in navigator) || !navigator.permissions.query) {
-          setPermissionState((prev) => (prev === "granted" ? "granted" : "unknown"));
-          return;
-        }
-
-        const st = await navigator.permissions.query({ name: "geolocation" });
-        if (cancelled) return;
-
-        const nextState = st?.state || "unknown";
-        setPermissionState((prev) => (prev === "granted" ? "granted" : nextState));
-
-        if (nextState !== "granted") return;
-
-        const pos = await getPositionOnce().catch(() => null);
-        if (!pos) return;
-
-        const r = await postLocation(meta.box, pos.coords);
-        const valid = !!(r.ok && r.data?.valid);
-        setInRange(valid);
-        if (!valid) return;
-
+      if (valid) {
         if (!boxData) {
           setGetBoxLoading(true);
           try {
             const data = await fetchGetBox(boxName);
-            if (!cancelled) setBoxData(data);
+            setBoxData(data);
           } finally {
-            if (!cancelled) setGetBoxLoading(false);
+            setGetBoxLoading(false);
           }
         }
-      } catch {
-        // silencieux
+        setShowHero(false);
+      } else {
+        // autorisé mais hors zone → on laisse le hero visible, on affiche OutOfRange en dialog
       }
+    } catch (e) {
+      // souvent "permission denied" → montrer EnableLocation
+      setPermissionState((prev) => (prev === "granted" ? "granted" : "prompt"));
+      setGeoError(e?.message || "Impossible d’obtenir ta position.");
     }
+  }, [boxName, boxData, meta.box]);
 
-    autoOpenIfAlreadyInRange();
-    return () => {
-      cancelled = true;
-    };
-  }, [boxName, meta?.box?.id, boxData]);
-
-  // ================== 1.bis) WatchPosition (Patch 2)
-  useEffect(() => {
-    if (permissionState !== "granted" || !meta?.box?.id) return;
-    if (!("geolocation" in navigator) || !navigator.geolocation.watchPosition) return;
-    if (watchIdRef.current != null) return;
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        try {
-          const r = await postLocation(meta.box, pos.coords);
-          const valid = !!(r.ok && r.data?.valid);
-          setInRange(valid);
-
-          if (valid && !boxData && !getBoxLoading) {
-            setGetBoxLoading(true);
-            try {
-              const data = await fetchGetBox(boxName);
-              setBoxData(data);
-            } finally {
-              setGetBoxLoading(false);
-            }
-          }
-        } catch {
-          // silencieux
-        }
-      },
-      () => {
-        // erreurs watchPosition ignorées
-      },
-      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
-    );
-
-    return () => {
-      if (watchIdRef.current != null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    };
-  }, [permissionState, meta?.box?.id, boxData, getBoxLoading, boxName]);
-
-  // ================== 2) Bouton “Ouvrir la boîte” => scroll uniquement ==================
-  const scrollToContent = useCallback(() => {
-    const anchor = document.getElementById("songdisplay-anchor");
-    if (anchor) anchor.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
-  // ================== 2.bis) Auto-scroll dès que SongDisplay est rendu ==================
-  useEffect(() => {
-    if (hasAutoScrolledRef.current) return;
-    if (permissionState === "granted" && inRange && boxData) {
-      hasAutoScrolledRef.current = true;
-      requestAnimationFrame(() => {
-        const anchor = document.getElementById("songdisplay-anchor");
-        if (anchor) {
-          anchor.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    }
-  }, [permissionState, inRange, boxData]);
-
-  // ================== 3) Re-check périodique (5s) si permission accordée & onglet visible ==================
+  // ================== 2) Re-check périodique (5s) après démarrage du flow ==================
   useEffect(() => {
     function isActive() {
-      return permissionState === "granted" && document.visibilityState === "visible";
+      return flowStarted && permissionState === "granted" && document.visibilityState === "visible";
     }
 
     async function tick() {
@@ -261,22 +184,20 @@ export default function MusicBox() {
         const r = await postLocation(meta.box, pos.coords);
         const valid = !!(r.ok && r.data?.valid);
 
+        setInRange(valid);
+
+        // Si on devient in-range pour la 1re fois → fetch + masquer Hero
         if (valid) {
-          if (!inRange && !boxData) {
+          if (!boxData && !getBoxLoading) {
+            setGetBoxLoading(true);
             try {
-              setGetBoxLoading(true);
               const data = await fetchGetBox(boxName);
               setBoxData(data);
-              console.log(data);
-            } catch (e) {
-              console.error(e);
             } finally {
               setGetBoxLoading(false);
             }
           }
-          setInRange(true);
-        } else {
-          setInRange(false);
+          if (showHero) setShowHero(false);
         }
       } catch {
         // silencieux
@@ -287,8 +208,8 @@ export default function MusicBox() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (isActive() && !watchIdRef.current) {
-      intervalRef.current = setInterval(tick, 5000); // 5s
+    if (isActive()) {
+      intervalRef.current = setInterval(tick, 5000);
     }
 
     const onVis = () => {
@@ -296,7 +217,7 @@ export default function MusicBox() {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      if (isActive() && !watchIdRef.current) {
+      if (isActive()) {
         intervalRef.current = setInterval(tick, 5000);
       }
     };
@@ -309,10 +230,23 @@ export default function MusicBox() {
         intervalRef.current = null;
       }
     };
-  }, [permissionState, inRange, boxData, boxName, meta?.box?.id]);
+  }, [flowStarted, permissionState, meta?.box?.id, boxData, getBoxLoading, boxName, showHero]);
 
-  // ================== 4) Overlays actions (CTA) ==================
+  // ================== 3) Auto-scroll quand SongDisplay est visible ==================
+  useEffect(() => {
+    if (hasAutoScrolledRef.current) return;
+    if (!showHero && permissionState === "granted" && inRange && boxData) {
+      hasAutoScrolledRef.current = true;
+      requestAnimationFrame(() => {
+        const anchor = document.getElementById("songdisplay-anchor");
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
+  }, [showHero, permissionState, inRange, boxData]);
 
+  // ================== 4) Actions dans les dialogs ==================
   const processPosition = useCallback(
     async (pos) => {
       setPermissionState("granted");
@@ -328,10 +262,12 @@ export default function MusicBox() {
           setGetBoxLoading(false);
         }
       }
+      if (valid) setShowHero(false);
     },
     [meta?.box, boxData, boxName]
   );
 
+  // iOS-friendly authorize depuis le bouton du dialog
   const handleRequestLocation = useCallback(() => {
     if (geoRequestInFlightRef.current) return;
     geoRequestInFlightRef.current = true;
@@ -352,6 +288,7 @@ export default function MusicBox() {
           await processPosition(pos);
         },
         (err) => {
+          // Fallback iOS : petit watchPosition pour forcer le prompt
           try {
             const wid = navigator.geolocation.watchPosition(
               async (pos2) => {
@@ -390,18 +327,7 @@ export default function MusicBox() {
     setGeoError("");
     try {
       const pos = await getPositionOnce();
-      const r = await postLocation(meta.box, pos.coords);
-      const valid = !!(r.ok && r.data?.valid);
-      setInRange(valid);
-      if (valid && !boxData) {
-        setGetBoxLoading(true);
-        try {
-          const data = await fetchGetBox(boxName);
-          setBoxData(data);
-        } finally {
-          setGetBoxLoading(false);
-        }
-      }
+      await processPosition(pos);
     } catch (e) {
       setGeoError(e?.message || "Erreur géolocalisation.");
     }
@@ -411,77 +337,86 @@ export default function MusicBox() {
   const depositCount = useMemo(() => Number(meta?.deposit_count || 0), [meta]);
   const boxTitle = useMemo(() => meta?.box?.name || "", [meta]);
 
-  const showEnableLocationOverlay = permissionState !== "granted";
-  const showOutOfRangeOverlay = permissionState === "granted" && !inRange;
+  const shouldShowEnableDialog =
+    flowStarted && permissionState !== "granted";
+
+  const shouldShowOutOfRangeDialog =
+    flowStarted && permissionState === "granted" && !inRange;
 
   return (
     <Box sx={{ display: "grid", gap: 0, pb: 0 }}>
-      {/* ================= HERO (meta light) ================= */}
-      <Paper
-        elevation={3}
-        sx={{
-          height: "calc(100vh - 100px)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "stretch",
-          p: { xs: 3, md: 5 },
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Contenu poussé en bas */}
-        <Box sx={{ mt: "auto" }}>
-          <Box sx={{ display: "grid"}}>
-            {/* Count au-dessus du titre */}
-            {metaLoading ? (
-              <Skeleton variant="text" width={180} height={24} />
-            ) : (
-              <Typography variant="subtitle1">
-                {depositCount} Dépôts
-              </Typography>
-            )}
+      {/* ================= HERO (onboarding) ================= */}
+      {showHero && (
+        <Paper
+          elevation={3}
+          sx={{
+            height: "calc(100vh - 100px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "stretch",
+            p: { xs: 3, md: 5 },
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <Box sx={{ mt: "auto" }}>
+            <Box sx={{ display: "grid" }}>
+              {/* Count au-dessus du titre */}
+              {metaLoading ? (
+                <Skeleton variant="text" width={180} height={24} />
+              ) : (
+                <Typography variant="subtitle1">
+                  {depositCount} Dépôts
+                </Typography>
+              )}
 
-            {/* Titre H1 */}
-            {metaLoading ? (
-              <Skeleton variant="text" width={260} height={40} />
-            ) : (
-              <Typography component="h1" variant="h1">
-                {boxTitle}
-              </Typography>
-            )}
+              {/* Titre H1 */}
+              {metaLoading ? (
+                <Skeleton variant="text" width={260} height={40} />
+              ) : (
+                <Typography component="h1" variant="h1">
+                  {boxTitle}
+                </Typography>
+              )}
 
-            {/* Bouton Ouvrir la boîte (scroll only) */}
-            <Box sx={{ pb: { xs: 1, md: 0 } }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={scrollToContent}
-                aria-describedby="open-box-desc"
-                fullWidth
-                disabled={metaLoading}
-                startIcon={<PlayArrowIcon />}
-              >
-                Ouvrir la boîte
-              </Button>
+              {/* Bouton Ouvrir la boîte */}
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleOpenBox}
+                  aria-describedby="open-box-desc"
+                  fullWidth
+                  disabled={metaLoading}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Ouvrir la boîte
+                </Button>
+                <Typography id="open-box-desc" variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
+                  Vérifie ta position pour accéder au contenu
+                </Typography>
+              </Box>
             </Box>
           </Box>
-        </Box>
-      </Paper>
+        </Paper>
+      )}
 
       {/* ================= ANCRE SECTION ================= */}
       <span id="songdisplay-anchor" />
 
       {/* ================= SECTION SONGDISPLAY ================= */}
       <Box sx={{ position: "relative", minHeight: 400 }}>
-        {!boxData || getBoxLoading ? (
+        {/* Skeletons visibles seulement si on a commencé le flow et qu’on charge GetBox */}
+        {flowStarted && getBoxLoading && (
           <Box sx={{ display: "grid", gap: 2, p: 2 }}>
             <Skeleton variant="rounded" height={120} />
             <Skeleton variant="rounded" height={320} />
             <Skeleton variant="rounded" height={220} />
           </Box>
-        ) : null}
+        )}
 
-        {permissionState === "granted" && inRange && boxData && (
+        {/* Affichage du contenu ou OutOfRange (le dialog couvre la page) */}
+        {!showHero && permissionState === "granted" && inRange && boxData && (
           <Suspense
             fallback={
               <Box sx={{ p: 2 }}>
@@ -507,27 +442,24 @@ export default function MusicBox() {
           </Suspense>
         )}
 
-        {/* === Dialog: Autoriser la localisation === */}
+        {/* === Dialogs UX (uniquement après clic) === */}
         <EnableLocation
-          open={Boolean(showEnableLocationOverlay)}
+          open={Boolean(shouldShowEnableDialog)}
           boxTitle={boxTitle || "Boîte"}
-          loading={false}              // on garde le fonctionnement identique (pas d'état de chargement ici)
+          loading={false}
           error={geoError}
           onAuthorize={handleRequestLocation}
-          onClose={() => {}}          // comportement identique : pas de fermeture manuelle
+          onClose={() => {}}
         />
 
-        {/* === Dialog: Hors de portée === */}
         <OutOfRange
-          open={Boolean(showOutOfRangeOverlay)}
+          open={Boolean(shouldShowOutOfRangeDialog)}
           boxTitle={boxTitle || "Boîte"}
           error={geoError}
           onRetry={handleRetryOutOfRange}
-          onClose={() => {}}          // pas de fermeture manuelle
+          onClose={() => {}}
         />
       </Box>
     </Box>
   );
 }
-
-
