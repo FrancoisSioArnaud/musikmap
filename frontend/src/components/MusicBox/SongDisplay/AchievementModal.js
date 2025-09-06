@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import CheckIcon from '@mui/icons-material/Check';
 
 /**
  * successes: Array<{ name, desc, points }>
@@ -30,18 +31,14 @@ export default function AchievementModal({ open, successes = [], onClose, primar
       <Card sx={{ width: "100%", maxWidth: 520, borderRadius: 2 }}>
         <CardContent sx={{ pb: 2 }}>
           <Box sx={{ display: "grid", gap: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, textAlign: "center" }}>
-              Bravo !
+            <CheckIcon color="success" />
+            <Typography variant="h1">
+              Pépite Déposé
             </Typography>
 
-            <Box sx={{ textAlign: "center", mt: 1 }}>
-              <Typography variant="overline" sx={{ opacity: 0.7 }}>
-                Points gagnés
-              </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
+              <Typography variant="h3">
                 {totalPoints}
               </Typography>
-            </Box>
 
             <List dense sx={{ mt: 1 }}>
               {listItems.length === 0 ? (
@@ -50,8 +47,9 @@ export default function AchievementModal({ open, successes = [], onClose, primar
                 </ListItem>
               ) : (
                 listItems.map((ach, idx) => (
-                  <ListItem key={idx} divider>
-                    <ListItemText primary={ach.name} secondary={ach.desc} />
+                  <ListItem key={idx}>
+                    <Typography variant="h3">+{ach.name}</Typography>
+                    <Typography variant="subtitle1">+{ach.desc}</Typography>
                     <Typography variant="body2">+{ach.points}</Typography>
                   </ListItem>
                 ))
