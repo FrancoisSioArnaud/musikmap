@@ -264,7 +264,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           Pépite Déposé
         </Typography>
   
-        <Typography class="points" variant="h3">
+        <Typography class="points" variant="h4">
           +{totalPoints}
         </Typography>
       </Box>
@@ -280,7 +280,6 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
               <Typography variant="subtitle1">+{ach.points}</Typography>
               <Typography variant="h3">{ach.name}</Typography>
               <Typography variant="body">{ach.desc}</Typography>
-
             </ListItem>
           ))
         )}
