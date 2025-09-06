@@ -114,17 +114,19 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          borderRadius: 6,
+          borderRadius: 0,
           height: 48,
           fontSize: "20px",
-          fontWeight: 700,
           textTransform: "none",
         },
 
         // Bouton plein (primary)
-        containedPrimary: {
+        contained: {
+          borderRadius: 6,
+          height: 56,
           backgroundColor: "#FFFFFF",
           color: "#000000",
+          fontWeight: 700,
           borderBottom: "4px solid #E2E2E2",
           "&:active": {
             filter: "brightness(0.9)",
