@@ -30,35 +30,57 @@ export default function AchievementModal({ open, successes = [], onClose, primar
     <Overlay onClose={onClose}>
       <Card sx={{ width: "100%", maxWidth: 520, borderRadius: 2 }}>
         <CardContent sx={{ pb: 2 }}>
-          <Box sx={{ display: "grid", gap: 1 }}>
-            <CheckIcon color="success" />
-            <Typography variant="h1">
-              Pépite Déposé
+          <Box sx={{ display: "grid", gap: 2, minHeight: "100%" }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, textAlign: "center" }}>
+              Bravo !
             </Typography>
-
-              <Typography variant="h3">
+      
+            <Box sx={{ textAlign: "center", mt: 1 }}>
+              <Typography variant="overline" sx={{ opacity: 0.7 }}>
+                Points gagnés
+              </Typography>
+              <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1 }}>
                 {totalPoints}
               </Typography>
-
-            <List dense sx={{ mt: 1 }}>
-              {listItems.length === 0 ? (
-                <ListItem>
-                  <ListItemText primary="Aucun succès détaillé" />
-                </ListItem>
+            </Box>
+      
+            <Box sx={{ display: "grid", gap: 1 }}>
+              {items.length === 0 ? (
+                <Typography variant="body2" sx={{ opacity: 0.8, textAlign: "center" }}>
+                  Aucun succès détaillé
+                </Typography>
               ) : (
-                listItems.map((ach, idx) => (
-                  <ListItem key={idx}>
-                    <Typography variant="h3">+{ach.name}</Typography>
-                    <Typography variant="subtitle1">+{ach.desc}</Typography>
+                items.map((ach, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      py: 1,
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Box sx={{ pr: 2, minWidth: 0 }}>
+                      <Typography variant="subtitle2" noWrap title={ach.name}>
+                        {ach.name}
+                      </Typography>
+                      {ach.desc ? (
+                        <Typography variant="caption" sx={{ opacity: 0.8 }} noWrap title={ach.desc}>
+                          {ach.desc}
+                        </Typography>
+                      ) : null}
+                    </Box>
                     <Typography variant="body2">+{ach.points}</Typography>
-                  </ListItem>
+                  </Box>
                 ))
               )}
-            </List>
-
-            <Box sx={{ mt: 1 }}>
-              <Button fullWidth variant="contained" onClick={onClose}>
-                {primaryCtaLabel}
+            </Box>
+      
+            <Box sx={{ mt: "auto" }}>
+              <Button fullWidth variant="contained" onClick={onPrimaryCta}>
+                Revenir à la boîte
               </Button>
             </Box>
           </Box>
