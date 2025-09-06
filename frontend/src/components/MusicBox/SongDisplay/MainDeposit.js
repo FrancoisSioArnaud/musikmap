@@ -6,6 +6,7 @@ import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import SearchIcon from "@mui/icons-material/Search";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import Deposit from "../../Common/Deposit";
@@ -110,20 +111,16 @@ export default function MainDeposit({
 
         {/* 2) Avant dépôt : CTA pleine largeur */}
         {!hasMyDeposit && (
-          <Box sx={{ display: "grid", gap: 1 }}>
-            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
-              Remplace cette chanson et révèle des chansons précédentes
-            </Typography>
             <Button
               fullWidth
               variant="contained"
               size="large"
               onClick={openSearch}
               disabled={!boxName}
+              startIcon={<SearchIcon />}
             >
               Déposer une chanson
             </Button>
-          </Box>
         )}
 
         {/* 3) Après dépôt : bloc succès + ex-main (list, full) */}
