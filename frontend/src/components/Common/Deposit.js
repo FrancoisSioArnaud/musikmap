@@ -324,7 +324,7 @@ export default function Deposit({
                 </Button>
               </>
             )}
-        </Box>
+          </Box>
       </Card>
 
       {/* PLAY MODAL (local au Deposit) */}
