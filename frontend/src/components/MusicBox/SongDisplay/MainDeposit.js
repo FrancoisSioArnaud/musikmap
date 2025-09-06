@@ -254,7 +254,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
   });
 
   return (
-    <Box sx={{ display: "grid", gap: 2, minHeight: "100%" }}>
+    <Box sx={{ display: "grid", minHeight: "100%" }}>
       <Typography variant="h5" sx={{ fontWeight: 700, textAlign: "center" }}>
         Bravo !
       </Typography>
