@@ -21,20 +21,20 @@ function SlideDownTransition(props) {
 }
 
 /**
- * Composant Deposit
+ * Composant Deposit (toujours **pleine largeur**)
  *
  * Variants:
- * - "list" (par défaut) : états To_Reveal & Reveal, CTA overlay, Snackbar, PlayModal
+ * - "list" : états To_Reveal & Reveal, CTA overlay, Snackbar, PlayModal
  * - "main" : rendu plein-format (premier dépôt), pas de CTA overlay, pas de Snackbar
  *
  * Props:
  * - dep: { deposit_id, deposit_date, user:{ username, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
- * - user: utilisateur courant (pour savoir si connecté)
- * - setDispDeposits: setter parent pour muter la liste après reveal (utile pour "list")
+ * - user: utilisateur courant
+ * - setDispDeposits: setter parent (utile pour "list")
  * - cost: nombre (crédits) — défaut 40
  * - variant: "list" | "main" — défaut "list"
- * - showDate, showUser: booleans pour masquer/afficher certaines sections (défaut true)
- * - fitContainer: boolean — card width 100% au lieu du format carrousel (défaut false)
+ * - showDate, showUser: booleans (défaut true)
+ * - fitContainer: ignoré (toujours full width)
  */
 export default function Deposit({
   dep,
@@ -44,7 +44,7 @@ export default function Deposit({
   variant = "list",
   showDate = true,
   showUser = true,
-  fitContainer = false,
+  fitContainer = true, // accepté mais ignoré
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -69,10 +69,6 @@ export default function Deposit({
       setSnackOpen(true);
     }
   };
-
-  // NOTE: L'auto-enregistrement "main" (discovered-songs type="main") a été
-  // déplacé dans MainDeposit.js pour éviter les doublons.
-  // Ici, on ne poste rien au montage.
 
   // ---- Reveal d’un dépôt (uniquement pertinent pour "list") ----
   const revealDeposit = async () => {
@@ -131,10 +127,8 @@ export default function Deposit({
     }
   };
 
-  // helpers de style
-  const cardBaseSx = fitContainer
-    ? { p: 2, width: "100%", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" }
-    : { p: 2, width: "calc(90vw - 32px)", maxWidth: 720, flex: "0 0 auto", boxSizing: "border-box", overflow: "hidden" };
+  // Toujours pleine largeur
+  const cardBaseSx = { p: 2, width: "100%", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" };
 
   // =========================
   // RENDUS PAR VARIANTES
@@ -147,7 +141,7 @@ export default function Deposit({
         <Card sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              <Typography component="h3" variant="h6">              
+              <Typography component="h3" variant="h6">
                 {"Pépite déposée " + (dep?.deposit_date || "") + "."}
               </Typography>
             </Box>
@@ -211,7 +205,7 @@ export default function Deposit({
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                mt: 2, // <— déplacé sous la chanson (remplace l’ancien mb: 2)
+                mt: 2,
                 cursor: u?.username ? "pointer" : "default",
                 minWidth: 0,
               }}
@@ -241,7 +235,7 @@ export default function Deposit({
       <Card sx={cardBaseSx}>
         {showDate && (
           <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-            <Typography component="h3" variant="h6">              
+            <Typography component="h3" variant="h6">
               {"Pépite déposée " + (dep?.deposit_date || "") + "."}
             </Typography>
           </Box>
@@ -275,7 +269,7 @@ export default function Deposit({
         <Box
           id="deposit_song"
           sx={{
-            position: "relative", // overlay
+            position: "relative",
             display: "grid",
             gridTemplateColumns: "140px 1fr",
             gap: 2,
