@@ -14,7 +14,7 @@ import { getCookie } from "../../Security/TokensUtils";
 
 /**
  * MainDeposit :
- *  - Encart pointillé entourant uniquement <Deposit variant="main" />.
+ *  - Affiche la card <Deposit variant="main" /> sans encart pointillé.
  *  - Drawer unique (right, plein écran mobile) : LiveSearch puis Achievements (swap de contenu).
  *  - older_deposits n’apparaît qu’après succès du POST (remonté via onDeposited()).
  */
@@ -88,23 +88,15 @@ export default function MainDeposit({
   return (
     <>
       <Box sx={{ px: 2, display: "grid", gap: 2 }}>
-        {/* 1) Encart pointillé (uniquement la card main) */}
-        <Box
-          sx={{
-            border: "2px dashed #cbd5e1",
-            borderRadius: 2,
-            p: 2,
-          }}
-        >
-          <Deposit
-            dep={hasMyDeposit ? myDeposit : dep0}
-            user={user}
-            variant="main"
-            fitContainer={true}
-            showDate={true}
-            showUser={true}
-          />
-        </Box>
+        {/* 1) Card main directement (sans encart pointillé) */}
+        <Deposit
+          dep={hasMyDeposit ? myDeposit : dep0}
+          user={user}
+          variant="main"
+          fitContainer={true}
+          showDate={true}
+          showUser={true}
+        />
 
         {/* 2) Avant dépôt : CTA pleine largeur */}
         {!hasMyDeposit && (
