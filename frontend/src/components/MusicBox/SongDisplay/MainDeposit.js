@@ -87,6 +87,16 @@ export default function MainDeposit({
 
   return (
     <>
+
+      <Box class="intro">
+        <Typography component="h1" variant="h1">
+          Bonne écoute !
+        </Typography>
+        <Typography component="span" variant="h4">
+          Découvre puis remplace la chanson actuellement dans la boîte
+        </Typography>
+      </Box>
+    
       <Box sx={{ px: 2, display: "grid", gap: 2 }}>
         {/* 1) Card main directement (sans encart pointillé) */}
         <Deposit
