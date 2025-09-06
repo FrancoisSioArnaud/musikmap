@@ -13,10 +13,10 @@ import LiveSearch from "./LiveSearch";
 import { getCookie } from "../../Security/TokensUtils";
 
 /**
- * MainDeposit : section principale
- *  - Encart pointillé qui entoure uniquement <Deposit variant="main" />.
- *  - Drawer unique côté droit : LiveSearch puis (après succès) Achievements (swap de contenu).
- *  - older_deposits est en arrière-plan (vertical full-width) et reste visible derrière le drawer.
+ * MainDeposit :
+ *  - Encart pointillé entourant uniquement <Deposit variant="main" />.
+ *  - Drawer unique (right, plein écran mobile) : LiveSearch puis Achievements (swap de contenu).
+ *  - older_deposits n’apparaît qu’après succès du POST (remonté via onDeposited()).
  */
 export default function MainDeposit({
   dep0,
@@ -24,6 +24,7 @@ export default function MainDeposit({
   boxName,
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
+  onDeposited = () => {},
 }) {
   const [myDeposit, setMyDeposit] = useState(null);
 
@@ -31,7 +32,7 @@ export default function MainDeposit({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerView, setDrawerView] = useState("search"); // "search" | "achievements"
 
-  // Succès / points pour achievements
+  // Succès / points (pour affichage dans drawer achievements)
   const [successes, setSuccesses] = useState([]);
 
   const totalPoints = useMemo(() => {
@@ -40,7 +41,7 @@ export default function MainDeposit({
     return byName("total")?.points ?? byName("points_total")?.points ?? 0;
   }, [successes]);
 
-  // Enregistrement "main" (découverte #0) ici
+  // Enregistrement "main" (découverte de la #0)
   useEffect(() => {
     if (!dep0 || !dep0.deposit_id) return;
     if (!user || !user.username) return;
@@ -52,7 +53,7 @@ export default function MainDeposit({
       credentials: "same-origin",
       body: JSON.stringify({ deposit_id: dep0.deposit_id, discovered_type: "main" }),
     }).catch(() => {
-      // best-effort, silencieux
+      // best-effort
     });
   }, [dep0?.deposit_id, user?.username]);
 
@@ -69,7 +70,8 @@ export default function MainDeposit({
     setMyDeposit(addedDeposit || null);
     setSuccesses(Array.isArray(succ) ? succ : []);
     setDrawerView("achievements"); // swap contenu dans le même drawer
-    setIsDrawerOpen(true); // s’assure qu’il reste ouvert
+    setIsDrawerOpen(true);         // garde le drawer ouvert
+    onDeposited();                 // <-- débloque older_deposits dans le fond
   };
 
   const handleBackToBox = () => {
@@ -245,9 +247,14 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           </Typography>
         ) : (
           items.map((ach, idx) => (
-            <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1, borderBottom: "1px solid", borderColor: "divider" }}>
+            <Box
+              key={idx}
+              sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1, borderBottom: "1px solid", borderColor: "divider" }}
+            >
               <Box sx={{ pr: 2, minWidth: 0 }}>
-                <Typography variant="subtitle2" noWrap title={ach.name}>{ach.name}</Typography>
+                <Typography variant="subtitle2" noWrap title={ach.name}>
+                  {ach.name}
+                </Typography>
                 {ach.desc ? (
                   <Typography variant="caption" sx={{ opacity: 0.8 }} noWrap title={ach.desc}>
                     {ach.desc}
