@@ -249,7 +249,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
     successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
     0;
 
-  const items = successes.filter((s) => {
+  const listItems = successes.filter((s) => {
     const n = (s?.name || "").toLowerCase();
     return n !== "total" && n !== "points_total";
   });
@@ -265,7 +265,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           {totalPoints}
         </Typography>
 
-      <List dense sx={{ mt: 1 }}>
+      <List>
         {listItems.length === 0 ? (
           <ListItem>
             <ListItemText primary="Aucun succès détaillé" />
