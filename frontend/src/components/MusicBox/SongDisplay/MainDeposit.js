@@ -179,34 +179,63 @@ export default function MainDeposit({
         onClose={() => {}} // pas de fermeture backdrop/ESC
         ModalProps={{
           keepMounted: true,
-          // Scroll du fond bloqué par défaut (ne pas mettre disableScrollLock: true)
+          // Scroll du fond bloqué par défaut
         }}
-        PaperProps={{ sx: { width: "100vw", maxWidth: 560 } }}
+        PaperProps={{
+          sx: {
+            width: "100vw",
+            maxWidth: 560,
+            height: "100dvh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
       >
-        <Box sx={{ p: 2, display: "grid", gap: 2, height: "100%", boxSizing: "border-box" }}>
-          {/* Header Drawer */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <IconButton aria-label="Fermer" onClick={closeDrawer}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
+        {/* HEADER du drawer — 51px fixes */}
+        <Box
+          component="header"
+          sx={{
+            height: 51,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            px: 1,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            flex: "0 0 auto",
+          }}
+        >
+          <IconButton aria-label="Fermer" onClick={closeDrawer}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-          {/* Contenu Drawer */}
-          {drawerView === "search" ? (
-            <LiveSearch
-              isSpotifyAuthenticated={isSpotifyAuthenticated}
-              isDeezerAuthenticated={isDeezerAuthenticated}
-              boxName={boxName}
-              user={user}
-              onDepositSuccess={handleDepositSuccess}
-              onClose={closeDrawer}
-            />
-          ) : (
-            <AchievementsPanel
-              successes={Array.isArray(successes) ? successes : []}
-              onPrimaryCta={handleBackToBox}
-            />
-          )}
+        {/* CONTENU plein écran (reste de la hauteur) */}
+        <Box
+          component="main"
+          sx={{
+            flex: "1 1 auto",
+            minHeight: 0,           // nécessaire pour que overflow fonctionne en flexbox
+            overflow: "auto",
+          }}
+        >
+          <Box sx={{ p: 2, boxSizing: "border-box", minHeight: "100%" }}>
+            {drawerView === "search" ? (
+              <LiveSearch
+                isSpotifyAuthenticated={isSpotifyAuthenticated}
+                isDeezerAuthenticated={isDeezerAuthenticated}
+                boxName={boxName}
+                user={user}
+                onDepositSuccess={handleDepositSuccess}
+                onClose={closeDrawer}
+              />
+            ) : (
+              <AchievementsPanel
+                successes={Array.isArray(successes) ? successes : []}
+                onPrimaryCta={handleBackToBox}
+              />
+            )}
+          </Box>
         </Box>
       </Drawer>
     </>
@@ -226,7 +255,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
   });
 
   return (
-    <Box sx={{ display: "grid", gap: 2 }}>
+    <Box sx={{ display: "grid", gap: 2, minHeight: "100%" }}>
       <Typography variant="h5" sx={{ fontWeight: 700, textAlign: "center" }}>
         Bravo !
       </Typography>
@@ -249,7 +278,14 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           items.map((ach, idx) => (
             <Box
               key={idx}
-              sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1, borderBottom: "1px solid", borderColor: "divider" }}
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                py: 1,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+              }}
             >
               <Box sx={{ pr: 2, minWidth: 0 }}>
                 <Typography variant="subtitle2" noWrap title={ach.name}>
@@ -267,7 +303,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         )}
       </Box>
 
-      <Box sx={{ mt: 1 }}>
+      <Box sx={{ mt: "auto" }}>
         <Button fullWidth variant="contained" onClick={onPrimaryCta}>
           Revenir à la boîte
         </Button>
