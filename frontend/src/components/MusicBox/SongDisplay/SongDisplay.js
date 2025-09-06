@@ -14,6 +14,8 @@ export default function SongDisplay({
   boxName,
   user,
   revealCost,
+  showOlder = false,          // <-- masqué par défaut
+  onDeposited = () => {},     // <-- appelé au succès du POST (pour afficher older)
 }) {
   const cost = typeof revealCost === "number" ? revealCost : 40;
 
@@ -44,44 +46,47 @@ export default function SongDisplay({
         boxName={boxName}
         isSpotifyAuthenticated={isSpotifyAuthenticated}
         isDeezerAuthenticated={isDeezerAuthenticated}
+        onDeposited={onDeposited}  // <-- prop pour remonter l’info
       />
 
-      {/* SECTION — OLDER DEPOSITS (vertical full-width) */}
-      <Box
-        id="older_deposits"
-        sx={{
-          mt: "32px",
-          display: "grid",
-          gap: 2,
-          pb: 2,
-        }}
-      >
-        <Typography component="h2" variant="h3">
-          Pépites déposées plus tôt à révéler
-        </Typography>
-
+      {/* SECTION — OLDER DEPOSITS (vertical, full-width) — seulement après dépôt */}
+      {showOlder && (
         <Box
-          id="older_deposits_list"
+          id="older_deposits"
           sx={{
+            mt: "32px",
             display: "grid",
             gap: 2,
+            pb: 2,
           }}
         >
-          {deposits.slice(1).map((dep, idx) => (
-            <Deposit
-              key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
-              dep={dep}
-              user={user}
-              setDispDeposits={setDispDeposits}
-              cost={cost}
-              variant="list"
-              showDate={true}
-              showUser={true}
-              fitContainer={true} // toujours pleine largeur (Deposit est full-width)
-            />
-          ))}
+          <Typography component="h2" variant="h3">
+            Pépites déposées plus tôt à révéler
+          </Typography>
+
+          <Box
+            id="older_deposits_list"
+            sx={{
+              display: "grid",
+              gap: 2,
+            }}
+          >
+            {deposits.slice(1).map((dep, idx) => (
+              <Deposit
+                key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
+                dep={dep}
+                user={user}
+                setDispDeposits={setDispDeposits}
+                cost={cost}
+                variant="list"
+                showDate={true}
+                showUser={true}
+                fitContainer={true}
+              />
+            ))}
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 }
