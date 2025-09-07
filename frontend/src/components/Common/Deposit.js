@@ -142,8 +142,11 @@ export default function Deposit({
       <>
         <Card sx={cardBaseSx}>
           {showDate && (
-            <Box id="deposit_date" sx={{ mb: 1, fontSize: 14, color: "text.secondary" }}>
-              <Typography component="h3" variant="subtitle1">
+            <Box id="deposit_date">
+              
+              <Box className="icon">
+              </Box>
+              <Typography variant="subtitle1">
                 {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
@@ -153,16 +156,18 @@ export default function Deposit({
           <Box
             id="deposit_user"
             sx={{
-              display: "flex",
+              display: "inline",
               minWidth: 0,
             }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
-            <Avatar
-              src={u?.profile_pic_url || undefined}
-              alt={u?.username || "Anonyme"}
-            />
-            <Typography variant="subtitle1">
+            <Box className="avatarbox">
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.username || "Anonyme"}
+              />
+            </Box>
+            <Typography className="username" variant="subtitle1"> 
               {u?.username || "Anonyme"}
             </Typography>
             {u?.username && (
@@ -189,22 +194,14 @@ export default function Deposit({
                 />
               )}
             </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 0,
-                minWidth: 0,
-              }}
-            >
+            <Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
-                    <Typography component="h1" variant="h3">
+                    <Typography className="titre" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography component="h2" variant="body">
+                    <Typography className="artist" variant="body">
                       {s.artist}
                     </Typography>
                   </>
@@ -212,7 +209,7 @@ export default function Deposit({
               </Box>
               <Button
                 variant="depositInteract"
-                className"play playMain"
+                className="play playMain"
                 size="large"
                 onClick={() => (isRevealed ? openPlayFor(s) : null)}
                 disabled={!isRevealed}
