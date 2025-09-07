@@ -161,6 +161,7 @@ const theme = createTheme({
             fontWeight: 700,
             borderRadius: 0,
             padding : "16px",
+            display:flex,
             textTransform: "none",
             "&:hover": {
               filter: "brightness(0.9)",
