@@ -1,1 +1,70 @@
+@use '../0-init/color' as *;
+
+#deposit_date, #deposit_user, #deposit_song, #deposit_song{
+  display: inline-block;
+}
+
+#deposit_date div, #deposit_user div, #deposit_song div, #deposit_song div{
+  display: inline-block;
+  border: 0.5px solid white;        /* moitié à l’intérieur */
+  box-shadow: 0 0 0 0.5px white;    /* moitié à l’extérieur */
+}
+
+#deposit_date{
+
+}
+
+#deposit_date .icon{
+
+}
+
+#deposit_date p{
+
+}
+
+
+
+#deposit_user{
+
+}
+
+#deposit_user .avatarbox{
+
+}
+
+#deposit_user .username{
+
+}
+
+
+
+#deposit_song{
+
+}
+
+#deposit_song img{
+  
+}
+
+#deposit_song div{
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 0,
+  minWidth: 0,
+}
+
+#deposit_song div .titre{
+
+}
+
+#deposit_song div .artist{
+
+}
+
+
+
+
+
+
+
 
