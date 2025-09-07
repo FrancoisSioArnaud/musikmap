@@ -150,6 +150,24 @@ const theme = createTheme({
           },
         },
       },
+      
+      variants: [
+        {
+          props: { variant: "depositInteract" }, // <Button variant="gradient">
+          style: {
+            background: "linear-gradient(90deg, #FF9900, #FF3D00)",
+            boxShadow: 0px 4px 0px 0px rgba(0, 0, 0, 0.3),
+            color: "#000",
+            fontWeight: 700,
+            borderRadius: 0,
+            padding : "16px",
+            textTransform: "none",
+            "&:hover": {
+              filter: "brightness(0.9)",
+            },
+          },
+        },
+      ],
     },
   },
 });
