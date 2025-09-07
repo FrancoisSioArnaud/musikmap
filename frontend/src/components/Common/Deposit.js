@@ -194,7 +194,13 @@ export default function Deposit({
                 />
               )}
             </Box>
-            <Box>
+            <Box 
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 0,
+                minWidth: 0,
+              }}>
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
