@@ -211,11 +211,13 @@ export default function Deposit({
                 )}
               </Box>
               <Button
-                variant="contained"
+                variant="depositInteract"
+                className"play playMain"
                 size="large"
                 onClick={() => (isRevealed ? openPlayFor(s) : null)}
                 disabled={!isRevealed}
                 startIcon={<PlayArrowIcon />}
+                
               >
                 Play
               </Button>
@@ -302,7 +304,8 @@ export default function Deposit({
                   {s.artist}
                 </Typography>
                 <Button
-                  variant="contained"
+                  variant="depositInteract"
+                  className="play playSecondary"
                   size="large"
                   onClick={() => openPlayFor(s)}
                   startIcon={<PlayArrowIcon />}
@@ -313,9 +316,10 @@ export default function Deposit({
             ) : (
               <>
                 <Button
-                  variant="contained"
+                  variant="depositInteract"
                   onClick={revealDeposit}
                   disabled={!user || !user.username}
+                  className="decouvrir"
                 >
                   <Typography className="points" variant="h4">
                     {cost}
