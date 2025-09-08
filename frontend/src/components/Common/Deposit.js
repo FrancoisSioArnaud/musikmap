@@ -154,7 +154,7 @@ export default function Deposit({
 
         {showUser && (
           <Box
-            id="deposit_user"
+            className="deposit_user"
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
             className={u?.username ? "hasUsername" : ""} 
           >
@@ -176,7 +176,7 @@ export default function Deposit({
         )}
 
           {/* song (cover pleine largeur, titres si révélé) */}
-          <Box id="deposit_song" sx={{ display: "grid", minWidth: 0 }}>
+          <Box className="deposit_song" sx={{ display: "grid", minWidth: 0 }}>
             <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign">
               {s?.img_url && (
                 <Box
@@ -232,7 +232,7 @@ export default function Deposit({
     <>
       <Card sx={cardBaseSx}>
         {showDate && (
-          <Box id="deposit_date">
+          <Box className="deposit_date">
             <Typography component="h3" variant="subtitle1">
               {"Déposée " + (dep?.deposit_date || "")}
             </Typography>
@@ -241,7 +241,7 @@ export default function Deposit({
 
         {showUser && (
           <Box
-            id="deposit_user"
+            className="deposit_user"
             sx={{
               display: "flex",
               minWidth: 0,
@@ -263,7 +263,7 @@ export default function Deposit({
 
         {/* zone chanson (grille + overlay éventuel) */}
         <Box
-          id="deposit_song"
+          className="deposit_song"
           sx={{
             position: "relative",
             display: "grid",
