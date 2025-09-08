@@ -1,5 +1,12 @@
 @use '../0-init/color' as *;
 
+.squaredesign{
+  border: 0.5px solid white;
+  box-shadow: 0 0 0 0.5px white;
+    max-height: 51px;
+  padding: 16px;
+}
+
 #deposit_date,
 #deposit_user,
 #deposit_song,
@@ -13,8 +20,11 @@
 #deposit_user div,
 #deposit_song div,{
   display: inline-block;
-  border: 0.5px solid white;
-  box-shadow: 0 0 0 0.5px white;
+
+}
+
+#deposit_user{
+
 }
 
 /* =========================
@@ -22,7 +32,9 @@
    ========================= */
 #deposit_date { }
 
-#deposit_date .icon { }
+#deposit_date div, #deposit_date .icon { 
+  height 
+}
 
 #deposit_date p { }
 
