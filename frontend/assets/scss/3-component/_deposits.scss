@@ -23,7 +23,7 @@
 }
 
 #deposit_date div,
-#deposit_user div,
+#deposit_user > div,
 #deposit_song .titre, #deposit_song .artist{
   padding: 16px;
 }
