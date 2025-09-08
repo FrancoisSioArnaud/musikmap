@@ -156,11 +156,15 @@ export default function Deposit({
           <Box
             id="deposit_user"
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-          >
+            {u?.username && (
+            className="hasUsername"
+            )}
+                          >
             <Box className="avatarbox" className="squaredesign">
               <Avatar
                 src={u?.profile_pic_url || undefined}
                 alt={u?.username || "Anonyme"}
+                className="avatar"
               />
             </Box>
             <Typography component="div" className="username squaredesign" variant="subtitle1"> 
