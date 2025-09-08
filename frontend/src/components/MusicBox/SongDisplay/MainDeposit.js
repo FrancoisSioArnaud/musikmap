@@ -96,7 +96,7 @@ export default function MainDeposit({
         <Typography component="h1" variant="h1">
           Bonne écoute !
         </Typography>
-        <Typography component="span" variant="h4">
+        <Typography component="h2" variant="h4">
           Découvre puis remplace la chanson actuellement dans la boîte
         </Typography>
       </Box>
