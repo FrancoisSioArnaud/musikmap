@@ -101,78 +101,76 @@ export default function MainDeposit({
         </Typography>
       </Box>
     
-      <Box sx={{ px: 2, display: "grid", gap: 2 }}>
-        {/* 1) Card main directement (sans encart pointillé) */}
-        <Deposit
-          dep={hasMyDeposit ? myDeposit : dep0}
-          user={user}
-          variant="main"
-          fitContainer={true}
-          showDate={true}
-          showUser={true}
-        />
+      {/* 1) Card main directement (sans encart pointillé) */}
+      <Deposit
+        dep={hasMyDeposit ? myDeposit : dep0}
+        user={user}
+        variant="main"
+        fitContainer={true}
+        showDate={true}
+        showUser={true}
+      />
 
-        {/* 2) Avant dépôt : CTA pleine largeur */}
-        {!hasMyDeposit && (
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              onClick={openSearch}
-              disabled={!boxName}
-              startIcon={<SearchIcon />}
-            >
-              Déposer une chanson
-            </Button>
-        )}
+      {/* 2) Avant dépôt : CTA pleine largeur */}
+      {!hasMyDeposit && (
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={openSearch}
+            disabled={!boxName}
+            startIcon={<SearchIcon />}
+          >
+            Déposer une chanson
+          </Button>
+      )}
 
-        {/* 3) Après dépôt : bloc succès + ex-main (list, full) */}
-        {hasMyDeposit && (
-          <Box sx={{ display: "grid", gap: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
-                Ta chanson a été déposée
-              </Typography>
-              <CheckCircleIcon color="success" fontSize="medium" />
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-              }}
-            >
-              <Typography variant="body1" sx={{ textAlign: "left", flex: "1 1 auto", minWidth: 220 }}>
-                Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
-              </Typography>
-
-              <Button
-                variant="contained"
-                onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
-                aria-label="Voir mes points"
-              >
-                Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
-              </Button>
-            </Box>
-
-            {/* Ancien main affiché juste sous le bloc succès */}
-            {dep0 && (
-              <Deposit
-                dep={dep0}
-                user={user}
-                cost={40}
-                variant="list"
-                showDate={true}
-                showUser={true}
-                fitContainer={true}
-              />
-            )}
+      {/* 3) Après dépôt : bloc succès + ex-main (list, full) */}
+      {hasMyDeposit && (
+        <Box sx={{ display: "grid", gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
+              Ta chanson a été déposée
+            </Typography>
+            <CheckCircleIcon color="success" fontSize="medium" />
           </Box>
-        )}
-      </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+            }}
+          >
+            <Typography variant="body1" sx={{ textAlign: "left", flex: "1 1 auto", minWidth: 220 }}>
+              Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
+            </Typography>
+
+            <Button
+              variant="contained"
+              onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
+              aria-label="Voir mes points"
+            >
+              Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
+            </Button>
+          </Box>
+
+          {/* Ancien main affiché juste sous le bloc succès */}
+          {dep0 && (
+            <Deposit
+              dep={dep0}
+              user={user}
+              cost={40}
+              variant="list"
+              showDate={true}
+              showUser={true}
+              fitContainer={true}
+            />
+          )}
+        </Box>
+      )}
 
       {/* Drawer unique — Search <-> Achievements */}
       <Drawer
