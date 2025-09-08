@@ -3,7 +3,6 @@
 .squaredesign{
   border: 0.5px solid white;
   box-shadow: 0 0 0 0.5px white;
-  padding: 16px;
 }
 
 
@@ -20,6 +19,13 @@
 #deposit_song div,{
   display: inline-block;
 
+
+}
+
+#deposit_date div,
+#deposit_user div,
+#deposit_song .titre, #deposit_song .artist{
+  padding: 16px;
 }
 
 #deposit_user .username{
