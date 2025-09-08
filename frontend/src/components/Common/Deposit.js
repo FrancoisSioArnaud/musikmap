@@ -146,7 +146,7 @@ export default function Deposit({
               
               <Box className="icon">
               </Box>
-              <Typography variant="subtitle1">
+              <Typography variant="subtitle1" component="div">
                 {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
@@ -167,11 +167,11 @@ export default function Deposit({
                 alt={u?.username || "Anonyme"}
               />
             </Box>
-            <Typography className="username" variant="subtitle1"> 
+            <Typography component="div" className="username" variant="subtitle1"> 
               {u?.username || "Anonyme"}
             </Typography>
             {u?.username && (
-              <ArrowForwardIosIcon fontSize="small" />
+              <ArrowForwardIosIcon className="icon" />
             )}
           </Box>
         )}
