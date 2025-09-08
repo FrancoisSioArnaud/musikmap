@@ -3,15 +3,14 @@
 .squaredesign{
   border: 0.5px solid white;
   box-shadow: 0 0 0 0.5px white;
-    max-height: 51px;
   padding: 16px;
+  max-height: 51px;
 }
 
 #deposit_date,
 #deposit_user,
-#deposit_song,
 {
-  display: block;
+  max-height: 51px;
   
 }
 
@@ -44,6 +43,10 @@
 #deposit_user { }
 
 #deposit_user .avatarbox { }
+
+#deposit_user .avatar {
+  
+}
 
 #deposit_user .username { }
 
