@@ -195,14 +195,12 @@ export default function Deposit({
             <Box className="interact">
               <Box className="texts">
                 {isRevealed && (
-                  <>
                     <Typography component="span" className="titre squaredesign" variant="h3">
                       {s.title}
                     </Typography>
                     <Typography component="span" className="artist squaredesign" variant="body1">
                       {s.artist}
                     </Typography>
-                  </>
                 )}
               </Box>
               <Button
@@ -227,7 +225,6 @@ export default function Deposit({
 
   // ---- VARIANT: LIST (To_Reveal / Reveal, overlay CTA, snackbar) ----
   return (
-    <>
       <Card sx={cardBaseSx}>
         {showDate && (
           <Box id="deposit_date">
@@ -290,7 +287,6 @@ export default function Deposit({
           {/* textes + Play (ou Skeleton si non révélé) */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
             {isRevealed ? (
-              <>
                 <Typography component="h2" variant="h4">
                   {s.title}
                 </Typography>
@@ -308,7 +304,6 @@ export default function Deposit({
                 </Button>
               </>
             ) : (
-              <>
                 <Button
                   variant="depositInteract"
                   onClick={revealDeposit}
@@ -320,7 +315,6 @@ export default function Deposit({
                   </Typography>
                   Découvrir
                 </Button>
-              </>
             )}
           </Box>
         </Box>
@@ -374,6 +368,5 @@ export default function Deposit({
           }
         />
       </Snackbar>
-    </>
   );
 }
