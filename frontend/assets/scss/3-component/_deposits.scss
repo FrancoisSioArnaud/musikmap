@@ -12,10 +12,9 @@
     max-height: 51px;
 }
 
-#deposit_date div,
-#deposit_user > div,
-#deposit_song .titre, #deposit_song .artist{
+.deposit span{
   padding: 16px;
+  display:block;
 }
 
 #deposit_user .username{
