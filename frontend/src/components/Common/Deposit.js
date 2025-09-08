@@ -140,13 +140,13 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Card sx={cardBaseSx}>
+        <Card className="deposit" sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date">
               
               <Box className="icon squaredesign" >
               </Box>
-              <Typography className="squaredesign" variant="subtitle1" component="div">
+              <Typography className="squaredesign" variant="subtitle1" component="span">
                 {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
@@ -197,10 +197,10 @@ export default function Deposit({
               <Box className="texts">
                 {isRevealed && (
                   <>
-                    <Typography component="div" className="titre squaredesign" variant="h3">
+                    <Typography component="span" className="titre squaredesign" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography component="div" className="artist squaredesign" variant="body1">
+                    <Typography component="span" className="artist squaredesign" variant="body1">
                       {s.artist}
                     </Typography>
                   </>
