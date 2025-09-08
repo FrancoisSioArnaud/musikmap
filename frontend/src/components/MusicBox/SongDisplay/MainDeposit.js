@@ -101,7 +101,7 @@ export default function MainDeposit({
         </Typography>
       </Box>
     
-      <Box sx={{ px: 2, display: "grid", gap: 2 }}>
+      <Box>
         {/* 1) Card main directement (sans encart pointillé) */}
         <Deposit
           dep={hasMyDeposit ? myDeposit : dep0}
@@ -172,7 +172,6 @@ export default function MainDeposit({
             )}
           </Box>
         )}
-      </Box>
 
       {/* Drawer unique — Search <-> Achievements */}
       <Drawer
