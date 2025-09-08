@@ -159,7 +159,7 @@ export default function Deposit({
             {u?.username && (
             className="hasUsername"
             )}
-                          >
+          >
             <Box className="avatarbox" className="squaredesign">
               <Avatar
                 src={u?.profile_pic_url || undefined}
