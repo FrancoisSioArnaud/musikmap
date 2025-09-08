@@ -169,10 +169,11 @@ export default function Deposit({
             </Box>
             <Typography component="div" className="username" variant="subtitle1"> 
               {u?.username || "Anonyme"}
+              {u?.username && (
+                <ArrowForwardIosIcon className="icon" />
+              )}
             </Typography>
-            {u?.username && (
-              <ArrowForwardIosIcon className="icon" />
-            )}
+            
           </Box>
         )}
 
@@ -204,10 +205,10 @@ export default function Deposit({
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
-                    <Typography className="titre" variant="h3">
+                    <Typography component="div" className="titre" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography className="artist" variant="body">
+                    <Typography component="div" className="artist" variant="body">
                       {s.artist}
                     </Typography>
                   </>
