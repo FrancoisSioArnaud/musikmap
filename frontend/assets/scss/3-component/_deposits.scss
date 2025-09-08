@@ -22,9 +22,19 @@
 
 }
 
-#deposit_user{
-
+#deposit_user .username{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
+
+.hasUsername{
+  background-color : white;
+  color:black;
+}
+
+
 
 /* =========================
    deposit_date
