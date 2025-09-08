@@ -139,7 +139,6 @@ export default function Deposit({
   // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
   if (variant === "main") {
     return (
-      <>
         <Card className="deposit" sx={cardBaseSx}>
           {showDate && (
             <Box id="deposit_date">
@@ -223,7 +222,6 @@ export default function Deposit({
 
         {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-      </>
     );
   }
 
