@@ -2,14 +2,16 @@
 
 #deposit_date,
 #deposit_user,
-#deposit_song {
-  display: inline-block;
+#deposit_song,
+{
+  display: block;
+  
 }
 
 /* demi-bordure “center” : moitié inside (border) + moitié outside (box-shadow) */
 #deposit_date div,
 #deposit_user div,
-#deposit_song div {
+#deposit_song div,{
   display: inline-block;
   border: 0.5px solid white;
   box-shadow: 0 0 0 0.5px white;
