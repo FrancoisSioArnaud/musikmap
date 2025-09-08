@@ -144,9 +144,9 @@ export default function Deposit({
           {showDate && (
             <Box id="deposit_date">
               
-              <Box className="icon">
+              <Box className="icon squaredesign" >
               </Box>
-              <Typography variant="subtitle1" component="div">
+              <Typography className="squaredesign" variant="subtitle1" component="div">
                 {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
