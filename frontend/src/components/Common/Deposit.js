@@ -193,14 +193,8 @@ export default function Deposit({
                 />
               )}
             </Box>
-            <Box 
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 0,
-                minWidth: 0,
-              }}>
-              <Box>
+            <Box className="interact">
+              <Box className="texts">
                 {isRevealed && (
                   <>
                     <Typography component="div" className="titre squaredesign" variant="h3">
