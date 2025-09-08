@@ -158,7 +158,7 @@ export default function Deposit({
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
             className={u?.username ? "hasUsername" : ""} 
           >
-            <Box className="avatarbox" className="squaredesign">
+            <Box className="squaredesign avatarbox">
               <Avatar
                 src={u?.profile_pic_url || undefined}
                 alt={u?.username || "Anonyme"}
