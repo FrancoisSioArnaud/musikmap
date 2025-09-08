@@ -4,15 +4,15 @@
   border: 0.5px solid white;
   box-shadow: 0 0 0 0.5px white;
   padding: 16px;
-  max-height: 51px;
 }
 
-#deposit_date,
-#deposit_user,
-{
-  max-height: 51px;
-  
 }
+#deposit_date, #deposit_user {
+    display: flex;
+    flex-direction: row;
+    max-height: 51px;
+}
+
 
 /* demi-bordure “center” : moitié inside (border) + moitié outside (box-shadow) */
 #deposit_date div,
@@ -42,10 +42,13 @@
    ========================= */
 #deposit_user { }
 
-#deposit_user .avatarbox { }
+#deposit_user .avatarbox { 
+  max-width : 51px;
+}
 
 #deposit_user .avatar {
-  
+  width:32px;
+  height:32px;
 }
 
 #deposit_user .username { }
