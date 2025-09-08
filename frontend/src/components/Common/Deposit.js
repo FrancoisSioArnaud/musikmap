@@ -200,13 +200,13 @@ export default function Deposit({
                 gap: 0,
                 minWidth: 0,
               }}>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Box>
                 {isRevealed && (
                   <>
                     <Typography component="div" className="titre squaredesign" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography component="div" className="artist squaredesign" variant="body">
+                    <Typography component="div" className="artist squaredesign" variant="body1">
                       {s.artist}
                     </Typography>
                   </>
