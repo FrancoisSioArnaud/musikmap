@@ -155,19 +155,15 @@ export default function Deposit({
         {showUser && (
           <Box
             id="deposit_user"
-            sx={{
-              display: "inline",
-              minWidth: 0,
-            }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
-            <Box className="avatarbox">
+            <Box className="avatarbox" className="squaredesign">
               <Avatar
                 src={u?.profile_pic_url || undefined}
                 alt={u?.username || "Anonyme"}
               />
             </Box>
-            <Typography component="div" className="username" variant="subtitle1"> 
+            <Typography component="div" className="username squaredesign" variant="subtitle1"> 
               {u?.username || "Anonyme"}
               {u?.username && (
                 <ArrowForwardIosIcon className="icon" />
@@ -179,7 +175,7 @@ export default function Deposit({
 
           {/* song (cover pleine largeur, titres si révélé) */}
           <Box id="deposit_song" sx={{ display: "grid", minWidth: 0 }}>
-            <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+            <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign">
               {s?.img_url && (
                 <Box
                   component="img"
@@ -205,10 +201,10 @@ export default function Deposit({
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 {isRevealed && (
                   <>
-                    <Typography component="div" className="titre" variant="h3">
+                    <Typography component="div" className="titre squaredesign" variant="h3">
                       {s.title}
                     </Typography>
-                    <Typography component="div" className="artist" variant="body">
+                    <Typography component="div" className="artist squaredesign" variant="body">
                       {s.artist}
                     </Typography>
                   </>
