@@ -27,6 +27,7 @@ const theme = createTheme({
       fontSize: "40px",
       lineHeight: "48px",
       fontWeight: 900,
+      color: "#FFFFFF",
       // color: "#000000", // à activer localement seulement sur surface claire
     },
 
@@ -35,6 +36,7 @@ const theme = createTheme({
       fontSize: "32px",
       lineHeight: "38.4px",
       fontWeight: 700,
+      color: "#FFFFFF",
     },
 
     // h5 : 16 semi-bold
@@ -42,6 +44,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 600,
+      color: "#FFFFFF",
     },
 
     // Thicktext : 16 bold → map sur subtitle1
@@ -49,6 +52,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 700,
+      color: "#FFFFFF",
     },
 
     // p : 16 regular
@@ -56,6 +60,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 400,
+      color: "#FFFFFF",
     },
 
     // small text : 12 light
@@ -63,6 +68,7 @@ const theme = createTheme({
       fontSize: "12px",
       lineHeight: "14.4px",
       fontWeight: 300,
+      color: "#FFFFFF",
     },
   },
 
