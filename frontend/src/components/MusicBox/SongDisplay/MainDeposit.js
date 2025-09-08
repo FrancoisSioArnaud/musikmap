@@ -239,7 +239,7 @@ export default function MainDeposit({
           </Box>
         </Box>
       </Drawer>
-    </>
+
   );
 }
 
