@@ -165,7 +165,7 @@ export default function Deposit({
                 className="avatar"
               />
             </Box>
-            <Typography component="div" className="username squaredesign" variant="subtitle1"> 
+            <Typography component="span" className="username squaredesign" variant="subtitle1"> 
               {u?.username || "Anonyme"}
               {u?.username && (
                 <ArrowForwardIosIcon className="icon" />
