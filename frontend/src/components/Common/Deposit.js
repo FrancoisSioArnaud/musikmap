@@ -156,9 +156,7 @@ export default function Deposit({
           <Box
             id="deposit_user"
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-            {u?.username && (
-            className="hasUsername"
-            )}
+            className={u?.username ? "hasUsername" : ""} 
           >
             <Box className="avatarbox" className="squaredesign">
               <Avatar
