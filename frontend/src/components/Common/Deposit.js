@@ -142,7 +142,7 @@ export default function Deposit({
       <>
         <Card className="deposit" sx={cardBaseSx}>
           {showDate && (
-            <Box id="deposit_date">
+            <Box className="deposit_date">
               
               <Box className="icon squaredesign" >
               </Box>
