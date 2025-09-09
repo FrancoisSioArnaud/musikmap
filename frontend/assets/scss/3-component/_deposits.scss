@@ -1,6 +1,8 @@
 @use '../0-init/color' as *;
 .deposit{
-  width: 100%,
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 .squaredesign{
   border: 0.5px solid white;
