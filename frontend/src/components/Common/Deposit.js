@@ -129,9 +129,6 @@ export default function Deposit({
     }
   };
 
-  // Toujours pleine largeur
-  const cardBaseSx = { p: 2, width: "100%", maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" };
-
   // =========================
   // RENDUS PAR VARIANTES
   // =========================
@@ -140,7 +137,7 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Card className="deposit" sx={cardBaseSx}>
+        <Card className="deposit">
           {showDate && (
             <Box className="deposit_date">
               
