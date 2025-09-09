@@ -1,12 +1,14 @@
 @use '../0-init/color' as *;
-
+.deposit{
+  width: 100%,
+}
 .squaredesign{
   border: 0.5px solid white;
   box-shadow: 0 0 0 0.5px white;
 }
 
 
-#deposit_date, #deposit_user {
+.deposit_date, .deposit_user {
     display: flex;
     flex-direction: row;
     max-height: 51px;
@@ -17,7 +19,7 @@
   display:block;
 }
 
-#deposit_user .username{
+.deposit_user .username{
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -34,21 +36,21 @@
 /* =========================
    deposit_date
    ========================= */
-#deposit_date { }
+.deposit_date { }
 
-#deposit_date div, #deposit_date .icon { 
+.deposit_date div, .deposit_date .icon { 
 
 }
 
-#deposit_date p { }
+.deposit_date p { }
 
 /* =========================
    deposit_user
    ========================= */
-#deposit_user { }
+.deposit_user { }
 
-#deposit_date div ,
-#deposit_user div { 
+.deposit_date div ,
+.deposit_user div { 
   padding: 0;
   display: flex;
   align-items: center;
@@ -56,29 +58,29 @@
   justify-content: center;
 }
 
-#deposit_user .avatar {
+.deposit_user .avatar {
   width:32px;
   height:32px;
 }
 
-#deposit_user .username { }
+.deposit_user .username { }
 
 /* =========================
    deposit_song
    ========================= */
-#deposit_song { }
+.deposit_song { }
 
-#deposit_song img { }
+.deposit_song img { }
 
-#deposit_song div { }
+.deposit_song div { }
 
-#deposit_song .interact{
+.deposit_song .interact{
   display: flex;
   justify-content: space-between;
   gap: 8px;    
 }
 
-#deposit_song .texts{
+.deposit_song .texts{
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -89,6 +91,6 @@
   margin-top: 0.5px;
 }
 
-#deposit_song div .titre { }
+.deposit_song div .titre { }
 
-#deposit_song div .artist { }
+.deposit_song div .artist { }
