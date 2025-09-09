@@ -28,25 +28,26 @@ export default function EnableLocation({
       PaperProps={{
         sx: {
           width: "100vw",
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          pb: "env(safe-area-inset-bottom)",
         },
       }}
+      className="modal modal_loc"
     >
-      <Box sx={{ p: 2 }}>
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: "center" }}>
-          <Button variant="outlined" disabled>
-            {boxTitle}
-          </Button>
+      <Box>
+        <Stack>
+          <Box className="intro">
+            <Box className="icon squaredesign" >
+            </Box>
+            <Typography className="squaredesign" variant="subtitle1" component="span">
+              {boxTitle}
+            </Typography>
+          </Box>
 
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 700 }}>
-            Autoriser la localisation
+          <Typography variant="h3" component="h1">
+            Localisation
           </Typography>
 
           <Typography variant="body1">
-            Confirme que tu es bien à côté du spot en partageant ta localisation.
-            Elle est utilisée uniquement pour ouvrir la boîte.
+            Pour éviter les tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.
           </Typography>
 
           {error ? (
@@ -61,7 +62,6 @@ export default function EnableLocation({
             onClick={onAuthorize}
             disabled={loading}
             fullWidth
-            sx={{ mt: 1 }}
           >
             {loading ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
@@ -77,3 +77,4 @@ export default function EnableLocation({
     </Drawer>
   );
 }
+
