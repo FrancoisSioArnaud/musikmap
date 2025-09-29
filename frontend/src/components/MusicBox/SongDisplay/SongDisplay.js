@@ -28,7 +28,9 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box>
+    <Box sx={{
+            p:2,
+          }}>
       
       {/* SECTION — MAIN */}
       <MainDeposit
