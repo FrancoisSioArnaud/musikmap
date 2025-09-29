@@ -226,7 +226,7 @@ export default function Deposit({
   // ---- VARIANT: LIST (To_Reveal / Reveal, overlay CTA, snackbar) ----
   return (
     <>
-      <Card sx={cardBaseSx}>
+      <Card>
         {showDate && (
           <Box className="deposit_date">
             <Typography component="h3" variant="subtitle1">
