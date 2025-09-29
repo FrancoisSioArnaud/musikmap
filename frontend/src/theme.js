@@ -122,7 +122,7 @@ const theme = createTheme({
 
         // Bouton plein (primary)
         contained: {
-          borderRadius: 6,
+          borderRadius: 16,
           height: 56,
           backgroundColor: "#7BD528",
           color: "#FFFFFF",
@@ -152,7 +152,7 @@ const theme = createTheme({
         {
           props: { variant: "depositInteract" }, // <Button variant="gradient">
           style: {
-            borderRadius: 6,
+            borderRadius: 16,
             height: 56,
             backgroundColor: "#7BD528",
             color: "#FFFFFF",
