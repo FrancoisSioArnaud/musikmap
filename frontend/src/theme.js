@@ -78,7 +78,7 @@ const theme = createTheme({
           color: "#000103", // ← tous les textes par défaut en noir TAN
         },
         body: {
-         
+          backgroundColor: "#FFFFFF",
         },
         // Optionnel : liens en blanc par défaut (sinon ils héritent déjà du body)
         a: {
