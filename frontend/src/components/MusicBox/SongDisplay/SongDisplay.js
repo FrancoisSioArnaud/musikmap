@@ -29,7 +29,7 @@ export default function SongDisplay({
 
   return (
     <Box sx={{
-            p:2,
+            p:3,
           }}>
       
       {/* SECTION — MAIN */}
