@@ -13,8 +13,6 @@ const theme = createTheme({
     divider: "rgba(255,255,255,0.12)",
   },
 
-  // Bordures globales (tu as choisi 0 ici)
-  shape: { borderRadius: 16 },
 
   typography: {
     fontFamily: 'open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
