@@ -3,31 +3,28 @@ import { createTheme } from "@mui/material/styles";
 
 const theme = createTheme({
   palette: {
-    mode: "dark",
+    mode: "light",
     // Couleurs principales
-    primary: { main: "#FFFFFF", contrastText: "#000000" },
-    background: { default: "#000000", paper: "#000000" },
-    text: { primary: "#FFFFFF", secondary: "rgba(255,255,255,0.7)" },
+    primary: { main: "#000103", contrastText: "#000000" },
+    background: { default: "#FFFFFF", paper: "#FFFFFF" },
+    text: { primary: "#000103", secondary: "#0D2A0E" },
     error: { main: "#FB0000" },
     success: { main: "#0FCC0A" }, // (= validation)
     divider: "rgba(255,255,255,0.12)",
   },
 
   // Bordures globales (tu as choisi 0 ici)
-  shape: { borderRadius: 0 },
+  shape: { borderRadius: 16 },
 
   typography: {
-    fontFamily: '"Exo 2", system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-    // textAlign n'est pas un champ supporté globalement par MUI typography,
-    // on le gère plutôt localement via sx si besoin.
-    // textAlign: "Left",
+    fontFamily: 'open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
 
     // h1 : 40px black (attention : en dark, #000 est invisible ; laisse la couleur au composant si fond clair)
     h1: {
       fontSize: "40px",
       lineHeight: "48px",
       fontWeight: 900,
-      color: "#FFFFFF",
+      color: "#000103",
       // color: "#000000", // à activer localement seulement sur surface claire
     },
 
@@ -36,7 +33,7 @@ const theme = createTheme({
       fontSize: "32px",
       lineHeight: "38.4px",
       fontWeight: 700,
-      color: "#FFFFFF",
+      color: "#000103",
     },
 
     // h5 : 16 semi-bold
@@ -44,7 +41,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 600,
-      color: "#FFFFFF",
+      color: "#000103",
     },
 
     // Thicktext : 16 bold → map sur subtitle1
@@ -52,7 +49,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 700,
-      color: "#FFFFFF",
+      color: "#000103",
     },
 
     // p : 16 regular
@@ -60,7 +57,7 @@ const theme = createTheme({
       fontSize: "16px",
       lineHeight: "19.2px",
       fontWeight: 400,
-      color: "#FFFFFF",
+      color: "#000103",
     },
 
     // small text : 12 light
@@ -68,7 +65,7 @@ const theme = createTheme({
       fontSize: "12px",
       lineHeight: "14.4px",
       fontWeight: 300,
-      color: "#FFFFFF",
+      color: "#000103",
     },
   },
 
@@ -78,8 +75,8 @@ const theme = createTheme({
       styleOverrides: {
         "html, body, #root": {
           minHeight: "100%",
-          backgroundColor: "#000000",
-          color: "#FFFFFF", // ← tous les textes par défaut en blanc
+          backgroundColor: "#FFFFFF",
+          color: "#000103", // ← tous les textes par défaut en noir TAN
         },
         body: {
          
@@ -95,10 +92,8 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: "rgba(0,0,0,0.30)", // black 30%
+          backgroundColor: "#FFFFFF", // black 30%
           borderBottom: "1px solid rgba(255,255,255,0.12)", // white 12%
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
           boxShadow: "none",
           height: "56px",
         },
@@ -121,7 +116,6 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          borderRadius: 0,
           height: 48,
           fontSize: "20px",
           textTransform: "none",
@@ -131,10 +125,9 @@ const theme = createTheme({
         contained: {
           borderRadius: 6,
           height: 56,
-          backgroundColor: "#FFFFFF",
-          color: "#000000",
+          backgroundColor: "#7BD528",
+          color: "#FFFFFF",
           fontWeight: 700,
-          borderBottom: "4px solid #E2E2E2",
           "&:active": {
             filter: "brightness(0.9)",
           },
@@ -145,9 +138,8 @@ const theme = createTheme({
 
         // Bouton outlined (primary)
         outlinedPrimary: {
-          backgroundColor: "#000000",
-          color: "#FFFFFF",
-          border: "2px solid rgba(255,255,255,0.3)",
+          backgroundColor: "#FFFFFF",
+          color: "#000103",
           "&:active": {
             filter: "brightness(0.9)",
           },
@@ -161,15 +153,14 @@ const theme = createTheme({
         {
           props: { variant: "depositInteract" }, // <Button variant="gradient">
           style: {
-            background: "linear-gradient(35deg, #FF9900, #FF3D00)",
-            boxShadow: "0px 4px 0px 0px rgba(0, 0, 0, 0.3)",
-            color: "#FFF",
+            borderRadius: 6,
+            height: 56,
+            backgroundColor: "#7BD528",
+            color: "#FFFFFF",
             fontWeight: 700,
-            borderRadius: 0,
-            padding : "16px",
-            display:"flex",
-            flexDirection : "column",
-            textTransform: "none",
+            "&:active": {
+              filter: "brightness(0.9)",
+            },
             "&:hover": {
               filter: "brightness(0.9)",
             },
