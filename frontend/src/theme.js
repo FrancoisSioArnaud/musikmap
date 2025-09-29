@@ -13,7 +13,8 @@ const theme = createTheme({
     divider: "rgba(255,255,255,0.12)",
   },
 
-
+  spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64], 
+  
   typography: {
     fontFamily: 'open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
 
