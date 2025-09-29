@@ -28,7 +28,7 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box sx={{ display: "grid", gap: 2, pt: "64px" }}>
+    <Box sx={{ display: "grid", gap: 2}}>
       
       {/* SECTION — MAIN */}
       <MainDeposit
@@ -45,10 +45,8 @@ export default function SongDisplay({
         <Box
           id="older_deposits"
           sx={{
-            mt: "32px",
             display: "grid",
             gap: 2,
-            pb: 2,
           }}
         >
           <Typography component="h2" variant="h3">
