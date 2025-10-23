@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider, CssBaseline } from "@mui/material";
+import { CssBaseline } from "@mui/material";
+import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import theme from "../theme";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
@@ -73,32 +74,35 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Router>
-        <UserContext.Provider value={providerValue}>
-          <Routes>
-            {/* ====== Routes AVEC header (layout global) ====== */}
-            <Route element={<LayoutWithHeader />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/profile/settings" element={<UserSettings />} />
-              <Route path="/profile/edit" element={<UserProfileEdit />} />
-              <Route path="/box/:boxName" element={<MusicBox />} />
-              <Route path="/profile" element={<UserProfilePage />} />
-              <Route path="/profile/:username" element={<UserProfilePage />} />
-            </Route>
-
-            {/* ====== Routes SANS header (auth) ====== */}
-            <Route path="/register" element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}/>
-            <Route path="/login" element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}/>
-          </Routes>
-        </UserContext.Provider>
-      </Router>
-    </ThemeProvider>
+    <StyledEngineProvider injectFirst>
+      <ThemeProvider theme={theme}>
+        <Router>
+          <UserContext.Provider value={providerValue}>
+            <Routes>
+              {/* ====== Routes AVEC header (layout global) ====== */}
+              <Route element={<LayoutWithHeader />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/profile/settings" element={<UserSettings />} />
+                <Route path="/profile/edit" element={<UserProfileEdit />} />
+                <Route path="/box/:boxName" element={<MusicBox />} />
+                <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/profile/:username" element={<UserProfilePage />} />
+              </Route>
+  
+              {/* ====== Routes SANS header (auth) ====== */}
+              <Route path="/register" element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}/>
+              <Route path="/login" element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}/>
+            </Routes>
+          </UserContext.Provider>
+        </Router>
+      </ThemeProvider>
+    </StyledEngineProvider>
   );
 }
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
