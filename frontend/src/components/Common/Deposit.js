@@ -13,6 +13,7 @@ import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AlbumIcon from "@mui/icons-material/Album";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
@@ -313,9 +314,12 @@ export default function Deposit({
                   disabled={!user || !user.username}
                   className="decouvrir"
                 >
-                  <Typography className="points" variant="h4">
-                    {cost}
-                  </Typography>
+                  <Box className="points_container">
+                    <Typography variant="body1" component="span">
+                      {cost}
+                    </Typography>
+                    <AlbumIcon/>
+                  </Box>
                   Découvrir
                 </Button>
               </>
