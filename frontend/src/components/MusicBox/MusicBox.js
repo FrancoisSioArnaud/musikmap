@@ -420,7 +420,7 @@ export default function MusicBox() {
       {view !== "hero" && (
         <>
           <span id="songdisplay-anchor" />
-          <Box sx={{ position: "relative", minHeight: 320 }}>
+          <Box sx={{ position: "relative", minHeight: 320, height: "100vw" }}>
             {/* SONGDISPLAY */}
             {view === "song" && (
               <>
@@ -486,4 +486,5 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
