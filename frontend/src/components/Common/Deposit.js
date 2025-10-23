@@ -289,7 +289,7 @@ export default function Deposit({
                   <Typography component="span" className="artist squaredesign" variant="body1">
                     {s.artist}
                   </Typography>
-                </Box>
+                </box>
                 <Button
                   variant="depositInteract"
                   className="play playSecondary"
@@ -306,7 +306,7 @@ export default function Deposit({
                   <Typography component="span" className="titre squaredesign" variant="body1">
                     Utilise tes points pour révéler cette chanson
                   </Typography>
-                </Box>
+                </box>
                 <Button
                   variant="depositInteract"
                   onClick={revealDeposit}
