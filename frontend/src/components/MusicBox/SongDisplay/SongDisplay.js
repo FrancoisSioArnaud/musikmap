@@ -30,7 +30,7 @@ export default function SongDisplay({
   return (
     <Box sx={{
             p:4,
-            width:"100vw";
+            width:"100vw",
           }}>
       
       {/* SECTION — MAIN */}
