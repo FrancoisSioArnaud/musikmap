@@ -316,11 +316,11 @@ export default function Deposit({
                 >
                   
                   Découvrir
-                  <Box className="points_container">
+                  <Box className="points_container" sx={{ ml: "12px" }}>
                     <Typography variant="body1" component="span">
                       {cost}
                     </Typography>
-                    <AlbumIcon sx={{ ml: "12px" }}/>
+                    <AlbumIcon/>
                   </Box>
                 </Button>
               </>
