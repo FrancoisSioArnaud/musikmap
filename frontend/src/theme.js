@@ -21,50 +21,44 @@ const theme = createTheme({
     // h1 : 40px black (attention : en dark, #000 est invisible ; laisse la couleur au composant si fond clair)
     h1: {
       fontSize: "40px",
-      lineHeight: "48px",
       fontWeight: 900,
-      color: "#000103",
       // color: "#000000", // à activer localement seulement sur surface claire
     },
 
     // h3 : 32 bold
     h3: {
       fontSize: "32px",
-      lineHeight: "38.4px",
       fontWeight: 700,
-      color: "#000103",
     },
-
+    
+    // h4 : 16 semi-bold
+    h4: {
+      fontSize: "26px",
+      fontWeight: 600,
+    },
+    
     // h5 : 16 semi-bold
     h5: {
       fontSize: "16px",
-      lineHeight: "19.2px",
       fontWeight: 600,
-      color: "#000103",
     },
 
     // Thicktext : 16 bold → map sur subtitle1
     subtitle1: {
       fontSize: "16px",
-      lineHeight: "19.2px",
       fontWeight: 700,
-      color: "#000103",
     },
 
     // p : 16 regular
     body1: {
       fontSize: "16px",
-      lineHeight: "19.2px",
       fontWeight: 400,
-      color: "#000103",
     },
 
     // small text : 12 light
     body2: {
       fontSize: "12px",
-      lineHeight: "14.4px",
       fontWeight: 300,
-      color: "#000103",
     },
   },
 
