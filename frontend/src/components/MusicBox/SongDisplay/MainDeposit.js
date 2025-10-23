@@ -268,7 +268,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         </Typography>
       </Box>
 
-      <List>
+      <List className="success_container">
         {listItems.length === 0 ? (
           <ListItem>
             <ListItemText primary="Aucun succès détaillé" />
