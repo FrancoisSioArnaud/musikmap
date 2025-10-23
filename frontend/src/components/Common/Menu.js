@@ -39,30 +39,19 @@ export default function MenuAppBar() {
 
         {isAuthenticated ? (
           <>
-            <Box
-              sx={{
-                display: "flex",
-                marginRight: "5%",
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                gap: "1",
-              }}
+            <Box 
+              className="points_container"
             >
               <Typography
                 variant="body1"
-                component="div"
+                component="span"
                 sx={{
                   color: "text.primary",
                 }}
               >
                 {user.points}
               </Typography>
-              <AlbumIcon
-                sx={{
-                  color: "#fa4000",
-                }}
-              />
+              <AlbumIcon/>
             </Box>
 
                 
@@ -102,6 +91,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
