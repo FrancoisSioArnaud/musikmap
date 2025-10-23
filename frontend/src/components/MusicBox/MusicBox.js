@@ -373,7 +373,7 @@ export default function MusicBox() {
         <Paper
           elevation={3}
           sx={{
-            height: "100vh",
+            height: "calc(100vh-56px)",
             display: "flex",
             flexDirection: "column",
             alignItems: "stretch",
@@ -486,6 +486,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
