@@ -43,8 +43,6 @@
 .deposit_list .deposit_song{
   flex-direction: row;
   gap: 16px;
-  align-items:center;
-  padding:16px;
 }
 
 .deposit .deposit_song .img_container{
@@ -76,7 +74,6 @@
 
 .deposit_list .interact{
   flex-direction:column;
-  flex-grow:1;
   justify-content: center;
   gap: 12px;
 }
