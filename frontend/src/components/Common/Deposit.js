@@ -268,7 +268,7 @@ export default function Deposit({
           }}
         >
           {/* cover */}
-          <Box sx={{ width: 160, height: 160}}>
+          <Box sx={{ width: 160, height: 160}} className="squaredesign img_container">
             {s?.img_url && (
               <Box
                 component="img"
