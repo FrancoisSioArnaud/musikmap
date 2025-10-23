@@ -1,1 +1,57 @@
 @use '../0-init/color' as *;
+
+.deposit{
+  background-color: #7BD528;
+  padding: 16px;
+}
+
+.deposit .deposit_date{
+  padding: 16px;
+}
+
+.deposit .deposit_user{
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 8px;
+}
+
+.deposit .deposit_user span{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deposit .deposit_song{
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 26px;
+  border-radius: 26px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deposit .deposit_song .img_container img{
+  width: 60%;
+  margin: auto;
+  border-radius: 8px;
+}
+
+.deposit .interact{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.deposit .interact .texts{
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+}
+
+
+
+
+
