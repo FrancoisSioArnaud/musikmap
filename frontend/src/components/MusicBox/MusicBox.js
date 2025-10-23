@@ -373,7 +373,7 @@ export default function MusicBox() {
         <Paper
           elevation={3}
           sx={{
-            height: "calc(100vh - 100px)",
+            height: "100vh",
             display: "flex",
             flexDirection: "column",
             alignItems: "stretch",
@@ -383,7 +383,7 @@ export default function MusicBox() {
           }}
         >
           <Box sx={{ mt: "auto" }}>
-            <Box sx={{ display: "grid" }}>
+            <Box sx={{ display: "grid", position: "fixed", bottom: "20px", left: "20px", right: "20px"}}>
               {metaLoading ? (
                 <Skeleton variant="text" width={180} height={24} />
               ) : (
@@ -486,6 +486,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
