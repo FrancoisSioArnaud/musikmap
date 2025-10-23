@@ -320,7 +320,7 @@ export default function Deposit({
                     <Typography variant="body1" component="span">
                       {cost}
                     </Typography>
-                    <AlbumIcon/>
+                    <AlbumIcon sx={{ ml: "12px" }}/>
                   </Box>
                 </Button>
               </>
