@@ -11,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CheckIcon from '@mui/icons-material/Check';
+import AlbumIcon from "@mui/icons-material/Album";
 
 import Deposit from "../../Common/Deposit";
 import LiveSearch from "./LiveSearch";
@@ -275,9 +276,13 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         ) : (
           listItems.map((ach, idx) => (
             <ListItem key={idx}>
-              <Typography variant="subtitle1">+{ach.points}</Typography>
               <Typography variant="h3">{ach.name}</Typography>
-              <Typography variant="body">{ach.desc}</Typography>
+              <Box className="points_container">
+                <Typography component="span" variant="body1" className="success_title">+{ach.points}</Typography>
+                <AlbumIcon/>
+              </Box>
+              <Typography variant="body" className="success_desc">{ach.desc}</Typography>
+              <Typography variant="body" className="success_emoji">🔥</Typography>
             </ListItem>
           ))
         )}
