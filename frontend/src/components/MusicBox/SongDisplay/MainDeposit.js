@@ -275,7 +275,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           </ListItem>
         ) : (
           listItems.map((ach, idx) => (
-            <ListItem key={idx}>
+            <ListItem key={idx} className="success">
               <Typography variant="h3">{ach.name}</Typography>
               <Box className="points_container">
                 <Typography component="span" variant="body1" className="success_title">+{ach.points}</Typography>
