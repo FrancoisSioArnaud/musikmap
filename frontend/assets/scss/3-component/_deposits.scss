@@ -3,16 +3,22 @@
 .deposit{
   background-color: #7BD528;
   padding: 16px;
+  display:flex;
+  flex-direction: column;
+  gap : 16px;
+  background-color: #7BD528;
+  border-radius: 32px;
+  
 }
 
 .deposit .deposit_date{
-  padding: 16px;
+  padding: 6px 16px;
 }
 
 .deposit .deposit_user{
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: 0px 12px;
   gap: 8px;
 }
 
