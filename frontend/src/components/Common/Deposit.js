@@ -260,12 +260,6 @@ export default function Deposit({
         {/* zone chanson (grille + overlay éventuel) */}
         <Box
           className="deposit_song"
-          sx={{
-            position: "relative",
-            display: "grid",
-            gridTemplateColumns: "160px 1fr",
-            minWidth: 0,
-          }}
         >
           {/* cover */}
           <Box sx={{ width: 160, height: 160}} className="squaredesign img_container">
@@ -276,7 +270,8 @@ export default function Deposit({
                 alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                 sx={{
                   width: "100%",
-                  height: "100%",
+                  maxWidth: "100%",
+                  aspectRatio: "1 / 1",
                   objectFit: "cover",
                   display: "block",
                   filter: isRevealed ? "none" : "blur(6px)",
