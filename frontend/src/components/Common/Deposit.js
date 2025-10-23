@@ -280,41 +280,46 @@ export default function Deposit({
 
           {/* textes + Play*/}
           <Box className="interact">
-            <Box className="texts">
-              {isRevealed ? (
-                <>
+            {isRevealed ? (
+              <>
+                <Box className="texts">
                   <Typography component="span" className="titre squaredesign" variant="h4">
                     {s.title}
                   </Typography>
                   <Typography component="span" className="artist squaredesign" variant="body1">
                     {s.artist}
                   </Typography>
-                  <Button
-                    variant="depositInteract"
-                    className="play playSecondary"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    startIcon={<PlayArrowIcon />}
-                  >
-                    Play
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant="depositInteract"
-                    onClick={revealDeposit}
-                    disabled={!user || !user.username}
-                    className="decouvrir"
-                  >
-                    <Typography className="points" variant="h4">
-                      {cost}
-                    </Typography>
-                    Découvrir
-                  </Button>
-                </>
-              )}
-            </Box>
+                </box>
+                <Button
+                  variant="depositInteract"
+                  className="play playSecondary"
+                  size="large"
+                  onClick={() => openPlayFor(s)}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Play
+                </Button>
+              </>
+            ) : (
+              <>
+                <Box className="texts">
+                  <Typography component="span" className="titre squaredesign" variant="body1">
+                    Utilise tes points pour révéler cette chanson
+                  </Typography>
+                </box>
+                <Button
+                  variant="depositInteract"
+                  onClick={revealDeposit}
+                  disabled={!user || !user.username}
+                  className="decouvrir"
+                >
+                  <Typography className="points" variant="h4">
+                    {cost}
+                  </Typography>
+                  Découvrir
+                </Button>
+              </>
+            )}
           </Box>
         </Box>
       </Card>
