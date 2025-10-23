@@ -173,7 +173,7 @@ export default function Deposit({
 
           {/* song (cover pleine largeur, titres si révélé) */}
           <Box className="deposit_song">
-            <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
+            <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
               {s?.img_url && (
                 <Box
                   component="img"
@@ -258,11 +258,9 @@ export default function Deposit({
         )}
 
         {/* zone chanson (grille + overlay éventuel) */}
-        <Box
-          className="deposit_song"
-        >
+        <Box className="deposit_song">
           {/* cover */}
-          <Box sx={{ width: 160, height: 160}} className="squaredesign img_container">
+          <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
             {s?.img_url && (
               <Box
                 component="img"
