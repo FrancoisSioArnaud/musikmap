@@ -137,7 +137,7 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Card className="deposit">
+        <Card className="deposit deposit_main">
           {showDate && (
             <Box className="deposit_date">
               
@@ -226,7 +226,7 @@ export default function Deposit({
   // ---- VARIANT: LIST (To_Reveal / Reveal, overlay CTA, snackbar) ----
   return (
     <>
-      <Card>
+      <Card className="deposit deposit_list">
         {showDate && (
           <Box className="deposit_date">
             <Typography component="h3" variant="subtitle1">
