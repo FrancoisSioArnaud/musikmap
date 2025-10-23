@@ -314,13 +314,14 @@ export default function Deposit({
                   disabled={!user || !user.username}
                   className="decouvrir"
                 >
+                  
+                  Découvrir
                   <Box className="points_container">
                     <Typography variant="body1" component="span">
                       {cost}
                     </Typography>
                     <AlbumIcon/>
                   </Box>
-                  Découvrir
                 </Button>
               </>
             )}
