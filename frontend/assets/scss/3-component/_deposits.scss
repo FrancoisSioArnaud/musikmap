@@ -1,5 +1,5 @@
 @use '../0-init/color' as *;
-
+/*
 .deposit{
   padding: 16px;
   display:flex;
@@ -45,7 +45,7 @@
   gap: 16px;
 }
 
-.deposit_main .deposit_song .img_container{
+.deposit .deposit_song .img_container{
   border-radius: 8px;
 }
 
@@ -54,9 +54,11 @@
   margin : auto;
 }
 
-.deposit_list .deposit_song .img_container img{
+.deposit_list .deposit_song .img_container{
   width : 40%;
 }
+
+
 
 .deposit .interact{
   display: flex;
@@ -83,6 +85,6 @@
 }
 
 
-
+*/
 
 
