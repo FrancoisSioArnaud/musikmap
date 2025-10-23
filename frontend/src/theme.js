@@ -16,7 +16,7 @@ const theme = createTheme({
   spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64], 
   
   typography: {
-    fontFamily: 'open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+    fontFamily: 'manrope, open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
 
     // h1 : 40px black (attention : en dark, #000 est invisible ; laisse la couleur au composant si fond clair)
     h1: {
