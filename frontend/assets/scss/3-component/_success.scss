@@ -2,13 +2,20 @@
 .success_container{
   display: flex;
   overflow: auto;
+  gap: 16px;
+  padding: 16px;
 }
 
 .success{
-  width: 70%;
+  width: 210vw;
   display: flex;
   flex-direction: column;
-  
+  box-shadow: rgba(0, 0, 0, .2) 0 2px 8px 0;
+  border-radius: 26px;
+  align-items: baseline;
+  gap: 16px;
+  padding: 16px;
+
 }
 
 .success .success_title{
@@ -20,6 +27,14 @@
 }
 
 .success .success_emoji{
+  width: 60vw;
+  aspect-ratio: 1 / 1;
+  background-color: rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  /* margin: auto; */
   font-size: 100px;
+  justify-content: center;
 }
 
