@@ -220,7 +220,7 @@ export default function MainDeposit({
             overflow: "auto",
           }}
         >
-          <Box sx={{ p: 2, boxSizing: "border-box", minHeight: "100%" }}>
+          <Box sx={{ boxSizing: "border-box", minHeight: "100%" }}>
             {drawerView === "search" ? (
               <LiveSearch
                 isSpotifyAuthenticated={isSpotifyAuthenticated}
@@ -263,9 +263,10 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           Pépite Déposé
         </Typography>
   
-        <Typography className="points" variant="h4">
-          +{totalPoints}
-        </Typography>
+        <Box className="points_container">
+          <Typography component="span" variant="body1">+{totalPoints}</Typography>
+          <AlbumIcon/>
+        </Box>
       </Box>
 
       <List className="success_container">
