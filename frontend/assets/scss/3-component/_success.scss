@@ -7,23 +7,24 @@
 }
 
 .success{
-  width: 210vw;
-  display: flex;
-  flex-direction: column;
-  box-shadow: rgba(0, 0, 0, .2) 0 2px 8px 0;
-  border-radius: 26px;
-  align-items: baseline;
-  gap: 16px;
-  padding: 16px;
-
+    width: 210vw;
+    display: flex;
+    flex-direction: column;
+    box-shadow: rgba(0, 0, 0, .2) 0 2px 8px 0;
+    border-radius: 26px;
+    align-items: baseline;
+    gap: 0px;
+    padding: 16px;
+    flex-basis: 0;
 }
 
 .success .success_title{
-  
+  margin-top: 16px;
+  margin-bottom: 4px;
 }
 
 .success .success_desc{
-  
+  margin-bottom:16px;
 }
 
 .success .success_emoji{
