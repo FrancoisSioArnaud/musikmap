@@ -931,17 +931,7 @@ class UserDepositsView(APIView):
 # =========================================
 
 class EmojiCatalogView(APIView):
-    """
-    GET /box-management/emojis/catalog
-    Réponse:
-    {
-      "basic": [ {id, char, cost, active, basic}, ... ],
-      "actives_paid": [ {id, char, cost, ...} ],  # triés par cost asc
-      "owned_ids": [ids des emojis possédés]
-    }
-    """
-    permission_classes = []
-
+    ...
     def get(self, request):
         basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
         actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
@@ -1080,4 +1070,5 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
