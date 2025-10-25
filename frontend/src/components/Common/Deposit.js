@@ -242,18 +242,15 @@ export default function Deposit({
                 >
                   Play
                 </Button>
-
-                {/* Bouton Réagir seulement si révélé (on ne l’affiche pas si non révélé) */}
-                {isRevealed && (
-                  <Button
-                    variant="depositInteract"
-                    size="large"
-                    onClick={openReact}
-                    startIcon={<EmojiEmotionsIcon />}
-                  >
-                    Réagir
-                  </Button>
-                )}
+                <Button
+                  variant="depositInteract"
+                  size="large"
+                  onClick={openReact}
+                  startIcon={<EmojiEmotionsIcon />}
+                >
+                  Réagir
+                </Button>
+                
               </Box>
             </Box>
 
