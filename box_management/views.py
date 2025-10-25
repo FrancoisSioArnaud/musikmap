@@ -181,7 +181,7 @@ class GetBox(APIView):
         authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
         if authed:
             for r in Reaction.objects.filter(user=user, deposit_id__in=dep_ids).select_related('emoji'):
-                my_reac_by_dep[r.deposit.id] = {
+                my_reac_by_dep[r.deposit_id.id] = {
                     "emoji": r.emoji.char,
                     "reacted_at": r.created_at.isoformat(),
                 }
@@ -190,7 +190,7 @@ class GetBox(APIView):
         if authed and len(deposits) > 1:
             dep_ids_sub = [d.id for d in deposits[1:]]
             for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids_sub):
-                discovered_by_dep[ds.deposit.id] = ds
+                discovered_by_dep[ds.deposit_id.id] = ds
 
         out = []
         for idx, d in enumerate(deposits):
@@ -643,7 +643,7 @@ class ManageDiscoveredSongs(APIView):
                 ds = events[j]
                 if ds.discovered_type != "revealed":
                     continue
-                if ds.deposit_id.box.id != box.id:
+                if ds.deposit_id.box_id.id != box.id:
                     continue
                 if ds.discovered_at <= deadline:
                     deposits.append(deposit_payload(ds))
@@ -690,7 +690,7 @@ class ManageDiscoveredSongs(APIView):
                     continue
                 ds2 = events[j]
                 # on ne prend que revealed de la même box et <= +1h depuis le premier
-                if ds2.discovered_type == "revealed" and ds2.deposit_id.box.id == box.id and ds2.discovered_at <= deadline:
+                if ds2.discovered_type == "revealed" and ds2.deposit_id.box_id.id == box.id and ds2.discovered_at <= deadline:
                     deposits.append(deposit_payload(ds2))
                     consumed[j] = True
                     j += 1
@@ -1036,5 +1036,3 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
-
