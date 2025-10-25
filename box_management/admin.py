@@ -197,6 +197,38 @@ admin.site.register(LocationPoint, LocationPointAdmin)
 admin.site.register(DiscoveredSong, DiscoveredSongAdmin)
 
 
+# ===============================
+# Nouveaux modèles : Emoji, EmojiRight, Reaction
+# ===============================
+
+@admin.register(Emoji)
+class EmojiAdmin(admin.ModelAdmin):
+    list_display = ("char", "active", "basic", "cost")
+    list_filter = ("active", "basic")
+    search_fields = ("char",)
+    ordering = ("basic", "cost")
+
+
+@admin.register(EmojiRight)
+class EmojiRightAdmin(admin.ModelAdmin):
+    list_display = ("user", "emoji")
+    list_filter = ("emoji",)
+    search_fields = ("user__username", "emoji__char")
+
+
+@admin.register(Reaction)
+class ReactionAdmin(admin.ModelAdmin):
+    list_display = ("user", "deposit", "emoji", "created_at", "updated_at")
+    list_filter = ("emoji", "created_at")
+    search_fields = (
+        "user__username",
+        "deposit__song_id__title",
+        "deposit__box_id__name",
+    )
+    ordering = ("-created_at",)
+
+
+
 
 
 
