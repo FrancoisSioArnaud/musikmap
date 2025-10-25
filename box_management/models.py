@@ -79,53 +79,29 @@ class DiscoveredSong(models.Model):
 # =========================
 # NOUVEAUX MODÈLES REACTIONS
 # =========================
-
-class Emoji(models.Model):
-    """Catalogue des emojis (Unicode)"""
-    char = models.CharField(max_length=8, unique=True)  # ex "🔥", "😂"
+del):
+    char = models.CharField(max_length=8, unique=True)
     active = models.BooleanField(default=True)
-    basic = models.BooleanField(default=False)  # accessible à tous sans achat
-    cost = models.PositiveIntegerField(default=0)  # coût en points (si non-basic)
-
-    def __str__(self):
-        flags = []
-        if self.basic: flags.append("basic")
-        if not self.active: flags.append("inactive")
-        fl = f" ({', '.join(flags)})" if flags else ""
-        return f"{self.char}{fl}"
-
+    basic = models.BooleanField(default=False)
+    cost = models.IntegerField(default=0)
+    def __str__(self): return self.char
 
 class EmojiRight(models.Model):
-    """Droit global d'utiliser un emoji (achat par user)"""
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
     emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE)
-    granted_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['user', 'emoji'], name='unique_user_emoji_right'),
+            models.UniqueConstraint(fields=['user', 'emoji'], name='unique_emoji_right_per_user'),
         ]
 
-    def __str__(self):
-        return f"{self.user} → {self.emoji}"
-
-
 class Reaction(models.Model):
-    """Une réaction d’un user sur un dépôt (un seul par couple user/deposit)."""
-    deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE)
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    emoji = models.ForeignKey(Emoji, on_delete=models.PROTECT)  # pas de cascade, on garde l’historique
+    deposit = models.ForeignKey('box_management.Deposit', on_delete=models.CASCADE)
+    emoji = models.ForeignKey(Emoji, on_delete=models.PROTECT)
+    user = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)  # maj si on change d’emoji
-
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['user', 'deposit'], name='unique_reaction_per_user_and_deposit'),
         ]
-        indexes = [
-            models.Index(fields=['deposit', 'emoji']),  # agrégats rapides par dépôt/emoji
-            models.Index(fields=['user', 'deposit']),   # recherche de ma réaction
-        ]
-
-    def __str__(self):
-        return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+        indexes = [models.Index(fields=['deposit', 'emoji'])]
