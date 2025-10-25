@@ -77,11 +77,12 @@ def get_consecutive_deposit_days(user, box) -> int:
     return consecutive_days
 
 
+# -----------------------
+# Helpers réactions
+# -----------------------
+
 def _reactions_summary_for_deposits(dep_ids):
-    """
-    Retourne un dict {deposit_id: [{"emoji": "🔥", "count": 3}, ...], ...}
-    Trié par count desc pour chaque dépôt.
-    """
+    """Retourne {deposit_id: [{"emoji": "🔥", "count": 3}, ...]}"""
     summary = {d: [] for d in dep_ids}
     if not dep_ids:
         return summary
@@ -104,16 +105,10 @@ def _reactions_summary_for_deposits(dep_ids):
 
 
 # -----------------------
-# Vues
+# Vues principales
 # -----------------------
 
 class BoxMeta(APIView):
-    """
-    GET /box-management/meta?name=<slug>
-    Réponse: { "box": <BoxSerializer>, "deposit_count": <int> }
-    - 400 si paramètre 'name' manquant
-    - 404 si la boîte n'existe pas
-    """
     lookup_url_kwarg = 'name'
     serializer_class = BoxSerializer
 
@@ -184,7 +179,6 @@ class GetBox(APIView):
 
     @staticmethod
     def _map_song_teaser(s):
-        # Teaser: id + image + cost=300
         return {
             "img_url": getattr(s, "image_url", None),
             "id": getattr(s, "id", None),
@@ -196,7 +190,6 @@ class GetBox(APIView):
         if not dt:
             return None
         text = naturaltime(localtime(dt))
-        # Coupe au premier séparateur "," (s’il existe)
         return text.split(",")[0].strip()
 
     def _build_deposits_payload(self, box, user, limit=10):
@@ -212,10 +205,10 @@ class GetBox(APIView):
 
         dep_ids = [d.id for d in deposits]
 
-        # Agrégats de réactions pour ces dépôts
+        # Agrégats de réactions
         reactions_by_dep = _reactions_summary_for_deposits(dep_ids)
 
-        # Réaction du user courant sur ces dépôts
+        # Réactions de l'utilisateur
         my_reac_by_dep = {}
         authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
         if authed:
@@ -227,8 +220,7 @@ class GetBox(APIView):
 
         discovered_by_dep = {}
         if authed and len(deposits) > 1:
-            dep_ids_tail = [d.id for d in deposits[1:]]
-            for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids_tail):
+            for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids[1:]):
                 discovered_by_dep[ds.deposit_id_id] = ds
 
         out = []
@@ -293,184 +285,10 @@ class GetBox(APIView):
         }
         return Response(resp, status=status.HTTP_200_OK)
 
-    # --------- POST (création d’un dépôt) ---------
-    def post(self, request, format=None):
-        """
-        Étapes simplifiées :
-          1) Upsert Song
-          2) Créer Deposit (dans la même transaction DB)
-          3) Créditer les points via /users/add-points (best-effort)
-          4) Répondre : {"successes": [...], "added_deposit": {...}, "points_balance": <int|None>}
-        """
-        # --- 0) Lecture & validations minimales
-        option = request.data.get('option') or {}
-        box_name = request.data.get('boxName')
-        if not box_name:
-            return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
-        box = Box.objects.filter(url=box_name).first()
-        if not box:
-            return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-        song_name = (option.get('name') or "").strip()
-        song_author = (option.get('artist') or "").strip()
-        song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
-        incoming_url = option.get('url')
-        if not song_name or not song_author:
-            return Response({"detail": "Titre et artiste requis"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # User courant (peut être anonyme)
-        user = request.user if not isinstance(request.user, AnonymousUser) else None
-
-        # --- 1) Calcul des succès / points
-        successes: dict = {}
-        points_to_add = NB_POINTS_ADD_SONG
-        successes['default_deposit'] = {
-            'name': "Pépite",
-            'desc': "Tu as partagé une chanson",
-            'points': NB_POINTS_ADD_SONG
-
-        }
-
-        if user and is_first_user_deposit(user, box):
-            points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            successes['first_user_deposit_box'] = {
-                'name': "Conquérant",
-                'desc': "Tu n'as jamais déposé ici",
-                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            }
-
-        if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
-            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            successes['first_song_deposit'] = {
-                'name': "Far West",
-                'desc': "Ce son n'a jamais été déposé ici",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            }
-            if is_first_song_deposit_global_by_title_artist(song_name, song_author):
-                points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                successes['first_song_deposit_global'] = {
-                    'name': "Far West",
-                    'desc': "Ce son n'a jamais été déposé sur notre réseau",
-                    'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-                }
-
-        nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
-        if nb_consecutive_days:
-            consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
-            points_to_add += consecutive_days_points
-            nb_consecutive_days += 1
-            successes['consecutive_days'] = {
-                'name': "L'amour fou",
-                'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                'points': consecutive_days_points
-            }
-
-        successes['points_total'] = {
-            'name': "Total",
-            'desc': "Points gagnés pour ce dépôt",
-            'points': points_to_add
-        }
-
-        # --- 2) Upsert Song + 3) Créer Deposit (atomique ensemble)
-        with transaction.atomic():
-            try:
-                song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
-                song.n_deposits = (song.n_deposits or 0) + 1
-            except Song.DoesNotExist:
-                song = Song(
-                    song_id=option.get('id'),
-                    title=song_name,
-                    artist=song_author,
-                    image_url=option.get('image_url') or "",
-                    duration=option.get('duration') or 0,
-                )
-
-            # URL de la plateforme utilisée
-            if song_platform_id == 1 and incoming_url:
-                song.spotify_url = incoming_url
-            elif song_platform_id == 2 and incoming_url:
-                song.deezer_url = incoming_url
-
-            # Compléter l’autre URL via agrégateur (best-effort)
-            try:
-                request_platform = None
-                if song_platform_id == 1 and not song.deezer_url:
-                    request_platform = "deezer"
-                elif song_platform_id == 2 and not song.spotify_url:
-                    request_platform = "spotify"
-
-                if request_platform:
-                    aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
-                    payload = {
-                        "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
-                        "platform": request_platform,
-                    }
-                    headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
-                    r = requests.post(
-                        aggreg_url,
-                        data=json.dumps(payload),
-                        headers=headers,
-                        cookies=request.COOKIES,
-                        timeout=6,
-                    )
-                    if r.ok:
-                        other_url = r.json()
-                        if isinstance(other_url, str):
-                            if request_platform == "deezer":
-                                song.deezer_url = other_url
-                            elif request_platform == "spotify":
-                                song.spotify_url = other_url
-            except Exception:
-                pass  # best-effort
-
-            song.save()
-            new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
-
-        # --- 4) Créditer les points via endpoint (best-effort) et récupérer le solde
-        points_balance = None
-        try:
-            if user and getattr(user, "is_authenticated", False):
-                add_points_url = request.build_absolute_uri(reverse('add-points'))
-                csrftoken_cookie = request.COOKIES.get('csrftoken')
-                csrftoken_header = csrftoken_cookie or get_token(request)
-
-                headers_bg = {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": csrftoken_header,
-                    "Referer": request.build_absolute_uri('/'),
-                }
-                r = requests.post(
-                    add_points_url,
-                    cookies=request.COOKIES,
-                    headers=headers_bg,
-                    data=json.dumps({"points": points_to_add}),
-                    timeout=4,
-                )
-                if r.ok:
-                    try:
-                        user.refresh_from_db(fields=["points"])
-                    except Exception:
-                        user.refresh_from_db()
-                    points_balance = getattr(user, "points", None)
-        except Exception:
-            pass  # silencieux
-
-        # --- 5) Réponse
-        added_deposit = {
-            "deposit_id": new_deposit.id,
-            "deposit_date": self._naturaltime(getattr(new_deposit, "deposited_at", None)),
-            "song": self._map_song_full(song, include_id=False),
-            "user": self._map_user(user),
-        }
-
-        response = {
-            "successes": list(successes.values()),
-            "added_deposit": added_deposit,
-            "points_balance": points_balance,
-        }
-        return Response(response, status=status.HTTP_200_OK)
-
+# -----------------------
+# Autres vues (inchangées)
+# -----------------------
 
 class Location(APIView):
     def post(self, request):
@@ -496,4 +314,115 @@ class Location(APIView):
         if is_valid_location:
             return Response({'valid': True}, status=status.HTTP_200_OK)
         else:
-            return Response({'valid': False,
+            return Response({'valid': False, 'lat': latitude, 'long': longitude}, status=status.HTTP_403_FORBIDDEN)
+
+
+# -----------------------
+# NOUVELLES VUES EMOJIS / RÉACTIONS
+# -----------------------
+
+class EmojiCatalogView(APIView):
+    permission_classes = []
+
+    def get(self, request):
+        basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
+        actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
+
+        owned_ids = []
+        if request.user.is_authenticated:
+            owned_ids = list(
+                EmojiRight.objects.filter(user=request.user, emoji__active=True).values_list('emoji_id', flat=True)
+            )
+
+        data = {
+            "basic": EmojiSerializer(basics, many=True).data,
+            "actives_paid": EmojiSerializer(actives_paid, many=True).data,
+            "owned_ids": owned_ids,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class PurchaseEmojiView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        emoji_id = request.data.get("emoji_id")
+        if not emoji_id:
+            return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        emoji = Emoji.objects.filter(id=emoji_id).first()
+        if not emoji or not emoji.active:
+            return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
+        if emoji.basic:
+            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
+
+        if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
+            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
+
+        cost = int(emoji.cost or 0)
+        request.user.refresh_from_db(fields=["points"])
+        if getattr(request.user, "points", 0) < cost:
+            return Response({"error": "insufficient_funds", "message": "Crédits insuffisants"}, status=status.HTTP_400_BAD_REQUEST)
+
+        csrf_token = get_token(request)
+        origin = request.build_absolute_uri("/")
+        headers_bg = {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token,
+            "Referer": origin,
+            "Origin": origin.rstrip("/"),
+        }
+        r = requests.post(
+            request.build_absolute_uri(reverse('add-points')),
+            cookies=request.COOKIES,
+            headers=headers_bg,
+            data=json.dumps({"points": -cost}),
+            timeout=4,
+        )
+        if not r.ok:
+            return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        EmojiRight.objects.create(user=request.user, emoji=emoji)
+        request.user.refresh_from_db(fields=["points"])
+
+        return Response({"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)}, status=status.HTTP_200_OK)
+
+
+class ReactionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        deposit_id = request.data.get("deposit_id")
+        emoji_id = request.data.get("emoji_id", None)
+
+        if not deposit_id:
+            return Response({"detail": "deposit_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        deposit = Deposit.objects.filter(id=deposit_id).first()
+        if not deposit:
+            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Suppression
+        if emoji_id in (None, "", 0, "none"):
+            Reaction.objects.filter(user=request.user, deposit=deposit).delete()
+            summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
+            return Response({"my_reaction": None, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
+        emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
+        if not emoji:
+            return Response({"detail": "Emoji invalide"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not emoji.basic:
+            has_right = EmojiRight.objects.filter(user=request.user, emoji=emoji).exists()
+            if not has_right:
+                return Response({"error": "forbidden", "message": "Emoji non débloqué"}, status=status.HTTP_403_FORBIDDEN)
+
+        obj, created = Reaction.objects.get_or_create(user=request.user, deposit=deposit, defaults={"emoji": emoji})
+        if not created:
+            if obj.emoji_id != emoji.id:
+                obj.emoji = emoji
+                obj.save(update_fields=["emoji", "updated_at"])
+
+        summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
+        my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
+        return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
