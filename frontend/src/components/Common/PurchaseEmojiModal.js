@@ -1,0 +1,62 @@
+import React, { useState } from "react";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import { getCookie } from "../Security/TokensUtils";
+
+export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }) {
+  const [loading, setLoading] = useState(false);
+
+  if (!open || !emoji) return null;
+
+  const unlock = async () => {
+    setLoading(true);
+    const csrftoken = getCookie("csrftoken");
+    const res = await fetch("/box-management/emojis/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+      credentials: "same-origin",
+      body: JSON.stringify({ emoji_id: emoji.id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+
+    if (!res.ok) {
+      if (data?.error === "insufficient_funds") {
+        alert("Tu n’as pas assez de points pour débloquer cet emoji.");
+      } else {
+        alert("Oops, impossible de débloquer cet emoji pour le moment.");
+      }
+      return;
+    }
+
+    onUnlocked?.(); // parent mettra à jour le catalogue local (owned_ids)
+  };
+
+  return (
+    <Box onClick={onCancel} sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", p: 2, zIndex: 1400 }}>
+      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 480 }}>
+        <Card sx={{ borderRadius: 2 }}>
+          <CardContent>
+            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>
+              Débloquer l’emoji {emoji?.char || ""}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Débloque cet emoji pour {emoji?.cost ?? 0} points et utilise-le pour réagir à des chansons.
+            </Typography>
+
+            <Box sx={{ display: "flex", gap: 1.5 }}>
+              <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
+              <Button variant="contained" fullWidth disabled={loading} onClick={unlock}>
+                {loading ? <CircularProgress size={18} /> : "Débloquer"}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+    </Box>
+  );
+}
