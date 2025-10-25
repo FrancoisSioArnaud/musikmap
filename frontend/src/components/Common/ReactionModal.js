@@ -1,448 +1,329 @@
-import React, { useState, useContext, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-
+// frontend/src/components/Common/ReactionModal.js
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
-import Snackbar from "@mui/material/Snackbar";
-import SnackbarContent from "@mui/material/SnackbarContent";
-import Slide from "@mui/material/Slide";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import AlbumIcon from "@mui/icons-material/Album";
-import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
-
-import PlayModal from "../Common/PlayModal";
+import Divider from "@mui/material/Divider";
+import CircularProgress from "@mui/material/CircularProgress";
 import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
-import ReactionModal from "./ReactionModal";
+import PurchaseEmojiModal from "./PurchaseEmojiModal";
 
-function SlideDownTransition(props) {
-  return <Slide {...props} direction="down" />;
-}
-
-export default function Deposit({
-  dep,
-  user,
-  setDispDeposits,
-  cost = 40,
-  variant = "list",
-  showDate = true,
-  showUser = true,
-  fitContainer = true,
+/**
+ * Modale de sélection de réaction
+ * - Affiche: None, emojis basic, emojis actifs payants (triés par cost)
+ * - Les non possédés sont grisés => clic ouvre la modale d’achat
+ * - Un seul bouton pied de page : "Sortir" (si inchangé) ↔ "Valider" (si changé)
+ */
+export default function ReactionModal({
+  open,
+  onClose,
+  depositId,
+  currentEmoji, // optionnel, fallback si le back ne renvoie pas current_reaction
+  onApplied, // callback({ my_reaction, reactions_summary })
 }) {
-  const navigate = useNavigate();
-  const { setUser } = useContext(UserContext) || {};
+  const [loading, setLoading] = useState(false);
 
-  const s = dep?.song || {};
-  const u = dep?.user || {};
-  const isRevealed = useMemo(() => Boolean(s?.title && s?.artist), [s?.title, s?.artist]);
+  // catalog = { basic: [{id,char,cost,active,basic}], actives_paid: [...], owned_ids: [int], current_reaction: "🔥"|null }
+  const [catalog, setCatalog] = useState({
+    basic: [],
+    actives_paid: [],
+    owned_ids: [],
+    current_reaction: null,
+  });
 
-  // ======= Play modal =======
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null);
-  const openPlayFor = (song) => {
-    setPlaySong(song || null);
-    setPlayOpen(true);
-  };
-  const closePlay = () => {
-    setPlayOpen(false);
-    setPlaySong(null);
-  };
+  // Valeur connue côté serveur au moment d'ouvrir la modale (char ou null)
+  const [serverSelected, setServerSelected] = useState(null);
+  // Sélection courante locale (char ou null)
+  const [selected, setSelected] = useState(null);
 
-  // ======= Reaction modal =======
-  const [reactOpen, setReactOpen] = useState(false);
-  const openReact = () => setReactOpen(true);
-  const closeReact = () => setReactOpen(false);
+  // Achat d’emoji ciblé
+  const [purchaseTarget, setPurchaseTarget] = useState(null);
 
-  // Snackbar (pour Reveal existant)
-  const [snackOpen, setSnackOpen] = useState(false);
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else setSnackOpen(true);
-  };
+  // A changé si la sélection locale diffère de l'état serveur
+  const hasChanged = useMemo(() => (selected ?? null) !== (serverSelected ?? null), [selected, serverSelected]);
 
-  // ---- Reveal d’un dépôt (identique)
-  const revealDeposit = async () => {
-    try {
-      if (!user || !user.username) {
-        alert("Connecte-toi pour révéler cette pépite.");
-        return;
+  // Helper : est-ce que l'emoji est utilisable (basic ou possédé)
+  const isOwned = useCallback(
+    (emoji) => !!emoji && (emoji.basic || (catalog.owned_ids || []).includes(emoji.id)),
+    [catalog.owned_ids]
+  );
+
+  // Récupération du catalogue + réaction actuelle depuis le back
+  useEffect(() => {
+    if (!open) return;
+    let mounted = true;
+
+    async function run() {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams();
+        if (depositId) qs.set("deposit_id", String(depositId));
+        const qsStr = qs.toString();
+        const url = qsStr ? `/box-management/emojis/catalog?${qsStr}` : `/box-management/emojis/catalog`;
+
+        const res = await fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } });
+        const data = await res.json().catch(() => ({}));
+
+        const catalogData = {
+          basic: Array.isArray(data?.basic) ? data.basic : [],
+          actives_paid: Array.isArray(data?.actives_paid) ? data.actives_paid : [],
+          owned_ids: Array.isArray(data?.owned_ids) ? data.owned_ids : [],
+          current_reaction:
+            typeof data?.current_reaction === "string" || data?.current_reaction === null ? data.current_reaction : null,
+        };
+
+        if (!mounted) return;
+
+        setCatalog(catalogData);
+
+        // source de vérité pour l’état initial : backend
+        const initialChar =
+          catalogData.current_reaction ??
+          (typeof currentEmoji === "string" || currentEmoji === null ? currentEmoji : null);
+
+        setServerSelected(initialChar ?? null);
+        setSelected(initialChar ?? null);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      const csrftoken = getCookie("csrftoken");
-      const res = await fetch("/box-management/revealSong", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: dep.deposit_id }),
-        credentials: "same-origin",
-      });
-      const payload = await res.json().catch(() => ({}));
+    }
 
-      if (!res.ok) {
-        if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
-        } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
-        }
-        return;
-      }
+    run();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, depositId]);
 
-      // MAJ visuelle dans la liste parent
-      const revealed = payload?.song || {};
-      setDispDeposits?.((prev) => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
-        if (idx >= 0) {
-          arr[idx] = {
-            ...arr[idx],
-            discovered_at: "à l'instant",
-            song: {
-              ...(arr[idx]?.song || {}),
-              title: revealed.title,
-              artist: revealed.artist,
-              spotify_url: revealed.spotify_url,
-              deezer_url: revealed.deezer_url,
-            },
-          };
-        }
-        return arr;
-      });
+  if (!open) return null;
 
-      if (typeof payload?.points_balance === "number" && setUser) {
-        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
-      }
-
-      showRevealSnackbar();
-    } catch {
-      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+  // Clic sur un emoji de la grille
+  const onClickEmoji = (emoji) => {
+    if (!emoji) {
+      // None
+      setSelected(null);
+      return;
+    }
+    if (isOwned(emoji)) {
+      setSelected(emoji.char);
+    } else {
+      setPurchaseTarget(emoji);
     }
   };
 
-  // ======= Callback quand la réaction a changé (après modale) =======
-  const handleReactionApplied = (result) => {
-    // result = { my_reaction, reactions_summary }
-    setDispDeposits?.((prev) => {
-      const arr = Array.isArray(prev) ? [...prev] : [];
-      const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
-      if (idx >= 0) {
-        arr[idx] = {
-          ...arr[idx],
-          my_reaction: result?.my_reaction || null,
-          reactions_summary: Array.isArray(result?.reactions_summary) ? result.reactions_summary : [],
-        };
+  // Après achat d’un emoji
+  const onPurchaseSuccess = (emoji) => {
+    // Marquer comme possédé en local
+    setCatalog((prev) => ({
+      ...prev,
+      owned_ids: [...new Set([...(prev.owned_ids || []), emoji.id])],
+    }));
+    setPurchaseTarget(null);
+    setSelected(emoji.char);
+  };
+
+  // Construit l'emoji_id pour POST à partir du char sélectionné
+  const selectedEmojiId = useMemo(() => {
+    if (selected === null) return null;
+    const all = [...(catalog.basic || []), ...(catalog.actives_paid || [])];
+    return all.find((e) => e.char === selected)?.id ?? null;
+  }, [selected, catalog.basic, catalog.actives_paid]);
+
+  // Soumission : uniquement si "Valider"
+  const submitReaction = async () => {
+    if (!hasChanged) {
+      onClose?.();
+      return;
+    }
+
+    const csrftoken = getCookie("csrftoken");
+    const payload = {
+      deposit_id: depositId,
+      emoji_id: selected === null ? null : selectedEmojiId,
+    };
+
+    try {
+      const res = await fetch("/box-management/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        credentials: "same-origin",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (data?.error === "forbidden") {
+          alert("Tu n’as pas débloqué cet emoji.");
+        } else {
+          alert("Oops, impossible d’appliquer ta réaction pour le moment.");
+        }
+        return;
       }
-      return arr;
-    });
+
+      // Notifie le parent (il peut MAJ le dépôt et refermer sa propre modale si besoin)
+      onApplied?.(data);
+
+      // Synchronise l'état serveur localement pour que le bouton repasse à "Sortir" si la modale restait ouverte
+      setServerSelected(selected);
+      onClose?.();
+    } catch {
+      alert("Oops, une erreur réseau s’est produite. Réessaie plus tard.");
+    }
   };
 
-  // Rendu compact d’un ruban de réactions (emoji × count)
-  const ReactionsStrip = ({ items = [] }) => {
-    if (!items || items.length === 0) return null;
+  // Élément d’emoji
+  const EmojiItem = ({ emoji }) => {
+    const owned = isOwned(emoji);
+    const isActive = selected === emoji.char;
+
     return (
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1 }}>
-        {items.map((it, i) => (
-          <Box
-            key={i}
+      <Button
+        onClick={() => onClickEmoji(emoji)}
+        aria-label={`Emoji ${emoji.char}${owned ? "" : " non débloqué"}`}
+        title={owned ? `Utiliser ${emoji.char}` : `${emoji.char} — ${Number(emoji.cost || 0)} points`}
+        disabled={false}
+        sx={{
+          position: "relative",
+          minWidth: 52,
+          minHeight: 52,
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: isActive ? "primary.main" : "divider",
+          opacity: owned ? 1 : 0.45,
+          px: 1,
+        }}
+      >
+        <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji.char}</span>
+        {!owned && !emoji.basic && (
+          <Typography
+            variant="caption"
             sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1,
-              py: 0.5,
-              borderRadius: 1,
-              border: "1px solid",
-              borderColor: "divider",
+              position: "absolute",
+              bottom: 2,
+              left: 4,
+              right: 4,
+              textAlign: "center",
+              fontSize: 10,
+              lineHeight: 1,
+              opacity: 0.9,
+              pointerEvents: "none",
             }}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{it.emoji}</span>
-            <Typography variant="body2" component="span">
-              × {it.count}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+            {Number(emoji.cost || 0)} pts
+          </Typography>
+        )}
+      </Button>
     );
   };
 
-  // =========================
-  // RENDU VARIANT MAIN
-  // =========================
-  if (variant === "main") {
-    return (
-      <>
-        <Card className="deposit deposit_main">
-          {showDate && (
-            <Box className="deposit_date">
-              <Box className="icon squaredesign" />
-              <Typography className="squaredesign" variant="subtitle1" component="span">
-                {"Déposée " + (dep?.deposit_date || "")}
-              </Typography>
-            </Box>
-          )}
+  const ButtonOne = (
+    <Button
+      fullWidth
+      variant={hasChanged ? "contained" : "outlined"}
+      onClick={() => {
+        if (!hasChanged) return onClose?.(); // Sortir
+        return submitReaction(); // Valider
+      }}
+      aria-label={hasChanged ? "Valider ma réaction" : "Sortir"}
+    >
+      {hasChanged ? "Valider" : "Sortir"}
+    </Button>
+  );
 
-          {showUser && (
-            <Box
-              onClick={() => {
-                if (u?.username) navigate("/profile/" + u.username);
-              }}
-              className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-            >
-              <Box className="squaredesign avatarbox">
-                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
-              </Box>
-              <Typography component="span" className="username squaredesign" variant="subtitle1">
-                {u?.username || "Anonyme"}
-                {u?.username && <ArrowForwardIosIcon className="icon" />}
-              </Typography>
-            </Box>
-          )}
-
-          <Box className="deposit_song">
-            <Box
-              sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
-              className="squaredesign img_container"
-            >
-              {s?.img_url && (
-                <Box
-                  component="img"
-                  src={s.img_url}
-                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{ width: "100%", maxWidth: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
-                />
-              )}
-            </Box>
-
-            <Box className="interact">
-              <Box className="texts">
-                {isRevealed && (
-                  <>
-                    <Typography component="span" className="titre squaredesign" variant="h3">
-                      {s.title}
-                    </Typography>
-                    <Typography component="span" className="artist squaredesign" variant="body1">
-                      {s.artist}
-                    </Typography>
-                  </>
-                )}
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  variant="depositInteract"
-                  className="play playMain"
-                  size="large"
-                  onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                  disabled={!isRevealed}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Play
-                </Button>
-
-                {/* Bouton Réagir seulement si révélé (on ne l’affiche pas si non révélé) */}
-                {isRevealed && (
-                  <Button
-                    variant="depositInteract"
-                    size="large"
-                    onClick={openReact}
-                    startIcon={<EmojiEmotionsIcon />}
-                  >
-                    Réagir
-                  </Button>
-                )}
-              </Box>
-            </Box>
-
-            {/* ruban des réactions */}
-            <ReactionsStrip items={dep?.reactions_summary || []} />
-            {dep?.my_reaction?.emoji && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Tu as réagi {dep.my_reaction.emoji}
-              </Typography>
-            )}
-          </Box>
-        </Card>
-
-        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-        <ReactionModal
-          open={reactOpen}
-          onClose={closeReact}
-          depositId={dep?.deposit_id}
-          currentEmoji={dep?.my_reaction?.emoji || null}
-          onApplied={handleReactionApplied}
-        />
-      </>
-    );
-  }
-
-  // =========================
-  // RENDU VARIANT LIST
-  // =========================
   return (
-    <>
-      <Card className="deposit deposit_list">
-        {showDate && (
-          <Box className="deposit_date">
-            <Typography component="h3" variant="subtitle1">
-              {"Déposée " + (dep?.deposit_date || "")}
+    <Box
+      onClick={onClose}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        bgcolor: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        zIndex: 1300,
+      }}
+    >
+      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
+        <Card sx={{ borderRadius: 2 }}>
+          <CardContent>
+            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>
+              Réagir
             </Typography>
-          </Box>
-        )}
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Choisis un emoji pour dire à l’artiste ce que tu as pensé de sa chanson.
+            </Typography>
 
-        {showUser && (
-          <Box
-            className="deposit_user"
-            sx={{ display: "flex", minWidth: 0 }}
-            onClick={() => {
-              if (u?.username) navigate("/profile/" + u.username);
-            }}
-          >
-            <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} />
-            <Typography>{u?.username || "Anonyme"}</Typography>
-            {u?.username && <ArrowForwardIosIcon fontSize="small" />}
-          </Box>
-        )}
-
-        <Box className="deposit_song">
-          <Box
-            sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
-            className="squaredesign img_container"
-          >
-            {s?.img_url && (
-              <Box
-                component="img"
-                src={s.img_url}
-                alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                sx={{
-                  width: "100%",
-                  maxWidth: "100%",
-                  aspectRatio: "1 / 1",
-                  objectFit: "cover",
-                  display: "block",
-                  filter: isRevealed ? "none" : "blur(6px)",
-                }}
-              />
-            )}
-          </Box>
-
-          <Box className="interact">
-            {isRevealed ? (
-              <>
-                <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="h4">
-                    {s.title}
-                  </Typography>
-                  <Typography component="span" className="artist squaredesign" variant="body1">
-                    {s.artist}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Button
-                    variant="depositInteract"
-                    className="play playSecondary"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    startIcon={<PlayArrowIcon />}
-                  >
-                    Play
-                  </Button>
-
-                  {/* Bouton Réagir sur list uniquement si révélé */}
-                  <Button variant="depositInteract" size="large" onClick={openReact} startIcon={<EmojiEmotionsIcon />}>
-                    Réagir
-                  </Button>
-                </Box>
-              </>
+            {loading ? (
+              <Box sx={{ py: 4, textAlign: "center" }}>
+                <CircularProgress />
+              </Box>
             ) : (
               <>
-                <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="body1">
-                    Utilise tes points pour révéler cette chanson
-                  </Typography>
+                {/* None */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Button
+                    onClick={() => onClickEmoji(null)}
+                    aria-label="Aucune réaction"
+                    title="Aucune réaction"
+                    sx={{
+                      border: "1px dashed",
+                      borderColor: selected === null ? "primary.main" : "divider",
+                      borderRadius: 2,
+                      px: 1.5,
+                      py: 0.75,
+                    }}
+                  >
+                    <Typography variant="body2">None</Typography>
+                  </Button>
+                  <Typography variant="caption">— retire ta réaction</Typography>
                 </Box>
-                <Button variant="depositInteract" onClick={revealDeposit} disabled={!user || !user.username} className="decouvrir">
-                  Découvrir
-                  <Box className="points_container" sx={{ ml: "12px" }}>
-                    <Typography variant="body1" component="span">
-                      {cost}
+
+                {/* Basics */}
+                {catalog.basic.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Emojis de base
                     </Typography>
-                    <AlbumIcon />
-                  </Box>
-                </Button>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      {catalog.basic.map((e) => (
+                        <EmojiItem key={e.id} emoji={e} />
+                      ))}
+                    </Box>
+                  </>
+                )}
+
+                {/* Payants actifs */}
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Emojis à débloquer
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  {catalog.actives_paid.map((e) => (
+                    <EmojiItem key={e.id} emoji={e} />
+                  ))}
+                </Box>
+
+                {/* Bouton unique */}
+                <Box sx={{ mt: 3 }}>{ButtonOne}</Box>
               </>
             )}
-          </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
-          {/* ruban des réactions */}
-          <ReactionsStrip items={dep?.reactions_summary || []} />
-          {dep?.my_reaction?.emoji && isRevealed && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Tu as réagi {dep.my_reaction.emoji}
-            </Typography>
-          )}
-        </Box>
-      </Card>
-
-      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-
-      {/* Snackbar existant */}
-      <Snackbar
-        open={snackOpen}
-        onClose={() => setSnackOpen(false)}
-        autoHideDuration={5000}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        TransitionComponent={SlideDownTransition}
-        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
-      >
-        <SnackbarContent
-          sx={{
-            bgcolor: "background.paper",
-            color: "text.primary",
-            borderRadius: 2,
-            boxShadow: 3,
-            px: 2,
-            py: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            maxWidth: 600,
-            width: "calc(100vw - 32px)",
-          }}
-          message={
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <LibraryMusicIcon fontSize="medium" />
-              <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
-                Retrouve cette chanson dans ton profil
-              </Typography>
-            </Box>
-          }
-          action={
-            <Button
-              size="small"
-              onClick={() => {
-                setSnackOpen(false);
-                navigate("/profile");
-              }}
-            >
-              Voir
-            </Button>
-          }
+      {/* Modale d’achat */}
+      {purchaseTarget && (
+        <PurchaseEmojiModal
+          open={!!purchaseTarget}
+          emoji={purchaseTarget}
+          onCancel={() => setPurchaseTarget(null)}
+          onUnlocked={() => onPurchaseSuccess(purchaseTarget)}
         />
-      </Snackbar>
-
-      {/* Modale de réaction */}
-      <ReactionModal
-        open={reactOpen}
-        onClose={closeReact}
-        depositId={dep?.deposit_id}
-        currentEmoji={dep?.my_reaction?.emoji || null}
-        onApplied={handleReactionApplied}
-      />
-    </>
+      )}
+    </Box>
   );
 }
