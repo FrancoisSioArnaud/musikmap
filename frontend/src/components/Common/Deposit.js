@@ -242,10 +242,11 @@ export default function Deposit({
                 >
                   Play
                 </Button>
-                <Button
+                 <Button
                   variant="depositInteract"
                   size="large"
-                  onClick={openReact}
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReact(); }}
                   startIcon={<EmojiEmotionsIcon />}
                 >
                   Réagir
