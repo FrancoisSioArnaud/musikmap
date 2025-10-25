@@ -10,7 +10,7 @@ import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import AlbumIcon from "@mui/icons-material/Album";
 import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
@@ -59,7 +59,7 @@ export default function Deposit({
     else setSnackOpen(true);
   };
 
-  // ---- Reveal d’un dépôt (identique)
+  // ---- Reveal d’un dépôt
   const revealDeposit = async () => {
     try {
       if (!user || !user.username) {
@@ -181,6 +181,7 @@ export default function Deposit({
             </Box>
           )}
 
+          {/* ----- Section song ----- */}
           <Box className="deposit_song">
             <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
               {s?.img_url && (
@@ -218,17 +219,6 @@ export default function Deposit({
                 >
                   Play
                 </Button>
-
-                {/* Bouton Réagir seulement si révélé */}
-                <Button
-                  variant="depositInteract"
-                  size="large"
-                  onClick={() => (isRevealed ? openReact() : null)}
-                  disabled={!isRevealed}
-                  startIcon={<EmojiEmotionsIcon />}
-                >
-                  Réagir
-                </Button>
               </Box>
             </Box>
 
@@ -237,6 +227,19 @@ export default function Deposit({
             {dep?.my_reaction?.emoji && (
               <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
             )}
+          </Box>
+
+          {/* ----- ✅ Section dédiée réaction sous deposit_song ----- */}
+          <Box className="deposit_react" sx={{ mt: 2 }}>
+            <Button
+              variant="depositInteract"
+              size="large"
+              onClick={() => (isRevealed ? openReact() : null)}
+              disabled={!isRevealed}
+              startIcon={<EmojiEmotionsIcon />}
+            >
+              Réagir
+            </Button>
           </Box>
         </Card>
 
@@ -278,6 +281,7 @@ export default function Deposit({
           </Box>
         )}
 
+        {/* ----- Section song ----- */}
         <Box className="deposit_song">
           <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
             {s?.img_url && (
@@ -319,16 +323,6 @@ export default function Deposit({
                   >
                     Play
                   </Button>
-
-                  {/* Bouton Réagir sur list uniquement si révélé */}
-                  <Button
-                    variant="depositInteract"
-                    size="large"
-                    onClick={openReact}
-                    startIcon={<EmojiEmotionsIcon />}
-                  >
-                    Réagir
-                  </Button>
                 </Box>
               </>
             ) : (
@@ -346,10 +340,10 @@ export default function Deposit({
                 >
                   Découvrir
                   <Box className="points_container" sx={{ ml: "12px" }}>
-                    <Typography variant="body1" component="span">
+                    <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                       {cost}
                     </Typography>
-                    <AlbumIcon/>
+                    <AlbumIcon />
                   </Box>
                 </Button>
               </>
@@ -361,6 +355,19 @@ export default function Deposit({
           {dep?.my_reaction?.emoji && isRevealed && (
             <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
           )}
+        </Box>
+
+        {/* ----- ✅ Section dédiée réaction sous deposit_song ----- */}
+        <Box className="deposit_react" sx={{ mt: 2 }}>
+          <Button
+            variant="depositInteract"
+            size="large"
+            onClick={openReact}
+            disabled={!isRevealed}
+            startIcon={<EmojiEmotionsIcon />}
+          >
+            Réagir
+          </Button>
         </Box>
       </Card>
 
