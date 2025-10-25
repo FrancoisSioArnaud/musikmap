@@ -1,23 +1,9 @@
 from django.db import models
 from django.utils import timezone
-from django.utils.text import slugify
 from users.models import CustomUser
 
 
 class Box(models.Model):
-    """
-    Class goal: This class represents a Music Box.
-
-    Attributes:
-        name        : The name of the box.
-        description : The description of the box.
-        url         : The URL of the box.
-        image_url   : The URL of the image of the box.
-        created_at  : The date of creation of the box.
-        updated_at  : The date of the last update of the box.
-        client_name : The name of the client.
-        max_deposits: The maximum number of deposits allowed in the box.
-    """
     name = models.CharField(max_length=50, unique=True)
     description = models.CharField(max_length=150, blank=True)
     url = models.SlugField(blank=True)
@@ -27,89 +13,50 @@ class Box(models.Model):
     client_name = models.CharField(max_length=50)
 
     def __str__(self):
-        """
-        Method goal: Returns the name of the box used to display it in the admin interface.
-        """
         return self.name
 
 
 class Song(models.Model):
-    """
-    Class goal: This class represents a song.
-
-    Attributes:
-        song_id   : The id of the song.
-        title     : The title of the song.
-        artist    : The artist of the song.
-        url       : The URL of the song.
-        image_url : The URL of the image of the song.
-        duration  : The duration of the song.
-        n_deposits: The number of deposits of the song.
-    """
     song_id = models.CharField(max_length=15)
     title = models.CharField(max_length=50)
     artist = models.CharField(max_length=50)
     spotify_url = models.CharField(max_length=255, null=True, blank=True)
     deezer_url  = models.CharField(max_length=255, null=True, blank=True)
     image_url = models.URLField(max_length=200, blank=True)
-    duration = models.IntegerField(default=0)  # Duration in seconds
+    duration = models.IntegerField(default=0)
     n_deposits = models.IntegerField(default=0)
 
     def __str__(self):
-        """
-        Method goal: Returns the title and the artist of the song used to display it in the admin interface.
-        """
-        return self.title + ' - ' + str(self.artist)
+        return f"{self.title} - {self.artist}"
+
 
 class Deposit(models.Model):
-    # Overriding of the save() method in order to avoid 'auto_now_add=True' which makes DateTimeField uneditable
     def save(self, *args, **kwargs):
-        if not self.pk:  # Check if it's the first save
+        if not self.pk:
             self.deposited_at = timezone.now()
-
-        super().save(*args, **kwargs)  # calling the save() method of the parent class (which is User)
-
+        super().save(*args, **kwargs)
 
     song_id = models.ForeignKey(Song, on_delete=models.CASCADE)
     box_id = models.ForeignKey(Box, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True)
-    # user_id = models.IntegerField()
     deposited_at = models.DateTimeField()
 
     def __str__(self):
-        return str(self.song_id) + ' - ' + str(self.box_id)
+        return f"{self.song_id} - {self.box_id}"
 
 
 class LocationPoint(models.Model):
-    """
-    Class goal: This class represents a location point.
-
-    Attributes:
-        box_id       : The id of the box.
-        latitude     : The latitude of the location point.
-        longitude    : The longitude of the location point.
-        dist_location: The maximum distance between the user and the location point.
-    """
     box_id = models.ForeignKey(Box, on_delete=models.CASCADE)
     latitude = models.FloatField()
     longitude = models.FloatField()
     dist_location = models.IntegerField(default=100)
 
     def __str__(self):
-        """
-        Method goal: Returns the name of the box, the latitude and the longitude of the location point
-        used to display it in the admin interface.
-        """
         box_name = Box.objects.get(id=self.box_id_id).name
-        return box_name + ' - ' + str(self.latitude) + ' - ' + str(self.longitude)
+        return f"{box_name} - {self.latitude} - {self.longitude}"
 
 
 class DiscoveredSong(models.Model):
-    """
-    Représente un dépôt découvert par un utilisateur.
-    - discovered_type : "main" (gros bloc) ou "revealed" (dépôt révélé)
-    - Un dépôt ne peut être découvert qu'une seule fois par un même utilisateur.
-    """
     deposit_id = models.ForeignKey('box_management.Deposit', on_delete=models.CASCADE)
     user_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
@@ -118,7 +65,6 @@ class DiscoveredSong(models.Model):
         ("revealed", "Revealed"),
     )
     discovered_type = models.CharField(max_length=8, choices=DISCOVERED_TYPES, default="revealed")
-
     discovered_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -130,11 +76,56 @@ class DiscoveredSong(models.Model):
         return f"{self.user_id} - {self.deposit_id}"
 
 
+# =========================
+# NOUVEAUX MODÈLES REACTIONS
+# =========================
+
+class Emoji(models.Model):
+    """Catalogue des emojis (Unicode)"""
+    char = models.CharField(max_length=8, unique=True)  # ex "🔥", "😂"
+    active = models.BooleanField(default=True)
+    basic = models.BooleanField(default=False)  # accessible à tous sans achat
+    cost = models.PositiveIntegerField(default=0)  # coût en points (si non-basic)
+
+    def __str__(self):
+        flags = []
+        if self.basic: flags.append("basic")
+        if not self.active: flags.append("inactive")
+        fl = f" ({', '.join(flags)})" if flags else ""
+        return f"{self.char}{fl}"
 
 
+class EmojiRight(models.Model):
+    """Droit global d'utiliser un emoji (achat par user)"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE)
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'emoji'], name='unique_user_emoji_right'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} → {self.emoji}"
 
 
+class Reaction(models.Model):
+    """Une réaction d’un user sur un dépôt (un seul par couple user/deposit)."""
+    deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    emoji = models.ForeignKey(Emoji, on_delete=models.PROTECT)  # pas de cascade, on garde l’historique
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # maj si on change d’emoji
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'deposit'], name='unique_reaction_per_user_and_deposit'),
+        ]
+        indexes = [
+            models.Index(fields=['deposit', 'emoji']),  # agrégats rapides par dépôt/emoji
+            models.Index(fields=['user', 'deposit']),   # recherche de ma réaction
+        ]
 
-
-
+    def __str__(self):
+        return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
