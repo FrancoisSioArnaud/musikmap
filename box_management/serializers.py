@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import *
+from .models import Box, Song, Deposit, LocationPoint, DiscoveredSong, Emoji, EmojiRight, Reaction
 
 
 class BoxSerializer(serializers.ModelSerializer):
@@ -31,3 +31,24 @@ class DiscoveredSongSerializer(serializers.ModelSerializer):
         model = DiscoveredSong
         fields = '__all__'
 
+
+# ======= NOUVEAUX =======
+
+class EmojiSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Emoji
+        fields = ['id', 'char', 'active', 'basic', 'cost']
+
+
+class EmojiRightSerializer(serializers.ModelSerializer):
+    emoji = EmojiSerializer()
+    class Meta:
+        model = EmojiRight
+        fields = ['emoji', 'granted_at']
+
+
+class ReactionSerializer(serializers.ModelSerializer):
+    emoji = EmojiSerializer()
+    class Meta:
+        model = Reaction
+        fields = ['deposit', 'emoji', 'created_at', 'updated_at']
