@@ -18,7 +18,7 @@ import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import ReactionModal from "../Reactions/ReactionModal";
+import ReactionModal from "./ReactionModal";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
