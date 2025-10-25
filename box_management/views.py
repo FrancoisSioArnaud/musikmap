@@ -10,8 +10,8 @@ from django.urls import reverse
 from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction
-from django.contrib.auth import get_user_model
 from django.db.models import Count
+from django.contrib.auth import get_user_model
 
 # DRF
 from rest_framework import status
@@ -21,8 +21,14 @@ from rest_framework.permissions import IsAuthenticated
 
 # Projet
 from .models import (
-    Box, Deposit, Song, LocationPoint, DiscoveredSong,
-    Emoji, EmojiRight, Reaction
+    Box,
+    Deposit,
+    Song,
+    LocationPoint,
+    DiscoveredSong,
+    Emoji,
+    EmojiRight,
+    Reaction,
 )
 from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
 from .util import calculate_distance
@@ -145,16 +151,16 @@ class GetBox(APIView):
     def _map_user(u):
         if not u or isinstance(u, AnonymousUser):
             return None
-    
+
         display_name = getattr(u, "username", None)
-    
+
         profile_pic_url = None
         if getattr(u, "profile_picture", None):
             try:
                 profile_pic_url = u.profile_picture.url
             except Exception:
                 profile_pic_url = None
-    
+
         return {
             "id": u.id,
             "username": display_name,
@@ -192,7 +198,7 @@ class GetBox(APIView):
         text = naturaltime(localtime(dt))
         # Coupe au premier séparateur "," (s’il existe)
         return text.split(",")[0].strip()
-    
+
     def _build_deposits_payload(self, box, user, limit=10):
         qs = (
             Deposit.objects
@@ -214,10 +220,11 @@ class GetBox(APIView):
         authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
         if authed:
             for r in Reaction.objects.filter(user=user, deposit_id__in=dep_ids).select_related('emoji'):
-                my_reac_by_dep[r.deposit_id] = {
+                my_reac_by_dep[r.deposit_id_id] = {
                     "emoji": r.emoji.char,
-                    "reacted_at": r.created_at,
+                    "reacted_at": r.created_at.isoformat(),
                 }
+
         discovered_by_dep = {}
         if authed and len(deposits) > 1:
             dep_ids_tail = [d.id for d in deposits[1:]]
@@ -322,7 +329,7 @@ class GetBox(APIView):
             'name': "Pépite",
             'desc': "Tu as partagé une chanson",
             'points': NB_POINTS_ADD_SONG
-          
+
         }
 
         if user and is_first_user_deposit(user, box):
@@ -460,7 +467,7 @@ class GetBox(APIView):
         response = {
             "successes": list(successes.values()),
             "added_deposit": added_deposit,
-            "points_balance": points_balance, 
+            "points_balance": points_balance,
         }
         return Response(response, status=status.HTTP_200_OK)
 
@@ -489,607 +496,4 @@ class Location(APIView):
         if is_valid_location:
             return Response({'valid': True}, status=status.HTTP_200_OK)
         else:
-            return Response({'valid': False, 'lat': latitude, 'long': longitude}, status=status.HTTP_403_FORBIDDEN)
-
-
-class CurrentBoxManagement(APIView):
-    def get(self, request, format=None):
-        try:
-            current_box_name = request.session['current_box_name']
-            return Response({'current_box_name': current_box_name}, status=status.HTTP_200_OK)
-        except KeyError:
-            return Response({'error': "La clé current_box_name n'existe pas"}, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request, format=None):
-        if 'current_box_name' not in request.data:
-            return Response({'errors': "Aucun nom de boîte n'a été fournie."}, status=status.HTTP_401_UNAUTHORIZED)
-        current_box_name = request.data.get('current_box_name')
-        try:
-            request.session['current_box_name'] = current_box_name
-            request.session.modified = True
-            return Response({'status': 'Le nom de la boîte actuelle a été modifié avec succès.'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class ManageDiscoveredSongs(APIView):
-    """
-    POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
-    GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
-
-    - Une session commence à un DiscoveredSong(type="main") (toutes boîtes confondues, tri desc),
-      et contient les "revealed" de la **même boîte** découverts après ce main,
-      jusqu'au prochain "main" (n'importe quelle boîte) **ou** 3600s après le main (le premier des deux).
-
-    - Edge case: s'il existe des "revealed" sans "main" précédent proche, on crée une **session sans main**,
-      qui regroupe les revealed **de la même boîte** qui suivent (jusqu'au prochain main global ou 3600s depuis
-      le **premier revealed** de cette session).
-
-    Pagination par sessions: ?limit=10&offset=0
-    Réponse:
-    {
-      "sessions": [
-        {
-          "session_id": "<id technique (id du main ou 'orph-<idx>')>",
-          "box": { "id": <int>, "name": "...", "url": "..." },
-          "started_at": "ISO-8601",
-          "deposits": [ { ... comme défini ci-dessous ... } ]
-        }
-      ],
-      "limit": <int>,
-      "offset": <int>,
-      "has_more": <bool>,
-      "next_offset": <int>
-    }
-    """
-
-    def post(self, request):
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {'error': 'Vous devez être connecté pour effectuer cette action.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        deposit_id = request.data.get('deposit_id')
-        if not deposit_id:
-            return Response({'error': 'Identifiant de dépôt manquant.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        discovered_type = request.data.get('discovered_type') or "revealed"
-        if discovered_type not in ("main", "revealed"):
-            discovered_type = "revealed"
-
-        try:
-            deposit = Deposit.objects.select_related('song_id').get(pk=deposit_id)
-        except Deposit.DoesNotExist:
-            return Response({'error': "Dépôt introuvable."}, status=status.HTTP_404_NOT_FOUND)
-
-        if DiscoveredSong.objects.filter(user_id=user, deposit_id=deposit).exists():
-            return Response({'error': 'Ce dépôt est déjà découvert.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        DiscoveredSong.objects.create(
-            user_id=user,
-            deposit_id=deposit,
-            discovered_type=discovered_type
-        )
-        return Response({'success': True}, status=status.HTTP_200_OK)
-
-    def get(self, request):
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {'error': 'Vous devez être connecté pour effectuer cette action.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-    
-        # --- Params pagination (par sessions)
-        try:
-            limit = int(request.GET.get("limit", 10))
-        except Exception:
-            limit = 10
-        try:
-            offset = int(request.GET.get("offset", 0))
-        except Exception:
-            offset = 0
-        limit = 10 if limit <= 0 else limit
-        offset = 0 if offset < 0 else offset
-    
-        # --- Helpers mapping (alignés sur GetBox)
-        def map_user(u):
-            if not u or isinstance(u, AnonymousUser):
-                return None
-            full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-            display_name = full_name or getattr(u, "name", None) or getattr(u, "username", None)
-            profile_pic_url = None
-            if getattr(u, "profile_picture", None):
-                try:
-                    profile_pic_url = u.profile_picture.url
-                except Exception:
-                    profile_pic_url = None
-            return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
-    
-        def map_song_full(s, include_id=True):
-            if not s:
-                return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
-            payload = {
-                "title": getattr(s, "title", None),
-                "artist": getattr(s, "artist", None),
-                "spotify_url": getattr(s, "spotify_url", None),
-                "deezer_url": getattr(s, "deezer_url", None),
-                "img_url": getattr(s, "image_url", None),
-            }
-            if include_id:
-                payload["id"] = getattr(s, "id", None)
-            return payload
-    
-        def deposit_payload(ds_obj):
-            dep = ds_obj.deposit_id
-            s = dep.song_id
-            u = dep.user
-            return {
-                "type": ds_obj.discovered_type,
-                "discovered_at": ds_obj.discovered_at.isoformat(),
-                "deposit_id": dep.id,
-                # NB: date d’ajout dans la box — on ne s’en sert pas pour l’ordre,
-                # mais on la garde pour compat :
-                "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
-                "song": map_song_full(s, include_id=True),
-                "user": map_user(u),
-            }
-    
-        # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
-        events = list(
-            DiscoveredSong.objects
-            .filter(user_id=user)
-            .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user', 'deposit_id__box_id')
-            .order_by('discovered_at', 'id')  # ASC, puis tie-break sur id
-        )
-    
-        # Indices des mains (ASC)
-        main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
-    
-        sessions_all = []
-        consumed = [False] * len(events)
-    
-        # --- 2) Sessions pilotées par 'main'
-        for idx, mi in enumerate(main_indices):
-            main_ds = events[mi]
-            box = main_ds.deposit_id.box_id
-            start = main_ds.discovered_at
-            deadline = start + timedelta(seconds=3600)
-            # borne supérieure = index du prochain main (ou fin de liste)
-            end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
-    
-            # Dépôt 'main' (toujours en tête, puis revealed par ordre chronologique)
-            deposits = [deposit_payload(main_ds)]
-            consumed[mi] = True
-    
-            # revealed après le main, même box, <= +1h, avant le prochain main
-            for j in range(mi + 1, end):
-                ds = events[j]
-                if ds.discovered_type != "revealed":
-                    continue
-                if ds.deposit_id.box_id_id != box.id:
-                    continue
-                if ds.discovered_at <= deadline:
-                    deposits.append(deposit_payload(ds))
-                    consumed[j] = True
-    
-            sessions_all.append({
-                "session_id": str(main_ds.id),
-                "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": start.isoformat(),
-                "deposits": deposits,  # ordre chrono: main puis revealed de la session
-            })
-    
-        # --- 3) Sessions orphelines (revealed restants), groupées par fenêtre [start, start+1h] et même box,
-        #         et stoppées par le prochain main global.
-        # Pour accélérer : prochaine position d’un main pour un index donné
-        next_main_pos_from = [None] * len(events)
-        next_idx = None
-        for i in range(len(events) - 1, -1, -1):  # parcours inverse pour pré-calcul
-            next_main_pos_from[i] = next_idx
-            if events[i].discovered_type == "main":
-                next_idx = i
-    
-        orph_counter = 0
-        i = 0
-        while i < len(events):
-            if consumed[i] or events[i].discovered_type != "revealed":
-                i += 1
-                continue
-    
-            # Démarre une session orpheline à partir de ce revealed
-            start_ds = events[i]
-            box = start_ds.deposit_id.box_id
-            start = start_ds.discovered_at
-            deadline = start + timedelta(seconds=3600)
-            stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
-    
-            deposits = [deposit_payload(start_ds)]
-            consumed[i] = True
-    
-            j = i + 1
-            while j is not None and j < stop_at:
-                if consumed[j]:
-                    j += 1
-                    continue
-                ds2 = events[j]
-                # on ne prend que revealed de la même box et <= +1h depuis le premier
-                if ds2.discovered_type == "revealed" and ds2.deposit_id.box_id_id == box.id and ds2.discovered_at <= deadline:
-                    deposits.append(deposit_payload(ds2))
-                    consumed[j] = True
-                    j += 1
-                    continue
-                # si c’est un main, on s’arrête (prochain main global)
-                if ds2.discovered_type == "main":
-                    break
-                # sinon (revealed autre box / hors fenêtre), on le saute pour cette session
-                j += 1
-    
-            sessions_all.append({
-                "session_id": f"orph-{orph_counter}",
-                "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": start.isoformat(),
-                "deposits": deposits,  # ordre chrono
-            })
-            orph_counter += 1
-            i = j if j is not None else (i + 1)
-    
-        # --- 4) Tri global des sessions par started_at DESC + pagination par sessions
-        sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
-    
-        total_sessions = len(sessions_all)
-        slice_start = offset
-        slice_end = offset + limit
-        sessions_page = sessions_all[slice_start:slice_end]
-        has_more = slice_end < total_sessions
-        next_offset = slice_end if has_more else slice_end  # avance « plat »
-    
-        payload = {
-            "sessions": sessions_page,
-            "limit": limit,
-            "offset": offset,
-            "has_more": has_more,
-            "next_offset": next_offset,
-        }
-        return Response(payload, status=status.HTTP_200_OK)
-
-
-class RevealSong(APIView):
-    """
-    POST /box-management/revealSong
-    Body: { "deposit_id": <int> }
-    200: { "song": {...}, "points_balance": <int> }
-    401 si non authentifié
-    400 {error:"insufficient_funds", message:"Tu n’as pas assez de crédit pour révéler cette pépite"}
-    404 si dépôt/chanson introuvable
-    502 si échec du débit ou de l’enregistrement de découverte
-    """
-    def post(self, request, format=None):
-        # 1) Auth requise
-        user = request.user
-        if not user.is_authenticated:
-            return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # 2) Paramètres
-        deposit_id = request.data.get("deposit_id")
-        if not deposit_id:
-            return Response({"detail": "deposit_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 3) Récupérer le dépôt + chanson
-        try:
-            deposit = Deposit.objects.select_related("song_id").get(pk=deposit_id)
-        except Deposit.DoesNotExist:
-            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-        song = deposit.song_id
-        if not song:
-            return Response({"detail": "Chanson introuvable pour ce dépôt"}, status=status.HTTP_404_NOT_FOUND)
-
-        # 4) Coût (source de vérité côté serveur)
-        cost = int(COST_REVEAL_BOX)
-
-        # 5) Vérifier solde utilisateur
-        try:
-            user.refresh_from_db(fields=["points"])
-        except Exception:
-            user.refresh_from_db()
-        if getattr(user, "points", 0) < cost:
-            return Response(
-                {"error": "insufficient_funds", "message": "Tu n’as pas assez de crédit pour révéler cette pépite"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Prépare en-têtes/cookies CSRF corrects pour appels internes
-        csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")  # ex: https://mon-domaine/
-        headers_bg = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token,
-            "Referer": origin,                 # nécessaire en HTTPS
-            "Origin": origin.rstrip("/"),      # idem
-        }
-        cookies = request.COOKIES  # contient sessionid + csrftoken
-
-        # 6) Débiter les points via /users/add-points
-        try:
-            add_points_url = request.build_absolute_uri(reverse('add-points'))  # /users/add-points
-            r = requests.post(
-                add_points_url,
-                cookies=cookies,
-                headers=headers_bg,
-                data=json.dumps({"points": -cost}),
-                timeout=4,
-            )
-            if not r.ok:
-                return Response(
-                    {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-        except Exception:
-            return Response(
-                {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        # 7) Enregistrer la découverte via /box-management/discovered-songs
-        try:
-            discover_url = request.build_absolute_uri("/box-management/discovered-songs")
-            r2 = requests.post(
-                discover_url,
-                cookies=cookies,
-                headers=headers_bg,
-                data=json.dumps({"deposit_id": deposit_id, "discovered_type": "revealed"}),
-                timeout=4,
-            )
-            # Tolérer "déjà découvert" (400), mais bloquer autres erreurs (403 CSRF, etc.)
-            if not r2.ok and r2.status_code != 400:
-                return Response(
-                    {"detail": "Erreur lors de l’enregistrement de la découverte."},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-        except Exception:
-            return Response(
-                {"detail": "Erreur lors de l’enregistrement de la découverte."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        # 8) Points à jour
-        try:
-            user.refresh_from_db(fields=["points"])
-        except Exception:
-            user.refresh_from_db()
-        points_balance = getattr(user, "points", None)
-
-        # 9) Réponse
-        data = {
-            "song": {
-                "title": song.title,
-                "artist": song.artist,
-                "spotify_url": song.spotify_url,
-                "deezer_url": song.deezer_url,
-            },
-            "points_balance": points_balance,
-        }
-        return Response(data, status=status.HTTP_200_OK)
-
-
-class UserDepositsView(APIView):
-    permission_classes = []  # public si tu veux afficher pour tout le monde
-
-    def get(self, request):
-        user_id = (request.GET.get("user_id") or "").strip()
-        if not user_id:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            user_id = int(user_id)
-        except ValueError:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
-
-        target = User.objects.filter(id=user_id).first()
-        if not target:
-            return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
-
-        qs = Deposit.objects.filter(user_id=user_id).order_by("-deposited_at")[:500]
-
-        # select_related('song') si la FK existe
-        rel_candidates = [
-            f.name for f in Deposit._meta.get_fields()
-            if getattr(f, "is_relation", False)
-            and getattr(f, "many_to_one", False)
-            and not getattr(f, "auto_created", False)
-        ]
-        if "song" in rel_candidates:
-            qs = qs.select_related("song")
-
-        def pick(obj, *names):
-            for n in names:
-                if obj is not None and hasattr(obj, n):
-                    val = getattr(obj, n)
-                    if val not in (None, ""):
-                        return val
-            return None
-
-        items = []
-        for d in qs:
-            s = getattr(d, "song", None) if "song" in rel_candidates else None
-            title  = pick(s, "title", "name") or pick(d, "song_title")
-            artist = pick(s, "artist", "artist_name") or pick(d, "song_artist")
-            img    = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
-            deposited = getattr(d, "deposited_at", None)
-            items.append({
-                "deposit_id": getattr(d, "id", None),
-                "deposit_date": deposited.isoformat() if deposited else None,
-                "song": {"title": title, "artist": artist, "img_url": img},
-            })
-
-        return Response(items, status=status.HTTP_200_OK)
-
-
-# =========================================
-#         NOUVELLES VUES REACTIONS
-# =========================================
-
-class EmojiCatalogView(APIView):
-    """
-    GET /box-management/emojis/catalog?deposit_id=<id>
-    Réponse:
-    {
-      "basic": [...],
-      "actives_paid": [...],
-      "owned_ids": [...],
-      "current_reaction": "🔥" | null
-    }
-    """
-    permission_classes = []
-
-    def get(self, request):
-        basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
-        actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
-
-        owned_ids = []
-        current_reaction = None
-
-        if request.user.is_authenticated:
-            owned_ids = list(
-                EmojiRight.objects.filter(user=request.user, emoji__active=True).values_list('emoji_id', flat=True)
-            )
-
-            # Si le front fournit un dépôt, on récupère la réaction actuelle du user
-            deposit_id = request.GET.get("deposit_id")
-            if deposit_id:
-                reac = Reaction.objects.filter(user=request.user, deposit_id=deposit_id).select_related("emoji").first()
-                if reac and reac.emoji and reac.emoji.active:
-                    current_reaction = reac.emoji.char
-
-        data = {
-            "basic": EmojiSerializer(basics, many=True).data,
-            "actives_paid": EmojiSerializer(actives_paid, many=True).data,
-            "owned_ids": owned_ids,
-            "current_reaction": current_reaction,
-        }
-        return Response(data, status=status.HTTP_200_OK)
-
-class PurchaseEmojiView(APIView):
-    """
-    POST /box-management/emojis/purchase
-    Body: { "emoji_id": <int> }
-    Effet: débite des points et crée EmojiRight(user, emoji) si pas déjà présent.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        emoji_id = request.data.get("emoji_id")
-        if not emoji_id:
-            return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
-
-        emoji = Emoji.objects.filter(id=emoji_id).first()
-        if not emoji or not emoji.active:
-            return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
-        if emoji.basic:
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
-
-        # Déjà possédé ?
-        if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
-
-        # Vérifier solde utilisateur
-        cost = int(emoji.cost or 0)
-        try:
-            request.user.refresh_from_db(fields=["points"])
-        except Exception:
-            request.user.refresh_from_db()
-
-        if getattr(request.user, "points", 0) < cost:
-            return Response({"error": "insufficient_funds", "message": "Crédits insuffisants"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Débiter via /users/add-points
-        try:
-            csrf_token = get_token(request)
-            origin = request.build_absolute_uri("/")
-            headers_bg = {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrf_token,
-                "Referer": origin,
-                "Origin": origin.rstrip("/"),
-            }
-            r = requests.post(
-                request.build_absolute_uri(reverse('add-points')),
-                cookies=request.COOKIES,
-                headers=headers_bg,
-                data=json.dumps({"points": -cost}),
-                timeout=4,
-            )
-            if not r.ok:
-                return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
-        except Exception:
-            return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
-
-        EmojiRight.objects.create(user=request.user, emoji=emoji)
-
-        try:
-            request.user.refresh_from_db(fields=["points"])
-        except Exception:
-            request.user.refresh_from_db()
-
-        return Response({"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)}, status=status.HTTP_200_OK)
-
-
-class ReactionView(APIView):
-    """
-    POST /box-management/reactions
-    Body:
-      { "deposit_id": <int>, "emoji_id": <int|null> }
-    - Si emoji_id == null => suppression de la réaction
-    - Sinon:
-        * vérifie basic OU droit possédé
-        * crée si inexistante, sinon met à jour l'emoji (updated_at)
-    Réponse 200:
-      {
-        "my_reaction": {"emoji": "🔥", "reacted_at": "..."} | null,
-        "reactions_summary": [{"emoji":"😂","count":2}, ...]
-      }
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        deposit_id = request.data.get("deposit_id")
-        emoji_id = request.data.get("emoji_id", None)
-
-        if not deposit_id:
-            return Response({"detail": "deposit_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
-
-        deposit = Deposit.objects.filter(id=deposit_id).first()
-        if not deposit:
-            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Suppression ("none")
-        if emoji_id in (None, "", 0, "none"):
-            Reaction.objects.filter(user=request.user, deposit=deposit).delete()
-            summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
-            return Response({"my_reaction": None, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
-        # Mise en place / changement d'emoji
-        emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
-        if not emoji:
-            return Response({"detail": "Emoji invalide"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Droit requis si non-basic
-        if not emoji.basic:
-            has_right = EmojiRight.objects.filter(user=request.user, emoji=emoji).exists()
-            if not has_right:
-                return Response({"error": "forbidden", "message": "Emoji non débloqué"}, status=status.HTTP_403_FORBIDDEN)
-
-        # Upsert (unique user/deposit)
-        obj, created = Reaction.objects.get_or_create(user=request.user, deposit=deposit, defaults={"emoji": emoji})
-        if not created:
-            if obj.emoji_id != emoji.id:
-                obj.emoji = emoji
-                obj.save(update_fields=["emoji", "updated_at"])
-
-        summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
-        my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
-        return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
-
-
+            return Response({'valid': False,
