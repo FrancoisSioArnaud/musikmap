@@ -931,24 +931,44 @@ class UserDepositsView(APIView):
 # =========================================
 
 class EmojiCatalogView(APIView):
-    ...
+    """
+    GET /box-management/emojis/catalog?deposit_id=<id>
+    Réponse:
+    {
+      "basic": [...],
+      "actives_paid": [...],
+      "owned_ids": [...],
+      "current_reaction": "🔥" | null
+    }
+    """
+    permission_classes = []
+
     def get(self, request):
         basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
         actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
 
         owned_ids = []
+        current_reaction = None
+
         if request.user.is_authenticated:
             owned_ids = list(
                 EmojiRight.objects.filter(user=request.user, emoji__active=True).values_list('emoji_id', flat=True)
             )
 
+            # Si le front fournit un dépôt, on récupère la réaction actuelle du user
+            deposit_id = request.GET.get("deposit_id")
+            if deposit_id:
+                reac = Reaction.objects.filter(user=request.user, deposit_id=deposit_id).select_related("emoji").first()
+                if reac and reac.emoji and reac.emoji.active:
+                    current_reaction = reac.emoji.char
+
         data = {
             "basic": EmojiSerializer(basics, many=True).data,
             "actives_paid": EmojiSerializer(actives_paid, many=True).data,
             "owned_ids": owned_ids,
+            "current_reaction": current_reaction,
         }
         return Response(data, status=status.HTTP_200_OK)
-
 
 class PurchaseEmojiView(APIView):
     """
@@ -1070,5 +1090,6 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
