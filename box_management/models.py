@@ -99,7 +99,6 @@ class EmojiRight(models.Model):
     """Droit global d'utiliser un emoji (achat par user)"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE)
-    granted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -108,6 +107,7 @@ class EmojiRight(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.emoji}"
+
 
 
 class Reaction(models.Model):
@@ -129,3 +129,4 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
