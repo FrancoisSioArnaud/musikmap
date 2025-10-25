@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
+import AlbumIcon from "@mui/icons-material/Album";
 import { getCookie } from "../Security/TokensUtils";
 import PurchaseEmojiModal from "./PurchaseEmojiModal";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
@@ -21,7 +22,10 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   const [selected, setSelected] = useState(currentEmoji || null);
   const [purchaseTarget, setPurchaseTarget] = useState(null);
 
-  const hasChanged = useMemo(() => (selected || null) !== (catalog.current_reaction?.emoji || null), [selected, catalog]);
+  const hasChanged = useMemo(
+    () => (selected || null) !== (catalog.current_reaction?.emoji || null),
+    [selected, catalog]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +54,8 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
 
   if (!open) return null;
 
-  const isOwned = (emoji) => emoji.basic || catalog.owned_ids.includes(emoji.id) || emoji.cost === 0;
+  const isOwned = (emoji) =>
+    emoji.basic || (emoji.cost === 0) || catalog.owned_ids.includes(emoji.id);
 
   const onClickEmoji = (emoji) => {
     if (!emoji) {
@@ -61,7 +66,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     else setPurchaseTarget(emoji);
   };
 
-  const onPurchaseSuccess = (emoji) => {
+  const onPurchaseSuccess = (emoji /* object */, _newBalance) => {
     setCatalog((prev) => ({ ...prev, owned_ids: [...new Set([...prev.owned_ids, emoji.id])] }));
     setPurchaseTarget(null);
     setSelected(emoji.char);
@@ -90,12 +95,11 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       return;
     }
 
-    onApplied?.(data);
+    onApplied?.(data); // ✅ met à jour le deposit dans le parent
     onClose();
   };
 
   const EmojiItem = ({ emoji, owned }) => {
-    const disabled = !owned;
     const isSelected = selected === emoji.char;
     return (
       <Button
@@ -107,24 +111,35 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
           borderRadius: 2,
           border: "1px solid",
           borderColor: isSelected ? "primary.main" : "divider",
-          opacity: owned ? 1 : 0.5,
+          opacity: owned ? 1 : 0.6,
           position: "relative",
         }}
       >
         <span style={{ fontSize: 22 }}>{emoji.char}</span>
-        {!owned && emoji.cost > 0 && (
-          <Typography
-            variant="caption"
+
+        {/* ✅ cost affiché pour les non possédés, même rendu points_container */}
+        {!owned && (emoji.cost ?? 0) > 0 && (
+          <Box
+            className="points_container"
             sx={{
               position: "absolute",
-              bottom: 2,
               right: 4,
-              fontSize: "0.65rem",
-              opacity: 0.8,
+              bottom: 4,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 0.75,
+              py: 0.25,
+              borderRadius: 1,
+              bgcolor: "background.paper",
+              boxShadow: 1,
             }}
           >
-            {emoji.cost}
-          </Typography>
+            <Typography variant="body1" component="span" sx={{ color: "text.primary", fontSize: "0.8rem" }}>
+              {emoji.cost}
+            </Typography>
+            <AlbumIcon sx={{ fontSize: 16 }} />
+          </Box>
         )}
       </Button>
     );
@@ -220,12 +235,13 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
         </Card>
       </Box>
 
+      {/* Achats */}
       {purchaseTarget && (
         <PurchaseEmojiModal
           open={!!purchaseTarget}
           emoji={purchaseTarget}
           onCancel={() => setPurchaseTarget(null)}
-          onUnlocked={() => onPurchaseSuccess(purchaseTarget)}
+          onUnlocked={(newBalance) => onPurchaseSuccess(purchaseTarget, newBalance)}
         />
       )}
     </Box>
