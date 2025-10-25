@@ -214,7 +214,7 @@ class GetBox(APIView):
         authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
         if authed:
             for r in Reaction.objects.filter(user=user, deposit_id__in=dep_ids).select_related('emoji'):
-                my_reac_by_dep[r.deposit_id] = {  # <- r.deposit_id (int), pas r.deposit_id_id
+                my_reac_by_dep[r.deposit_id_id] = {
                     "emoji": r.emoji.char,
                     "reacted_at": r.created_at.isoformat(),
                 }
@@ -1081,4 +1081,3 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
