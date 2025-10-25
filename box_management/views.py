@@ -1,4 +1,3 @@
-
 # stdlib
 import json
 import requests
@@ -38,6 +37,7 @@ from utils import (
 from api_aggregation.views import ApiAggregation
 
 User = get_user_model()
+
 
 # -----------------------
 # Helpers "business"
@@ -85,7 +85,7 @@ def _reactions_summary_for_deposits(dep_ids):
         .annotate(count=Count('id'))
     )
     for row in qs:
-        did = row['deposit_id']
+        did = row['deposit_id']           # int (colonne _id)
         emoji_char = row['emoji__char']
         cnt = row['count']
         summary.setdefault(did, []).append({"emoji": emoji_char, "count": cnt})
@@ -181,7 +181,8 @@ class GetBox(APIView):
         authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
         if authed:
             for r in Reaction.objects.filter(user=user, deposit_id__in=dep_ids).select_related('emoji'):
-                my_reac_by_dep[r.deposit_id.id] = {
+                # r.deposit_id est déjà un int (colonne FK)
+                my_reac_by_dep[r.deposit_id] = {
                     "emoji": r.emoji.char,
                     "reacted_at": r.created_at.isoformat(),
                 }
@@ -190,6 +191,7 @@ class GetBox(APIView):
         if authed and len(deposits) > 1:
             dep_ids_sub = [d.id for d in deposits[1:]]
             for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids_sub):
+                # ds.deposit_id est l'objet Deposit (car le champ s'appelle "deposit_id")
                 discovered_by_dep[ds.deposit_id.id] = ds
 
         out = []
@@ -236,7 +238,6 @@ class GetBox(APIView):
 
         return out
 
-    
     # --------- GET ---------
     def get(self, request, format=None):
         name = request.GET.get(self.lookup_url_kwarg)
@@ -297,7 +298,6 @@ class GetBox(APIView):
             'name': "Pépite",
             'desc': "Tu as partagé une chanson",
             'points': NB_POINTS_ADD_SONG
-          
         }
 
         if user and is_first_user_deposit(user, box):
@@ -435,7 +435,7 @@ class GetBox(APIView):
         response = {
             "successes": list(successes.values()),
             "added_deposit": added_deposit,
-            "points_balance": points_balance, 
+            "points_balance": points_balance,
         }
         return Response(response, status=status.HTTP_200_OK)
 
@@ -491,31 +491,6 @@ class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
     GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
-
-    - Une session commence à un DiscoveredSong(type="main") (toutes boîtes confondues, tri desc),
-      et contient les "revealed" de la **même boîte** découverts après ce main,
-      jusqu'au prochain "main" (n'importe quelle boîte) **ou** 3600s après le main (le premier des deux).
-
-    - Edge case: s'il existe des "revealed" sans "main" précédent proche, on crée une **session sans main**,
-      qui regroupe les revealed **de la même boîte** qui suivent (jusqu'au prochain main global ou 3600s depuis
-      le **premier revealed** de cette session).
-
-    Pagination par sessions: ?limit=10&offset=0
-    Réponse:
-    {
-      "sessions": [
-        {
-          "session_id": "<id technique (id du main ou 'orph-<idx>')>",
-          "box": { "id": <int>, "name": "...", "url": "..." },
-          "started_at": "ISO-8601",
-          "deposits": [ { ... comme défini ci-dessous ... } ]
-        }
-      ],
-      "limit": <int>,
-      "offset": <int>,
-      "has_more": <bool>,
-      "next_offset": <int>
-    }
     """
 
     def post(self, request):
@@ -555,7 +530,7 @@ class ManageDiscoveredSongs(APIView):
                 {'error': 'Vous devez être connecté pour effectuer cette action.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-    
+
         # --- Params pagination (par sessions)
         try:
             limit = int(request.GET.get("limit", 10))
@@ -567,7 +542,7 @@ class ManageDiscoveredSongs(APIView):
             offset = 0
         limit = 10 if limit <= 0 else limit
         offset = 0 if offset < 0 else offset
-    
+
         # --- Helpers mapping (alignés sur GetBox)
         def map_user(u):
             if not u or isinstance(u, AnonymousUser):
@@ -581,7 +556,7 @@ class ManageDiscoveredSongs(APIView):
                 except Exception:
                     profile_pic_url = None
             return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
-    
+
         def map_song_full(s, include_id=True):
             if not s:
                 return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
@@ -595,7 +570,7 @@ class ManageDiscoveredSongs(APIView):
             if include_id:
                 payload["id"] = getattr(s, "id", None)
             return payload
-    
+
         def deposit_payload(ds_obj):
             dep = ds_obj.deposit_id
             s = dep.song_id
@@ -604,13 +579,11 @@ class ManageDiscoveredSongs(APIView):
                 "type": ds_obj.discovered_type,
                 "discovered_at": ds_obj.discovered_at.isoformat(),
                 "deposit_id": dep.id,
-                # NB: date d’ajout dans la box — on ne s’en sert pas pour l’ordre,
-                # mais on la garde pour compat :
                 "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
                 "song": map_song_full(s, include_id=True),
                 "user": map_user(u),
             }
-    
+
         # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
         events = list(
             DiscoveredSong.objects
@@ -618,26 +591,24 @@ class ManageDiscoveredSongs(APIView):
             .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user', 'deposit_id__box_id')
             .order_by('discovered_at', 'id')  # ASC, puis tie-break sur id
         )
-    
+
         # Indices des mains (ASC)
         main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
-    
+
         sessions_all = []
         consumed = [False] * len(events)
-    
+
         # --- 2) Sessions pilotées par 'main'
         for idx, mi in enumerate(main_indices):
             main_ds = events[mi]
             box = main_ds.deposit_id.box_id
             start = main_ds.discovered_at
             deadline = start + timedelta(seconds=3600)
-            # borne supérieure = index du prochain main (ou fin de liste)
             end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
-    
-            # Dépôt 'main' (toujours en tête, puis revealed par ordre chronologique)
+
             deposits = [deposit_payload(main_ds)]
             consumed[mi] = True
-    
+
             # revealed après le main, même box, <= +1h, avant le prochain main
             for j in range(mi + 1, end):
                 ds = events[j]
@@ -648,78 +619,72 @@ class ManageDiscoveredSongs(APIView):
                 if ds.discovered_at <= deadline:
                     deposits.append(deposit_payload(ds))
                     consumed[j] = True
-    
+
             sessions_all.append({
                 "session_id": str(main_ds.id),
                 "box": {"id": box.id, "name": box.name, "url": box.url},
                 "started_at": start.isoformat(),
-                "deposits": deposits,  # ordre chrono: main puis revealed de la session
+                "deposits": deposits,
             })
-    
-        # --- 3) Sessions orphelines (revealed restants), groupées par fenêtre [start, start+1h] et même box,
-        #         et stoppées par le prochain main global.
-        # Pour accélérer : prochaine position d’un main pour un index donné
+
+        # --- 3) Sessions orphelines
         next_main_pos_from = [None] * len(events)
         next_idx = None
-        for i in range(len(events) - 1, -1, -1):  # parcours inverse pour pré-calcul
+        for i in range(len(events) - 1, -1, -1):
             next_main_pos_from[i] = next_idx
             if events[i].discovered_type == "main":
                 next_idx = i
-    
+
         orph_counter = 0
         i = 0
         while i < len(events):
             if consumed[i] or events[i].discovered_type != "revealed":
                 i += 1
                 continue
-    
-            # Démarre une session orpheline à partir de ce revealed
+
             start_ds = events[i]
             box = start_ds.deposit_id.box_id
             start = start_ds.discovered_at
             deadline = start + timedelta(seconds=3600)
             stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
-    
+
             deposits = [deposit_payload(start_ds)]
             consumed[i] = True
-    
+
             j = i + 1
             while j is not None and j < stop_at:
                 if consumed[j]:
                     j += 1
                     continue
                 ds2 = events[j]
-                # on ne prend que revealed de la même box et <= +1h depuis le premier
                 if ds2.discovered_type == "revealed" and ds2.deposit_id.box_id.id == box.id and ds2.discovered_at <= deadline:
                     deposits.append(deposit_payload(ds2))
                     consumed[j] = True
                     j += 1
                     continue
-                # si c’est un main, on s’arrête (prochain main global)
                 if ds2.discovered_type == "main":
                     break
-                # sinon (revealed autre box / hors fenêtre), on le saute pour cette session
                 j += 1
-    
+
             sessions_all.append({
                 "session_id": f"orph-{orph_counter}",
                 "box": {"id": box.id, "name": box.name, "url": box.url},
                 "started_at": start.isoformat(),
-                "deposits": deposits,  # ordre chrono
+                "deposits": deposits,
             })
             orph_counter += 1
             i = j if j is not None else (i + 1)
-    
-        # --- 4) Tri global des sessions par started_at DESC + pagination par sessions
+
+        # --- 4) Tri global et pagination
         sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
-    
+
         total_sessions = len(sessions_all)
         slice_start = offset
         slice_end = offset + limit
         sessions_page = sessions_all[slice_start:slice_end]
         has_more = slice_end < total_sessions
-        next_offset = slice_end if has_more else slice_end  # avance « plat »
-    
+        next_offset = slice_end if has_more else slice_end
+
         payload = {
             "sessions": sessions_page,
             "limit": limit,
@@ -729,15 +694,12 @@ class ManageDiscoveredSongs(APIView):
         }
         return Response(payload, status=status.HTTP_200_OK)
 
+
 class RevealSong(APIView):
     """
     POST /box-management/revealSong
     Body: { "deposit_id": <int> }
     200: { "song": {...}, "points_balance": <int> }
-    401 si non authentifié
-    400 {error:"insufficient_funds", message:"Tu n’as pas assez de crédit pour révéler cette pépite"}
-    404 si dépôt/chanson introuvable
-    502 si échec du débit ou de l’enregistrement de découverte
     """
     def post(self, request, format=None):
         # 1) Auth requise
@@ -760,10 +722,10 @@ class RevealSong(APIView):
         if not song:
             return Response({"detail": "Chanson introuvable pour ce dépôt"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 4) Coût (source de vérité côté serveur)
+        # 4) Coût
         cost = int(COST_REVEAL_BOX)
 
-        # 5) Vérifier solde utilisateur
+        # 5) Vérifier solde
         try:
             user.refresh_from_db(fields=["points"])
         except Exception:
@@ -774,20 +736,19 @@ class RevealSong(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Prépare en-têtes/cookies CSRF corrects pour appels internes
         csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")  # ex: https://mon-domaine/
+        origin = request.build_absolute_uri("/")
         headers_bg = {
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token,
-            "Referer": origin,                 # nécessaire en HTTPS
-            "Origin": origin.rstrip("/"),      # idem
+            "Referer": origin,
+            "Origin": origin.rstrip("/"),
         }
-        cookies = request.COOKIES  # contient sessionid + csrftoken
+        cookies = request.COOKIES
 
-        # 6) Débiter les points via /users/add-points
+        # 6) Débiter
         try:
-            add_points_url = request.build_absolute_uri(reverse('add-points'))  # /users/add-points
+            add_points_url = request.build_absolute_uri(reverse('add-points'))
             r = requests.post(
                 add_points_url,
                 cookies=cookies,
@@ -806,7 +767,7 @@ class RevealSong(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 7) Enregistrer la découverte via /box-management/discovered-songs
+        # 7) Enregistrer découverte
         try:
             discover_url = request.build_absolute_uri("/box-management/discovered-songs")
             r2 = requests.post(
@@ -816,7 +777,6 @@ class RevealSong(APIView):
                 data=json.dumps({"deposit_id": deposit_id, "discovered_type": "revealed"}),
                 timeout=4,
             )
-            # Tolérer "déjà découvert" (400), mais bloquer autres erreurs (403 CSRF, etc.)
             if not r2.ok and r2.status_code != 400:
                 return Response(
                     {"detail": "Erreur lors de l’enregistrement de la découverte."},
@@ -828,14 +788,13 @@ class RevealSong(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 8) Points à jour
+        # 8) Solde à jour
         try:
             user.refresh_from_db(fields=["points"])
         except Exception:
             user.refresh_from_db()
         points_balance = getattr(user, "points", None)
 
-        # 9) Réponse
         data = {
             "song": {
                 "title": song.title,
@@ -847,8 +806,9 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
+
 class UserDepositsView(APIView):
-    permission_classes = []  # public si tu veux afficher pour tout le monde
+    permission_classes = []  # public
 
     def get(self, request):
         user_id = (request.GET.get("user_id") or "").strip()
@@ -865,7 +825,6 @@ class UserDepositsView(APIView):
 
         qs = Deposit.objects.filter(user_id=user_id).order_by("-deposited_at")[:500]
 
-        # select_related('song') si la FK existe
         rel_candidates = [
             f.name for f in Deposit._meta.get_fields()
             if getattr(f, "is_relation", False)
@@ -900,21 +859,17 @@ class UserDepositsView(APIView):
 
 
 # ==========================================================
-#EMOJIS & REACTIONS
+# EMOJIS & REACTIONS
 # ==========================================================
 
 class EmojiCatalogView(APIView):
     """
     GET /box-management/emojis/catalog
-    Renvoie le catalogue complet.
+    ?deposit_id=<int> (optionnel) pour retourner aussi la réaction courante
     """
     permission_classes = []
 
     def get(self, request):
-        """
-        GET /box-management/emojis/catalog?deposit_id=<int>
-        Retourne les emojis + ceux possédés + la réaction actuelle sur ce dépôt (si user connecté)
-        """
         deposit_id = request.GET.get("deposit_id")
         basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
         actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
@@ -997,7 +952,7 @@ class PurchaseEmojiView(APIView):
 class ReactionView(APIView):
     """
     POST /box-management/reactions
-    Body: { "deposit_id": <int>, "emoji_id": <int|null> }
+    Body: { "deposit_id": <int>, "emoji_id": <int|null|\"none\"> }
     """
     permission_classes = [IsAuthenticated]
 
