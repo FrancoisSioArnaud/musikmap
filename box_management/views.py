@@ -977,17 +977,18 @@ class ReactionView(APIView):
         if not emoji:
             return Response({"detail": "Emoji invalide"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not emoji.basic:
+        # ✅ Pas de check de débloquage pour les gratuits (cost == 0) ni pour les basics
+        if (not emoji.basic) and int(emoji.cost or 0) > 0:
             has_right = EmojiRight.objects.filter(user=request.user, emoji=emoji).exists()
             if not has_right:
                 return Response({"error": "forbidden", "message": "Emoji non débloqué"}, status=status.HTTP_403_FORBIDDEN)
 
         obj, created = Reaction.objects.get_or_create(user=request.user, deposit=deposit, defaults={"emoji": emoji})
-        if not created:
-            if obj.emoji_id != emoji.id:
-                obj.emoji = emoji
-                obj.save(update_fields=["emoji", "updated_at"])
+        if not created and obj.emoji_id != emoji.id:
+            obj.emoji = emoji
+            obj.save(update_fields=["emoji", "updated_at"])
 
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
