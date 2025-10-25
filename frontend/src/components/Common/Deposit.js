@@ -6,7 +6,6 @@ import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Avatar from "@mui/material/Avatar";
-import Skeleton from "@mui/material/Skeleton";
 import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Slide from "@mui/material/Slide";
@@ -14,31 +13,17 @@ import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import AlbumIcon from "@mui/icons-material/Album";
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import ReactionModal from "../Reactions/ReactionModal";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
 
-/**
- * Composant Deposit (toujours **pleine largeur**)
- *
- * Variants:
- * - "list" : états To_Reveal & Reveal, CTA overlay, Snackbar, PlayModal
- * - "main" : rendu plein-format (premier dépôt), pas de CTA overlay, pas de Snackbar
- *
- * Props:
- * - dep: { deposit_id, deposit_date, user:{ username, profile_pic_url }, song:{ title?, artist?, img_url, ... } }
- * - user: utilisateur courant
- * - setDispDeposits: setter parent (utile pour "list")
- * - cost: nombre (crédits) — défaut 40
- * - variant: "list" | "main" — défaut "list"
- * - showDate, showUser: booleans (défaut true)
- * - fitContainer: ignoré (toujours full width)
- */
 export default function Deposit({
   dep,
   user,
@@ -47,7 +32,7 @@ export default function Deposit({
   variant = "list",
   showDate = true,
   showUser = true,
-  fitContainer = true, // accepté mais ignoré
+  fitContainer = true,
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -56,24 +41,25 @@ export default function Deposit({
   const u = dep?.user || {};
   const isRevealed = useMemo(() => Boolean(s?.title && s?.artist), [s?.title, s?.artist]);
 
-  // PlayModal (local au composant)
+  // ======= Play modal =======
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
   const openPlayFor = (song) => { setPlaySong(song || null); setPlayOpen(true); };
   const closePlay = () => { setPlayOpen(false); setPlaySong(null); };
 
-  // Snackbar (uniquement pour variant "list")
+  // ======= Reaction modal =======
+  const [reactOpen, setReactOpen] = useState(false);
+  const openReact = () => setReactOpen(true);
+  const closeReact = () => setReactOpen(false);
+
+  // Snackbar (pour Reveal existant)
   const [snackOpen, setSnackOpen] = useState(false);
   const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
+    if (snackOpen) { setSnackOpen(false); setTimeout(() => setSnackOpen(true), 0); }
+    else setSnackOpen(true);
   };
 
-  // ---- Reveal d’un dépôt (uniquement pertinent pour "list") ----
+  // ---- Reveal d’un dépôt (identique)
   const revealDeposit = async () => {
     try {
       if (!user || !user.username) {
@@ -119,7 +105,6 @@ export default function Deposit({
         return arr;
       });
 
-      // MAJ points (menu / UserContext)
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
@@ -130,49 +115,72 @@ export default function Deposit({
     }
   };
 
-  // =========================
-  // RENDUS PAR VARIANTES
-  // =========================
+  // ======= Callback quand la réaction a changé (après modale) =======
+  const handleReactionApplied = (result) => {
+    // result = { my_reaction, reactions_summary }
+    setDispDeposits?.((prev) => {
+      const arr = Array.isArray(prev) ? [...prev] : [];
+      const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
+      if (idx >= 0) {
+        arr[idx] = {
+          ...arr[idx],
+          my_reaction: result?.my_reaction || null,
+          reactions_summary: Array.isArray(result?.reactions_summary) ? result.reactions_summary : [],
+        };
+      }
+      return arr;
+    });
+  };
 
-  // ---- VARIANT: MAIN (plein format, pas de snackbar, pas de CTA overlay) ----
+  // Rendu compact d’un ruban de réactions (emoji × count)
+  const ReactionsStrip = ({ items = [] }) => {
+    if (!items || items.length === 0) return null;
+    return (
+      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1 }}>
+        {items.map((it, i) => (
+          <Box key={i} sx={{
+            display: "inline-flex", alignItems: "center", gap: 0.5,
+            px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: 'divider',
+          }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{it.emoji}</span>
+            <Typography variant="body2" component="span">× {it.count}</Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
+  // =========================
+  // RENDU VARIANT MAIN
+  // =========================
   if (variant === "main") {
     return (
       <>
         <Card className="deposit deposit_main">
           {showDate && (
             <Box className="deposit_date">
-              
-              <Box className="icon squaredesign" >
-              </Box>
+              <Box className="icon squaredesign" />
               <Typography className="squaredesign" variant="subtitle1" component="span">
                 {"Déposée " + (dep?.deposit_date || "")}
               </Typography>
             </Box>
           )}
 
-        {showUser && (
-          <Box
-            onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-            className={u?.username ? "hasUsername deposit_user" : "deposit_user"} 
-          >
-            <Box className="squaredesign avatarbox">
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
-                className="avatar"
-              />
+          {showUser && (
+            <Box
+              onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+              className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+            >
+              <Box className="squaredesign avatarbox">
+                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
+              </Box>
+              <Typography component="span" className="username squaredesign" variant="subtitle1">
+                {u?.username || "Anonyme"}
+                {u?.username && (<ArrowForwardIosIcon className="icon" />)}
+              </Typography>
             </Box>
-            <Typography component="span" className="username squaredesign" variant="subtitle1"> 
-              {u?.username || "Anonyme"}
-              {u?.username && (
-                <ArrowForwardIosIcon className="icon" />
-              )}
-            </Typography>
-            
-          </Box>
-        )}
+          )}
 
-          {/* song (cover pleine largeur, titres si révélé) */}
           <Box className="deposit_song">
             <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
               {s?.img_url && (
@@ -180,16 +188,11 @@ export default function Deposit({
                   component="img"
                   src={s.img_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    width: "100%",
-                    maxWidth: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
+                  sx={{ width: "100%", maxWidth: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
                 />
               )}
             </Box>
+
             <Box className="interact">
               <Box className="texts">
                 {isRevealed && (
@@ -203,28 +206,55 @@ export default function Deposit({
                   </>
                 )}
               </Box>
-              <Button
-                variant="depositInteract"
-                className="play playMain"
-                size="large"
-                onClick={() => (isRevealed ? openPlayFor(s) : null)}
-                disabled={!isRevealed}
-                startIcon={<PlayArrowIcon />}
-                
-              >
-                Play
-              </Button>
+
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button
+                  variant="depositInteract"
+                  className="play playMain"
+                  size="large"
+                  onClick={() => (isRevealed ? openPlayFor(s) : null)}
+                  disabled={!isRevealed}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Play
+                </Button>
+
+                {/* Bouton Réagir seulement si révélé */}
+                <Button
+                  variant="depositInteract"
+                  size="large"
+                  onClick={() => (isRevealed ? openReact() : null)}
+                  disabled={!isRevealed}
+                  startIcon={<EmojiEmotionsIcon />}
+                >
+                  Réagir
+                </Button>
+              </Box>
             </Box>
+
+            {/* ruban des réactions */}
+            <ReactionsStrip items={dep?.reactions_summary || []} />
+            {dep?.my_reaction?.emoji && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
+            )}
           </Box>
         </Card>
 
-        {/* PlayModal (toujours local) */}
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
+        <ReactionModal
+          open={reactOpen}
+          onClose={closeReact}
+          depositId={dep?.deposit_id}
+          currentEmoji={dep?.my_reaction?.emoji || null}
+          onApplied={handleReactionApplied}
+        />
       </>
     );
   }
 
-  // ---- VARIANT: LIST (To_Reveal / Reveal, overlay CTA, snackbar) ----
+  // =========================
+  // RENDU VARIANT LIST
+  // =========================
   return (
     <>
       <Card className="deposit deposit_list">
@@ -239,28 +269,16 @@ export default function Deposit({
         {showUser && (
           <Box
             className="deposit_user"
-            sx={{
-              display: "flex",
-              minWidth: 0,
-            }}
+            sx={{ display: "flex", minWidth: 0 }}
             onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
           >
-            <Avatar
-              src={u?.profile_pic_url || undefined}
-              alt={u?.username || "Anonyme"}
-            />
-            <Typography>
-              {u?.username || "Anonyme"}
-            </Typography>
-            {u?.username && (
-              <ArrowForwardIosIcon fontSize="small" />
-            )}
+            <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} />
+            <Typography>{u?.username || "Anonyme"}</Typography>
+            {u?.username && (<ArrowForwardIosIcon fontSize="small" />)}
           </Box>
         )}
 
-        {/* zone chanson (grille + overlay éventuel) */}
         <Box className="deposit_song">
-          {/* cover */}
           <Box sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }} className="squaredesign img_container">
             {s?.img_url && (
               <Box
@@ -279,7 +297,6 @@ export default function Deposit({
             )}
           </Box>
 
-          {/* textes + Play*/}
           <Box className="interact">
             {isRevealed ? (
               <>
@@ -291,15 +308,28 @@ export default function Deposit({
                     {s.artist}
                   </Typography>
                 </Box>
-                <Button
-                  variant="depositInteract"
-                  className="play playSecondary"
-                  size="large"
-                  onClick={() => openPlayFor(s)}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Play
-                </Button>
+
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  <Button
+                    variant="depositInteract"
+                    className="play playSecondary"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Play
+                  </Button>
+
+                  {/* Bouton Réagir sur list uniquement si révélé */}
+                  <Button
+                    variant="depositInteract"
+                    size="large"
+                    onClick={openReact}
+                    startIcon={<EmojiEmotionsIcon />}
+                  >
+                    Réagir
+                  </Button>
+                </Box>
               </>
             ) : (
               <>
@@ -314,7 +344,6 @@ export default function Deposit({
                   disabled={!user || !user.username}
                   className="decouvrir"
                 >
-                  
                   Découvrir
                   <Box className="points_container" sx={{ ml: "12px" }}>
                     <Typography variant="body1" component="span">
@@ -326,13 +355,18 @@ export default function Deposit({
               </>
             )}
           </Box>
+
+          {/* ruban des réactions */}
+          <ReactionsStrip items={dep?.reactions_summary || []} />
+          {dep?.my_reaction?.emoji && isRevealed && (
+            <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
+          )}
         </Box>
       </Card>
 
-      {/* PLAY MODAL (local au Deposit) */}
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
-      {/* SNACKBAR (local au Deposit – seulement en "list") */}
+      {/* Snackbar existant */}
       <Snackbar
         open={snackOpen}
         onClose={() => setSnackOpen(false)}
@@ -347,13 +381,9 @@ export default function Deposit({
             color: "text.primary",
             borderRadius: 2,
             boxShadow: 3,
-            px: 2,
-            py: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            maxWidth: 600,
-            width: "calc(100vw - 32px)",
+            px: 2, py: 1,
+            display: "flex", alignItems: "center", gap: 1.5,
+            maxWidth: 600, width: "calc(100vw - 32px)",
           }}
           message={
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -364,19 +394,21 @@ export default function Deposit({
             </Box>
           }
           action={
-            <Button
-              size="small"
-              onClick={() => {
-                setSnackOpen(false);
-                navigate("/profile");
-              }}
-              aria-label="Voir la chanson dans mon profil"
-            >
+            <Button size="small" onClick={() => { setSnackOpen(false); navigate("/profile"); }}>
               Voir
             </Button>
           }
         />
       </Snackbar>
+
+      {/* Modale de réaction */}
+      <ReactionModal
+        open={reactOpen}
+        onClose={closeReact}
+        depositId={dep?.deposit_id}
+        currentEmoji={dep?.my_reaction?.emoji || null}
+        onApplied={handleReactionApplied}
+      />
     </>
   );
 }
