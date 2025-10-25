@@ -8,110 +8,124 @@ import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import { getCookie } from "../Security/TokensUtils";
 import PurchaseEmojiModal from "./PurchaseEmojiModal";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 
 /**
- * Modale de sélection de réaction
- * - Affiche: None, emojis basic, emojis actifs payants (triés par cost)
- * - Les non possédés sont grisés => clic ouvre la modale d’achat
+ * Modale de sélection de réaction.
+ * - Charge le catalogue depuis /emojis/catalog?deposit_id=<id>
+ * - Permet de sélectionner / acheter / supprimer une réaction
  */
 export default function ReactionModal({ open, onClose, depositId, currentEmoji, onApplied }) {
   const [loading, setLoading] = useState(false);
-  const [catalog, setCatalog] = useState({ basic: [], actives_paid: [], owned_ids: [] });
+  const [catalog, setCatalog] = useState({ basic: [], actives_paid: [], owned_ids: [], current_reaction: null });
   const [selected, setSelected] = useState(currentEmoji || null);
-  const [purchaseTarget, setPurchaseTarget] = useState(null); // emoji object à acheter
+  const [purchaseTarget, setPurchaseTarget] = useState(null);
 
-  const hasChanged = useMemo(() => (selected || null) !== (currentEmoji || null), [selected, currentEmoji]);
-
-  useEffect(() => {
-    setSelected(currentEmoji || null);
-  }, [currentEmoji, open]);
+  const hasChanged = useMemo(() => (selected || null) !== (catalog.current_reaction?.emoji || null), [selected, catalog]);
 
   useEffect(() => {
     if (!open) return;
     let mounted = true;
-
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch("/box-management/emojis/catalog", { credentials: "same-origin" });
+        const res = await fetch(`/box-management/emojis/catalog?deposit_id=${depositId}`, { credentials: "same-origin" });
         const data = await res.json().catch(() => ({}));
-        if (mounted) setCatalog({
-          basic: Array.isArray(data?.basic) ? data.basic : [],
-          actives_paid: Array.isArray(data?.actives_paid) ? data.actives_paid : [],
-          owned_ids: Array.isArray(data?.owned_ids) ? data.owned_ids : [],
-        });
+        if (mounted) {
+          setCatalog({
+            basic: data?.basic || [],
+            actives_paid: data?.actives_paid || [],
+            owned_ids: data?.owned_ids || [],
+            current_reaction: data?.current_reaction || null,
+          });
+          setSelected(data?.current_reaction?.emoji || null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     }
-
     run();
     return () => { mounted = false; };
-  }, [open]);
+  }, [open, depositId]);
 
   if (!open) return null;
 
-  const isOwned = (emoji) => emoji?.basic || catalog.owned_ids.includes(emoji?.id);
+  const isOwned = (emoji) => emoji.basic || catalog.owned_ids.includes(emoji.id) || emoji.cost === 0;
 
   const onClickEmoji = (emoji) => {
-    if (!emoji) { setSelected(null); return; } // none
-    if (isOwned(emoji)) {
-      setSelected(emoji.char);
-    } else {
-      setPurchaseTarget(emoji);
+    if (!emoji) {
+      setSelected(null);
+      return;
     }
+    if (isOwned(emoji)) setSelected(emoji.char);
+    else setPurchaseTarget(emoji);
   };
 
   const onPurchaseSuccess = (emoji) => {
-    // Marque comme possédé localement
-    setCatalog((prev) => ({ ...prev, owned_ids: [...new Set([...(prev.owned_ids || []), emoji.id])] }));
+    setCatalog((prev) => ({ ...prev, owned_ids: [...new Set([...prev.owned_ids, emoji.id])] }));
     setPurchaseTarget(null);
     setSelected(emoji.char);
   };
 
   const validate = async () => {
-    if (!hasChanged) { onClose(); return; }
+    if (!hasChanged) return onClose();
     const csrftoken = getCookie("csrftoken");
 
-    const payload = {
-      deposit_id: depositId,
-      emoji_id: selected === null ? null : (
-        // retrouver l'id par char
-        [...catalog.basic, ...catalog.actives_paid].find(e => e.char === selected)?.id ?? null
-      ),
-    };
+    const emojiId =
+      selected === null
+        ? null
+        : [...catalog.basic, ...catalog.actives_paid].find((e) => e.char === selected)?.id ?? null;
 
     const res = await fetch("/box-management/reactions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
       credentials: "same-origin",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ deposit_id: depositId, emoji_id: emojiId }),
     });
     const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
       if (data?.error === "forbidden") alert("Tu n’as pas débloqué cet emoji.");
-      else alert("Oops, impossible d’appliquer ta réaction pour le moment.");
+      else alert("Oops, impossible d’appliquer ta réaction.");
       return;
     }
-    onApplied?.(data); // { my_reaction, reactions_summary }
+
+    onApplied?.(data);
     onClose();
   };
 
   const EmojiItem = ({ emoji, owned }) => {
     const disabled = !owned;
+    const isSelected = selected === emoji.char;
     return (
       <Button
         onClick={() => onClickEmoji(emoji)}
-        aria-label={`Emoji ${emoji.char}${owned ? "" : " non débloqué"}`}
-        title={owned ? `Utiliser ${emoji.char}` : `${emoji.char} — ${emoji.cost} points`}
-        disabled={false}
+        aria-label={`Emoji ${emoji.char}`}
         sx={{
-          minWidth: 48, minHeight: 48, borderRadius: 2, border: '1px solid',
-          borderColor: selected === emoji.char ? 'primary.main' : 'divider',
-          opacity: owned ? 1 : 0.4,
+          minWidth: 48,
+          minHeight: 48,
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: isSelected ? "primary.main" : "divider",
+          opacity: owned ? 1 : 0.5,
+          position: "relative",
         }}
       >
         <span style={{ fontSize: 22 }}>{emoji.char}</span>
+        {!owned && emoji.cost > 0 && (
+          <Typography
+            variant="caption"
+            sx={{
+              position: "absolute",
+              bottom: 2,
+              right: 4,
+              fontSize: "0.65rem",
+              opacity: 0.8,
+            }}
+          >
+            {emoji.cost}
+          </Typography>
+        )}
       </Button>
     );
   };
@@ -119,40 +133,58 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   return (
     <Box
       onClick={onClose}
-      sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", p: 2, zIndex: 1300 }}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        bgcolor: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        zIndex: 1300,
+      }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
         <Card sx={{ borderRadius: 2 }}>
           <CardContent>
-            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>Réagir</Typography>
+            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>
+              Réagir
+            </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Choisis un emoji pour dire à l’artiste ce que tu as pensé de sa chanson.
+              Choisis un emoji pour dire ce que tu as pensé de la chanson.
             </Typography>
 
             {loading ? (
-              <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>
+              <Box sx={{ py: 4, textAlign: "center" }}>
+                <CircularProgress />
+              </Box>
             ) : (
               <>
-                {/* None */}
+                {/* NONE */}
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                   <Button
-                    onClick={() => onClickEmoji(null)}
+                    onClick={() => setSelected(null)}
                     aria-label="Aucune réaction"
                     sx={{
-                      border: '1px dashed', borderColor: selected === null ? 'primary.main' : 'divider',
-                      borderRadius: 2, px: 1.5, py: 0.75,
+                      border: "1px dashed",
+                      borderColor: selected === null ? "primary.main" : "divider",
+                      borderRadius: 2,
+                      px: 1.5,
+                      py: 0.75,
                     }}
                   >
-                    <Typography variant="body2">None</Typography>
+                    <HighlightOffIcon />
                   </Button>
-                  <Typography variant="caption">— retire ta réaction</Typography>
+                  <Typography variant="caption">Retirer ma réaction</Typography>
                 </Box>
 
                 {/* Basics */}
                 {catalog.basic.length > 0 && (
                   <>
                     <Divider sx={{ my: 1 }} />
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Emojis de base</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Emojis de base
+                    </Typography>
                     <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                       {catalog.basic.map((e) => (
                         <EmojiItem key={e.id} emoji={e} owned={true} />
@@ -163,18 +195,23 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
 
                 {/* Payants */}
                 <Divider sx={{ my: 1 }} />
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Emojis à débloquer</Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Emojis à débloquer
+                </Typography>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   {catalog.actives_paid.map((e) => (
                     <EmojiItem key={e.id} emoji={e} owned={isOwned(e)} />
                   ))}
                 </Box>
 
-                {/* Footer boutons */}
+                {/* Bouton unique Sortir/Valider */}
                 <Box sx={{ display: "flex", gap: 1.5, mt: 3 }}>
-                  <Button variant="outlined" fullWidth onClick={onClose}>Sortir</Button>
-                  <Button variant="contained" fullWidth disabled={!hasChanged} onClick={validate}>
-                    Valider
+                  <Button
+                    variant={hasChanged ? "contained" : "outlined"}
+                    fullWidth
+                    onClick={hasChanged ? validate : onClose}
+                  >
+                    {hasChanged ? "Valider" : "Sortir"}
                   </Button>
                 </Box>
               </>
@@ -183,7 +220,6 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
         </Card>
       </Box>
 
-      {/* Modale d’achat */}
       {purchaseTarget && (
         <PurchaseEmojiModal
           open={!!purchaseTarget}
