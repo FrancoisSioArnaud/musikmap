@@ -229,7 +229,7 @@ export default function LiveSearch({
       )}
 
       {/* Résultats */}
-      <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
+      <Paper variant="outlined" sx={{ overflowX: "hidden", overflo }}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const isPosting = postingId === (option?.id ?? "__posting__");
@@ -264,8 +264,8 @@ export default function LiveSearch({
                 {/* Vignette 64px à gauche, carrée, fallback gris clair */}
                 <Box
                   sx={{
-                    width: 64,
-                    height: 64,
+                    width: 56,
+                    height: 56,
                     borderRadius: 1,
                     overflow: "hidden",
                     flexShrink: 0,
@@ -338,6 +338,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
