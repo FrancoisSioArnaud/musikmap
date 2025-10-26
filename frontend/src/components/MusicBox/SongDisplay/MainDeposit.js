@@ -270,18 +270,32 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
       </Box>
 
       <List className="success_container">
-        {(
-          listItems.map((ach, idx) => (
-            <ListItem key={idx} className="success">
-              <Box className="points_container">
-                <Typography component="span" variant="body1">+{ach.points}</Typography>
-                <AlbumIcon/>
-              </Box>
-              <Typography variant="h3" className="success_title">{ach.name}</Typography>
-              <Typography variant="body1" className="success_desc">{ach.desc}</Typography>
-              <Typography variant="body1" className="success_emoji">{ach.emoji}</Typography>
-            </ListItem>
-        )}
+        {listItems.map((ach, idx) => (
+          <ListItem key={idx} className="success">
+            <Box className="points_container">
+              <Typography component="span" variant="body1">+{ach.points}</Typography>
+              <AlbumIcon />
+            </Box>
+      
+            <Typography variant="h3" className="success_title">
+              {ach.name}
+            </Typography>
+      
+            <Typography variant="body1" className="success_desc">
+              {ach.desc}
+            </Typography>
+      
+            {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
+              <Typography
+                variant="body1"
+                className="success_emoji"
+                aria-label={`emoji ${ach.name}`}
+              >
+                {ach.emoji}
+              </Typography>
+            )}
+          </ListItem>
+        ))}
       </List>
 
       <Box sx={{ mt: 1 }}>
