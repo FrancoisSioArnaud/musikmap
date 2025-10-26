@@ -42,35 +42,59 @@ export default function SongDisplay({
         onDeposited={onDeposited}  // <-- prop pour remonter l’info
       />
 
-      {/* SECTION — OLDER DEPOSITS (vertical, full-width) — seulement après dépôt */}
+
+      {/* SECTION — OLDER DEPOSITS (horizontal scroll, 70vw items) — seulement après dépôt */}
       {showOlder && (
-        <Box id="older_deposits">
+        <Box id="older_deposits" sx={{ mt: 6 /* = 32px si spacing[6]=32 */ }}>
           <Typography component="h2" variant="h3">
             Pépites déposées plus tôt
           </Typography>
-          <Typography component="body" variant="body1">
-            Utilise tes points fraichement gagnés pour les découvrir
+          <Typography component="p" variant="body1" sx={{ mt: 3 /* = 12px */ }}>
+            Utilise tes points fraîchement gagnés pour les découvrir
           </Typography>
-
+      
           <Box
             id="older_deposits_list"
+            sx={{
+              mt: 5,                        // 26px si spacing[5] = 26
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 6,                       // 32px
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              px: 4,                        // padding horizontal 16px
+              pb: 4,                        // padding bas 16px (espace sous cartes)
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              // Option : masquer la scrollbar sur WebKit
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
           >
             {deposits.slice(1).map((dep, idx) => (
-              <Deposit
+              <Box
                 key={`dep-${dep?.deposit_id ?? `older-${idx}`}`}
-                dep={dep}
-                user={user}
-                setDispDeposits={setDispDeposits}
-                cost={cost}
-                variant="list"
-                showDate={true}
-                showUser={true}
-                fitContainer={true}
-              />
+                sx={{
+                  flex: '0 0 70vw',         // <-- élément = 70% largeur viewport
+                  maxWidth: '70vw',
+                  scrollSnapAlign: 'start',
+                }}
+              >
+                <Deposit
+                  dep={dep}
+                  user={user}
+                  setDispDeposits={setDispDeposits}
+                  cost={cost}
+                  variant="list"
+                  showDate={true}
+                  showUser={true}
+                  fitContainer={true}       // le Card prend 100% du wrapper (70vw)
+                />
+              </Box>
             ))}
           </Box>
         </Box>
       )}
+
     </Box>
   );
 }
