@@ -33,8 +33,10 @@ export default function Deposit({
   showDate = true,
   showUser = true,
   fitContainer = true,
-  showReact = true, // <-- NOUVEAU : contrôle l'affichage de la section réactions
+  showReact = true,  
+  showPlay = true,  
 }) {
+
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
 
@@ -280,7 +282,7 @@ export default function Deposit({
             </Typography>
           </Box>
         )}
-
+  
         {showUser && (
           <Box
             className="deposit_user"
@@ -294,7 +296,7 @@ export default function Deposit({
             {u?.username && <ArrowForwardIosIcon fontSize="small" />}
           </Box>
         )}
-
+  
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
           <Box
@@ -317,7 +319,7 @@ export default function Deposit({
               />
             )}
           </Box>
-
+  
           <Box className="interact">
             {isRevealed ? (
               <>
@@ -329,18 +331,21 @@ export default function Deposit({
                     {s.artist}
                   </Typography>
                 </Box>
-
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                  <Button
-                    variant="depositInteract"
-                    className="play playSecondary"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    startIcon={<PlayArrowIcon />}
-                  >
-                    Play
-                  </Button>
-                </Box>
+  
+                {/* Play conditionnel en LIST : dépend de showPlay */}
+                {showPlay && (
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Button
+                      variant="depositInteract"
+                      className="play playSecondary"
+                      size="large"
+                      onClick={() => openPlayFor(s)}
+                      startIcon={<PlayArrowIcon />}
+                    >
+                      Play
+                    </Button>
+                  </Box>
+                )}
               </>
             ) : (
               <>
@@ -367,7 +372,7 @@ export default function Deposit({
             )}
           </Box>
         </Box>
-
+  
         {/* ----- Section réactions dédiée ----- */}
         {showReact && (
           <Box className="deposit_react">
@@ -381,15 +386,15 @@ export default function Deposit({
                 Réagir
               </Button>
             )}
-
+  
             {/* ruban des réactions toujours visible */}
             <ReactionsStrip items={dep?.reactions_summary || []} />
           </Box>
         )}
       </Card>
-
+  
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-
+  
       {/* Snackbar existant */}
       <Snackbar
         open={snackOpen}
@@ -434,7 +439,7 @@ export default function Deposit({
           }
         />
       </Snackbar>
-
+  
       {/* Modale de réaction */}
       <ReactionModal
         open={reactOpen}
@@ -445,4 +450,5 @@ export default function Deposit({
       />
     </>
   );
+
 }
