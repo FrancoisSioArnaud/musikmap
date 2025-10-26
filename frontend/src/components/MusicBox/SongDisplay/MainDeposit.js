@@ -309,7 +309,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
 
       <Box className="bottom_fixed">
         <Button fullWidth variant="contained" onClick={onPrimaryCta}>
-          Retour à la boîte
+          Ok !
         </Button>
       </Box>
     </Box>
