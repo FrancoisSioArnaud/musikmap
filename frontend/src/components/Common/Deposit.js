@@ -33,6 +33,7 @@ export default function Deposit({
   showDate = true,
   showUser = true,
   fitContainer = true,
+  showReact = true, // <-- NOUVEAU : contrôle l'affichage de la section réactions
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -67,7 +68,7 @@ export default function Deposit({
     } else setSnackOpen(true);
   };
 
-  // ---- Reveal d’un dépôt (identique)
+  // ---- Reveal d’un dépôt
   const revealDeposit = async () => {
     try {
       if (!user || !user.username) {
@@ -147,9 +148,8 @@ export default function Deposit({
       <Box className="reactions_container">
         {items.map((it, i) => (
           <Box key={i}>
-
             <Typography variant="h5" component="span">
-             {it.emoji} × {it.count}
+              {it.emoji} × {it.count}
             </Typography>
           </Box>
         ))}
@@ -220,7 +220,7 @@ export default function Deposit({
                 )}
               </Box>
 
-              {/* Play uniquement ici, le bouton Réagir sera dans deposit_react */}
+              {/* Play uniquement ici, le bouton Réagir est dans deposit_react */}
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Button
                   variant="depositInteract"
@@ -237,20 +237,22 @@ export default function Deposit({
           </Box>
 
           {/* ----- Section réactions dédiée ----- */}
-          <Box className="deposit_react">
-            <Button
-              variant="depositInteract"
-              size="large"
-              onClick={() => (isRevealed ? openReact() : null)}
-              disabled={!isRevealed}
-              startIcon={<EmojiEmotionsIcon />}
-            >
-              Réagir
-            </Button>
+          {showReact && (
+            <Box className="deposit_react">
+              <Button
+                variant="depositInteract"
+                size="large"
+                onClick={() => (isRevealed ? openReact() : null)}
+                disabled={!isRevealed}
+                startIcon={<EmojiEmotionsIcon />}
+              >
+                Réagir
+              </Button>
 
-            {/* ruban des réactions */}
-            <ReactionsStrip items={dep?.reactions_summary || []} />
-          </Box>
+              {/* ruban des réactions */}
+              <ReactionsStrip items={dep?.reactions_summary || []} />
+            </Box>
+          )}
         </Card>
 
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
@@ -367,23 +369,23 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        
-        <Box className="deposit_react">
-          {isRevealed && (
-            <Button
-              variant="depositInteract"
-              size="large"
-              onClick={openReact}
-              startIcon={<EmojiEmotionsIcon />}
-            >
-              Réagir
-            </Button>
-          )}
-        
-          {/* ruban des réactions toujours visible */}
-          <ReactionsStrip items={dep?.reactions_summary || []} />
-        </Box>
+        {showReact && (
+          <Box className="deposit_react">
+            {isRevealed && (
+              <Button
+                variant="depositInteract"
+                size="large"
+                onClick={openReact}
+                startIcon={<EmojiEmotionsIcon />}
+              >
+                Réagir
+              </Button>
+            )}
 
+            {/* ruban des réactions toujours visible */}
+            <ReactionsStrip items={dep?.reactions_summary || []} />
+          </Box>
+        )}
       </Card>
 
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
