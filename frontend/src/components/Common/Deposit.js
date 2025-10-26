@@ -324,27 +324,25 @@ export default function Deposit({
             {isRevealed ? (
               <>
                 <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="h4">
+                  <Typography component="span" className="titre squaredesign" variant="h5">
                     {s.title}
                   </Typography>
-                  <Typography component="span" className="artist squaredesign" variant="body1">
+                  <Typography component="span" className="artist squaredesign" variant="body2">
                     {s.artist}
                   </Typography>
                 </Box>
   
                 {/* Play conditionnel en LIST : dépend de showPlay */}
                 {showPlay && (
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    <Button
-                      variant="depositInteract"
-                      className="play playSecondary"
-                      size="large"
-                      onClick={() => openPlayFor(s)}
-                      startIcon={<PlayArrowIcon />}
-                    >
-                      Play
-                    </Button>
-                  </Box>
+                  <Button
+                    variant="depositInteract"
+                    className="play playSecondary"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Play
+                  </Button>
                 )}
               </>
             ) : (
