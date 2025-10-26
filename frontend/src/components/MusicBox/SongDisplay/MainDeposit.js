@@ -283,7 +283,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
               </Box>
               <Typography variant="h3" className="success_title">{ach.name}</Typography>
               <Typography variant="body1" className="success_desc">{ach.desc}</Typography>
-              <Typography variant="body1" className="success_emoji">🔥</Typography>
+              <Typography variant="body1" className="success_emoji">{ach.emoji}</Typography>
             </ListItem>
           ))
         )}
