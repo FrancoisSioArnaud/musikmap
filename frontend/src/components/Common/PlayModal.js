@@ -59,6 +59,7 @@ export default function PlayModal({ open, song, onClose }) {
         justifyContent: "center",
         p: 2,
         zIndex: 1300,
+        borderRadius:"26px",
       }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: "90vw" }}>
@@ -76,14 +77,14 @@ export default function PlayModal({ open, song, onClose }) {
             </Typography>
 
             {/* 3 colonnes égales */}
-            <Box>
-              <Button fullWidth variant="contained" onClick={() => openOrAlert(song?.spotify_url)}>
+            <Box sx={{display:"grid", gap:"8px"}}>
+              <Button fullWidth variant="contained" sx{{bgColor="#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)}>
                 Spotify
               </Button>
-              <Button fullWidth variant="contained" onClick={() => openOrAlert(song?.deezer_url)}>
+              <Button fullWidth variant="contained" sx{{bgColor="#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)}>
                 Deezer
               </Button>
-              <Button fullWidth variant="contained" onClick={openYouTubeSearch}>
+              <Button fullWidth variant="contained" sx{{bgColor="#F70F19"}} onClick={openYouTubeSearch}>
                 YouTube
               </Button>
               <Button fullWidth variant="outlined" onClick={copySongText}>
