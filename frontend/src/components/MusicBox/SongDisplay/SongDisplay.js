@@ -42,8 +42,8 @@ export default function SongDisplay({
 
       {/* SECTION — OLDER DEPOSITS (vertical, full-width) — seulement après dépôt */}
       {showOlder && (
-        <Box id="older_deposits">
-          <Box className="intro" sx={{p:4, pt:8}}>
+        <Box id="older_deposits" sx={{p:4}}>
+          <Box className="intro>
             <Typography component="h2" variant="h3">
               Pépites déposées plus tôt
             </Typography>
@@ -53,7 +53,7 @@ export default function SongDisplay({
           </Box>
 
           <Box
-            id="older_deposits_list"
+            id="older_deposits_list" sx={{left:"-16px"}}
           >
             {deposits.slice(1).map((dep, idx) => (
               <Deposit
