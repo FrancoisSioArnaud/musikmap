@@ -133,7 +133,7 @@ export default function MainDeposit({
            <Box 
             className="post_deposit_success"
             sx={{
-              p: 4, // 16px → index 4 dans ton spacing array
+              p: 5, // 16px → index 4 dans ton spacing array
               border: '2px solid rgba(0, 0, 0, 0.04)',
               borderRadius: 4, // 16px également (index 4)
               bgcolor: 'rgba(0, 0, 0, 0.04)',
