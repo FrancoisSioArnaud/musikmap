@@ -367,16 +367,18 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        <Box className="deposit_react">
-          <Button
-            variant="depositInteract"
-            size="large"
-            onClick={openReact}
-            disabled={!isRevealed}
-            startIcon={<EmojiEmotionsIcon />}
-          >
-            Réagir
-          </Button>
+        {isRevealed ? (
+          <Box className="deposit_react">
+            <Button
+              variant="depositInteract"
+              size="large"
+              onClick={openReact}
+              disabled={!isRevealed}
+              startIcon={<EmojiEmotionsIcon />}
+            >
+              Réagir
+            </Button>
+          )}
 
           {/* ruban des réactions + ma réaction */}
           <ReactionsStrip items={dep?.reactions_summary || []} />
