@@ -17,18 +17,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { getCookie } from "./Security/TokensUtils";
 import { navigateToCurrentBox } from "./MusicBox/BoxUtils";
 
-const styles = {
-  button: {
-    borderRadius: "20px",
-    backgroundImage: "linear-gradient(to right, #fa9500, #fa4000)",
-    color: "white",
-    border: "none",
-    textTransform: "none",
-    "&:hover": {
-      border: "none",
-    },
-  },
-};
 
 export default function LoginPage() {
   // States & Variables
@@ -156,7 +144,6 @@ export default function LoginPage() {
                 type="submit"
                 fullWidth
                 variant="contained"
-                style={styles.button}
                 sx={{ mt: 3, mb: 2 }}
               >
                 Se connecter
@@ -166,26 +153,24 @@ export default function LoginPage() {
               </Typography>
               <Grid container>
                 <Grid item>
-                  <Link href="/register" variant="body2">
-                    {"Vous n'avez pas de compte ? S'inscrire"}
+                  <Link href="/register" variant="body1">
+                    {"Tu n'as pas de compte ? Inscris toi"}
                   </Link>
                 </Grid>
               </Grid>
-              <Typography mt="10px" variant="h6">
-                Ou utiliser une autre plateforme
+              <Typography mt="10px" variant="h3">
+                Ou connecte toi avec une plateforme
               </Typography>
             </Box>
             <Box sx={{ display: "flex", flexDirection: "row", gap: "10px" }}>
               <Button
-                variant="contained"
-                style={styles.button}
+                variant="outlined"
                 onClick={() => handleMultiplatformLogin("spotify")}
               >
                 Spotify
               </Button>
               <Button
-                variant="contained"
-                style={styles.button}
+                variant="outlined"
                 onClick={() => handleMultiplatformLogin("deezer")}
               >
                 Deezer
@@ -197,3 +182,4 @@ export default function LoginPage() {
     </Container>
   );
 }
+
