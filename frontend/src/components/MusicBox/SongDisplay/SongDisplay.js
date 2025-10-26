@@ -52,15 +52,14 @@ export default function SongDisplay({
           }}
         >
           <Typography component="h2" variant="h3">
-            Pépites déposées plus tôt à révéler
+            Pépites déposées plus tôt
+          </Typography>
+          <Typography component="body" variant="body1">
+            Utilise tes points fraichement gagnés pour les découvrir
           </Typography>
 
           <Box
             id="older_deposits_list"
-            sx={{
-              display: "grid",
-              gap: 2,
-            }}
           >
             {deposits.slice(1).map((dep, idx) => (
               <Deposit
