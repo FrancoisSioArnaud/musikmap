@@ -86,3 +86,24 @@
   flex-direction: column;
   gap: 0px;
 }
+
+.deposit_react{
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 16px;
+}
+
+.reactions_container{
+  display: flex;
+  margin-right: 5%;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 12px;
+  box-shadow: rgba(0, 0, 0, .2) 0 2px 8px 0;
+  border-radius: 500px;
+  background-color: white;
+}
+
