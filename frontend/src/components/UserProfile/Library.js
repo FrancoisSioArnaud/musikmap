@@ -111,9 +111,9 @@ export default function Library() {
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
             <Typography
-              variant="h3"
+              variant="h5"
               component="h2"
-              sx={{ mb: 2 }}
+              sx={{ m: 2 }}
             >
               {headerText}
             </Typography>
