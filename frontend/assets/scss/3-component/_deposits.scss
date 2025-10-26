@@ -68,7 +68,7 @@
 }
 
 .deposit_main .interact{
-  flex-direction:row;
+  flex-direction: column;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -86,6 +86,12 @@
   flex-direction: column;
   gap: 0px;
 }
+
+.deposit_main .interact .texts{
+  flex-direction: column;
+  align-items: center;
+}
+
 
 .deposit_react{
   display: flex;
