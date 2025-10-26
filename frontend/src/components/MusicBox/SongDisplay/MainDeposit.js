@@ -93,7 +93,7 @@ export default function MainDeposit({
 
   return (
     <>
-      <Box className="song_display" sx={{display:"grid", gap:4}}>
+      <Box className="song_display" sx={{display:"grid", gap:4, p:4, pt: 8}}>
         {/* Intro */}
         <Box className="intro">
           <Typography component="h1" variant="h1">
