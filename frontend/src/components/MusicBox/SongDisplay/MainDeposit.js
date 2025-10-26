@@ -307,7 +307,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         ))}
       </List>
 
-      <Box sx={{ position: "fixed", left:"16px", right:"16px", botton: "8px"}}>
+      <Box className="bottom_fixed">
         <Button fullWidth variant="contained" onClick={onPrimaryCta}>
           Retour à la boîte
         </Button>
