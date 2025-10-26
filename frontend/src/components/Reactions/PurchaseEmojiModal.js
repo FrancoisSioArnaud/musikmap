@@ -46,13 +46,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
               Débloquer l’emoji {emoji?.char || ""}
             </Typography>
 
-            {/* Cost */}
-            <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, m:"auto",mb: 1 }}>
-              <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
-                {emoji?.cost ?? 0}
-              </Typography>
-              <AlbumIcon />
-            </Box>
+
 
             <Typography variant="body1" sx={{ mb: 2 }}>
               Débloque cet emoji et utilise-le pour réagir à des chansons.
@@ -62,6 +56,13 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
               <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
               <Button variant="contained" fullWidth disabled={loading} onClick={unlock}>
                 {loading ? <CircularProgress size={18} /> : "Débloquer"}
+                {/* Cost */}
+                <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, m:"auto",mb: 1 }}>
+                  <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                    {emoji?.cost ?? 0}
+                  </Typography>
+                  <AlbumIcon />
+                </Box>
               </Button>
             </Box>
           </CardContent>
