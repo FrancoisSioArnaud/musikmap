@@ -153,12 +153,12 @@ export default function LoginPage() {
               </Typography>
               <Grid container>
                 <Grid item>
-                  <Link href="/register" variant="body1">
+                  <Link href="/register" variant="h4">
                     {"Tu n'as pas de compte ? Inscris toi"}
                   </Link>
                 </Grid>
               </Grid>
-              <Typography mt="10px" variant="h3">
+              <Typography mt="10px" variant="body1">
                 Ou connecte toi avec une plateforme
               </Typography>
             </Box>
@@ -182,4 +182,5 @@ export default function LoginPage() {
     </Container>
   );
 }
+
 
