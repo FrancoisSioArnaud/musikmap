@@ -128,7 +128,7 @@ export default function Library() {
                   <Deposit
                     key={`${sess.session_id}-${idx}`}
                     dep={d}
-                    user={user}
+                    user={user.name}
                     // Aucun reveal dans Library: tout est déjà révélé
                     variant={isMain ? "main" : "list"}
                     showDate={false}
