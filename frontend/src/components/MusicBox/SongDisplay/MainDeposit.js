@@ -18,10 +18,11 @@ import LiveSearch from "./LiveSearch";
 import { getCookie } from "../../Security/TokensUtils";
 
 /**
- * MainDeposit :
- *  - Affiche la card <Deposit variant="main" /> sans encart pointillé.
- *  - Drawer unique (right, plein écran mobile) : LiveSearch puis Achievements (swap de contenu).
- *  - older_deposits n’apparaît qu’après succès du POST (remonté via onDeposited()).
+ * MainDeposit (nouveau rendu) :
+ *  - dep0 reste toujours affiché en <Deposit variant="main" />.
+ *  - Après succès, on affiche mon dépôt (<Deposit variant="list" />) sous le main, avec id="my_deposit".
+ *  - Le bloc "Ta chanson a été déposée / Voir mes points" est déplacé SOUS myDeposit (container .post_deposit_success).
+ *  - Drawer unique (search <-> achievements) inchangé ; retour Achievements -> scroll vers #older_deposits (inchangé).
  */
 export default function MainDeposit({
   dep0,
@@ -37,7 +38,7 @@ export default function MainDeposit({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerView, setDrawerView] = useState("search"); // "search" | "achievements"
 
-  // Succès / points (pour affichage dans drawer achievements)
+  // Succès / points (pour affichage)
   const [successes, setSuccesses] = useState([]);
 
   const totalPoints = useMemo(() => {
@@ -46,7 +47,7 @@ export default function MainDeposit({
     return byName("total")?.points ?? byName("points_total")?.points ?? 0;
   }, [successes]);
 
-  // Enregistrement "main" (découverte de la #0)
+  // Log "découverte" de la #0 (best-effort)
   useEffect(() => {
     if (!dep0 || !dep0.deposit_id) return;
     if (!user || !user.username) return;
@@ -74,13 +75,13 @@ export default function MainDeposit({
   const handleDepositSuccess = (addedDeposit, succ) => {
     setMyDeposit(addedDeposit || null);
     setSuccesses(Array.isArray(succ) ? succ : []);
-    setDrawerView("achievements"); // swap contenu dans le même drawer
-    setIsDrawerOpen(true);         // garde le drawer ouvert
-    onDeposited();                 // <-- débloque older_deposits dans le fond
+    setDrawerView("achievements"); // swap contenu
+    setIsDrawerOpen(true);         // reste ouvert
+    onDeposited();                 // débloque older_deposits dans le fond
   };
 
   const handleBackToBox = () => {
-    // ferme le drawer PUIS scroll au haut de older_deposits
+    // ferme le drawer puis scroll vers older_deposits (inchangé selon ton choix)
     setIsDrawerOpen(false);
     requestAnimationFrame(() => {
       const el = document.getElementById("older_deposits");
@@ -92,7 +93,7 @@ export default function MainDeposit({
 
   return (
     <>
-
+      {/* Intro */}
       <Box className="intro">
         <Typography component="h1" variant="h1">
           Bonne écoute !
@@ -101,10 +102,10 @@ export default function MainDeposit({
           Découvre puis remplace la chanson actuellement dans la boîte
         </Typography>
       </Box>
-    
-      {/* 1) Card main directement (sans encart pointillé) */}
+
+      {/* 1) Card main : dep0 TOUJOURS en "main" */}
       <Deposit
-        dep={hasMyDeposit ? myDeposit : dep0}
+        dep={dep0}
         user={user}
         variant="main"
         fitContainer={true}
@@ -112,23 +113,38 @@ export default function MainDeposit({
         showUser={true}
       />
 
-      {/* 2) Avant dépôt : CTA pleine largeur */}
+      {/* 2) Avant dépôt : CTA pleine largeur (disparaît après succès) */}
       {!hasMyDeposit && (
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={openSearch}
-            disabled={!boxName}
-            startIcon={<SearchIcon />}
-          >
-            Déposer une chanson
-          </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          size="large"
+          onClick={openSearch}
+          disabled={!boxName}
+          startIcon={<SearchIcon />}
+        >
+          Déposer une chanson
+        </Button>
       )}
 
-      {/* 3) Après dépôt : bloc succès + ex-main (list, full) */}
+      {/* 3) Après dépôt : mon dépôt en LIST révélé (sans section réactions si demandé) */}
+      {hasMyDeposit && myDeposit && (
+        <Box id="my_deposit">
+          <Deposit
+            dep={myDeposit}
+            user={user}
+            variant="list"
+            showDate={true}
+            showUser={true}
+            fitContainer={true}
+            showReact={false}   // demandé : masquer la section deposit_react
+          />
+        </Box>
+      )}
+
+      {/* 4) Bloc succès/points déplacé SOUS mon dépôt */}
       {hasMyDeposit && (
-        <Box sx={{ display: "grid", gap: 2 }}>
+        <Box className="post_deposit_success" sx={{ display: "grid", gap: 2, mt: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
               Ta chanson a été déposée
@@ -157,19 +173,6 @@ export default function MainDeposit({
               Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
             </Button>
           </Box>
-
-          {/* Ancien main affiché juste sous le bloc succès */}
-          {dep0 && (
-            <Deposit
-              dep={dep0}
-              user={user}
-              cost={40}
-              variant="list"
-              showDate={true}
-              showUser={true}
-              fitContainer={true}
-            />
-          )}
         </Box>
       )}
 
@@ -178,10 +181,7 @@ export default function MainDeposit({
         anchor="right"
         open={isDrawerOpen}
         onClose={() => {}} // pas de fermeture backdrop/ESC
-        ModalProps={{
-          keepMounted: true,
-          // Scroll du fond bloqué par défaut
-        }}
+        ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
             width: "100vw",
@@ -216,7 +216,7 @@ export default function MainDeposit({
           component="main"
           sx={{
             flex: "1 1 auto",
-            minHeight: 0,           // nécessaire pour que overflow fonctionne en flexbox
+            minHeight: 0,           // nécessaire pour overflow en flexbox
             overflow: "auto",
           }}
         >
@@ -243,7 +243,7 @@ export default function MainDeposit({
   );
 }
 
-/* Contenu Achievements dans le drawer (swap avec LiveSearch) */
+/* Contenu Achievements dans le drawer (inchangé fonctionnellement) */
 function AchievementsPanel({ successes = [], onPrimaryCta }) {
   const totalPoints =
     successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
@@ -262,7 +262,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         <Typography variant="h1">
           Pépite Déposé
         </Typography>
-  
+
         <Box className="points_container">
           <Typography component="span" variant="body1">+{totalPoints}</Typography>
           <AlbumIcon/>
@@ -276,15 +276,15 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
               <Typography component="span" variant="body1">+{ach.points}</Typography>
               <AlbumIcon />
             </Box>
-      
+
             <Typography variant="h3" className="success_title">
               {ach.name}
             </Typography>
-      
+
             <Typography variant="body1" className="success_desc">
               {ach.desc}
             </Typography>
-      
+
             {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
               <Typography
                 variant="body1"
