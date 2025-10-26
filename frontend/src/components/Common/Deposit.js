@@ -242,7 +242,7 @@ export default function Deposit({
           {showReact && (
             <Box className="deposit_react">
               <Button
-                variant="depositInteract"
+                variant="outlined"
                 size="large"
                 onClick={() => (isRevealed ? openReact() : null)}
                 disabled={!isRevealed}
@@ -378,7 +378,7 @@ export default function Deposit({
           <Box className="deposit_react">
             {isRevealed && (
               <Button
-                variant="depositInteract"
+                variant="outlined"
                 size="large"
                 onClick={openReact}
                 startIcon={<EmojiEmotionsIcon />}
