@@ -162,7 +162,7 @@ export default function UserProfilePage() {
   return (
     <Box sx={{ pb: 8 }}>
       {/* Bandeau actions (réglages uniquement pour owner) */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" , m: "0 16px"}}>
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
             <SettingsIcon size="medium"/>
@@ -171,7 +171,7 @@ export default function UserProfilePage() {
       </Box>
 
       {/* Header user (avatar + username) */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px"}}>
         {headerLoading ? (
           <>
             <Skeleton variant="circular" width={64} height={64} />
@@ -277,5 +277,6 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
