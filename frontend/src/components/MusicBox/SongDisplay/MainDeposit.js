@@ -93,94 +93,96 @@ export default function MainDeposit({
 
   return (
     <>
-      {/* Intro */}
-      <Box className="intro">
-        <Typography component="h1" variant="h1">
-          Bonne écoute !
-        </Typography>
-        <Typography component="h2" variant="h4">
-          Découvre puis remplace la chanson actuellement dans la boîte
-        </Typography>
-      </Box>
-
-      {/* 1) Card main : dep0 TOUJOURS en "main" */}
-      <Deposit
-        dep={dep0}
-        user={user}
-        variant="main"
-        fitContainer={true}
-        showDate={true}
-        showUser={true}
-      />
-
-      {/* 2) Avant dépôt : CTA pleine largeur (disparaît après succès) */}
-      {!hasMyDeposit && (
-        <Button
-          fullWidth
-          variant="contained"
-          size="large"
-          onClick={openSearch}
-          disabled={!boxName}
-          startIcon={<SearchIcon />}
-        >
-          Déposer une chanson
-        </Button>
-      )}
-
-      {/* 3) Après dépôt : mon dépôt en LIST révélé (sans section réactions si demandé) */}
-      {hasMyDeposit && myDeposit && (
-         <Box 
-          className="post_deposit_success"
-          sx={{
-            p: 4, // 16px → index 4 dans ton spacing array
-            border: '2px solid rgba(0, 0, 0, 0.04)',
-            borderRadius: 4, // 16px également (index 4)
-            bgcolor: 'rgba(0, 0, 0, 0.04)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CheckCircleIcon color="#7BD528" fontSize="medium" />
-            <Typography component="h2" variant="h5" sx={{ fontWeight: 700, textAlign: "left" }}>
-              Ta chanson
-            </Typography>
-          </Box>
-                
-          <Deposit
-            dep={myDeposit}
-            user={user}
-            variant="list"
-            showDate={false}     // <-- demandé
-            showUser={true}
-            fitContainer={true}
-            showReact={false}    // <-- déjà demandé précédemment
-            showPlay={false}     // <-- NOUVEAU : masque le bouton Play en LIST pour mon dépôt
-          />
-
-           <Button
-            variant="depositInteract"
-            className="decouvrir"
-            onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
-            aria-label="Voir mes points"
-          >
-            Points gagnés
-            {totalPoints > 0 && (
-              <Box className="points_container" sx={{ ml: "12px" }}>
-                <Typography
-                  variant="body1"
-                  component="span"
-                  sx={{ color: "text.primary" }}
-                >
-                  +{totalPoints}
-                </Typography>
-                <AlbumIcon />
-              </Box>
-            )}
-          </Button>
+      <Box className="song_display" sx={{p:4}}>
+        {/* Intro */}
+        <Box className="intro">
+          <Typography component="h1" variant="h1">
+            Bonne écoute !
+          </Typography>
+          <Typography component="h2" variant="h4">
+            Découvre puis remplace la chanson actuellement dans la boîte
+          </Typography>
         </Box>
-      )}
+  
+        {/* 1) Card main : dep0 TOUJOURS en "main" */}
+        <Deposit
+          dep={dep0}
+          user={user}
+          variant="main"
+          fitContainer={true}
+          showDate={true}
+          showUser={true}
+        />
+  
+        {/* 2) Avant dépôt : CTA pleine largeur (disparaît après succès) */}
+        {!hasMyDeposit && (
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={openSearch}
+            disabled={!boxName}
+            startIcon={<SearchIcon />}
+          >
+            Déposer une chanson
+          </Button>
+        )}
+  
+        {/* 3) Après dépôt : mon dépôt en LIST révélé (sans section réactions si demandé) */}
+        {hasMyDeposit && myDeposit && (
+           <Box 
+            className="post_deposit_success"
+            sx={{
+              p: 4, // 16px → index 4 dans ton spacing array
+              border: '2px solid rgba(0, 0, 0, 0.04)',
+              borderRadius: 4, // 16px également (index 4)
+              bgcolor: 'rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CheckCircleIcon color="#7BD528" fontSize="medium" />
+              <Typography component="h2" variant="h5" sx={{ fontWeight: 700, textAlign: "left" }}>
+                Ta chanson
+              </Typography>
+            </Box>
+                  
+            <Deposit
+              dep={myDeposit}
+              user={user}
+              variant="list"
+              showDate={false}     // <-- demandé
+              showUser={true}
+              fitContainer={true}
+              showReact={false}    // <-- déjà demandé précédemment
+              showPlay={false}     // <-- NOUVEAU : masque le bouton Play en LIST pour mon dépôt
+            />
+  
+             <Button
+              variant="depositInteract"
+              className="decouvrir"
+              onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
+              aria-label="Voir mes points"
+            >
+              Points gagnés
+              {totalPoints > 0 && (
+                <Box className="points_container" sx={{ ml: "12px" }}>
+                  <Typography
+                    variant="body1"
+                    component="span"
+                    sx={{ color: "text.primary" }}
+                  >
+                    +{totalPoints}
+                  </Typography>
+                  <AlbumIcon />
+                </Box>
+              )}
+            </Button>
+          </Box>
+        )}
+      </Box>
 
       {/* Drawer unique — Search <-> Achievements */}
       <Drawer
