@@ -948,7 +948,6 @@ class PurchaseEmojiView(APIView):
         request.user.refresh_from_db(fields=["points"])
         return Response({"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)}, status=status.HTTP_200_OK)
 
-
 class ReactionView(APIView):
     """
     POST /box-management/reactions
@@ -991,4 +990,3 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
