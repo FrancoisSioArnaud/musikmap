@@ -948,6 +948,7 @@ class PurchaseEmojiView(APIView):
         request.user.refresh_from_db(fields=["points"])
         return Response({"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)}, status=status.HTTP_200_OK)
 
+
 class ReactionView(APIView):
     """
     POST /box-management/reactions
@@ -976,13 +977,15 @@ class ReactionView(APIView):
         if not emoji:
             return Response({"detail": "Emoji invalide"}, status=status.HTTP_404_NOT_FOUND)
 
-        # ✅ Pas de check de débloquage pour les gratuits (cost == 0) ni pour les basics
-        if (not emoji.basic) and int(emoji.cost or 0) > 0:
+        # ✅ Pas de check de droit si basic OU cost==0
+        if not (emoji.basic or (emoji.cost or 0) == 0):
             has_right = EmojiRight.objects.filter(user=request.user, emoji=emoji).exists()
             if not has_right:
                 return Response({"error": "forbidden", "message": "Emoji non débloqué"}, status=status.HTTP_403_FORBIDDEN)
 
-        obj, created = Reaction.objects.get_or_create(user=request.user, deposit=deposit, defaults={"emoji": emoji})
+        obj, created = Reaction.objects.get_or_create(
+            user=request.user, deposit=deposit, defaults={"emoji": emoji}
+        )
         if not created and obj.emoji_id != emoji.id:
             obj.emoji = emoji
             obj.save(update_fields=["emoji", "updated_at"])
