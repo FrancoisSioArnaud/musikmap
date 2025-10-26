@@ -114,7 +114,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   const CostBadge = ({ cost }) => {
     if (!(cost > 0)) return null;
     return (
-      <Box className="points_container"
+      <Box className="points_container">
         <Typography variant="body2" component="span">
           {cost}
         </Typography>
