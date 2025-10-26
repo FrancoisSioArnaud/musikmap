@@ -166,29 +166,27 @@ export default function MainDeposit({
               Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
             </Typography>
 
-            <Button
-              variant="outlined"
-              className="decouvrir"
-              onClick={() => {
-                setDrawerView("achievements");
-                setIsDrawerOpen(true);
-              }}
-              aria-label="Voir mes points"
-            >
-              Voir mes points
-              {totalPoints > 0 && (
-                <Box className="points_container" sx={{ ml: "12px" }}>
-                  <Typography
-                    variant="body1"
-                    component="span"
-                    sx={{ color: "text.primary" }}
-                  >
-                    +{totalPoints}
-                  </Typography>
-                  <AlbumIcon />
-                </Box>
-              )}
-            </Button>
+           <Button
+            variant="depositInteract"
+            className="decouvrir"
+            onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
+            aria-label="Voir mes points"
+            sx={{ ml: "auto" }}
+          >
+            Voir mes points
+            {totalPoints > 0 && (
+              <Box className="points_container" sx={{ ml: "12px" }}>
+                <Typography
+                  variant="body1"
+                  component="span"
+                  sx={{ color: "text.primary" }}
+                >
+                  +{totalPoints}
+                </Typography>
+                <AlbumIcon />
+              </Box>
+            )}
+          </Button>
           </Box>
         </Box>
       )}
