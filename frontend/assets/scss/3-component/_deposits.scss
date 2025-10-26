@@ -12,11 +12,14 @@
 }
 
 #older_deposits_list{
-      display: flex
-;
-    overflow: scroll;
+  display: flex;
+  overflow: scroll;
 }
 
+#older_deposits_list .deposit{
+  width : 70vw;
+  
+}
 
 .deposit .deposit_date{
   padding: 6px 16px;
