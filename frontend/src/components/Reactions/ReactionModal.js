@@ -129,7 +129,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        p: 2,
+        p: 4,
         zIndex: 1300,
       }}
     >
