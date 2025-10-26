@@ -367,8 +367,9 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        {isRevealed ? (
-          <Box className="deposit_react">
+        
+        <Box className="deposit_react">
+          {isRevealed ? (
             <Button
               variant="depositInteract"
               size="large"
