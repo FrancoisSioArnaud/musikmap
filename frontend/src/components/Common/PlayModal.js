@@ -60,12 +60,11 @@ export default function PlayModal({ open, song, onClose }) {
         justifyContent: "center",
         p: 2,
         zIndex: 1300,
-        borderRadius:"26px",
       }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: "90vw" }}>
         <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 2 }}>
-          <CardContent sx={{ pb: 1 }}>
+          <CardContent sx={{ pb: 1 ,borderRadius:"26px",}}>
             {/* En-tête */}
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                <Typography variant="h1">
