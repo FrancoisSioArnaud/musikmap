@@ -4,7 +4,6 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import AlbumIcon from "@mui/icons-material/Album";
@@ -16,7 +15,7 @@ import { UserContext } from "../UserContext";
 export default function ReactionModal({ open, onClose, depositId, currentEmoji, onApplied }) {
   const { setUser } = useContext(UserContext) || {};
   const [loading, setLoading] = useState(false);
-  const [catalog, setCatalog] = useState({ basic: [], actives_paid: [], owned_ids: [], current_reaction: null });
+  const [catalog, setCatalog] = useState({ actives_paid: [], owned_ids: [], current_reaction: null });
   const [selected, setSelected] = useState(currentEmoji || null);
   const [purchaseTarget, setPurchaseTarget] = useState(null);
 
@@ -32,11 +31,12 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch(`/box-management/emojis/catalog?deposit_id=${depositId}`, { credentials: "same-origin" });
+        const res = await fetch(`/box-management/emojis/catalog?deposit_id=${depositId}`, {
+          credentials: "same-origin",
+        });
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
         setCatalog({
-          basic: data?.basic || [],
           actives_paid: data?.actives_paid || [],
           owned_ids: data?.owned_ids || [],
           current_reaction: data?.current_reaction || null,
@@ -48,12 +48,14 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     }
 
     run();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [open, depositId]);
 
   if (!open) return null;
 
-  const isOwned = (emoji) => emoji.basic || emoji.cost === 0 || catalog.owned_ids.includes(emoji.id);
+  const isOwned = (emoji) => catalog.owned_ids.includes(emoji.id);
 
   const onClickEmoji = (emoji) => {
     if (!emoji) {
@@ -70,7 +72,10 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       setUser((u) => ({ ...(u || {}), points: points_balance }));
     }
     if (emoji?.id) {
-      setCatalog((prev) => ({ ...prev, owned_ids: [...new Set([...(prev.owned_ids || []), emoji.id])] }));
+      setCatalog((prev) => ({
+        ...prev,
+        owned_ids: [...new Set([...(prev.owned_ids || []), emoji.id])],
+      }));
       setPurchaseTarget(null);
       setSelected(emoji.char);
     } else {
@@ -85,7 +90,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     const emojiId =
       selected === null
         ? null
-        : [...(catalog.basic || []), ...(catalog.actives_paid || [])].find((e) => e.char === selected)?.id ?? null;
+        : [...(catalog.actives_paid || [])].find((e) => e.char === selected)?.id ?? null;
 
     const res = await fetch("/box-management/reactions", {
       method: "POST",
@@ -101,40 +106,10 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       return;
     }
 
-    // ✅ Renvoie au parent (Deposit) -> met à jour my_reaction & reactions_summary
     onApplied?.(data);
-
-    // met à jour l’état local (utile si on rouvre la modale tout de suite)
     setCatalog((prev) => ({ ...prev, current_reaction: data?.my_reaction || null }));
     setSelected(data?.my_reaction?.emoji || null);
-
     onClose();
-  };
-
-  const CostBadge = ({ cost }) => {
-    if (!(cost > 0)) return null;
-    return (
-      <Box className="points_container">
-        <Typography variant="body2" component="span">
-          {cost}
-        </Typography>
-        <AlbumIcon />
-      </Box>
-    );
-  };
-
-  const EmojiItem = ({ emoji, owned }) => {
-    const isSelected = selected === emoji.char;
-    return (
-      <Button
-        onClick={() => onClickEmoji(emoji)}
-        aria-label={`Emoji ${emoji.char}`}
-        className="react_item ${isSelected ? 'selected' : ''}"
-      >
-        <span className="react_emoji">{emoji.char}</span>
-        {!owned && emoji.cost > 0 && <CostBadge cost={emoji.cost} />}
-      </Button>
-    );
   };
 
   return (
@@ -152,9 +127,9 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
-        <Card >
+        <Card>
           <CardContent>
-            <Typography component="h1" variant="h1" >
+            <Typography component="h1" variant="h1">
               Réagir
             </Typography>
             <Typography variant="body1">
@@ -162,31 +137,52 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
             </Typography>
 
             {loading ? (
-              <Box >
+              <Box>
                 <CircularProgress />
               </Box>
             ) : (
               <>
-                {/* NONE */}
-                <Box >
-                  
-                </Box>
-
-                {/* Reactions */}
+                {/* Liste des réactions */}
                 <Box className="react_list">
+                  {/* Bouton Aucune réaction */}
                   <Button
-                      onClick={() => setSelected(null)}
-                      aria-label="Aucune réaction"
-                      className="react_item react_none ${isSelected ? 'selected' : ''}"
-                    >
-                      <HighlightOffIcon />
+                    onClick={() => setSelected(null)}
+                    aria-label="Aucune réaction"
+                    className={`react_item ${selected === null ? "selected" : ""}`}
+                  >
+                    <HighlightOffIcon />
                   </Button>
-                  {catalog.actives_paid.map((e) => (
-                    <EmojiItem key={e.id} emoji={e} owned={isOwned(e)} />
-                  ))}
+
+                  {/* Boucle sur les emojis */}
+                  {catalog.actives_paid.map((emoji) => {
+                    const owned = isOwned(emoji);
+                    const isSelected = selected === emoji.char;
+                    const buttonClass = `react_item ${isSelected ? "selected" : ""} ${
+                      !owned ? "react_notOwned" : ""
+                    }`;
+
+                    return (
+                      <Button
+                        key={emoji.id}
+                        onClick={() => onClickEmoji(emoji)}
+                        aria-label={`Emoji ${emoji.char}`}
+                        className={buttonClass}
+                      >
+                        <span className="react_emoji">{emoji.char}</span>
+                        {!owned && emoji.cost > 0 && (
+                          <Box className="points_container">
+                            <Typography variant="body2" component="span">
+                              {emoji.cost}
+                            </Typography>
+                            <AlbumIcon />
+                          </Box>
+                        )}
+                      </Button>
+                    );
+                  })}
                 </Box>
 
-                {/* Bouton unique Sortir/Valider */}
+                {/* Bouton Sortir / Valider */}
                 <Box>
                   <Button
                     variant={hasChanged ? "contained" : "outlined"}
