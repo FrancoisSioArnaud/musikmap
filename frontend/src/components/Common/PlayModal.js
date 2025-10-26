@@ -73,13 +73,7 @@ export default function PlayModal({ open, song, onClose }) {
             </Box>
 
             {/* 3 colonnes égales */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 1,
-              }}
-            >
+            <Box>
               <Button fullWidth variant="contained" onClick={() => openOrAlert(song?.spotify_url)}>
                 Spotify
               </Button>
@@ -89,10 +83,6 @@ export default function PlayModal({ open, song, onClose }) {
               <Button fullWidth variant="contained" onClick={openYouTubeSearch}>
                 YouTube
               </Button>
-            </Box>
-
-            {/* Bouton Copier en pleine largeur, sous la rangée */}
-            <Box sx={{ mt: 1 }}>
               <Button fullWidth variant="outlined" onClick={copySongText}>
                 Copier le nom de la chanson
               </Button>
