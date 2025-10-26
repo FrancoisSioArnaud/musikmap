@@ -5,6 +5,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 export default function PlayModal({ open, song, onClose }) {
   if (!open || !song) return null;
@@ -72,19 +73,19 @@ export default function PlayModal({ open, song, onClose }) {
               </Typography>
               <Button onClick={onClose} title="Fermer" sx={{fontSize: "32px"}}>×</Button>
             </Box>
-            <Typography variant="body1" sx={{ mr: 2 }} noWrap>
+            <Typography variant="body1" sx={{ mb:3 }} noWrap>
                 {song?.title || "Titre"} — {song?.artist || "Artiste"}
             </Typography>
 
             {/* 3 colonnes égales */}
-            <Box sx={{display:"grid", gap:"8px"}}>
-              <Button fullWidth variant="contained" sx={{bgcolor:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)}>
+            <Box sx={{display:"grid", gap:"12px"}}>
+              <Button fullWidth variant="contained" sx={{bgcolor:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)} endIcon={<OpenInNewIcon />} >
                 Spotify
               </Button>
-              <Button fullWidth variant="contained" sx={{bgcolor:"#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)}>
+              <Button fullWidth variant="contained" sx={{bgcolor:"#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)} endIcon={<OpenInNewIcon />} >
                 Deezer
               </Button>
-              <Button fullWidth variant="contained" sx={{bgcolor:"#F70F19"}} onClick={openYouTubeSearch}>
+              <Button fullWidth variant="contained" sx={{bgcolor:"#F70F19"}} onClick={openYouTubeSearch} endIcon={<OpenInNewIcon />} >
                 YouTube
               </Button>
               <Button fullWidth variant="outlined" onClick={copySongText}>
