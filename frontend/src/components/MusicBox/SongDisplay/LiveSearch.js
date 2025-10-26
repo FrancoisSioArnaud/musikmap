@@ -171,9 +171,9 @@ export default function LiveSearch({
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
       {/* En-tête + sélecteur plateforme */}
-      <Paper variant="outlined" sx={{ p: 2 }}>
+      <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
-          <Typography component="h2" variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography component="h2" variant="h3">
             Choisis ta chanson à déposer
           </Typography>
 
@@ -184,7 +184,7 @@ export default function LiveSearch({
             onChange={handleStreamingServiceChange}
             aria-label="Choix du service de streaming"
             size="small"
-            sx={{ alignSelf: "flex-start" }}
+            sx={{ alignSelf: "flex-start", display:"none"}}
           >
             <ToggleButton value="spotify" aria-pressed={selectedStreamingService === "spotify"}>
               Spotify
@@ -206,7 +206,7 @@ export default function LiveSearch({
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
+                  <SearchIcon fontSize="medium" />
                 </InputAdornment>
               ),
             }}
@@ -215,6 +215,7 @@ export default function LiveSearch({
               "& .MuiInputBase-input": {
                 fontSize: 16,
               },
+                borderRadius:"16px";
             }}
           />
         </Stack>
@@ -337,4 +338,5 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
