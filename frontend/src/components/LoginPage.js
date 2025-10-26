@@ -162,7 +162,7 @@ export default function LoginPage() {
                 Ou connecte toi avec une plateforme
               </Typography>
             </Box>
-            <Box sx={{ display: "flex", flexDirection: "row", gap: "10px" }}>
+            <Box sx={{ display: "flex", flexDirection: "row", gap: "10px", mt: 2}}>
               <Button
                 variant="outlined"
                 onClick={() => handleMultiplatformLogin("spotify")}
@@ -182,5 +182,6 @@ export default function LoginPage() {
     </Container>
   );
 }
+
 
 
