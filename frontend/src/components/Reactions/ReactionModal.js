@@ -155,7 +155,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                   <Button
                     onClick={() => setSelected(null)}
                     aria-label="Aucune réaction"
-                    className={`react_item ${selected === null ? "selected" : ""}`}
+                    className={`react_item react_none ${selected === null ? "selected" : ""}`}
                   >
                     <HighlightOffIcon />
                   </Button>
