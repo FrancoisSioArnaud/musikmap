@@ -129,12 +129,23 @@ export default function MainDeposit({
 
       {/* 3) Après dépôt : mon dépôt en LIST révélé (sans section réactions si demandé) */}
       {hasMyDeposit && myDeposit && (
-         <Box className="post_deposit_success" sx={{ display: "grid", gap: 2, mt: 1 }}>
+         <Box 
+          className="post_deposit_success"
+          sx={{
+            p: 2,
+            border: '2px solid rgba(0, 0, 0, 0.04)',
+            borderRadius: 2,
+            bgcolor: 'rgba(0, 0, 0, 0.04)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
-              Ta chanson a été déposée
+            <CheckCircleIcon color="#7BD528" fontSize="big" />
+            <Typography component="h2" variant="h4" sx={{ fontWeight: 700, textAlign: "left" }}>
+              Ta chanson
             </Typography>
-            <CheckCircleIcon color="success" fontSize="medium" />
           </Box>
                 
           <Deposit
@@ -153,9 +164,8 @@ export default function MainDeposit({
             className="decouvrir"
             onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
             aria-label="Voir mes points"
-            sx={{ ml: "auto" }}
           >
-            Voir mes points
+            Points gagnés
             {totalPoints > 0 && (
               <Box className="points_container" sx={{ ml: "12px" }}>
                 <Typography
