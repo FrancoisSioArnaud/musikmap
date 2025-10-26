@@ -26,12 +26,8 @@ export default function MenuAppBar() {
       <Toolbar>
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography
-            variant="h6"
+            variant="h3"
             component="div"
-            sx={{
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
           >
             MusikMap
           </Typography>
@@ -76,7 +72,7 @@ export default function MenuAppBar() {
             sx={{
               borderRadius: "20px",
               backgroundColor: "background.paper",
-              color: "orange",
+              color: "primary",
               border: "none",
               textTransform: "none",
               "&:hover": {
@@ -91,6 +87,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
