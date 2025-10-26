@@ -162,7 +162,7 @@ export default function UserProfilePage() {
   return (
     <Box sx={{ pb: 8 }}>
       {/* Bandeau actions (réglages uniquement pour owner) */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" , m: "0 16px"}}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" , m: "0 16px", bb:"12px"}}>
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
             <SettingsIcon size="medium"/>
@@ -277,6 +277,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
