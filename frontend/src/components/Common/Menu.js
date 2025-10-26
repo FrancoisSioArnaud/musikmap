@@ -26,7 +26,7 @@ export default function MenuAppBar() {
       <Toolbar>
         <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography
-            variant="h5"
+            variant="h4"
             component="div"
           >
             MusikMap
@@ -89,6 +89,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
