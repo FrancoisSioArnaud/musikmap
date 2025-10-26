@@ -144,7 +144,7 @@ export default function Deposit({
   const ReactionsStrip = ({ items = [] }) => {
     if (!items || items.length === 0) return null;
     return (
-      <Box className"reactions_container">
+      <Box className="reactions_container">
         {items.map((it, i) => (
           <Box key={i}>
 
