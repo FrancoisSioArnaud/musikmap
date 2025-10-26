@@ -53,7 +53,7 @@ export default function SongDisplay({
           </Box>
 
           <Box
-            id="older_deposits_list" sx={{left:"-16px"}}
+            id="older_deposits_list"
           >
             {deposits.slice(1).map((dep, idx) => (
               <Deposit
