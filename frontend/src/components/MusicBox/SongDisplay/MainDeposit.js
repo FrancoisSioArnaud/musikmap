@@ -265,7 +265,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
   });
 
   return (
-    <Box sx={{ display: "grid", gap: 1 }}>
+    <Box sx={{ display: "grid", gap: 0 , pb :"76px" }}>
       <Box className="intro_small">
         <CheckIcon color="success" sx={{m: "auto", height: "26px", width: "26px"}} />
         <Typography variant="h1">
@@ -307,7 +307,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
         ))}
       </List>
 
-      <Box sx={{ mt: 1 }}>
+      <Box sx={{ position: "fixed", left:"16px", right:"16px", botton: "8px"}}>
         <Button fullWidth variant="contained" onClick={onPrimaryCta}>
           Retour à la boîte
         </Button>
