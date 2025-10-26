@@ -24,7 +24,7 @@ export default function MenuAppBar() {
       position="fixed"
     >
       <Toolbar>
-        <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+        <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" , pl:"16px", pr:"0"}}>
           <Typography
             variant="h5"
             component="div"
@@ -87,6 +87,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
