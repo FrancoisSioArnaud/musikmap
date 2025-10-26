@@ -160,7 +160,7 @@ export default function UserProfilePage() {
   const [tab, setTab] = useState(0);
 
   return (
-    <Box sx={{ p: 2, pb: 8 }}>
+    <Box sx={{ pb: 8 }}>
       {/* Bandeau actions (réglages uniquement pour owner) */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         {isOwner && (
@@ -277,4 +277,5 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
