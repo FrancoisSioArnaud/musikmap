@@ -78,13 +78,13 @@ export default function PlayModal({ open, song, onClose }) {
 
             {/* 3 colonnes égales */}
             <Box sx={{display:"grid", gap:"8px"}}>
-              <Button fullWidth variant="contained" sx={{bgColor="#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)}>
+              <Button fullWidth variant="contained" sx={{bgColor:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)}>
                 Spotify
               </Button>
-              <Button fullWidth variant="contained" sx={{bgColor="#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)}>
+              <Button fullWidth variant="contained" sx={{bgColor:"#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)}>
                 Deezer
               </Button>
-              <Button fullWidth variant="contained" sx={{bgColor="#F70F19"}} onClick={openYouTubeSearch}>
+              <Button fullWidth variant="contained" sx={{bgColor:"#F70F19"}} onClick={openYouTubeSearch}>
                 YouTube
               </Button>
               <Button fullWidth variant="outlined" onClick={copySongText}>
