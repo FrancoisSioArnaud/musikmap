@@ -50,7 +50,7 @@ export default function SongDisplay({
             <Typography component="body" variant="body1">
               Utilise tes points fraichement gagnés pour les découvrir
             </Typography>
-          </box>
+          </Box>
 
           <Box
             id="older_deposits_list"
