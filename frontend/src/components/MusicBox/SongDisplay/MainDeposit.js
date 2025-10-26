@@ -134,10 +134,11 @@ export default function MainDeposit({
             dep={myDeposit}
             user={user}
             variant="list"
-            showDate={true}
+            showDate={false}     // <-- demandé
             showUser={true}
             fitContainer={true}
-            showReact={false}   // demandé : masquer la section deposit_react
+            showReact={false}    // <-- déjà demandé précédemment
+            showPlay={false}     // <-- NOUVEAU : masque le bouton Play en LIST pour mon dépôt
           />
         </Box>
       )}
