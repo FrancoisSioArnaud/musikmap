@@ -153,7 +153,7 @@ export default function LoginPage() {
               </Typography>
               <Grid container>
                 <Grid item>
-                  <Link href="/register" variant="h4">
+                  <Link href="/register" variant="h5">
                     {"Tu n'as pas de compte ? Inscris toi"}
                   </Link>
                 </Grid>
@@ -182,6 +182,7 @@ export default function LoginPage() {
     </Container>
   );
 }
+
 
 
 
