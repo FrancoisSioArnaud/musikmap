@@ -11,6 +11,13 @@
   
 }
 
+#older_deposits_list{
+      display: flex
+;
+    overflow: scroll;
+}
+
+
 .deposit .deposit_date{
   padding: 6px 16px;
 }
