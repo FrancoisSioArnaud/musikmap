@@ -44,13 +44,7 @@ export default function SongDisplay({
 
       {/* SECTION — OLDER DEPOSITS (vertical, full-width) — seulement après dépôt */}
       {showOlder && (
-        <Box
-          id="older_deposits"
-          sx={{
-            display: "grid",
-            gap: 2,
-          }}
-        >
+        <Box id="older_deposits">
           <Typography component="h2" variant="h3">
             Pépites déposées plus tôt
           </Typography>
