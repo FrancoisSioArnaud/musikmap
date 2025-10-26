@@ -143,7 +143,7 @@ const theme = createTheme({
           color: "#7BD528",
           fontWeight: 700,
           border: "solid inset 2px #7BD528",
-          borderWidth: 2;
+          borderWidth: 2,
 
           "&:active": {
             filter: "brightness(0.9)",
