@@ -374,20 +374,26 @@ export default function MusicBox() {
           elevation={3}
           sx={{
             position: "fixed",
-            left: "0",
-            right: "0",
-            top: "0",
-            bottom: "0",
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+      
+            // --- Background image plein écran ---
+            backgroundImage: "url('../static/images/onboardingBgTan.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
           <Box sx={{ mt: "auto" }}>
-            <Box sx={{ display: "grid", position: "fixed", bottom: "20px", left: "20px", right: "20px"}}>
+            <Box sx={{ display: "grid", position: "fixed", bottom: "20px", left: "20px", right: "20px" }}>
               {metaLoading ? (
                 <Skeleton variant="text" width={180} height={24} />
               ) : (
                 <Typography variant="subtitle1">{depositCount} Dépôts</Typography>
               )}
-
+      
               {metaLoading ? (
                 <Skeleton variant="text" width={260} height={40} />
               ) : (
@@ -395,7 +401,7 @@ export default function MusicBox() {
                   {boxTitle}
                 </Typography>
               )}
-
+      
               <Box sx={{ mt: 2 }}>
                 <Button
                   variant="contained"
@@ -484,6 +490,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
