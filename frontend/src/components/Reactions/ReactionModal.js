@@ -134,7 +134,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
-        <Card>
+        <Card sx={{borderRadius:4}}>
           <CardContent>
             <Typography component="h1" variant="h1">
               Réagir
