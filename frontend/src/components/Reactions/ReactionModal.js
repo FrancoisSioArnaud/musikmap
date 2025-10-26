@@ -140,8 +140,18 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   return (
     <Box
       onClick={onClose}
+      sx={{
+        position: "fixed",
+        inset: 0,
+        bgcolor: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        zIndex: 1300,
+      }}
     >
-      <Box onClick={(e) => e.stopPropagation()}>
+      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
         <Card >
           <CardContent>
             <Typography component="h1" variant="h1" >
