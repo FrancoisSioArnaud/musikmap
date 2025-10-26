@@ -55,15 +55,22 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
 
   if (!open) return null;
 
-  const isOwned = (emoji) => catalog.owned_ids.includes(emoji.id);
+  const isOwned = (emoji) => emoji.cost === 0 || catalog.owned_ids.includes(emoji.id);
 
   const onClickEmoji = (emoji) => {
     if (!emoji) {
       setSelected(null);
       return;
     }
-    if (isOwned(emoji)) setSelected(emoji.char);
-    else setPurchaseTarget(emoji);
+
+    // ✅ Si gratuit ou déjà possédé → sélection directe
+    if (isOwned(emoji)) {
+      setSelected(emoji.char);
+      return;
+    }
+
+    // 💰 Sinon, ouvrir la modale d’achat
+    setPurchaseTarget(emoji);
   };
 
   const onPurchaseSuccess = (payload) => {
