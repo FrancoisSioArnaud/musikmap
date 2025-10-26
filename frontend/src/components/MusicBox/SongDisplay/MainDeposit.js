@@ -167,11 +167,27 @@ export default function MainDeposit({
             </Typography>
 
             <Button
-              variant="contained"
-              onClick={() => { setDrawerView("achievements"); setIsDrawerOpen(true); }}
+              variant="outlined"
+              className="decouvrir"
+              onClick={() => {
+                setDrawerView("achievements");
+                setIsDrawerOpen(true);
+              }}
               aria-label="Voir mes points"
             >
-              Voir mes points {totalPoints ? `(+${totalPoints})` : ""}
+              Voir mes points
+              {totalPoints > 0 && (
+                <Box className="points_container" sx={{ ml: "12px" }}>
+                  <Typography
+                    variant="body1"
+                    component="span"
+                    sx={{ color: "text.primary" }}
+                  >
+                    +{totalPoints}
+                  </Typography>
+                  <AlbumIcon />
+                </Box>
+              )}
             </Button>
           </Box>
         </Box>
