@@ -305,7 +305,8 @@ class GetBox(APIView):
             successes['consecutive_days'] = {
                 'name': "Amour fou",
                 'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                'points': consecutive_days_points
+                'points': consecutive_days_points,
+                'emoji': "🔥"
         }
 
         if user and is_first_user_deposit(user, box):
@@ -313,7 +314,8 @@ class GetBox(APIView):
             successes['first_user_deposit_box'] = {
                 'name': "Explorateur·ice",
                 'desc': "Tu n'as jamais déposé ici",
-                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
+                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
+                'emoji': "🔍"
             }
 
         if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
@@ -321,20 +323,23 @@ class GetBox(APIView):
             successes['first_song_deposit'] = {
                 'name': "Far West",
                 'desc': "Cette chanson n'a jamais été déposé dans cette boîte",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
+                'emoji': "🤠"
             }
         if is_first_song_deposit_global_by_title_artist(song_name, song_author):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             successes['first_song_deposit_global'] = {
                 'name': "Preums !",
                 'desc': "Cette chanson n'a jamais été déposée dans aucune boîte",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+                'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
+                'emoji': "🥇"
             }
 
         successes['default_deposit'] = {
             'name': "Pépite",
             'desc': "Tu as partagé une chanson",
-            'points': NB_POINTS_ADD_SONG
+            'points': NB_POINTS_ADD_SONG,
+            'emoji': "💎"
         }
 
         successes['points_total'] = {
@@ -996,4 +1001,5 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
