@@ -369,22 +369,21 @@ export default function Deposit({
         {/* ----- Section réactions dédiée ----- */}
         
         <Box className="deposit_react">
-          {isRevealed ? (
+          {isRevealed && (
             <Button
               variant="depositInteract"
               size="large"
               onClick={openReact}
-              disabled={!isRevealed}
               startIcon={<EmojiEmotionsIcon />}
             >
               Réagir
             </Button>
-          ) : ( ) }
-
-          {/* ruban des réactions + ma réaction */}
+          )}
+        
+          {/* ruban des réactions toujours visible */}
           <ReactionsStrip items={dep?.reactions_summary || []} />
-
         </Box>
+
       </Card>
 
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
