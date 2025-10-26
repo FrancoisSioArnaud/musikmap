@@ -93,13 +93,13 @@ export default function MainDeposit({
 
   return (
     <>
-      <Box className="song_display" sx={{p:4}}>
+      <Box className="song_display" sx={{display:"grid", gap:4}}>
         {/* Intro */}
         <Box className="intro">
           <Typography component="h1" variant="h1">
             Bonne écoute !
           </Typography>
-          <Typography component="h2" variant="h4">
+          <Typography component="h2" variant="body1">
             Découvre puis remplace la chanson actuellement dans la boîte
           </Typography>
         </Box>
@@ -140,6 +140,7 @@ export default function MainDeposit({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              gap: 4,
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
