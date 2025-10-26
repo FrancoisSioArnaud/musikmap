@@ -134,6 +134,7 @@ export default function Library() {
                     showDate={false}
                     showUser={true}
                     fitContainer={true}
+                    showReact={false}
                   />
                 );
               })}
