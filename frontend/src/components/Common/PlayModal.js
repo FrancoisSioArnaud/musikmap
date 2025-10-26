@@ -63,8 +63,8 @@ export default function PlayModal({ open, song, onClose }) {
       }}
     >
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: "90vw" }}>
-        <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 2 }}>
-          <CardContent sx={{ pb: 1 ,borderRadius:"26px",}}>
+        <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 4 }}>
+          <CardContent sx={{ pb: 1 ,}}>
             {/* En-tête */}
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                <Typography variant="h1">
