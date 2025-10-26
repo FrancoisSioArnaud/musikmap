@@ -114,8 +114,8 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   const CostBadge = ({ cost }) => {
     if (!(cost > 0)) return null;
     return (
-      <Box className="points_container" sx={{ position: "absolute", bottom: 4, right: 4, display: "inline-flex", alignItems: "center", gap: 0.5 }}>
-        <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+      <Box className="points_container"
+        <Typography variant="body1" component="span">
           {cost}
         </Typography>
         <AlbumIcon />
@@ -129,15 +129,6 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       <Button
         onClick={() => onClickEmoji(emoji)}
         aria-label={`Emoji ${emoji.char}`}
-        sx={{
-          minWidth: 48,
-          minHeight: 48,
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: isSelected ? "primary.main" : "divider",
-          opacity: owned ? 1 : 0.55,
-          position: "relative",
-        }}
       >
         <span style={{ fontSize: 22 }}>{emoji.char}</span>
         {!owned && emoji.cost > 0 && <CostBadge cost={emoji.cost} />}
@@ -148,45 +139,28 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
   return (
     <Box
       onClick={onClose}
-      sx={{
-        position: "fixed",
-        inset: 0,
-        bgcolor: "rgba(0,0,0,0.35)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 2,
-        zIndex: 1300,
-      }}
     >
-      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
-        <Card sx={{ borderRadius: 2 }}>
+      <Box onClick={(e) => e.stopPropagation()}>
+        <Card >
           <CardContent>
-            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>
+            <Typography component="h1" variant="h5" >
               Réagir
             </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }}>
+            <Typography variant="body2">
               Choisis un emoji pour dire ce que tu as pensé de la chanson.
             </Typography>
 
             {loading ? (
-              <Box sx={{ py: 4, textAlign: "center" }}>
+              <Box >
                 <CircularProgress />
               </Box>
             ) : (
               <>
                 {/* NONE */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <Box >
                   <Button
                     onClick={() => setSelected(null)}
                     aria-label="Aucune réaction"
-                    sx={{
-                      border: "1px dashed",
-                      borderColor: selected === null ? "primary.main" : "divider",
-                      borderRadius: 2,
-                      px: 1.5,
-                      py: 0.75,
-                    }}
                   >
                     <HighlightOffIcon />
                   </Button>
@@ -196,11 +170,11 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                 {/* Basics */}
                 {catalog.basic.length > 0 && (
                   <>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    <Divider  />
+                    <Typography variant="subtitle2">
                       Emojis de base
                     </Typography>
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Box>
                       {catalog.basic.map((e) => (
                         <EmojiItem key={e.id} emoji={e} owned={true} />
                       ))}
@@ -209,18 +183,18 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                 )}
 
                 {/* Payants */}
-                <Divider sx={{ my: 1 }} />
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                <Divider />
+                <Typography variant="subtitle2">
                   Emojis à débloquer
                 </Typography>
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Box >
                   {catalog.actives_paid.map((e) => (
                     <EmojiItem key={e.id} emoji={e} owned={isOwned(e)} />
                   ))}
                 </Box>
 
                 {/* Bouton unique Sortir/Valider */}
-                <Box sx={{ display: "flex", gap: 1.5, mt: 3 }}>
+                <Box>
                   <Button
                     variant={hasChanged ? "contained" : "outlined"}
                     fullWidth
