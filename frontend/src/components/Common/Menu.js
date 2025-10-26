@@ -80,13 +80,14 @@ export default function MenuAppBar() {
               },
             }}
           >
-            Login
+            Mon compte
           </Button>
         )}
       </Toolbar>
     </AppBar>
   );
 }
+
 
 
 
