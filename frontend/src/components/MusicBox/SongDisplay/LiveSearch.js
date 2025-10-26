@@ -215,7 +215,7 @@ export default function LiveSearch({
               "& .MuiInputBase-input": {
                 fontSize: 16,
               },
-                borderRadius:"16px";
+                borderRadius:"16px",
             }}
           />
         </Stack>
@@ -338,5 +338,6 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
