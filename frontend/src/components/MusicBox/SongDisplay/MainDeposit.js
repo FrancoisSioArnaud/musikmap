@@ -129,7 +129,14 @@ export default function MainDeposit({
 
       {/* 3) Après dépôt : mon dépôt en LIST révélé (sans section réactions si demandé) */}
       {hasMyDeposit && myDeposit && (
-        <Box id="my_deposit">
+         <Box className="post_deposit_success" sx={{ display: "grid", gap: 2, mt: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
+              Ta chanson a été déposée
+            </Typography>
+            <CheckCircleIcon color="success" fontSize="medium" />
+          </Box>
+                
           <Deposit
             dep={myDeposit}
             user={user}
@@ -140,31 +147,6 @@ export default function MainDeposit({
             showReact={false}    // <-- déjà demandé précédemment
             showPlay={false}     // <-- NOUVEAU : masque le bouton Play en LIST pour mon dépôt
           />
-        </Box>
-      )}
-
-      {/* 4) Bloc succès/points déplacé SOUS mon dépôt */}
-      {hasMyDeposit && (
-        <Box className="post_deposit_success" sx={{ display: "grid", gap: 2, mt: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography component="h2" variant="h6" sx={{ fontWeight: 700, textAlign: "left" }}>
-              Ta chanson a été déposée
-            </Typography>
-            <CheckCircleIcon color="success" fontSize="medium" />
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-            }}
-          >
-            <Typography variant="body1" sx={{ textAlign: "left", flex: "1 1 auto", minWidth: 220 }}>
-              Révèle d&apos;autres chansons avec les crédits que tu as gagnés.
-            </Typography>
 
            <Button
             variant="depositInteract"
@@ -187,7 +169,6 @@ export default function MainDeposit({
               </Box>
             )}
           </Button>
-          </Box>
         </Box>
       )}
 
