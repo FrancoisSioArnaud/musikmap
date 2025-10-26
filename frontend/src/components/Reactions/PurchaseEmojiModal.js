@@ -54,10 +54,10 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
 
             <Box sx={{ display: "flex", gap: "16px", flexDirection: "column-reverse" }}>
               <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
-              <Button variant="contained" fullWidth disabled={loading} onClick={unlock}>
+              <Button variant="contained" fullWidth disabled={loading} onClick={unlock} sx={{display: "flex", flexDirection: "row",justifyContent: "space-between"}}>
                 {loading ? <CircularProgress size={18} /> : "Débloquer"}
                 {/* Cost */}
-                <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, m:"auto",mb: 1 }}>
+                <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75}}>
                   <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                     {emoji?.cost ?? 0}
                   </Typography>
