@@ -38,11 +38,11 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
   };
 
   return (
-    <Box onClick={onCancel} sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", p: 2, zIndex: 1400 }}>
+    <Box onClick={onCancel} sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", p: 4, zIndex: 1400 }}>
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 480 }}>
         <Card sx={{ borderRadius: 2 }}>
           <CardContent>
-            <Typography component="h1" variant="h5" sx={{ mb: 1 }}>
+            <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
               Débloquer l’emoji {emoji?.char || ""}
             </Typography>
 
@@ -54,7 +54,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
               <AlbumIcon />
             </Box>
 
-            <Typography variant="body2" sx={{ mb: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
               Débloque cet emoji et utilise-le pour réagir à des chansons.
             </Typography>
 
