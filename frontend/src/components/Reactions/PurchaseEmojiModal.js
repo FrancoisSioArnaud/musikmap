@@ -47,7 +47,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
             </Typography>
 
             {/* ✅ Cost avec format demandé */}
-            <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, mb: 1 }}>
+            <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, m:"auto",mb: 1 }}>
               <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                 {emoji?.cost ?? 0}
               </Typography>
