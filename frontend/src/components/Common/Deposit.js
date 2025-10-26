@@ -144,24 +144,12 @@ export default function Deposit({
   const ReactionsStrip = ({ items = [] }) => {
     if (!items || items.length === 0) return null;
     return (
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1 }}>
+      <Box className"reactions_container">
         {items.map((it, i) => (
-          <Box
-            key={i}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 1,
-              py: 0.5,
-              borderRadius: 1,
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{it.emoji}</span>
-            <Typography variant="body2" component="span">
-              × {it.count}
+          <Box key={i}>
+
+            <Typography variant="body1" component="span">
+             {it.emoji} × {it.count}
             </Typography>
           </Box>
         ))}
@@ -249,26 +237,19 @@ export default function Deposit({
           </Box>
 
           {/* ----- Section réactions dédiée ----- */}
-          <Box className="deposit_react" sx={{ mt: 1 }}>
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-              <Button
-                variant="depositInteract"
-                size="large"
-                onClick={() => (isRevealed ? openReact() : null)}
-                disabled={!isRevealed}
-                startIcon={<EmojiEmotionsIcon />}
-              >
-                Réagir
-              </Button>
-            </Box>
+          <Box className="deposit_react">
+            <Button
+              variant="depositInteract"
+              size="large"
+              onClick={() => (isRevealed ? openReact() : null)}
+              disabled={!isRevealed}
+              startIcon={<EmojiEmotionsIcon />}
+            >
+              Réagir
+            </Button>
 
-            {/* ruban des réactions + ma réaction */}
+            {/* ruban des réactions */}
             <ReactionsStrip items={dep?.reactions_summary || []} />
-            {dep?.my_reaction?.emoji && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Tu as réagi {dep.my_reaction.emoji}
-              </Typography>
-            )}
           </Box>
         </Card>
 
@@ -386,26 +367,20 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        <Box className="deposit_react" sx={{ mt: 1 }}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-            <Button
-              variant="depositInteract"
-              size="large"
-              onClick={openReact}
-              disabled={!isRevealed}
-              startIcon={<EmojiEmotionsIcon />}
-            >
-              Réagir
-            </Button>
-          </Box>
+        <Box className="deposit_react">
+          <Button
+            variant="depositInteract"
+            size="large"
+            onClick={openReact}
+            disabled={!isRevealed}
+            startIcon={<EmojiEmotionsIcon />}
+          >
+            Réagir
+          </Button>
 
           {/* ruban des réactions + ma réaction */}
           <ReactionsStrip items={dep?.reactions_summary || []} />
-          {dep?.my_reaction?.emoji && isRevealed && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Tu as réagi {dep.my_reaction.emoji}
-            </Typography>
-          )}
+
         </Box>
       </Card>
 
