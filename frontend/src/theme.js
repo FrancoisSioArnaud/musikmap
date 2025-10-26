@@ -157,12 +157,18 @@ const theme = createTheme({
             backgroundColor: "#7BD528",
             color: "#FFFFFF",
             fontWeight: 700,
-            "&:active": {
-              filter: "brightness(0.9)",
-            },
-            "&:hover": {
-              filter: "brightness(0.9)",
-            },
+          },
+        },
+        {
+          props: { variant: "menu" },
+          style: {
+            borderRadius: 16,
+            height: 56,
+            border: "solid #7BD528 2px",
+            backgroundColor: "white",
+            fontSize: "16px",
+            fontWeight: 600,
+            color: "#000000",
           },
         },
       ],
