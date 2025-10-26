@@ -129,7 +129,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       <Button
         onClick={() => onClickEmoji(emoji)}
         aria-label={`Emoji ${emoji.char}`}
-        className="react_choose"
+        className="react_choose ${isSelected ? "selected" : ""}"
       >
         <span className="react_emoji">{emoji.char}</span>
         {!owned && emoji.cost > 0 && <CostBadge cost={emoji.cost} />}
@@ -177,7 +177,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                   <Button
                       onClick={() => setSelected(null)}
                       aria-label="Aucune réaction"
-                      className="react_choose react_none"
+                      className="react_choose react_none ${isSelected ? "selected" : ""}"
                     >
                       <HighlightOffIcon />
                   </Button>
