@@ -270,11 +270,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
       </Box>
 
       <List className="success_container">
-        {listItems.length === 0 ? (
-          <ListItem>
-            <ListItemText primary="Aucun succès détaillé" />
-          </ListItem>
-        ) : (
+        {(
           listItems.map((ach, idx) => (
             <ListItem key={idx} className="success">
               <Box className="points_container">
@@ -285,7 +281,6 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
               <Typography variant="body1" className="success_desc">{ach.desc}</Typography>
               <Typography variant="body1" className="success_emoji">{ach.emoji}</Typography>
             </ListItem>
-          ))
         )}
       </List>
 
