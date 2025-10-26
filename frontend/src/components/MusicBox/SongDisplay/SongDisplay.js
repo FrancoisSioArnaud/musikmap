@@ -44,7 +44,7 @@ export default function SongDisplay({
       {showOlder && (
         <Box id="older_deposits">
           <Box className="intro" sx={{p:4}}>
-            <Typography component="h2" variant="h3">
+            <Typography component="h2" variant="h3" sx={{mt:5}}>
               Pépites déposées plus tôt
             </Typography>
             <Typography component="body" variant="body1">
