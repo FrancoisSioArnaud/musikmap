@@ -329,7 +329,7 @@ class GetBox(APIView):
         if is_first_song_deposit_global_by_title_artist(song_name, song_author):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             successes['first_song_deposit_global'] = {
-                'name': "Preums !",
+                'name': "Preums",
                 'desc': "Cette chanson n'a jamais été déposée dans aucune boîte",
                 'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
                 'emoji': "🥇"
@@ -1001,5 +1001,6 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
