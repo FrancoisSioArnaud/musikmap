@@ -190,7 +190,7 @@ export default function UserProfilePage() {
                 onClick={() => navigate("/profile/edit")}
                 size="small"
               >
-                Modifier le profil
+                Modifier
               </Button>
             )}
           </>
@@ -277,6 +277,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
