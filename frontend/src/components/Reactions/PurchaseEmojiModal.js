@@ -40,8 +40,8 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
   return (
     <Box onClick={onCancel} sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", p: 4, zIndex: 1400 }}>
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 480 }}>
-        <Card sx={{ borderRadius: "16px", display: "grid", gap: "12px" }}>
-          <CardContent>
+        <Card sx={{ borderRadius: "16px" }}>
+          <CardContent sx={{display: "grid", gap: "12px"}}>
             <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
               Débloquer l’emoji {emoji?.char || ""}
             </Typography>
