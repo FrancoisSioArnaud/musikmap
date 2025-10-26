@@ -13,6 +13,9 @@
 #older_deposits_list{
   display: flex;
   overflow: scroll;
+  gap: 16px;
+  padding: 16px;
+  align-items: flex-start;
 }
 
 #older_deposits_list .deposit{
