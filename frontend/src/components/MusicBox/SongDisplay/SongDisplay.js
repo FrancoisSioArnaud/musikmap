@@ -28,9 +28,7 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box sx={{
-            p:4,
-          }}>
+    <Box className="song_display">
       
       {/* SECTION — MAIN */}
       <MainDeposit
