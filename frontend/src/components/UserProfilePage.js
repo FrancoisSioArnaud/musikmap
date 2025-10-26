@@ -165,7 +165,7 @@ export default function UserProfilePage() {
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon />
+            <SettingsIcon size="medium"/>
           </IconButton>
         )}
       </Box>
@@ -181,14 +181,14 @@ export default function UserProfilePage() {
         ) : headerUser ? (
           <>
             <Avatar src={headerUser.profile_picture_url} alt={headerUser.username} sx={{ width: 64, height: 64 }} />
-            <Typography variant="h6" sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ flex: 1 }}>
               {headerUser.username}
             </Typography>
             {isOwner && (
               <Button
                 variant="outlined"
                 onClick={() => navigate("/profile/edit")}
-                sx={{ textTransform: "none", borderRadius: "20px" }}
+                size="small"
               >
                 Modifier le profil
               </Button>
@@ -197,7 +197,7 @@ export default function UserProfilePage() {
         ) : (
           <>
             <Avatar sx={{ width: 64, height: 64 }} />
-            <Typography variant="h6" sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ flex: 1 }}>
               Profil introuvable
             </Typography>
           </>
@@ -208,8 +208,8 @@ export default function UserProfilePage() {
       {isOwner ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-            <Tab label="Découvertes" />
-            <Tab label="Partages" />
+            <Tab label="Découvertes" variant="h6" />
+            <Tab label="Partages" variant="h6" />
           </Tabs>
 
           {/* Onglet Découvertes */}
@@ -277,3 +277,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
