@@ -52,7 +52,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
               Débloque cet emoji et utilise-le pour réagir à des chansons.
             </Typography>
 
-            <Box sx={{ display: "flex", gap: "16px" }}>
+            <Box sx={{ display: "flex", gap: "16px", flexDirection: "column-reverse" }}>
               <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
               <Button variant="contained" fullWidth disabled={loading} onClick={unlock}>
                 {loading ? <CircularProgress size={18} /> : "Débloquer"}
