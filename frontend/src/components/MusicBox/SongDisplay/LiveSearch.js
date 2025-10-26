@@ -173,7 +173,7 @@ export default function LiveSearch({
       {/* En-tête + sélecteur plateforme */}
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
-          <Typography component="h2" variant="h3">
+          <Typography component="h2" variant="h3" sx={{mb:3}}>
             Choisis ta chanson à déposer
           </Typography>
 
@@ -338,6 +338,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
