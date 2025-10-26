@@ -212,10 +212,10 @@ export default function LiveSearch({
             }}
             // iOS anti-zoom: police >= 16px sur l'input
             sx={{
+              borderRadius:16,
               "& .MuiInputBase-input": {
                 fontSize: 16,
               },
-                borderRadius:"16px",
             }}
           />
         </Stack>
@@ -338,6 +338,7 @@ export default function LiveSearch({
     </Stack>
   );
 }
+
 
 
 
