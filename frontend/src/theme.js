@@ -140,9 +140,10 @@ const theme = createTheme({
           borderRadius: 16,
           height: 56,
           backgroundColor: "#FFFFFF",
-          color: "#000103",
+          color: "#7BD528",
           fontWeight: 700,
-          border: "solid inset 2px #000103",
+          border: "solid inset 2px #7BD528",
+          borderWidth: 2;
 
           "&:active": {
             filter: "brightness(0.9)",
