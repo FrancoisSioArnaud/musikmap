@@ -9,11 +9,12 @@
 .react_item{
   display: flex;
   flex-direction: column;
-  height: auto;
-  width: calc(25% - (4px * 2));
+  width: calc(25% - 8px);
   padding: 0;
   margin: 4px;
   border-radius: 16px;
+  aspect-ratio: 1 / 1;
+  height: calc(25% - 8px);
 }
 
 .react_item.selected{
@@ -23,7 +24,7 @@
 
 .react_item .points_container{
   margin: 0;
-  margin-top: -15px;
+  margin-top: 4px;
 }
 
 .react_emoji{
