@@ -66,11 +66,14 @@ export default function PlayModal({ open, song, onClose }) {
           <CardContent sx={{ pb: 1 }}>
             {/* En-tête */}
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6" sx={{ mr: 2 }} noWrap>
-                {song?.title || "Titre"} — {song?.artist || "Artiste"}
+               <Typography variant="h1">
+                Écouter
               </Typography>
-              <Button onClick={onClose} title="Fermer">×</Button>
+              <Button onClick={onClose} title="Fermer" sx={{fontSize: "32px"}}>×</Button>
             </Box>
+            <Typography variant="body1" sx={{ mr: 2 }} noWrap>
+                {song?.title || "Titre"} — {song?.artist || "Artiste"}
+            </Typography>
 
             {/* 3 colonnes égales */}
             <Box>
