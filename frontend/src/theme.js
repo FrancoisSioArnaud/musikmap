@@ -137,6 +137,7 @@ const theme = createTheme({
 
         // Bouton outlined (primary)
         outlinedPrimary: {
+          borderRadius: 16,
           backgroundColor: "#FFFFFF",
           color: "#000103",
           "&:active": {
