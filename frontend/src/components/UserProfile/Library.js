@@ -113,7 +113,7 @@ export default function Library() {
             <Typography
               variant="h5"
               component="h2"
-              sx={{ m: "8px auto" }}
+              sx={{ m: "12px auto" }}
             >
               {headerText}
             </Typography>
