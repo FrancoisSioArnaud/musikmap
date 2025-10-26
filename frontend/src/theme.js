@@ -103,7 +103,9 @@ const theme = createTheme({
     MuiAvatar: {
       styleOverrides: {
         root: {
-          border: "2px solid #FFFFFF",
+          border: "2px solid rgba(0,0,0,0.04)",
+          height:6,
+          width:6,
         },
       },
     },
