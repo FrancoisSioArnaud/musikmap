@@ -1,13 +1,15 @@
 @use '../0-init/color' as *;
 
 .deposit{
+  flex: 0 0 70vw;    
+  max-width: 70vw;
+  scroll-snap-align: start;
   padding: 16px;
   display:flex;
   flex-direction: column;
   gap : 16px;
   border-radius: 32px;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 8px 0px;
-  margin: 20px 0px;
   
 }
 
