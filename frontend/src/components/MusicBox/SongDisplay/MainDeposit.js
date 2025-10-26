@@ -132,9 +132,9 @@ export default function MainDeposit({
          <Box 
           className="post_deposit_success"
           sx={{
-            p: 2,
+            p: 4, // 16px → index 4 dans ton spacing array
             border: '2px solid rgba(0, 0, 0, 0.04)',
-            borderRadius: 2,
+            borderRadius: 4, // 16px également (index 4)
             bgcolor: 'rgba(0, 0, 0, 0.04)',
             display: 'flex',
             flexDirection: 'column',
@@ -142,8 +142,8 @@ export default function MainDeposit({
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CheckCircleIcon color="#7BD528" fontSize="big" />
-            <Typography component="h2" variant="h4" sx={{ fontWeight: 700, textAlign: "left" }}>
+            <CheckCircleIcon color="#7BD528" fontSize="medium" />
+            <Typography component="h2" variant="h5" sx={{ fontWeight: 700, textAlign: "left" }}>
               Ta chanson
             </Typography>
           </Box>
