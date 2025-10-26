@@ -130,12 +130,6 @@ const theme = createTheme({
           backgroundColor: "#7BD528",
           color: "#FFFFFF",
           fontWeight: 700,
-          "&:active": {
-            filter: "brightness(0.9)",
-          },
-          "&:hover": {
-            filter: "brightness(0.9)",
-          },
         },
 
         // Bouton outlined (primary)
@@ -148,13 +142,6 @@ const theme = createTheme({
           fontWeight: 700,
           border: "solid inset 2px #7BD528",
           borderWidth: 2,
-
-          "&:active": {
-            filter: "brightness(0.9)",
-          },
-          "&:hover": {
-            filter: "brightness(0.9)",
-          },
         },
       },
       
