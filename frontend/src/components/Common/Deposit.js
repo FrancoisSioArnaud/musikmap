@@ -221,22 +221,17 @@ export default function Deposit({
                 </Button>
               </Box>
             </Box>
+
+            {/* ruban des réactions */}
+            <ReactionsStrip items={dep?.reactions_summary || []} />
+            {dep?.my_reaction?.emoji && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
+            )}
           </Box>
 
           {/* ----- ✅ Section dédiée réaction sous deposit_song ----- */}
           <Box className="deposit_react" sx={{ mt: 2 }}>
-            {/* ruban des réactions */}
-            <ReactionsStrip items={dep?.reactions_summary || []} />
-
-            {/* ta propre réaction */}
-            {dep?.my_reaction?.emoji && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Tu as réagi {dep.my_reaction.emoji}
-              </Typography>
-            )}
-
             <Button
-              sx={{ mt: 1.5 }}
               variant="depositInteract"
               size="large"
               onClick={() => (isRevealed ? openReact() : null)}
@@ -354,22 +349,17 @@ export default function Deposit({
               </>
             )}
           </Box>
+
+          {/* ruban des réactions */}
+          <ReactionsStrip items={dep?.reactions_summary || []} />
+          {dep?.my_reaction?.emoji && isRevealed && (
+            <Typography variant="body2" sx={{ mt: 0.5 }}>Tu as réagi {dep.my_reaction.emoji}</Typography>
+          )}
         </Box>
 
         {/* ----- ✅ Section dédiée réaction sous deposit_song ----- */}
         <Box className="deposit_react" sx={{ mt: 2 }}>
-          {/* ruban des réactions */}
-          <ReactionsStrip items={dep?.reactions_summary || []} />
-
-          {/* ta propre réaction */}
-          {dep?.my_reaction?.emoji && isRevealed && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Tu as réagi {dep.my_reaction.emoji}
-            </Typography>
-          )}
-
           <Button
-            sx={{ mt: 1.5 }}
             variant="depositInteract"
             size="large"
             onClick={openReact}
