@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -7,11 +7,9 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import AlbumIcon from "@mui/icons-material/Album";
 import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
 
 export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }) {
   const [loading, setLoading] = useState(false);
-  const { setUser } = useContext(UserContext) || {};
 
   if (!open || !emoji) return null;
 
@@ -36,13 +34,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
       return;
     }
 
-    // ✅ maj du solde points global
-    if (typeof data?.points_balance === "number" && setUser) {
-      setUser((prev) => ({ ...(prev || {}), points: data.points_balance }));
-    }
-
-    // ✅ notifie la modale parente (pour marquer l'emoji owned & sélectionner)
-    onUnlocked?.(data?.points_balance);
+    onUnlocked?.({ emoji, points_balance: data?.points_balance });
   };
 
   return (
@@ -54,13 +46,17 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
               Débloquer l’emoji {emoji?.char || ""}
             </Typography>
 
-            {/* ✅ Affiche le cost avec ton format points_container */}
-            <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 1, mb: 2 }}>
+            {/* ✅ Cost avec format demandé */}
+            <Box className="points_container" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, mb: 1 }}>
               <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                 {emoji?.cost ?? 0}
               </Typography>
               <AlbumIcon />
             </Box>
+
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Débloque cet emoji et utilise-le pour réagir à des chansons.
+            </Typography>
 
             <Box sx={{ display: "flex", gap: 1.5 }}>
               <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
