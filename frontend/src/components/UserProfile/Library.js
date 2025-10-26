@@ -103,7 +103,7 @@ export default function Library() {
   }
 
   return (
-    <Box sx={{ p: 2, display: "grid", gap: 4 }}>
+    <Box sx={{ p: 4, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
         const headerText = `Box : ${sess?.box?.name ?? "Inconnue"} · ${formatRelativeFr(sess?.started_at)}`;
 
