@@ -115,7 +115,7 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     if (!(cost > 0)) return null;
     return (
       <Box className="points_container"
-        <Typography variant="body1" component="span">
+        <Typography variant="body2" component="span">
           {cost}
         </Typography>
         <AlbumIcon />
@@ -129,8 +129,9 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       <Button
         onClick={() => onClickEmoji(emoji)}
         aria-label={`Emoji ${emoji.char}`}
+        className="react_choose"
       >
-        <span style={{ fontSize: 22 }}>{emoji.char}</span>
+        <span className="react_emoji">{emoji.char}</span>
         {!owned && emoji.cost > 0 && <CostBadge cost={emoji.cost} />}
       </Button>
     );
@@ -143,10 +144,10 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
       <Box onClick={(e) => e.stopPropagation()}>
         <Card >
           <CardContent>
-            <Typography component="h1" variant="h5" >
+            <Typography component="h1" variant="h1" >
               Réagir
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body1">
               Choisis un emoji pour dire ce que tu as pensé de la chanson.
             </Typography>
 
@@ -158,36 +159,18 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
               <>
                 {/* NONE */}
                 <Box >
-                  <Button
-                    onClick={() => setSelected(null)}
-                    aria-label="Aucune réaction"
-                  >
-                    <HighlightOffIcon />
-                  </Button>
-                  <Typography variant="caption">Retirer ma réaction</Typography>
+                  
                 </Box>
 
-                {/* Basics */}
-                {catalog.basic.length > 0 && (
-                  <>
-                    <Divider  />
-                    <Typography variant="subtitle2">
-                      Emojis de base
-                    </Typography>
-                    <Box>
-                      {catalog.basic.map((e) => (
-                        <EmojiItem key={e.id} emoji={e} owned={true} />
-                      ))}
-                    </Box>
-                  </>
-                )}
-
-                {/* Payants */}
-                <Divider />
-                <Typography variant="subtitle2">
-                  Emojis à débloquer
-                </Typography>
-                <Box >
+                {/* Reactions */}
+                <Box>
+                  <Button
+                      onClick={() => setSelected(null)}
+                      aria-label="Aucune réaction"
+                      className="react_choose react_none"
+                    >
+                      <HighlightOffIcon />
+                  </Button>
                   {catalog.actives_paid.map((e) => (
                     <EmojiItem key={e.id} emoji={e} owned={isOwned(e)} />
                   ))}
