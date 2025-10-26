@@ -9,11 +9,12 @@ def generate_unique_filename(instance, filename):
 
 
 NB_POINTS_ADD_SONG = 50  # Points ajoutés lors du dépôt d'une musique
-NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX = 10  # Premier dépot d'un utilisateur dans une certaine boite
-NB_POINTS_FIRST_SONG_DEPOSIT_BOX = 20  # Première fois que ce son est déposé dans une boite
-NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL = 5  # Première fois que ce son est déposé sur le réseau
-NB_POINTS_CONSECUTIVE_DAYS_BOX = 2  # Jours consécutifs de dépôt sur une même boite
-COST_REVEAL_BOX = 40 #cout d'un reveal dans une box
-COST_REVEAL_PROFILE = 60 #depot sur profil
+NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX = 75  # Premier dépot d'un utilisateur dans une certaine boite
+NB_POINTS_FIRST_SONG_DEPOSIT_BOX = 35  # Première fois que ce son est déposé dans cette boite
+NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL = 25  # Première fois que ce son est déposé sur le réseau
+NB_POINTS_CONSECUTIVE_DAYS_BOX = 50  # Jours consécutifs de dépôt sur une même boite
+COST_REVEAL_BOX = 100 #cout d'un reveal dans une box
+COST_REVEAL_PROFILE = 80 #depot sur profil
 #COST_REVEAL_HEARTSONG #chanson de coeur
+
 
