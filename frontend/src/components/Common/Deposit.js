@@ -148,7 +148,7 @@ export default function Deposit({
         {items.map((it, i) => (
           <Box key={i}>
 
-            <Typography variant="body1" component="span">
+            <Typography variant="h4" component="span">
              {it.emoji} × {it.count}
             </Typography>
           </Box>
