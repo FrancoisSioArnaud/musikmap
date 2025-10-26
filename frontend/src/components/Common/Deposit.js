@@ -379,7 +379,7 @@ export default function Deposit({
             >
               Réagir
             </Button>
-          )}
+          ) : ( ) }
 
           {/* ruban des réactions + ma réaction */}
           <ReactionsStrip items={dep?.reactions_summary || []} />
