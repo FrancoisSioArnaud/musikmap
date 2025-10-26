@@ -66,6 +66,7 @@ export default function MenuAppBar() {
         ) : (
           <Button
             variant="outlined"
+            color="primary"
             endIcon={<PersonIcon />}
             component={Link}
             to="/login"
@@ -87,6 +88,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
