@@ -266,13 +266,13 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
 
   return (
     <Box sx={{ display: "grid", gap: 1 }}>
-      <Box className="intro">
-        <CheckIcon color="success" />
+      <Box className="intro_small">
+        <CheckIcon color="success" sx={{m: "auto", height: "26px", width: "26px"}} />
         <Typography variant="h1">
           Pépite Déposé
         </Typography>
 
-        <Box className="points_container">
+        <Box className="points_container" sx={{m:"auto"}}>
           <Typography component="span" variant="body1">+{totalPoints}</Typography>
           <AlbumIcon/>
         </Box>
