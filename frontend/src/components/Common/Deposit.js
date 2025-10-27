@@ -210,7 +210,7 @@ export default function Deposit({
             {showDate && (
               <Box className="deposit_date">
                 <Box className="icon squaredesign" />
-                <Typography className="squaredesign" variant="subtitle1" component="span">
+                <Typography className="squaredesign" variant="body1" component="span">
                   {"Chanson déposée " + (localDep?.deposit_date || "") + " par :"}
                 </Typography>
               </Box>
@@ -319,8 +319,8 @@ export default function Deposit({
       <Card className="deposit deposit_list">
         {showDate && (
           <Box className="deposit_date">
-            <Typography component="h3" variant="subtitle1">
-              {"Déposée " + (localDep?.deposit_date || "")}
+            <Typography component="h3" variant="body1">
+              {"Chanson déposée ici " + (localDep?.deposit_date || "") + " par :"}
             </Typography>
           </Box>
         )}
