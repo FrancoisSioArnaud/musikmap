@@ -35,7 +35,7 @@ export default function EnableLocation({
     >
       <Box className="modal modal_loc" sx={{padding: "16px", display: "grid", gap: "12px"}}>
         
-          <Typography className="squaredesign" variant="subtitle1" component="span">
+          <Typography className="intro_small squaredesign" variant="subtitle1" component="span">
             {boxTitle}
           </Typography>
   
@@ -74,6 +74,7 @@ export default function EnableLocation({
     </Drawer>
   );
 }
+
 
 
 
