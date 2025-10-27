@@ -20,6 +20,12 @@
   left: 16px;
 }
 
+#older_deposits_list .deposit{
+  flex: 0 0 70vw;    
+  max-width: 70vw;
+  scroll-snap-align: start;
+  
+}
 
 .deposit .deposit_date{
   padding: 6px 16px;
@@ -125,4 +131,3 @@
     border-radius: 26px;
     background-color: #fff;
 }
-
