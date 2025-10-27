@@ -23,7 +23,6 @@ export default function LiveSearch({
   user,
   onDepositSuccess, // (addedDeposit, successes) => void
   onClose,          // non utilisé ici, conservé pour compat
-  customized = false, // <<— NOUVEAU : transmis par les parents
 }) {
   const { setUser } = useContext(UserContext) || {};
 
@@ -48,28 +47,18 @@ export default function LiveSearch({
   useEffect(() => {
     const timer = setTimeout(() => {
       const doFetch = async () => {
-        const query = (searchValue || "").trim();
-        const hasQuery = query.length > 0;
-        const showPlaceholder = customized && !hasQuery;
-
-        // Si placeholder doit s'afficher, on n’effectue AUCUN fetch
-        if (showPlaceholder) {
-          setJsonResults([]);
-          setIsSearching(false);
-          return;
-        }
-
         try {
           setIsSearching(true);
 
           // --- SPOTIFY ---
           if (selectedStreamingService === "spotify") {
-            if (!hasQuery) {
+            if (searchValue === "") {
               if (isSpotifyAuthenticated) {
                 const r = await fetch("/spotify/recent-tracks");
                 const j = await r.json();
                 setJsonResults(Array.isArray(j) ? j : []);
               } else {
+                // Non-auth + pas de recherche : rien (conforme à tes consignes)
                 setJsonResults([]);
               }
             } else {
@@ -77,7 +66,7 @@ export default function LiveSearch({
               const r = await fetch("/spotify/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-                body: JSON.stringify({ search_query: query }),
+                body: JSON.stringify({ search_query: searchValue }),
               });
               const j = await r.json();
               setJsonResults(Array.isArray(j) ? j : []);
@@ -86,7 +75,7 @@ export default function LiveSearch({
 
           // --- DEEZER ---
           if (selectedStreamingService === "deezer") {
-            if (!hasQuery) {
+            if (searchValue === "") {
               if (isDeezerAuthenticated) {
                 const r = await fetch("/deezer/recent-tracks");
                 const j = await r.json();
@@ -99,7 +88,7 @@ export default function LiveSearch({
               const r = await fetch("/deezer/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-                body: JSON.stringify({ search_query: query }),
+                body: JSON.stringify({ search_query: searchValue }),
               });
               const j = await r.json();
               setJsonResults(Array.isArray(j) ? j : []);
@@ -116,13 +105,7 @@ export default function LiveSearch({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [
-    searchValue,
-    selectedStreamingService,
-    isDeezerAuthenticated,
-    isSpotifyAuthenticated,
-    customized, // si la prop change dynamiquement, on ré-applique la logique
-  ]);
+  }, [searchValue, selectedStreamingService, isDeezerAuthenticated, isSpotifyAuthenticated]);
 
   const handleStreamingServiceChange = (_e, value) => {
     if (!value) return; // ToggleButtonGroup peut renvoyer null
@@ -185,10 +168,6 @@ export default function LiveSearch({
     }
   }
 
-  // ----- Aides de rendu -----
-  const query = (searchValue || "").trim();
-  const showPlaceholder = customized && query === "";
-
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
       {/* En-tête + sélecteur plateforme */}
@@ -249,123 +228,116 @@ export default function LiveSearch({
         </Box>
       )}
 
-      {/* ----- Zone résultats / placeholder ----- */}
+      {/* Résultats */}
       <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
-        {showPlaceholder ? (
-          // Placeholder si customized === true et barre vide
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>
-              Thème de la semaine
-            </Typography>
-            <Typography variant="body1">
-              C’est les vacances d’automne, partage une chanson qui te fait voyager
-            </Typography>
-          </Box>
-        ) : (
-          // Sinon : liste de résultats (search prioritaire ; sinon "récents" si auth OK)
-          <List disablePadding>
-            {jsonResults.map((option) => {
-              const isPosting = postingId === (option?.id ?? "__posting__");
+        <List disablePadding>
+          {jsonResults.map((option) => {
+            const isPosting = postingId === (option?.id ?? "__posting__");
 
-              return (
-                <ListItem
-                  key={option.id}
-                  divider
+            return (
+              <ListItem
+                key={option.id}
+                divider
+                sx={{
+                  overflow: "hidden",           // empêche l'étirement horizontal
+                  alignItems: "center",
+                }}
+                secondaryAction={
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={isPosting}
+                    onClick={() => handleButtonClick(option, boxName)}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {isPosting ? (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CircularProgress size={16} />
+                        Choisir
+                      </Box>
+                    ) : (
+                      "Choisir"
+                    )}
+                  </Button>
+                }
+              >
+                {/* Vignette 64px à gauche, carrée, fallback gris clair */}
+                <Box
                   sx={{
-                    overflow: "hidden",           // empêche l'étirement horizontal
-                    alignItems: "center",
+                    width: 64,
+                    height: 64,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    bgcolor: "action.hover", // gris light fallback
+                    mr: 2,
                   }}
-                  secondaryAction={
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={isPosting}
-                      onClick={() => handleButtonClick(option, boxName)}
-                      sx={{ minWidth: 0 }}
-                    >
-                      {isPosting ? (
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <CircularProgress size={16} />
-                          Choisir
-                        </Box>
-                      ) : (
-                        "Choisir"
-                      )}
-                    </Button>
-                  }
                 >
-                  {/* Vignette 64px à gauche, carrée, fallback gris clair */}
-                  <Box
-                    sx={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 1,
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      bgcolor: "action.hover", // gris light fallback
-                      mr: 2,
-                    }}
-                  >
-                    {option?.image_url ? (
-                      <Box
-                        component="img"
-                        src={option.image_url}
-                        alt={option.name || "Cover"}
-                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
-                    ) : null}
-                  </Box>
+                  {option?.image_url ? (
+                    <Box
+                      component="img"
+                      src={option.image_url}
+                      alt={option.name || "Cover"}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  ) : null}
+                </Box>
 
-                  {/* Titre (h3) + Artiste (paragraphe) */}
-                  <Box
+                {/* Titre (h3) + Artiste (paragraphe) */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                    mr: 2,
+                    flex: 1,
+                    overflow: "hidden", // protège contre les très longues chaînes sans espace
+                  }}
+                >
+                  <Typography
+                    component="h3"
+                    variant="h6"
+                    noWrap
                     sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      minWidth: 0,
-                      mr: 2,
-                      flex: 1,
-                      overflow: "hidden", // protège contre les très longues chaînes sans espace
+                      fontWeight: 700,
+                      textAlign: "left",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
                     }}
+                    title={option?.name || ""}
                   >
-                    <Typography
-                      component="h3"
-                      variant="h6"
-                      noWrap
-                      sx={{
-                        fontWeight: 700,
-                        textAlign: "left",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "100%",
-                      }}
-                      title={option?.name || ""}
-                    >
-                      {option?.name || ""}
-                    </Typography>
-                    <Typography
-                      component="p"
-                      variant="body2"
-                      color="text.secondary"
-                      noWrap
-                      sx={{
-                        textAlign: "left",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "100%",
-                      }}
-                      title={option?.artist || ""}
-                    >
-                      {option?.artist || ""}
-                    </Typography>
-                  </Box>
-                </ListItem>
-              );
-            })}
-          </List>
-        )}
+                    {option?.name || ""}
+                  </Typography>
+                  <Typography
+                    component="p"
+                    variant="body2"
+                    color="text.secondary"
+                    noWrap
+                    sx={{
+                      textAlign: "left",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                    }}
+                    title={option?.artist || ""}
+                  >
+                    {option?.artist || ""}
+                  </Typography>
+                </Box>
+              </ListItem>
+            );
+          })}
+        </List>
+
+        {/* Si pas de résultats: on n’affiche rien (conforme à tes consignes) */}
+        {(!isSearching && jsonResults.length === 0) ? null : null}
       </Paper>
     </Stack>
   );
 }
+
+
+
