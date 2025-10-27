@@ -137,7 +137,7 @@ export default function Library() {
             </Typography>
 
             {/* Dépôts de la session */}
-            <Box sx={{ display: "grid", gap: 1.5 }}>
+            <Box sx={{ display: "grid", gap: "16px" }}>
               {Array.isArray(sess?.deposits) &&
                 sess.deposits.map((d, idx) => {
                   const t = (d?.type || "").toLowerCase();
