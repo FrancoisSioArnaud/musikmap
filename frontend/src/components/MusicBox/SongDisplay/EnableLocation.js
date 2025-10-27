@@ -38,15 +38,15 @@ export default function EnableLocation({
           <Typography className="intro_small squaredesign" variant="subtitle1" component="span">
             {boxTitle}
           </Typography>
-  
-        <Typography variant="h3" component="h1">
-          Localisation
-        </Typography>
-  
-        <Typography variant="body1">
-          Pour éviter les tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.
-        </Typography>
-  
+        <Box sx={{display:"grid", gap:"4px"}}>
+          <Typography variant="h3" component="h1">
+            Localisation
+          </Typography>
+    
+          <Typography variant="body1">
+            Pour éviter les tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.
+          </Typography>
+        </Box>
         {error ? (
           <Typography variant="body1" color="error">
             {error}
@@ -74,6 +74,7 @@ export default function EnableLocation({
     </Drawer>
   );
 }
+
 
 
 
