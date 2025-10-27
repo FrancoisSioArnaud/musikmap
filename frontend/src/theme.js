@@ -149,7 +149,7 @@ const theme = createTheme({
         {
           props: { variant: "depositInteract" }, // <Button variant="gradient">
           style: {
-            p: "6px 26px",
+            p: "1épx 26px",
             borderRadius: 16,
             height: 56,
             backgroundColor: "#7BD528",
