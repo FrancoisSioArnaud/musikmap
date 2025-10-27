@@ -274,7 +274,7 @@ export default function Deposit({
                   disabled={!isRevealed}
                   startIcon={<PlayArrowIcon />}
                 >
-                  Play
+                  Écouter
                 </Button>
               </Box>
             </Box>
@@ -383,7 +383,7 @@ export default function Deposit({
                     onClick={() => openPlayFor(s)}
                     startIcon={<PlayArrowIcon />}
                   >
-                    Play
+                    Écouter
                   </Button>
                 )}
               </>
