@@ -4,8 +4,7 @@
   padding: 16px;
   display:flex;
   flex-direction: column;
-  align-items: center;
-  gap : 12px;
+  gap : 16px;
   border-radius: 32px;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 8px 0px;
   margin: 0 26px;
@@ -28,8 +27,16 @@
   
 }
 
+.deposit .deposit_infos{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+
+}
 .deposit .deposit_date{
-  padding: 6px 16px;
+  padding: 0px 16px;
 }
 
 .deposit .deposit_user{
