@@ -252,7 +252,7 @@ export default function Deposit({
               <Box className="texts">
                 {isRevealed && (
                   <>
-                    <Typography component="span" className="titre squaredesign" variant="h3">
+                    <Typography component="span" className="titre squaredesign" variant="h4">
                       {s.title}
                     </Typography>
                     <Typography component="span" className="artist squaredesign" variant="body1">
