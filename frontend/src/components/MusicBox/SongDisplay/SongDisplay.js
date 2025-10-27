@@ -16,7 +16,6 @@ export default function SongDisplay({
   revealCost,
   showOlder = false,          // <-- masqué par défaut
   onDeposited = () => {},     // <-- appelé au succès du POST (pour afficher older)
-  customized,
 }) {
   const cost = typeof revealCost === "number" ? revealCost : 40;
 
@@ -39,7 +38,6 @@ export default function SongDisplay({
         isSpotifyAuthenticated={isSpotifyAuthenticated}
         isDeezerAuthenticated={isDeezerAuthenticated}
         onDeposited={onDeposited}  // <-- prop pour remonter l’info
-        customized={customized}
       />
 
       {/* SECTION — OLDER DEPOSITS (vertical, full-width) — seulement après dépôt */}
