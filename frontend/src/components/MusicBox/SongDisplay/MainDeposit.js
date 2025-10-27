@@ -284,11 +284,23 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
       <List className="success_container">
         {listItems.map((ach, idx) => (
           <ListItem key={idx} className="success" sx={{pt: 0, pb: 0}}>
-            <Box className="success_infos">
+            <Box className="success_design>
+              {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
+              <Typography
+                variant="body1"
+                className="success_emoji"
+                aria-label={`emoji ${ach.name}`}
+              >
+                {ach.emoji}
+              </Typography>
               <Box className="points_container">
                 <Typography component="span" variant="body1">+{ach.points}</Typography>
                 <AlbumIcon />
               </Box>
+            </Box>
+                
+            <Box className="success_infos">
+              
               <Typography variant="h3" className="success_title">
                 {ach.name}
               </Typography>
@@ -297,14 +309,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
               </Typography>
             </Box>
 
-            {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
-              <Typography
-                variant="body1"
-                className="success_emoji"
-                aria-label={`emoji ${ach.name}`}
-              >
-                {ach.emoji}
-              </Typography>
+
             )}
           </ListItem>
         ))}
