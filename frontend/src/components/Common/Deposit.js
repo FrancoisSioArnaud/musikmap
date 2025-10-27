@@ -79,7 +79,15 @@ export default function Deposit({
   const revealDeposit = async () => {
     try {
       if (!user || !user.username) {
-        alert("Connecte-toi pour révéler cette pépite.");
+        const goLogin = window.confirm(
+          "Crée-toi un compte pour pouvoir révéler cette chanson"
+        );
+        if (goLogin) {
+          navigate(
+            "/login?next=" +
+              encodeURIComponent(window.location.pathname + window.location.search)
+          );
+        }
         return;
       }
       const csrftoken = getCookie("csrftoken");
@@ -387,7 +395,6 @@ export default function Deposit({
                 <Button
                   variant="depositInteract"
                   onClick={revealDeposit}
-                  disabled={!user || !user.username}
                   className="decouvrir"
                 >
                   Découvrir
