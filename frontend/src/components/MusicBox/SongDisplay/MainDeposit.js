@@ -31,6 +31,7 @@ export default function MainDeposit({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   onDeposited = () => {},
+  customized,
 }) {
   const [myDeposit, setMyDeposit] = useState(null);
 
@@ -238,6 +239,7 @@ export default function MainDeposit({
                 user={user}
                 onDepositSuccess={handleDepositSuccess}
                 onClose={closeDrawer}
+                customized={customized}
               />
             ) : (
               <AchievementsPanel
