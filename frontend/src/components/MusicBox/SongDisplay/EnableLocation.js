@@ -33,14 +33,19 @@ export default function EnableLocation({
       }}
       
     >
-      <stack className="modal modal_loc">
-        <Box className="intro">
-          <Box className="icon squaredesign" >
-          </Box>
+      <stack
+        className="modal modal_loc"
+        sx={{
+          padding: "16px",
+          display: "grid",
+          gap: "12px",
+          
+        }}
+      >
+        
           <Typography className="squaredesign" variant="subtitle1" component="span">
             {boxTitle}
           </Typography>
-        </Box>
   
         <Typography variant="h3" component="h1">
           Localisation
@@ -77,6 +82,7 @@ export default function EnableLocation({
     </Drawer>
   );
 }
+
 
 
 
