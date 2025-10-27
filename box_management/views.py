@@ -819,51 +819,65 @@ class UserDepositsView(APIView):
     permission_classes = []  # public
 
     def get(self, request):
-        user_id = (request.GET.get("user_id") or "").strip()
-        if not user_id:
+        # 1) Lecture & validation du paramètre user_id
+        raw_user_id = (request.GET.get("user_id") or "").strip()
+        if not raw_user_id:
             return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            user_id = int(user_id)
+            user_id = int(raw_user_id)
         except ValueError:
             return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
 
-        target = User.objects.filter(id=user_id).first()
-        if not target:
+        # 2) Vérification que l'utilisateur existe
+        target_user = User.objects.filter(id=user_id).first()
+        if not target_user:
             return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
 
-        qs = Deposit.objects.filter(user_id=user_id).order_by("-deposited_at")[:500]
+        # 3) Récupération des 500 dépôts les plus récents
+        deposits = (
+            Deposit.objects.filter(user_id=user_id)
+            .select_related("song")  # On suppose que le champ song existe toujours
+            .order_by("-deposited_at")[:500]
+        )
 
-        rel_candidates = [
-            f.name for f in Deposit._meta.get_fields()
-            if getattr(f, "is_relation", False)
-            and getattr(f, "many_to_one", False)
-            and not getattr(f, "auto_created", False)
-        ]
-        if "song" in rel_candidates:
-            qs = qs.select_related("song")
+        # 4) Construction de la réponse
+        response_data = []
+        for deposit in deposits:
+            song = getattr(deposit, "song", None)
+            deposited_at = getattr(deposit, "deposited_at", None)
 
-        def pick(obj, *names):
-            for n in names:
-                if obj is not None and hasattr(obj, n):
-                    val = getattr(obj, n)
-                    if val not in (None, ""):
-                        return val
-            return None
+            # On prend directement les champs avec fallback simples
+            title = (
+                getattr(song, "title", None)
+                or getattr(song, "name", None)
+                or getattr(deposit, "song_title", None)
+            )
+            artist = (
+                getattr(song, "artist", None)
+                or getattr(song, "artist_name", None)
+                or getattr(deposit, "song_artist", None)
+            )
+            img_url = (
+                getattr(song, "img_url", None)
+                or getattr(song, "image_url", None)
+                or getattr(song, "cover_url", None)
+                or getattr(deposit, "song_img_url", None)
+                or getattr(deposit, "song_image_url", None)
+            )
 
-        items = []
-        for d in qs:
-            s = getattr(d, "song", None) if "song" in rel_candidates else None
-            title  = pick(s, "title", "name") or pick(d, "song_title")
-            artist = pick(s, "artist", "artist_name") or pick(d, "song_artist")
-            img    = pick(s, "img_url", "image_url", "cover_url") or pick(d, "song_img_url", "song_image_url")
-            deposited = getattr(d, "deposited_at", None)
-            items.append({
-                "deposit_id": getattr(d, "id", None),
-                "deposit_date": deposited.isoformat() if deposited else None,
-                "song": {"title": title, "artist": artist, "img_url": img},
+            response_data.append({
+                "deposit_id": getattr(deposit, "id", None),
+                "deposit_date": deposited_at.isoformat() if deposited_at else None,
+                "song": {
+                    "title": title,
+                    "artist": artist,
+                    "img_url": img_url,
+                },
             })
 
-        return Response(items, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 # ==========================================================
@@ -1001,6 +1015,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
