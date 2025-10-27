@@ -74,7 +74,7 @@
 }
 
 .deposit_list .deposit_song .img_container{
-  width : 40%;
+  width : auto;
 }
 
 
@@ -117,7 +117,8 @@
   gap: 16px;
   justify-content: space-between;
 }
-.deposit_interact .decouvrir{
+
+.deposit_list .interact .decouvrir{
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -126,7 +127,8 @@
   min-width: auto;
   height: auto;
 }
-.deposit_interact .points_container{
+
+.deposit_list .interact .points_container{
  margin:0;
 }
 
