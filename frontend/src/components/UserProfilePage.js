@@ -246,7 +246,8 @@ export default function UserProfilePage() {
                     variant="list"
                     fitContainer={true}
                     showDate={false}
-                    showUser={false} // éviter la redondance: header déjà affiché en haut
+                    showUser={false} 
+                    showReact={false}
                   />
                 ))}
               </Box>
@@ -287,6 +288,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
