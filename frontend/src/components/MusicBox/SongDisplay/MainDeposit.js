@@ -284,7 +284,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
       <List className="success_container">
         {listItems.map((ach, idx) => (
           <ListItem key={idx} className="success" sx={{pt: 0, pb: 0}}>
-            <Box className="success_design>
+            <Box className="success_design">
               {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
               <Typography
                 variant="body1"
