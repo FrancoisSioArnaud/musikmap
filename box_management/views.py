@@ -19,6 +19,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
+
+
+
+
+from users.models import CustomUser
+from .models import Deposit  # + Song si tu en as besoin ailleurs
+
+
 # Projet
 from .models import (
     Box, Deposit, Song, LocationPoint, DiscoveredSong,
@@ -830,38 +838,41 @@ class UserDepositsView(APIView):
         except ValueError:
             return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2) Vérification que l'utilisateur existe (CustomUser)
-        target_user = CustomUser.objects.filter(id=user_id).first()
+        # 2) Vérification que l'utilisateur existe
+        target_user = User.objects.filter(id=user_id).first()
         if not target_user:
             return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
 
         # 3) Récupération des 500 dépôts les plus récents
-        #    IMPORTANT : la FK est nommée 'song_id', donc on utilise bien 'song_id' ici
+        #    ⚠️ le FK vers Song s'appelle 'song_id', il faut donc select_related("song_id")
         deposits = (
             Deposit.objects
-            .filter(user_id=user_id)
-            .select_related("song_id")  # <— corrige l'erreur FieldError
+            .filter(user_id=user_id)           # 'user' est le FK, 'user_id' le champ id implicite
+            .select_related("song_id")         # important: le nom exact du champ FK
             .order_by("-deposited_at")[:500]
         )
 
         # 4) Construction de la réponse
-        items = []
+        response_data = []
         for deposit in deposits:
-            song = deposit.song_id  # 'song_id' est l'objet Song (FK), pas un entier
-            deposited_at = deposit.deposited_at
+            song = getattr(deposit, "song_id", None)  # objet Song, car le champ s'appelle song_id
+            deposited_at = getattr(deposit, "deposited_at", None)
 
-            items.append({
-                "deposit_id": deposit.id,
+            title = getattr(song, "title", None)
+            artist = getattr(song, "artist", None)
+            img_url = getattr(song, "image_url", None)
+
+            response_data.append({
+                "deposit_id": getattr(deposit, "id", None),
                 "deposit_date": deposited_at.isoformat() if deposited_at else None,
                 "song": {
-                    "title": getattr(song, "title", None),
-                    "artist": getattr(song, "artist", None),
-                    # le front attend 'img_url' => on mappe depuis Song.image_url
-                    "img_url": getattr(song, "image_url", None),
+                    "title": title,
+                    "artist": artist,
+                    "img_url": img_url,
                 },
             })
 
-        return Response(items, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 # ==========================================================
@@ -999,6 +1010,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
