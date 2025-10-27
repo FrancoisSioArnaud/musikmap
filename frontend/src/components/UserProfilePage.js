@@ -256,12 +256,12 @@ export default function UserProfilePage() {
       ) : (
         /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
         <>
-          <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>
+          <Typography variant="h3" sx={{ ml: 4, mr:4, mb: 1 }}>
             {`Partages de ${headerUser?.username ?? urlUsername ?? ""}`}
           </Typography>
 
           {depositsLoading ? (
-            <Box sx={{ display: "grid", gap: 2 }}>
+            <Box sx={{ display: "grid", gap: 2 , p:4}}>
               <Skeleton variant="rounded" height={120} />
               <Skeleton variant="rounded" height={120} />
             </Box>
@@ -287,6 +287,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
