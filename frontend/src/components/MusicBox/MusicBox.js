@@ -429,7 +429,7 @@ export default function MusicBox() {
             {view === "song" && (
               <>
                 {!boxData || getBoxLoading ? (
-                  <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+                  <Box sx={{ display: "grid", gap: 4, p: 4 }}>
                     <Skeleton variant="rounded" height={120} />
                     <Skeleton variant="rounded" height={320} />
                     <Skeleton variant="rounded" height={220} />
@@ -490,3 +490,4 @@ export default function MusicBox() {
     </Box>
   );
 }
+
