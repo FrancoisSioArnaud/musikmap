@@ -28,7 +28,7 @@ export default function SongDisplay({
   const dep0 = deposits[0] || null;
 
   return (
-    <Box className="song_display">
+    <Box className="song_display" sx={{pb : "96px"}}>
       
       {/* SECTION — MAIN */}
       <MainDeposit
