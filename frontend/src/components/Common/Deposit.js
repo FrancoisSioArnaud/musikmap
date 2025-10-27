@@ -179,7 +179,7 @@ export default function Deposit({
       <Box className="reactions_container">
         {items.map((it, i) => (
           <Box key={`${it.emoji || i}-${it.count || 0}`} sx={{display : "flex", flexDirection:"row", alignItems:"center",}}>
-            <Typography variant="h5" component="span">
+            <Typography variant="h4" component="span">
               {it.emoji}
             </Typography>
             <Typography variant="h5" component="span">
