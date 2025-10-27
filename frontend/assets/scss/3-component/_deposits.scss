@@ -4,10 +4,10 @@
   padding: 16px;
   display:flex;
   flex-direction: column;
-  gap : 16px;
+  gap : 12px;
   border-radius: 32px;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 8px 0px;
-  
+  margin: 0 26px;
 }
 
 #older_deposits_list{
@@ -46,7 +46,7 @@
 
 .deposit .deposit_song{
   background-color: rgba(0, 0, 0, 0.04);
-  padding: 26px;
+  padding: 20px;
   padding-bottom:16px;
   border-radius: 26px;
   display: flex;
@@ -54,7 +54,7 @@
 
 .deposit_main .deposit_song{
   flex-direction: column;
-  gap: 26px;
+  gap: 8px;
 }
 
 .deposit_list .deposit_song{
@@ -81,27 +81,23 @@
 
 .deposit .interact{
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  flex-direction: column;
 }
 
 .deposit_main .interact{
-  flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
 }
 
 .deposit_list .interact{
-  flex-direction:column;
   justify-content: left;
-  gap: 12px;
 }
 
 .deposit .interact .texts{
   display: flex;
   flex-direction: column;
   gap: 0px;
-  text-align:left;
+  text-align:center;
 }
 
 .deposit_main .interact .texts{
