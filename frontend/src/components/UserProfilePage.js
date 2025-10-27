@@ -37,7 +37,7 @@ async function fetchPublicUserInfoByUsername(username) {
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`get-user-info HTTP ${res.status}`);
-  return res.json(); // { id, username, profile_picture_url, total_deposits, ... }
+  return res.json(); // { id, username, profile_picture, total_deposits, ... }
 }
 
 /** Récupère les dépôts d’un user. Exige un userId non nul. */
@@ -75,7 +75,7 @@ export default function UserProfilePage() {
 
   // --- 2) Header (avatar + username affiché) ---
   const [headerLoading, setHeaderLoading] = useState(true);
-  const [headerUser, setHeaderUser] = useState(null); // { id, username, profile_picture_url }
+  const [headerUser, setHeaderUser] = useState(null); // { id, username, profile_picture }
 
   // --- 3) Dépôts (Partages) ---
   const [deposits, setDeposits] = useState([]);
@@ -129,7 +129,7 @@ export default function UserProfilePage() {
         const hdr = {
           id: info?.id,
           username: info?.username,
-          profile_picture_url: info?.profile_picture_url,
+          profile_picture: info?.profile_picture,
         };
         setHeaderUser(hdr);
         setHeaderLoading(false);
@@ -181,7 +181,7 @@ export default function UserProfilePage() {
         ) : headerUser ? (
           <>
             <Avatar
-              src={headerUser.profile_picture_url}
+              src={headerUser.profile_picture}
               alt={headerUser.username}
               sx={{ width: 64, height: 64 }}
             />
@@ -288,6 +288,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
