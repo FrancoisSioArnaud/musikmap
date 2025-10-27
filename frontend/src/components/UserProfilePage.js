@@ -170,8 +170,8 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      {/* Header user (avatar + username) */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px"}}>
+      {/* Header user (avatar + username + total dépôts) */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
         {headerLoading ? (
           <>
             <Skeleton variant="circular" width={64} height={64} />
@@ -180,10 +180,19 @@ export default function UserProfilePage() {
           </>
         ) : headerUser ? (
           <>
-            <Avatar src={headerUser.profile_picture_url} alt={headerUser.username} sx={{ width: 64, height: 64 }} />
-            <Typography variant="h5" sx={{ flex: 1 }}>
-              {headerUser.username}
-            </Typography>
+            <Avatar
+              src={headerUser.profile_picture_url}
+              alt={headerUser.username}
+              sx={{ width: 64, height: 64 }}
+            />
+      
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h5">{headerUser.username}</Typography>
+              <Typography variant="h5" sx={{ color: "text.secondary" }}>
+                {`${deposits.length} dépôt${deposits.length > 1 ? "s" : ""}`}
+              </Typography>
+            </Box>
+      
             {isOwner && (
               <Button
                 variant="outlined"
@@ -203,6 +212,7 @@ export default function UserProfilePage() {
           </>
         )}
       </Box>
+
 
       {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
       {isOwner ? (
@@ -277,6 +287,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
