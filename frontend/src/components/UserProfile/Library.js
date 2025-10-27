@@ -146,13 +146,13 @@ export default function Library() {
                   return (
                     <Deposit
                       key={`${sess.session_id}-${idx}`}
-                      dep={d}           {/* d est déjà normalisé → d.user.username présent */}
-                      user={user}       {/* passe l’objet contexte complet, pas un string */}
+                      dep={d}       
+                      user={user}      
                       variant={isMain ? "main" : "list"}
                       showDate={false}
                       showUser={true}
                       fitContainer={true}
-                      showReact={false}  {/* rien à révéler/réagir dans la bibliothèque */}
+                      showReact={false}
                     />
                   );
                 })}
