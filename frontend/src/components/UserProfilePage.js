@@ -237,7 +237,7 @@ export default function UserProfilePage() {
             ) : !deposits.length ? (
               <Typography>Aucun partage pour l’instant.</Typography>
             ) : (
-              <Box sx={{ display: "grid", gap: 4, p:4 }}>
+              <Box sx={{ display: "grid", gap: 5, p:4 }}>
                 {deposits.map((it, idx) => (
                   <Deposit
                     key={idx}
@@ -287,6 +287,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
