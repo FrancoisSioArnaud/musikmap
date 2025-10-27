@@ -147,8 +147,8 @@ export default function MainDeposit({
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CheckCircleIcon color="#7BD528" fontSize="medium" />
-              <Typography component="h2" variant="h5" sx={{ fontWeight: 700, textAlign: "left" }}>
-                Ta chanson
+              <Typography component="h2" variant="h4" >
+                Ta chanson a été déposée
               </Typography>
             </Box>
                   
@@ -157,7 +157,7 @@ export default function MainDeposit({
               user={user}
               variant="list"
               showDate={false}     // <-- demandé
-              showUser={true}
+              showUser={false}
               fitContainer={true}
               showReact={false}    // <-- déjà demandé précédemment
               showPlay={false}     // <-- NOUVEAU : masque le bouton Play en LIST pour mon dépôt
