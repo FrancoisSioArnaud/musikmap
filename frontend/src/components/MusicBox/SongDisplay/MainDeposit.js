@@ -124,6 +124,7 @@ export default function MainDeposit({
             onClick={openSearch}
             disabled={!boxName}
             startIcon={<SearchIcon />}
+            className="bottom_fixed"
           >
             Déposer une chanson
           </Button>
