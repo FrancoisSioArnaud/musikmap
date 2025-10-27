@@ -256,7 +256,7 @@ export default function UserProfilePage() {
       ) : (
         /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
         <>
-          <Typography variant="h3" sx={{ ml: 4, mr:4, mb: 1 }}>
+          <Typography variant="h5" sx={{ p: 4, pb:2 }}>
             {`Partages de ${headerUser?.username ?? urlUsername ?? ""}`}
           </Typography>
 
@@ -268,7 +268,7 @@ export default function UserProfilePage() {
           ) : !deposits.length ? (
             <Typography>Aucun partage pour l’instant.</Typography>
           ) : (
-            <Box sx={{ display: "grid", gap: 2 }}>
+            <Box sx={{ display: "grid", gap: 2 , p:4 }}>
               {deposits.map((it, idx) => (
                 <Deposit
                   key={idx}
@@ -287,6 +287,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
