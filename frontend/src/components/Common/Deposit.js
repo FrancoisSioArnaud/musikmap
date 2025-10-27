@@ -211,7 +211,7 @@ export default function Deposit({
               <Box className="deposit_date">
                 <Box className="icon squaredesign" />
                 <Typography className="squaredesign" variant="subtitle1" component="span">
-                  {"Chanson déposée " + (localDep?.deposit_date || "") + "par :"}
+                  {"Chanson déposée " + (localDep?.deposit_date || "") + " par :"}
                 </Typography>
               </Box>
             )}
