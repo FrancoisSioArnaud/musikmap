@@ -36,12 +36,40 @@ export default function LiveSearch({
   const [isSearching, setIsSearching] = useState(false);
   const [postingId, setPostingId] = useState(null); // id du track en cours de POST (désactive le bouton)
 
+  // --- NEW: flag customized récupéré depuis l'API get-box
+  const [customized, setCustomized] = useState(false);
+
   // Met à jour le service sélectionné si la préférence user change
   useEffect(() => {
     if (user?.preferred_platform) {
       setSelectedStreamingService(user.preferred_platform);
     }
   }, [user?.preferred_platform]);
+
+  // --- NEW: fetch des infos de la box pour connaître "customized"
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/box-management/get-box?name=${encodeURIComponent(boxName)}`,
+          {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          }
+        );
+        const data = await res.json().catch(() => null);
+        if (!alive) return;
+        const flag = Boolean(data?.box?.customized);
+        setCustomized(flag);
+      } catch {
+        if (alive) setCustomized(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [boxName]);
 
   // Charger récents / rechercher selon service + saisie (debounce 400ms)
   useEffect(() => {
@@ -58,7 +86,7 @@ export default function LiveSearch({
                 const j = await r.json();
                 setJsonResults(Array.isArray(j) ? j : []);
               } else {
-                // Non-auth + pas de recherche : rien (conforme à tes consignes)
+                // Non-auth + pas de recherche : rien
                 setJsonResults([]);
               }
             } else {
@@ -168,12 +196,14 @@ export default function LiveSearch({
     }
   }
 
+  const showCustomizedPlaceholder = customized === true && searchValue.trim() === "";
+
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
       {/* En-tête + sélecteur plateforme */}
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
-          <Typography component="h2" variant="h3" sx={{mb:3}}>
+          <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis ta chanson à déposer
           </Typography>
 
@@ -184,7 +214,7 @@ export default function LiveSearch({
             onChange={handleStreamingServiceChange}
             aria-label="Choix du service de streaming"
             size="small"
-            sx={{ alignSelf: "flex-start", display:"none"}}
+            sx={{ alignSelf: "flex-start", display: "none" }}
           >
             <ToggleButton value="spotify" aria-pressed={selectedStreamingService === "spotify"}>
               Spotify
@@ -212,7 +242,7 @@ export default function LiveSearch({
             }}
             // iOS anti-zoom: police >= 16px sur l'input
             sx={{
-              borderRadius:16,
+              borderRadius: 16,
               "& .MuiInputBase-input": {
                 fontSize: 16,
               },
@@ -228,117 +258,126 @@ export default function LiveSearch({
         </Box>
       )}
 
-      {/* Résultats */}
-      <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
-        <List disablePadding>
-          {jsonResults.map((option) => {
-            const isPosting = postingId === (option?.id ?? "__posting__");
+      {/* SECTION CENTRALE */}
+      {showCustomizedPlaceholder ? (
+        // --- NEW: Box placeholder quand customized === true et recherche vide
+        <Paper variant="outlined" sx={{ p: 4 }}>
+          <Typography variant="h4" sx={{ mb: 1 }}>
+            Thème de la semaine
+          </Typography>
+          <Typography variant="body1">
+            C’est les vacances d’automne, partage une chanson qui te fait voyager
+          </Typography>
+        </Paper>
+      ) : (
+        // --- Résultats classiques
+        <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
+          <List disablePadding>
+            {jsonResults.map((option) => {
+              const isPosting = postingId === (option?.id ?? "__posting__");
 
-            return (
-              <ListItem
-                key={option.id}
-                divider
-                sx={{
-                  overflow: "hidden",           // empêche l'étirement horizontal
-                  alignItems: "center",
-                }}
-                secondaryAction={
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={isPosting}
-                    onClick={() => handleButtonClick(option, boxName)}
-                    sx={{ minWidth: 0 }}
-                  >
-                    {isPosting ? (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <CircularProgress size={16} />
-                        Choisir
-                      </Box>
-                    ) : (
-                      "Choisir"
-                    )}
-                  </Button>
-                }
-              >
-                {/* Vignette 64px à gauche, carrée, fallback gris clair */}
-                <Box
+              return (
+                <ListItem
+                  key={option.id}
+                  divider
                   sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    bgcolor: "action.hover", // gris light fallback
-                    mr: 2,
+                    overflow: "hidden", // empêche l'étirement horizontal
+                    alignItems: "center",
                   }}
+                  secondaryAction={
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={isPosting}
+                      onClick={() => handleButtonClick(option, boxName)}
+                      sx={{ minWidth: 0 }}
+                    >
+                      {isPosting ? (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <CircularProgress size={16} />
+                          Choisir
+                        </Box>
+                      ) : (
+                        "Choisir"
+                      )}
+                    </Button>
+                  }
                 >
-                  {option?.image_url ? (
-                    <Box
-                      component="img"
-                      src={option.image_url}
-                      alt={option.name || "Cover"}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  ) : null}
-                </Box>
-
-                {/* Titre (h3) + Artiste (paragraphe) */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minWidth: 0,
-                    mr: 2,
-                    flex: 1,
-                    overflow: "hidden", // protège contre les très longues chaînes sans espace
-                  }}
-                >
-                  <Typography
-                    component="h3"
-                    variant="h6"
-                    noWrap
+                  {/* Vignette 64px à gauche, carrée, fallback gris clair */}
+                  <Box
                     sx={{
-                      fontWeight: 700,
-                      textAlign: "left",
+                      width: 64,
+                      height: 64,
+                      borderRadius: 1,
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
+                      flexShrink: 0,
+                      bgcolor: "action.hover", // gris light fallback
+                      mr: 2,
                     }}
-                    title={option?.name || ""}
                   >
-                    {option?.name || ""}
-                  </Typography>
-                  <Typography
-                    component="p"
-                    variant="body2"
-                    color="text.secondary"
-                    noWrap
-                    sx={{
-                      textAlign: "left",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                    }}
-                    title={option?.artist || ""}
-                  >
-                    {option?.artist || ""}
-                  </Typography>
-                </Box>
-              </ListItem>
-            );
-          })}
-        </List>
+                    {option?.image_url ? (
+                      <Box
+                        component="img"
+                        src={option.image_url}
+                        alt={option.name || "Cover"}
+                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : null}
+                  </Box>
 
-        {/* Si pas de résultats: on n’affiche rien (conforme à tes consignes) */}
-        {(!isSearching && jsonResults.length === 0) ? null : null}
-      </Paper>
+                  {/* Titre (h3) + Artiste (paragraphe) */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 0,
+                      mr: 2,
+                      flex: 1,
+                      overflow: "hidden", // protège contre les très longues chaînes sans espace
+                    }}
+                  >
+                    <Typography
+                      component="h3"
+                      variant="h6"
+                      noWrap
+                      sx={{
+                        fontWeight: 700,
+                        textAlign: "left",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                      }}
+                      title={option?.name || ""}
+                    >
+                      {option?.name || ""}
+                    </Typography>
+                    <Typography
+                      component="p"
+                      variant="body2"
+                      color="text.secondary"
+                      noWrap
+                      sx={{
+                        textAlign: "left",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                      }}
+                      title={option?.artist || ""}
+                    >
+                      {option?.artist || ""}
+                    </Typography>
+                  </Box>
+                </ListItem>
+              );
+            })}
+          </List>
+
+          {/* Si pas de résultats: on n’affiche rien (conforme à tes consignes) */}
+          {(!isSearching && jsonResults.length === 0) ? null : null}
+        </Paper>
+      )}
     </Stack>
   );
 }
-
-
-
-
