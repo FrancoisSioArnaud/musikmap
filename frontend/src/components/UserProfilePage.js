@@ -245,7 +245,7 @@ export default function UserProfilePage() {
                     user={user}
                     variant="list"
                     fitContainer={true}
-                    showDate={false}
+                    showDate={true}
                     showUser={false} 
                     showReact={false}
                   />
@@ -288,6 +288,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
