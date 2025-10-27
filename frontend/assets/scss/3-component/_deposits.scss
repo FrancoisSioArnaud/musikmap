@@ -93,8 +93,7 @@
 
 .deposit_list .interact{
   flex-direction:column;
-  flex-grow:1;
-  justify-content: center;
+  justify-content: left;
   gap: 12px;
 }
 
@@ -117,6 +116,18 @@
   align-items: center;
   gap: 16px;
   justify-content: space-between;
+}
+.deposit_interact .decouvrir{
+  display: flex;
+  flex-direction: inherit;
+  padding: 8px 12px;
+  gap: 8px;
+  width: auto;
+  min-width: auto;
+  height: auto;
+}
+.deposit_interact .points_container{
+ margin:0;
 }
 
 .reactions_container{
