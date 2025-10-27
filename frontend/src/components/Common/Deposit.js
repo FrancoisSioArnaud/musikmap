@@ -178,8 +178,8 @@ export default function Deposit({
     return (
       <Box className="reactions_container">
         {items.map((it, i) => (
-          <Box key={`${it.emoji || i}-${it.count || 0}`}>
-            <Typography variant="h4" component="span">
+          <Box key={`${it.emoji || i}-${it.count || 0}`} sx={{display : "flex", flexDirection:"row", alignItems:"center",}}>
+            <Typography variant="h5" component="span">
               {it.emoji}
             </Typography>
             <Typography variant="h5" component="span">
@@ -210,15 +210,15 @@ export default function Deposit({
           {showUser && (
             <Box
               onClick={() => {
-                if (u?.username) navigate("/profile/" + u.username); // on ne linke que si on a un username
+                if (u?.username) navigate("/profile/" + u.username);
               }}
-              className={displayName !== "Anonyme" ? "hasUsername deposit_user" : "deposit_user"}
+              className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
             >
               <Box className="squaredesign avatarbox">
-                <Avatar src={u?.profile_pic_url || undefined} alt={displayName} className="avatar" />
+                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
               </Box>
               <Typography component="span" className="username squaredesign" variant="subtitle1">
-                {displayName}
+                {u?.username || "Anonyme"}
                 {u?.username && <ArrowForwardIosIcon className="icon" />}
               </Typography>
             </Box>
@@ -324,7 +324,7 @@ export default function Deposit({
             }}
           >
             <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} />
-            <Typography>{displayName}</Typography>
+            <Typography>{u?.username || "Anonyme"}</Typography>
             {u?.username && <ArrowForwardIosIcon fontSize="small" />}
           </Box>
         )}
