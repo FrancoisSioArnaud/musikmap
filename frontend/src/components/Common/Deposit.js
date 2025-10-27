@@ -206,31 +206,33 @@ export default function Deposit({
     return (
       <>
         <Card className="deposit deposit_main">
-          {showDate && (
-            <Box className="deposit_date">
-              <Box className="icon squaredesign" />
-              <Typography className="squaredesign" variant="subtitle1" component="span">
-                {"Chanson déposée " + (localDep?.deposit_date || "") + "par :"}
-              </Typography>
-            </Box>
-          )}
-
-          {showUser && (
-            <Box
-              onClick={() => {
-                if (u?.username) navigate("/profile/" + u.username);
-              }}
-              className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-            >
-              <Box className="squaredesign avatarbox">
-                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
+          <Box className="deposit_infos">
+            {showDate && (
+              <Box className="deposit_date">
+                <Box className="icon squaredesign" />
+                <Typography className="squaredesign" variant="subtitle1" component="span">
+                  {"Chanson déposée " + (localDep?.deposit_date || "") + "par :"}
+                </Typography>
               </Box>
-              <Typography component="span" className="username squaredesign" variant="subtitle1">
-                {u?.username || "Anonyme"}
-                {u?.username && <ArrowForwardIosIcon className="icon" />}
-              </Typography>
-            </Box>
-          )}
+            )}
+  
+            {showUser && (
+              <Box
+                onClick={() => {
+                  if (u?.username) navigate("/profile/" + u.username);
+                }}
+                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+              >
+                <Box className="squaredesign avatarbox">
+                  <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
+                </Box>
+                <Typography component="span" className="username squaredesign" variant="subtitle1">
+                  {u?.username || "Anonyme"}
+                  {u?.username && <ArrowForwardIosIcon className="icon" />}
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
           {/* ----- Section chanson ----- */}
           <Box className="deposit_song">
