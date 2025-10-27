@@ -458,6 +458,7 @@ export default function MusicBox() {
                       revealCost={typeof boxData?.reveal_cost === "number" ? boxData.reveal_cost : 40}
                       showOlder={showOlder}
                       onDeposited={() => setShowOlder(true)}
+                      customized={Boolean(meta?.box?.customized)}
                     />
                   </Suspense>
                 )}
@@ -490,6 +491,7 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
 
 
