@@ -33,6 +33,24 @@ function formatRelativeFr(isoDateString) {
   return rtf.format(diffYear, "year");
 }
 
+/** ✅ Normalise un dépôt pour que Deposit.js lise nativement user.username */
+function normalizeDeposit(dep) {
+  const u = dep?.user || null;
+  const username = (u && (u.username ?? u.name)) || null;
+  return {
+    ...dep,
+    user: u
+      ? { ...u, username }
+      : { id: null, name: null, username: null, profile_pic_url: null },
+  };
+}
+
+/** Normalise une session complète (tous ses dépôts) */
+function normalizeSession(sess) {
+  const deposits = Array.isArray(sess?.deposits) ? sess.deposits.map(normalizeDeposit) : [];
+  return { ...sess, deposits };
+}
+
 export default function Library() {
   const { user } = useContext(UserContext);
 
@@ -55,10 +73,14 @@ export default function Library() {
       });
       const data = await res.json();
       if (res.ok) {
-        const newSessions = Array.isArray(data?.sessions) ? data.sessions : [];
-        setSessions((prev) => [...prev, ...newSessions]);
+        const rawSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+        const normalized = rawSessions.map(normalizeSession);
+
+        setSessions((prev) => [...prev, ...normalized]);
         setHasMore(Boolean(data?.has_more));
-        setNextOffset(typeof data?.next_offset === "number" ? data.next_offset : nextOffset + newSessions.length);
+        setNextOffset(
+          typeof data?.next_offset === "number" ? data.next_offset : nextOffset + rawSessions.length
+        );
       } else {
         console.error("HTTP", res.status, data);
       }
@@ -110,34 +132,30 @@ export default function Library() {
         return (
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
-            <Typography
-              variant="h5"
-              component="h2"
-              sx={{ m: "16px auto" }}
-            >
+            <Typography variant="h5" component="h2" sx={{ m: "16px auto" }}>
               {headerText}
             </Typography>
 
             {/* Dépôts de la session */}
             <Box sx={{ display: "grid", gap: 1.5 }}>
-              {Array.isArray(sess?.deposits) && sess.deposits.map((d, idx) => {
-                const t = (d?.type || "").toLowerCase();
-                const isMain = t === "main";
+              {Array.isArray(sess?.deposits) &&
+                sess.deposits.map((d, idx) => {
+                  const t = (d?.type || "").toLowerCase();
+                  const isMain = t === "main";
 
-                return (
-                  <Deposit
-                    key={`${sess.session_id}-${idx}`}
-                    dep={d}
-                    user={user.name}
-                    // Aucun reveal dans Library: tout est déjà révélé
-                    variant={isMain ? "main" : "list"}
-                    showDate={false}
-                    showUser={true}
-                    fitContainer={true}
-                    showReact={false}
-                  />
-                );
-              })}
+                  return (
+                    <Deposit
+                      key={`${sess.session_id}-${idx}`}
+                      dep={d}           {/* d est déjà normalisé → d.user.username présent */}
+                      user={user}       {/* passe l’objet contexte complet, pas un string */}
+                      variant={isMain ? "main" : "list"}
+                      showDate={false}
+                      showUser={true}
+                      fitContainer={true}
+                      showReact={false}  {/* rien à révéler/réagir dans la bibliothèque */}
+                    />
+                  );
+                })}
             </Box>
           </Box>
         );
