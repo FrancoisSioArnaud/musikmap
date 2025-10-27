@@ -23,6 +23,7 @@ export default function LiveSearch({
   user,
   onDepositSuccess, // (addedDeposit, successes) => void
   onClose,          // non utilisé ici, conservé pour compat
+  customized = false, // <<— NOUVEAU : transmis par les parents
 }) {
   const { setUser } = useContext(UserContext) || {};
 
@@ -36,41 +37,6 @@ export default function LiveSearch({
   const [isSearching, setIsSearching] = useState(false);
   const [postingId, setPostingId] = useState(null); // id du track en cours de POST (désactive le bouton)
 
-  // ---- Nouveaux états meta ----
-  const [metaLoaded, setMetaLoaded] = useState(false);
-  const [isCustomized, setIsCustomized] = useState(false);
-
-  // Charger meta UNE FOIS au montage
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchMetaOnce() {
-      try {
-        const r = await fetch(`/box-management/meta?name=${encodeURIComponent(boxName)}`, {
-          headers: { Accept: "application/json" },
-          credentials: "same-origin",
-        });
-        const j = await r.json().catch(() => null);
-        if (cancelled) return;
-
-        const customized = Boolean(j?.box?.customized);
-        setIsCustomized(customized);
-      } catch {
-        // En cas d’erreur : fallback comportement standard (pas de placeholder)
-        setIsCustomized(false);
-      } finally {
-        if (!cancelled) setMetaLoaded(true);
-      }
-    }
-
-    fetchMetaOnce();
-    return () => {
-      cancelled = true;
-    };
-    // 👉 tu as demandé "au montage uniquement"
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Met à jour le service sélectionné si la préférence user change
   useEffect(() => {
     if (user?.preferred_platform) {
@@ -82,27 +48,15 @@ export default function LiveSearch({
   useEffect(() => {
     const timer = setTimeout(() => {
       const doFetch = async () => {
-        // --- Règles d'affichage selon meta / customized / recherche ---
         const query = (searchValue || "").trim();
+        const hasQuery = query.length > 0;
+        const showPlaceholder = customized && !hasQuery;
 
-        // 1) Priorité à la recherche : si query non vide => on cherche immédiatement (même si meta pas encore arrivé)
-        const canShowSearchResults = query.length > 0;
-
-        // 2) Si query vide :
-        //    - tant que meta n’est pas chargé => on n’affiche rien (et on ne fetch pas les "récents")
-        //    - si meta chargé et customized === true => on n’affiche que la box placeholder (pas de fetch "récents")
-        //    - si meta chargé et customized === false => on fetch les "récents" (comportement standard)
-        if (!canShowSearchResults) {
-          if (!metaLoaded) {
-            setJsonResults([]);
-            setIsSearching(false);
-            return;
-          }
-          if (isCustomized) {
-            setJsonResults([]);
-            setIsSearching(false);
-            return;
-          }
+        // Si placeholder doit s'afficher, on n’effectue AUCUN fetch
+        if (showPlaceholder) {
+          setJsonResults([]);
+          setIsSearching(false);
+          return;
         }
 
         try {
@@ -110,8 +64,7 @@ export default function LiveSearch({
 
           // --- SPOTIFY ---
           if (selectedStreamingService === "spotify") {
-            if (query === "") {
-              // ici : metaLoaded === true ET isCustomized === false
+            if (!hasQuery) {
               if (isSpotifyAuthenticated) {
                 const r = await fetch("/spotify/recent-tracks");
                 const j = await r.json();
@@ -133,8 +86,7 @@ export default function LiveSearch({
 
           // --- DEEZER ---
           if (selectedStreamingService === "deezer") {
-            if (query === "") {
-              // ici : metaLoaded === true ET isCustomized === false
+            if (!hasQuery) {
               if (isDeezerAuthenticated) {
                 const r = await fetch("/deezer/recent-tracks");
                 const j = await r.json();
@@ -169,8 +121,7 @@ export default function LiveSearch({
     selectedStreamingService,
     isDeezerAuthenticated,
     isSpotifyAuthenticated,
-    metaLoaded,
-    isCustomized,
+    customized, // si la prop change dynamiquement, on ré-applique la logique
   ]);
 
   const handleStreamingServiceChange = (_e, value) => {
@@ -236,8 +187,7 @@ export default function LiveSearch({
 
   // ----- Aides de rendu -----
   const query = (searchValue || "").trim();
-  const showPlaceholder = metaLoaded && isCustomized && query === "";
-  const hideResultsAreaWhileMetaLoading = !metaLoaded && query === "";
+  const showPlaceholder = customized && query === "";
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
@@ -300,125 +250,122 @@ export default function LiveSearch({
       )}
 
       {/* ----- Zone résultats / placeholder ----- */}
-      {/* Pendant le chargement meta ET recherche vide : n'affiche rien */}
-      {hideResultsAreaWhileMetaLoading ? null : (
-        <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
-          {/* Placeholder si customized === true et barre vide */}
-          {showPlaceholder ? (
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h4" sx={{ mb: 1 }}>
-                Thème de la semaine
-              </Typography>
-              <Typography variant="body1">
-                C’est les vacances d’automne, partage une chanson qui te fait voyager
-              </Typography>
-            </Box>
-          ) : (
-            // Sinon : liste de résultats (search prioritaire ; sinon "récents" si auth OK)
-            <List disablePadding>
-              {jsonResults.map((option) => {
-                const isPosting = postingId === (option?.id ?? "__posting__");
+      <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
+        {showPlaceholder ? (
+          // Placeholder si customized === true et barre vide
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h4" sx={{ mb: 1 }}>
+              Thème de la semaine
+            </Typography>
+            <Typography variant="body1">
+              C’est les vacances d’automne, partage une chanson qui te fait voyager
+            </Typography>
+          </Box>
+        ) : (
+          // Sinon : liste de résultats (search prioritaire ; sinon "récents" si auth OK)
+          <List disablePadding>
+            {jsonResults.map((option) => {
+              const isPosting = postingId === (option?.id ?? "__posting__");
 
-                return (
-                  <ListItem
-                    key={option.id}
-                    divider
+              return (
+                <ListItem
+                  key={option.id}
+                  divider
+                  sx={{
+                    overflow: "hidden",           // empêche l'étirement horizontal
+                    alignItems: "center",
+                  }}
+                  secondaryAction={
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={isPosting}
+                      onClick={() => handleButtonClick(option, boxName)}
+                      sx={{ minWidth: 0 }}
+                    >
+                      {isPosting ? (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <CircularProgress size={16} />
+                          Choisir
+                        </Box>
+                      ) : (
+                        "Choisir"
+                      )}
+                    </Button>
+                  }
+                >
+                  {/* Vignette 64px à gauche, carrée, fallback gris clair */}
+                  <Box
                     sx={{
-                      overflow: "hidden",           // empêche l'étirement horizontal
-                      alignItems: "center",
+                      width: 64,
+                      height: 64,
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      bgcolor: "action.hover", // gris light fallback
+                      mr: 2,
                     }}
-                    secondaryAction={
-                      <Button
-                        variant="contained"
-                        size="small"
-                        disabled={isPosting}
-                        onClick={() => handleButtonClick(option, boxName)}
-                        sx={{ minWidth: 0 }}
-                      >
-                        {isPosting ? (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <CircularProgress size={16} />
-                            Choisir
-                          </Box>
-                        ) : (
-                          "Choisir"
-                        )}
-                      </Button>
-                    }
                   >
-                    {/* Vignette 64px à gauche, carrée, fallback gris clair */}
-                    <Box
-                      sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 1,
-                        overflow: "hidden",
-                        flexShrink: 0,
-                        bgcolor: "action.hover", // gris light fallback
-                        mr: 2,
-                      }}
-                    >
-                      {option?.image_url ? (
-                        <Box
-                          component="img"
-                          src={option.image_url}
-                          alt={option.name || "Cover"}
-                          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
-                      ) : null}
-                    </Box>
+                    {option?.image_url ? (
+                      <Box
+                        component="img"
+                        src={option.image_url}
+                        alt={option.name || "Cover"}
+                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : null}
+                  </Box>
 
-                    {/* Titre (h3) + Artiste (paragraphe) */}
-                    <Box
+                  {/* Titre (h3) + Artiste (paragraphe) */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 0,
+                      mr: 2,
+                      flex: 1,
+                      overflow: "hidden", // protège contre les très longues chaînes sans espace
+                    }}
+                  >
+                    <Typography
+                      component="h3"
+                      variant="h6"
+                      noWrap
                       sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        minWidth: 0,
-                        mr: 2,
-                        flex: 1,
-                        overflow: "hidden", // protège contre les très longues chaînes sans espace
+                        fontWeight: 700,
+                        textAlign: "left",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
                       }}
+                      title={option?.name || ""}
                     >
-                      <Typography
-                        component="h3"
-                        variant="h6"
-                        noWrap
-                        sx={{
-                          fontWeight: 700,
-                          textAlign: "left",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          maxWidth: "100%",
-                        }}
-                        title={option?.name || ""}
-                      >
-                        {option?.name || ""}
-                      </Typography>
-                      <Typography
-                        component="p"
-                        variant="body2"
-                        color="text.secondary"
-                        noWrap
-                        sx={{
-                          textAlign: "left",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          maxWidth: "100%",
-                        }}
-                        title={option?.artist || ""}
-                      >
-                        {option?.artist || ""}
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                );
-              })}
-            </List>
-          )}
-        </Paper>
-      )}
+                      {option?.name || ""}
+                    </Typography>
+                    <Typography
+                      component="p"
+                      variant="body2"
+                      color="text.secondary"
+                      noWrap
+                      sx={{
+                        textAlign: "left",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                      }}
+                      title={option?.artist || ""}
+                    >
+                      {option?.artist || ""}
+                    </Typography>
+                  </Box>
+                </ListItem>
+              );
+            })}
+          </List>
+        )}
+      </Paper>
     </Stack>
   );
 }
