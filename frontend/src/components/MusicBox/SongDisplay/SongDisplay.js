@@ -65,7 +65,7 @@ export default function SongDisplay({
                 variant="list"
                 showDate={true}
                 showUser={true}
-                fitContainer={true}
+                fitContainer={false}
               />
             ))}
           </Box>
