@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState, useContext, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -33,15 +33,20 @@ export default function Deposit({
   showDate = true,
   showUser = true,
   fitContainer = true,
-  showReact = true,  
-  showPlay = true,  
+  showReact = true,
+  showPlay = true,
 }) {
-
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
 
-  const s = dep?.song || {};
-  const u = dep?.user || {};
+  /** ---------- ÉTAT LOCAL SYNCHRO AVEC LA PROP ---------- */
+  const [localDep, setLocalDep] = useState(dep || {});
+  useEffect(() => {
+    setLocalDep(dep || {});
+  }, [dep]);
+
+  const s = localDep?.song || {};
+  const u = localDep?.user || {};
   const isRevealed = useMemo(() => Boolean(s?.title && s?.artist), [s?.title, s?.artist]);
 
   // ======= Play modal =======
@@ -81,7 +86,7 @@ export default function Deposit({
       const res = await fetch("/box-management/revealSong", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: dep.deposit_id }),
+        body: JSON.stringify({ deposit_id: localDep.deposit_id }),
         credentials: "same-origin",
       });
       const payload = await res.json().catch(() => ({}));
@@ -95,11 +100,26 @@ export default function Deposit({
         return;
       }
 
-      // MAJ visuelle dans la liste parent
       const revealed = payload?.song || {};
+
+      // MAJ locale immédiate
+      setLocalDep((prev) => ({
+        ...(prev || {}),
+        discovered_at: "à l'instant",
+        song: {
+          ...(prev?.song || {}),
+          title: revealed.title,
+          artist: revealed.artist,
+          spotify_url: revealed.spotify_url,
+          deezer_url: revealed.deezer_url,
+          img_url: revealed.img_url || prev?.song?.img_url,
+        },
+      }));
+
+      // MAJ dans la liste parente si fournie
       setDispDeposits?.((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
+        const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
         if (idx >= 0) {
           arr[idx] = {
             ...arr[idx],
@@ -110,6 +130,7 @@ export default function Deposit({
               artist: revealed.artist,
               spotify_url: revealed.spotify_url,
               deezer_url: revealed.deezer_url,
+              img_url: revealed.img_url || arr[idx]?.song?.img_url,
             },
           };
         }
@@ -129,9 +150,17 @@ export default function Deposit({
   // ======= Callback quand la réaction a changé (après modale) =======
   const handleReactionApplied = (result) => {
     // result = { my_reaction, reactions_summary }
+    // 1) MAJ locale immédiate pour refléter l’UI
+    setLocalDep((prev) => ({
+      ...(prev || {}),
+      my_reaction: result?.my_reaction || null,
+      reactions_summary: Array.isArray(result?.reactions_summary) ? result.reactions_summary : [],
+    }));
+
+    // 2) MAJ dans la liste parente si elle existe
     setDispDeposits?.((prev) => {
       const arr = Array.isArray(prev) ? [...prev] : [];
-      const idx = arr.findIndex((x) => x?.deposit_id === dep.deposit_id);
+      const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
       if (idx >= 0) {
         arr[idx] = {
           ...arr[idx],
@@ -149,7 +178,7 @@ export default function Deposit({
     return (
       <Box className="reactions_container">
         {items.map((it, i) => (
-          <Box key={i}>
+          <Box key={`${it.emoji || i}-${it.count || 0}`}>
             <Typography variant="h5" component="span">
               {it.emoji} × {it.count}
             </Typography>
@@ -170,7 +199,7 @@ export default function Deposit({
             <Box className="deposit_date">
               <Box className="icon squaredesign" />
               <Typography className="squaredesign" variant="subtitle1" component="span">
-                {"Déposée " + (dep?.deposit_date || "")}
+                {"Déposée " + (localDep?.deposit_date || "")}
               </Typography>
             </Box>
           )}
@@ -252,7 +281,7 @@ export default function Deposit({
               </Button>
 
               {/* ruban des réactions */}
-              <ReactionsStrip items={dep?.reactions_summary || []} />
+              <ReactionsStrip items={localDep?.reactions_summary || []} />
             </Box>
           )}
         </Card>
@@ -261,8 +290,8 @@ export default function Deposit({
         <ReactionModal
           open={reactOpen}
           onClose={closeReact}
-          depositId={dep?.deposit_id}
-          currentEmoji={dep?.my_reaction?.emoji || null}
+          depositId={localDep?.deposit_id}
+          currentEmoji={localDep?.my_reaction?.emoji || null}
           onApplied={handleReactionApplied}
         />
       </>
@@ -278,11 +307,11 @@ export default function Deposit({
         {showDate && (
           <Box className="deposit_date">
             <Typography component="h3" variant="subtitle1">
-              {"Déposée " + (dep?.deposit_date || "")}
+              {"Déposée " + (localDep?.deposit_date || "")}
             </Typography>
           </Box>
         )}
-  
+
         {showUser && (
           <Box
             className="deposit_user"
@@ -296,7 +325,7 @@ export default function Deposit({
             {u?.username && <ArrowForwardIosIcon fontSize="small" />}
           </Box>
         )}
-  
+
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
           <Box
@@ -319,7 +348,7 @@ export default function Deposit({
               />
             )}
           </Box>
-  
+
           <Box className="interact">
             {isRevealed ? (
               <>
@@ -331,7 +360,7 @@ export default function Deposit({
                     {s.artist}
                   </Typography>
                 </Box>
-  
+
                 {/* Play conditionnel en LIST : dépend de showPlay */}
                 {showPlay && (
                   <Button
@@ -370,7 +399,7 @@ export default function Deposit({
             )}
           </Box>
         </Box>
-  
+
         {/* ----- Section réactions dédiée ----- */}
         {showReact && (
           <Box className="deposit_react">
@@ -384,15 +413,15 @@ export default function Deposit({
                 Réagir
               </Button>
             )}
-  
+
             {/* ruban des réactions toujours visible */}
-            <ReactionsStrip items={dep?.reactions_summary || []} />
+            <ReactionsStrip items={localDep?.reactions_summary || []} />
           </Box>
         )}
       </Card>
-  
+
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-  
+
       {/* Snackbar existant */}
       <Snackbar
         open={snackOpen}
@@ -437,16 +466,15 @@ export default function Deposit({
           }
         />
       </Snackbar>
-  
+
       {/* Modale de réaction */}
       <ReactionModal
         open={reactOpen}
         onClose={closeReact}
-        depositId={dep?.deposit_id}
-        currentEmoji={dep?.my_reaction?.emoji || null}
+        depositId={localDep?.deposit_id}
+        currentEmoji={localDep?.my_reaction?.emoji || null}
         onApplied={handleReactionApplied}
       />
     </>
   );
-
 }
