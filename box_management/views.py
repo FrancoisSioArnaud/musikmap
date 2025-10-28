@@ -564,7 +564,7 @@ class ManageDiscoveredSongs(APIView):
             if not u or isinstance(u, AnonymousUser):
                 return None
             full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-            display_name = getattr(u, "name", None)
+            display_name = getattr(u, "username", None)
             profile_pic_url = None
             if getattr(u, "profile_picture", None):
                 try:
@@ -1012,6 +1012,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
