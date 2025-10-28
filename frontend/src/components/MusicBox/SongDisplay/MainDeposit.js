@@ -301,9 +301,6 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
                   <Typography component="span" variant="body1">+{ach.points}</Typography>
                   <AlbumIcon />
                 </Box>
-                <Typography variant="body1">
-                  ...et plein de points gagnés ! Voici le détail de tes points : 
-                </Typography>
              </Box>
             )}
             
