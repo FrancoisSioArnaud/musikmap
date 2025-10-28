@@ -127,13 +127,16 @@ export default function Library() {
   return (
     <Box sx={{ p: 4, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
-        const headerText = `Box : ${sess?.box?.name ?? "Inconnue"} · ${formatRelativeFr(sess?.started_at)}`;
-
+  
         return (
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
+
             <Typography variant="h5" component="h2" sx={{ m: "16px auto", textAlign:"center"}}>
-              {headerText}
+              ${sess?.box?.name ?? "Inconnue"}
+            </Typography>
+            <Typography variant="h5" component="h2" sx={{ m: "16px auto", textAlign:"center"}}>
+              ${formatRelativeFr(sess?.started_at)}
             </Typography>
 
             {/* Dépôts de la session */}
