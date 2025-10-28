@@ -257,7 +257,7 @@ export default function UserProfilePage() {
       ) : (
         /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
         <>
-          <Typography variant="h5" sx={{ p: "16px 16px 6px 16px" }}>
+          <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
             {`Partages de ${headerUser?.username ?? urlUsername ?? ""}`}
           </Typography>
 
@@ -288,6 +288,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
