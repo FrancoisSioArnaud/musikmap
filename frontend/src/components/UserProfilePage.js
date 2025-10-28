@@ -189,7 +189,7 @@ export default function UserProfilePage() {
             <Box sx={{ flex: 1 }}>
               <Typography variant="h5">{headerUser.username}</Typography>
               <Typography variant="h5" sx={{ color: "text.secondary" }}>
-                {`${deposits.length} dépôt${deposits.length > 1 ? "s" : ""}`}
+                {`${deposits.length} partage${deposits.length > 1 ? "s" : ""}`}
               </Typography>
             </Box>
       
@@ -288,6 +288,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
