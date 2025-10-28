@@ -32,7 +32,7 @@ class Song(models.Model):
 
 class Deposit(models.Model):
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if not self.pk and not self.deposited_at:
             self.deposited_at = timezone.now()
         super().save(*args, **kwargs)
 
@@ -129,3 +129,4 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
