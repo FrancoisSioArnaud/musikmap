@@ -330,7 +330,7 @@ class GetBox(APIView):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
             successes['first_song_deposit'] = {
                 'name': "Far West",
-                'desc': "Cette chanson n'a jamais été déposé dans cette boîte",
+                'desc': "Cette chanson n'a jamais été déposée ici",
                 'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
                 'emoji': "🤠"
             }
@@ -338,14 +338,14 @@ class GetBox(APIView):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             successes['first_song_deposit_global'] = {
                 'name': "Preums",
-                'desc': "Cette chanson n'a jamais été déposée dans aucune boîte",
+                'desc': "Cette chanson n'a jamais été déposée sur le réseau",
                 'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
                 'emoji': "🥇"
             }
 
         successes['default_deposit'] = {
             'name': "Pépite",
-            'desc': "Tu as partagé une chanson",
+            'desc': "Tu as partagé·e une chanson",
             'points': NB_POINTS_ADD_SONG,
             'emoji': "💎"
         }
@@ -1019,6 +1019,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
