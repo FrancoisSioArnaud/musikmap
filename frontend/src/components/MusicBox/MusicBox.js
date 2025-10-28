@@ -397,7 +397,7 @@ export default function MusicBox() {
               {metaLoading ? (
                 <Skeleton variant="text" width={260} height={40} />
               ) : (
-                <Typography component="h1" variant="h1">
+                <Typography component="h1" variant="h1" sx={{mb : 2}}>
                   {boxTitle}
                 </Typography>
               )}
@@ -490,4 +490,5 @@ export default function MusicBox() {
     </Box>
   );
 }
+
 
