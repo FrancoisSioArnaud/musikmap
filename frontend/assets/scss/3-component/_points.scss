@@ -11,12 +11,24 @@
 }
 
 
+
 .points_container svg{
   fill: #7BD528;
   width: 1.5em;
   height: 1.5em;
 }
 
+.points_container_big svg{
+  fill: #7BD528;
+  width: 1.7em;
+  height: 1.7em;
+}
+
+
 .points_container span{
   font-weight : bold;
+}
+
+.points_container_big span{
+  font-size: 20px;
 }
