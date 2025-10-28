@@ -275,7 +275,7 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           Pépite Déposée
         </Typography>
 
-        <Box className="points_container" sx={{m:"auto"}}>
+        <Box className="points_container point_container_big" sx={{m:"auto"}}>
           <Typography component="span" variant="body1">+{totalPoints}</Typography>
           <AlbumIcon/>
         </Box>
