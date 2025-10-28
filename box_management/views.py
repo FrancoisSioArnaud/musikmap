@@ -823,7 +823,6 @@ class RevealSong(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 
-
 class UserDepositsView(APIView):
     permission_classes = []  # public
 
@@ -844,7 +843,6 @@ class UserDepositsView(APIView):
             return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
 
         # 3) Récupération des 500 dépôts les plus récents
-        #    On suit la structure réelle du modèle : song_id et box_id sont des ForeignKey
         deposits = (
             Deposit.objects
             .filter(user_id=user_id)
@@ -852,7 +850,14 @@ class UserDepositsView(APIView):
             .order_by("-deposited_at")[:500]
         )
 
-        # 4) Construction de la réponse JSON
+        if not deposits:
+            return Response([], status=status.HTTP_200_OK)
+
+        # 4) Préparer les IDs pour récupérer les réactions en une seule requête
+        dep_ids = [d.id for d in deposits]
+        reactions_by_dep = _reactions_summary_for_deposits(dep_ids)
+
+        # 5) Construction de la réponse JSON
         response_data = []
         for deposit in deposits:
             song = getattr(deposit, "song_id", None)
@@ -873,9 +878,11 @@ class UserDepositsView(APIView):
                     "artist": artist,
                     "img_url": img_url,
                 },
+                "reactions_summary": reactions_by_dep.get(deposit.id, []),
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
+
 
 # ==========================================================
 # EMOJIS & REACTIONS
@@ -1012,6 +1019,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
