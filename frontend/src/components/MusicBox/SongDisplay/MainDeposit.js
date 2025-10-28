@@ -147,7 +147,7 @@ export default function MainDeposit({
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CheckCircleIcon color="#7BD528" fontSize="medium" />
-              <Typography component="h2" variant="h4" >
+              <Typography component="h2" variant="h5" >
                 Ta chanson a été déposée
               </Typography>
             </Box>
