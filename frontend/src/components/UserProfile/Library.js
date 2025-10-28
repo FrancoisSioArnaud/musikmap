@@ -131,7 +131,7 @@ export default function Library() {
         return (
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
-
+            <Box sx={{ display: "flex", flexDirection:"column", gap: 1, itemAlign :"center" }}>
             <Typography variant="h5" component="h2" sx={{ m: "16px auto", textAlign:"center"}}>
               ${sess?.box?.name ?? "Inconnue"}
             </Typography>
