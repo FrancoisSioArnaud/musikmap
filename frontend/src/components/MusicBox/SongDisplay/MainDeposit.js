@@ -279,8 +279,11 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
           <Typography component="span" variant="body1">+{totalPoints}</Typography>
           <AlbumIcon/>
         </Box>
+        <Typography component="span" variant="body1">
+          ...et plein de points gagnés ! Voici le détail de tes points
+        </Typography>
       </Box>
-
+     
       <List className="success_container">
         {listItems.map((ach, idx) => (
           <ListItem key={idx} className="success" sx={{pt: 0, pb: 0}}>
