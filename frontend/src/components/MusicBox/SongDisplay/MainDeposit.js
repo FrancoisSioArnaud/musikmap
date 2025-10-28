@@ -269,9 +269,8 @@ function AchievementsPanel({ successes = [], onPrimaryCta }) {
 
   return (
     <Box sx={{ display: "grid", gap: 0 , pb :"76px" }}>
-      <Box className="intro">
-        <CheckIcon color="success" sx={{m: "auto", height: "32px", width: "32px"}} />
-        <Typography variant="h1">
+      <Box className="intro_small">
+        <Typography variant="h1" color="rgb(123, 213, 40)">
           Pépite Déposée
         </Typography>
 
