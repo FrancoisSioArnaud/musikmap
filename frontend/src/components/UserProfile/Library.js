@@ -133,10 +133,10 @@ export default function Library() {
             {/* Header de session */}
             <Box sx={{ display: "flex", flexDirection:"column", gap: 1, itemAlign :"center" }}>
             <Typography variant="h5" component="h2" sx={{ m: "16px auto", textAlign:"center"}}>
-              ${sess?.box?.name ?? "Inconnue"}
+              {sess?.box?.name ?? "Inconnue"}
             </Typography>
             <Typography variant="h5" component="h2" sx={{ m: "16px auto", textAlign:"center"}}>
-              ${formatRelativeFr(sess?.started_at)}
+              {formatRelativeFr(sess?.started_at)}
             </Typography>
 
             {/* Dépôts de la session */}
