@@ -203,10 +203,10 @@ admin.site.register(DiscoveredSong, DiscoveredSongAdmin)
 
 @admin.register(Emoji)
 class EmojiAdmin(admin.ModelAdmin):
-    list_display = ("char", "active", "basic", "cost")
-    list_filter = ("active", "basic")
+    list_display = ("char", "active", "cost")
+    list_filter = ("active")
     search_fields = ("char",)
-    ordering = ("basic", "cost")
+    ordering = ("cost")
 
 
 @admin.register(EmojiRight)
@@ -226,6 +226,7 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box_id__name",
     )
     ordering = ("-created_at",)
+
 
 
 
