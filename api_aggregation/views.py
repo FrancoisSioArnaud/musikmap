@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 
 import api_aggregation.util as ut
 from box_management.models import Song
-from box_management.util import normalize_string
+from box_management.utils import normalize_string
 
 
 class ApiAggregation(APIView):
@@ -62,3 +62,4 @@ class ApiAggregation(APIView):
             else:
                 # Return an error response if the platform ID is invalid
                 return Response({'error': 'Invalid platform ID.'}, status=status.HTTP_400_BAD_REQUEST)
+
