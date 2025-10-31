@@ -1,3 +1,5 @@
+# box_management/utils.py
+
 import re
 from collections import Counter
 from math import radians, sin, cos, sqrt, atan2
@@ -11,22 +13,20 @@ from users.models import CustomUser
 from .models import Deposit, Reaction
 
 
-def _buildUser(userName: str) -> Dict[str, str]:
+def _buildUser(user_id: int) -> Dict[str, str]:
     """
     Construit un petit objet dict représentant un utilisateur existant pour l'UI.
+    - Entrée: user_id (int)
+    - Si l'utilisateur n'existe pas: renvoie "Anonyme" + image par défaut.
     """
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
 
-    # 🔹 Recherche sensible à la casse (on suppose que l'utilisateur existe)
-    user = CustomUser.objects.filter(username=userName).only("profile_picture").first()
+    user = CustomUser.objects.only("username", "profile_picture").filter(id=user_id).first()
+    if not user:
+        return {"username": "Anonyme", "profile_pic_url": default_pic}
 
-    # 🔹 Détermination de l'image de profil
-    profilepic = user.profile_picture.url if user.profile_picture else default_pic
-
-    return {
-        "username": userName,
-        "profile_pic_url": profilepic,
-    }
+    profilepic = user.profile_picture.url if getattr(user, "profile_picture", None) else default_pic
+    return {"username": user.username, "profile_pic_url": profilepic}
 
 
 def _buildSong(song_id: int, hidden: bool) -> Dict[str, Any]:
@@ -44,20 +44,25 @@ def _buildSong(song_id: int, hidden: bool) -> Dict[str, Any]:
         .values("image_url", "title", "artist", "spotify_url", "deezer_url")
         .get()
     )
-
     data["spotify_url"] = data["spotify_url"] or None
     data["deezer_url"] = data["deezer_url"] or None
-
     return data
 
 
-def _buildReactions(deposit_id: int, current_user: Optional[Union[CustomUser, int]] = None) -> Dict[str, Any]:
+def _buildReactions(
+    deposit_id: int,
+    current_user: Optional[Union[CustomUser, int]] = None
+) -> Dict[str, Any]:
     """
-    Construit la liste des réactions pour un dépôt + un résumé agrégé par emoji.
+    Construit les réactions d'un dépôt + un résumé agrégé par emoji.
+    - Retourne: {"detail": [...], "summary": [...]}
+      * detail: liste d'objets {"user": {"name": ...}, "emoji": "🔥"}
+      * summary: liste d'objets {"emoji": "🔥", "count": 3}
+    - Si current_user est fourni, place sa réaction en premier dans 'detail'.
     """
     current_user_id: Optional[int] = None
     if current_user is not None:
-        current_user_id = getattr(current_user, "id", None) if not isinstance(current_user, int) else current_user
+        current_user_id = current_user if isinstance(current_user, int) else getattr(current_user, "id", None)
 
     qs: QuerySet[Reaction] = (
         Reaction.objects
@@ -67,14 +72,14 @@ def _buildReactions(deposit_id: int, current_user: Optional[Union[CustomUser, in
         .order_by("created_at", "id")
     )
 
-    reactions_list: List[Dict[str, str]] = []
-    mine: Optional[Dict[str, str]] = None
+    reactions_list: List[Dict[str, Any]] = []
+    mine: Optional[Dict[str, Any]] = None
     counts = Counter()
 
     for r in qs:
         username = r.user.username
         char = r.emoji.char
-        payload = {"user.name": username, "emoji.char": char}
+        payload = {"user": {"name": username}, "emoji": char}
         counts[char] += 1
 
         if current_user_id is not None and r.user_id == current_user_id:
@@ -82,15 +87,14 @@ def _buildReactions(deposit_id: int, current_user: Optional[Union[CustomUser, in
         else:
             reactions_list.append(payload)
 
-    reactions = [mine] + reactions_list if mine else reactions_list
+    detail = [mine] + reactions_list if mine else reactions_list
 
     summary = [
-        {"emoji.char": char, "count": count}
+        {"emoji": char, "count": count}
         for char, count in sorted(counts.items(), key=lambda x: (-x[1], x[0]))
     ]
 
-    return {"reactions": reactions, "summary": summary}
-
+    return {"detail": detail, "summary": summary}
 
 
 def _buildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str, Any]:
@@ -103,38 +107,30 @@ def _buildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str,
         hidden: Transmis à _buildSong() pour déterminer le niveau de détail retourné.
 
     Returns:
-        dict avec les clés: 'date', ('user' si includeUser=True), 'song', 'reactions'.
-        Exemple:
-        {
-            "date": "il y a 20 minutes",
-            "user": {...},
-            "song": {...},
-            "reactions": [...]
-        }
+        dict avec les clés: 'date', ('user' si includeUser=True), 'song',
+        'reactions', 'reactions_summary'.
     """
-    # 1) Récupération du dépôt (optimisé)
-    deposit = Deposit.objects.select_related("user", "song").get(id=deposit_id)
+    # Modèle mis à jour: FK nommée 'song' (standard Django)
+    deposit = (
+        Deposit.objects.select_related("user", "song")
+        .only("id", "deposited_at", "user_id", "song_id")
+        .get(id=deposit_id)
+    )
 
-    # 2) Payload avec date humanisée
     payload: Dict[str, Any] = {
         "date": naturaltime(deposit.deposited_at),
     }
 
-    # 3) User (optionnel)
     if includeUser:
-        user_id = deposit.user_id
-        payload["user"] = _buildUser(user_id)
+        payload["user"] = _buildUser(deposit.user_id)
 
-    # 4) Song
-    song_id = deposit.song_id
-    payload["song"] = _buildSong(song_id, hidden)
+    payload["song"] = _buildSong(deposit.song_id, hidden)
 
-    # 5) Reactions
-    payload["reactions"] = _buildReactions(deposit.id)
+    reactions_pack = _buildReactions(deposit.id)
+    payload["reactions"] = reactions_pack.get("detail", [])
+    payload["reactions_summary"] = reactions_pack.get("summary", [])
 
-    # 6) Retour final
     return payload
-
 
 
 def normalize_string(input_string: str) -> str:
@@ -159,5 +155,3 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
-
-
