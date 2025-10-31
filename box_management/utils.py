@@ -93,7 +93,7 @@ def _buildReactions(deposit_id: int, current_user: Optional[Union[CustomUser, in
 
 
 
-def BuildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str, Any]:
+def _buildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str, Any]:
     """
     Construit le payload d'un dépôt avec format de date humanisé.
 
@@ -159,4 +159,5 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
+
 
