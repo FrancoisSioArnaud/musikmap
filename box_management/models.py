@@ -84,15 +84,15 @@ class Emoji(models.Model):
     """Catalogue des emojis (Unicode)"""
     char = models.CharField(max_length=8, unique=True)  # ex "🔥", "😂"
     active = models.BooleanField(default=True)
-    basic = models.BooleanField(default=False)  # accessible à tous sans achat
-    cost = models.PositiveIntegerField(default=0)  # coût en points (si non-basic)
+    cost = models.PositiveIntegerField(default=0)  # coût en points
 
     def __str__(self):
         flags = []
-        if self.basic: flags.append("basic")
-        if not self.active: flags.append("inactive")
+        if not self.active:
+            flags.append("inactive")
         fl = f" ({', '.join(flags)})" if flags else ""
         return f"{self.char}{fl}"
+
 
 
 class EmojiRight(models.Model):
@@ -129,4 +129,5 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
