@@ -16,26 +16,6 @@ from users.models import CustomUser
 
 
 
-DEFAULT_PROFILE_PICTURE = "/static/img/default_profile.jpg"
-
-
-def _to_relative_path(url_or_path: str) -> str:
-    """
-    Prend une URL absolue ou un chemin (ex: 'https://site.com/media/x.jpg' ou '/media/x.jpg')
-    et renvoie toujours un chemin RELATIF commençant par '/media/' ou '/static/'.
-    """
-    if not url_or_path:
-        return DEFAULT_PROFILE_PICTURE
-
-    # Si c'est déjà un chemin relatif, on renvoie tel quel
-    if url_or_path.startswith("/"):
-        return url_or_path
-
-    # Sinon, on parse l'URL et on récupère juste le path
-    parsed = urlparse(url_or_path)
-    return parsed.path or DEFAULT_PROFILE_PICTURE
-
-
 
 
 def _buildUser(userName: str) -> Dict[str, str]:
@@ -67,6 +47,75 @@ def _buildUser(userName: str) -> Dict[str, str]:
         "profile_pic_url": profilepic,
     }
 
+# box_management/utils.py
+from typing import Dict, Any
+
+
+
+
+def _buildSong(song_id: int, hidden: bool) -> Dict[str, Any]:
+    """
+    Construit un objet 'song' minimal pour le frontend à partir de la PK (Song.id).
+
+    Paramètres
+    ----------
+    song_id : int
+        PK de la chanson (Song.id).
+    hidden : bool
+        - True  => renvoie uniquement {"image_url": ...}
+        - False => renvoie {"image_url", "title", "artist", "spotify_url", "deezer_url"}
+
+    Retour
+    ------
+    dict :
+        Si hidden=True :
+            { "image_url": str }
+        Si hidden=False :
+            {
+              "image_url": str,
+              "title": str,
+              "artist": str,
+              "spotify_url": str | None,
+              "deezer_url": str | None
+            }
+
+    Remarques
+    ---------
+    - On suppose que la chanson existe (Song.id valide) et que image_url est non vide.
+    - spotify_url / deezer_url sont normalisés à None si vides.
+    """
+    from .models import Song  # import local pour éviter d'éventuels imports circulaires
+
+    if hidden:
+        data = (
+            Song.objects
+            .filter(id=song_id)
+            .values("image_url")
+            .get()  # .get() si non trouvé -> Song.DoesNotExist (cas non prévu ici)
+        )
+        return {"image_url": data["image_url"]}
+
+    # visible : on prend les 5 champs
+    data = (
+        Song.objects
+        .filter(id=song_id)
+        .values("image_url", "title", "artist", "spotify_url", "deezer_url")
+        .get()
+    )
+
+    # Normalisation des URLs vides en None (spotify/deezer)
+    if not data.get("spotify_url"):
+        data["spotify_url"] = None
+    if not data.get("deezer_url"):
+        data["deezer_url"] = None
+
+    return {
+        "image_url": data["image_url"],
+        "title": data["title"],
+        "artist": data["artist"],
+        "spotify_url": data["spotify_url"],
+        "deezer_url": data["deezer_url"],
+    }
 
 
 
@@ -121,4 +170,5 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     distance = r * c
 
     return distance
+
 
