@@ -1,6 +1,74 @@
 import re
 from math import radians, sin, cos, sqrt, atan2
 
+# box_management/utils.py
+
+from types import SimpleNamespace
+from urllib.parse import urlparse
+from django.conf import settings
+
+# ⚠️ adapte l'import ci-dessous au nom réel de ton app "users"
+# ex: from users.models import CustomUser
+from users.models import CustomUser
+
+
+
+
+
+
+DEFAULT_PROFILE_PICTURE = "/static/img/default_profile.jpg"
+
+
+def _to_relative_path(url_or_path: str) -> str:
+    """
+    Prend une URL absolue ou un chemin (ex: 'https://site.com/media/x.jpg' ou '/media/x.jpg')
+    et renvoie toujours un chemin RELATIF commençant par '/media/' ou '/static/'.
+    """
+    if not url_or_path:
+        return DEFAULT_PROFILE_PICTURE
+
+    # Si c'est déjà un chemin relatif, on renvoie tel quel
+    if url_or_path.startswith("/"):
+        return url_or_path
+
+    # Sinon, on parse l'URL et on récupère juste le path
+    parsed = urlparse(url_or_path)
+    return parsed.path or DEFAULT_PROFILE_PICTURE
+
+
+
+
+def _buildUser(userName: str) -> Dict[str, str]:
+    """
+    Construit un petit objet dict représentant un utilisateur existant pour l'UI.
+
+    Paramètres
+    ----------
+    userName : str
+        Username (sensible à la casse, doit exister).
+
+    Retour
+    ------
+    dict
+        {
+            "username": <str>,
+            "profilepic": <str>  # URL relative ("/media/...") ou image par défaut
+        }
+    """
+    default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
+
+    # 🔹 Recherche sensible à la casse (on suppose que l'utilisateur existe)
+    user = CustomUser.objects.filter(username=userName).only("profile_picture").first()
+   # 🔹 Détermination de l'image de profil
+    profilepic = user.profile_picture.url if user.profile_picture else default_pic
+
+    return {
+        "username": userName,
+        "profile_pic_url": profilepic,
+    }
+
+
+
 
 def normalize_string(input_string):
     """
@@ -53,3 +121,4 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     distance = r * c
 
     return distance
+
