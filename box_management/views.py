@@ -41,7 +41,6 @@ from utils import (
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
     NB_POINTS_CONSECUTIVE_DAYS_BOX,
     COST_REVEAL_BOX,
-    calculate_distance,
 )
 from api_aggregation.views import ApiAggregation
 
@@ -1020,6 +1019,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
