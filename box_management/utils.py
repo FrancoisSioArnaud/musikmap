@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 from django.conf import settings
 from django.db.models import QuerySet
 from django.contrib.humanize.templatetags.humanize import naturaltime
+from django.utils.timezone import localtime
 
 from users.models import CustomUser
 from .models import Deposit, Reaction
@@ -15,13 +16,18 @@ from .models import Deposit, Reaction
 
 def _buildUser(user_id: int) -> Dict[str, str]:
     """
-    Construit un petit objet dict représentant un utilisateur existant pour l'UI.
+    Construit un petit objet dict représentant un utilisateur pour l'UI.
     - Entrée: user_id (int)
     - Si l'utilisateur n'existe pas: renvoie "Anonyme" + image par défaut.
     """
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
 
-    user = CustomUser.objects.only("username", "profile_picture").filter(id=user_id).first()
+    user = (
+        CustomUser.objects
+        .only("id", "username", "profile_picture")
+        .filter(id=user_id)
+        .first()
+    )
     if not user:
         return {"username": "Anonyme", "profile_pic_url": default_pic}
 
@@ -44,6 +50,7 @@ def _buildSong(song_id: int, hidden: bool) -> Dict[str, Any]:
         .values("image_url", "title", "artist", "spotify_url", "deezer_url")
         .get()
     )
+    # normalisation URLs vides
     data["spotify_url"] = data["spotify_url"] or None
     data["deezer_url"] = data["deezer_url"] or None
     return data
@@ -55,8 +62,8 @@ def _buildReactions(
 ) -> Dict[str, Any]:
     """
     Construit les réactions d'un dépôt + un résumé agrégé par emoji.
-    - Retourne: {"detail": [...], "summary": [...]}
-      * detail: liste d'objets {"user": {"name": ...}, "emoji": "🔥"}
+    - Retour: {"detail": [...], "summary": [...]}
+      * detail: liste d'objets {"user": {"name": <username>}, "emoji": "🔥"}
       * summary: liste d'objets {"emoji": "🔥", "count": 3}
     - Si current_user est fourni, place sa réaction en premier dans 'detail'.
     """
@@ -67,9 +74,8 @@ def _buildReactions(
     qs: QuerySet[Reaction] = (
         Reaction.objects
         .filter(deposit_id=deposit_id, emoji__active=True)
-        .select_related("user", "emoji")
-        .only("created_at", "id", "user__username", "emoji__char")
-        .order_by("created_at", "id")
+        .select_related("user", "emoji")   # jointures → accès direct sans requête sup
+        .order_by("created_at", "id")      # ordre stable
     )
 
     reactions_list: List[Dict[str, Any]] = []
@@ -100,25 +106,25 @@ def _buildReactions(
 def _buildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str, Any]:
     """
     Construit le payload d'un dépôt avec format de date humanisé.
-
-    Args:
-        deposit_id: ID du Deposit à charger.
-        includeUser: Si True, inclut un objet 'user' depuis _buildUser().
-        hidden: Transmis à _buildSong() pour déterminer le niveau de détail retourné.
-
-    Returns:
-        dict avec les clés: 'date', ('user' si includeUser=True), 'song',
-        'reactions', 'reactions_summary'.
+    Retour:
+        {
+            "date": "il y a 20 minutes",
+            "user": {...}               # si includeUser=True
+            "song": {...},
+            "reactions": [...],
+            "reactions_summary": [...]
+        }
     """
-    # Modèle mis à jour: FK nommée 'song' (standard Django)
+    # Modèle à jour: FK nommée 'song' (standard Django)
     deposit = (
         Deposit.objects.select_related("user", "song")
         .only("id", "deposited_at", "user_id", "song_id")
         .get(id=deposit_id)
     )
 
+    # localtime() pour cohérence avec le fuseau configuré (Europe/Paris)
     payload: Dict[str, Any] = {
-        "date": naturaltime(deposit.deposited_at),
+        "date": naturaltime(localtime(deposit.deposited_at)),
     }
 
     if includeUser:
