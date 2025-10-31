@@ -1,5 +1,3 @@
-# box_management/utils.py
-
 import re
 from collections import Counter
 from math import radians, sin, cos, sqrt, atan2
@@ -7,9 +5,10 @@ from typing import Any, Dict, List, Optional, Union
 
 from django.conf import settings
 from django.db.models import QuerySet
+from django.contrib.humanize.templatetags.humanize import naturaltime
 
 from users.models import CustomUser
-from .models import Reaction
+from .models import Deposit, Reaction
 
 
 def _buildUser(userName: str) -> Dict[str, str]:
@@ -93,6 +92,51 @@ def _buildReactions(deposit_id: int, current_user: Optional[Union[CustomUser, in
     return {"reactions": reactions, "summary": summary}
 
 
+
+def BuildDeposit(deposit_id: int, includeUser: bool, hidden: bool) -> Dict[str, Any]:
+    """
+    Construit le payload d'un dépôt avec format de date humanisé.
+
+    Args:
+        deposit_id: ID du Deposit à charger.
+        includeUser: Si True, inclut un objet 'user' depuis _buildUser().
+        hidden: Transmis à _buildSong() pour déterminer le niveau de détail retourné.
+
+    Returns:
+        dict avec les clés: 'date', ('user' si includeUser=True), 'song', 'reactions'.
+        Exemple:
+        {
+            "date": "il y a 20 minutes",
+            "user": {...},
+            "song": {...},
+            "reactions": [...]
+        }
+    """
+    # 1) Récupération du dépôt (optimisé)
+    deposit = Deposit.objects.select_related("user", "song").get(id=deposit_id)
+
+    # 2) Payload avec date humanisée
+    payload: Dict[str, Any] = {
+        "date": naturaltime(deposit.deposited_at),
+    }
+
+    # 3) User (optionnel)
+    if includeUser:
+        user_id = deposit.user_id
+        payload["user"] = _buildUser(user_id)
+
+    # 4) Song
+    song_id = deposit.song_id
+    payload["song"] = _buildSong(song_id, hidden)
+
+    # 5) Reactions
+    payload["reactions"] = _buildReactions(deposit.id)
+
+    # 6) Retour final
+    return payload
+
+
+
 def normalize_string(input_string: str) -> str:
     """
     Normalise une chaîne : supprime les caractères spéciaux et met en minuscule.
@@ -115,3 +159,4 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
+
