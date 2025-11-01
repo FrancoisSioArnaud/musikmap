@@ -108,10 +108,12 @@ def _reactions_summary_for_deposits(dep_ids):
 # Vues
 # -----------------------
 
-class BoxMeta(APIView):
-    lookup_url_kwarg = 'name'
+
+class GetBox(APIView):
+    lookup_url_kwarg = "name"
     serializer_class = BoxSerializer
 
+    # --------- GET ---------
     def get(self, request, format=None):
         name = request.GET.get(self.lookup_url_kwarg)
         if not name:
@@ -126,150 +128,6 @@ class BoxMeta(APIView):
 
         return Response({"box": data, "deposit_count": deposit_count}, status=status.HTTP_200_OK)
 
-
-class GetBox(APIView):
-    lookup_url_kwarg = 'name'
-    serializer_class = BoxSerializer
-
-    @staticmethod
-    def _map_user(u):
-        if not u or isinstance(u, AnonymousUser):
-            return None
-        display_name = getattr(u, "username", None)
-        profile_pic_url = None
-        if getattr(u, "profile_picture", None):
-            try:
-                profile_pic_url = u.profile_picture.url
-            except Exception:
-                profile_pic_url = None
-        return {"id": u.id, "username": display_name, "profile_pic_url": profile_pic_url}
-
-    @staticmethod
-    def _map_song_full(s, include_id=False):
-        if not s:
-            return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
-        payload = {
-            "title": getattr(s, "title", None),
-            "artist": getattr(s, "artist", None),
-            "spotify_url": getattr(s, "spotify_url", None),
-            "deezer_url": getattr(s, "deezer_url", None),
-            "img_url": getattr(s, "image_url", None),
-        }
-        if include_id:
-            payload["id"] = getattr(s, "id", None)
-        return payload
-
-    @staticmethod
-    def _map_song_teaser(s):
-        return {"img_url": getattr(s, "image_url", None), "id": getattr(s, "id", None), "cost": 300}
-
-    @staticmethod
-    def _naturaltime(dt):
-        if not dt:
-            return None
-        text = naturaltime(localtime(dt))
-        return text.split(",")[0].strip()
-
-    def _build_deposits_payload(self, box, user, limit=10):
-        qs = (
-            Deposit.objects
-            .filter(box_id=box)
-            .select_related('song_id', 'user')
-            .order_by('-deposited_at', '-id')[:limit]
-        )
-        deposits = list(qs)
-        if not deposits:
-            return []
-
-        dep_ids = [d.id for d in deposits]
-        reactions_by_dep = _reactions_summary_for_deposits(dep_ids)
-
-        # réactions utilisateur courant
-        my_reac_by_dep = {}
-        authed = bool(user and not isinstance(user, AnonymousUser) and getattr(user, "is_authenticated", False))
-        if authed:
-            for r in Reaction.objects.filter(user=user, deposit_id__in=dep_ids).select_related('emoji'):
-                # r.deposit_id est déjà un int (colonne FK)
-                my_reac_by_dep[r.deposit_id] = {
-                    "emoji": r.emoji.char,
-                    "reacted_at": r.created_at.isoformat(),
-                }
-
-        discovered_by_dep = {}
-        if authed and len(deposits) > 1:
-            dep_ids_sub = [d.id for d in deposits[1:]]
-            for ds in DiscoveredSong.objects.filter(user_id=user, deposit_id__in=dep_ids_sub):
-                # ds.deposit_id est l'objet Deposit (car le champ s'appelle "deposit_id")
-                discovered_by_dep[ds.deposit_id.id] = ds
-
-        out = []
-        for idx, d in enumerate(deposits):
-            s = d.song_id
-            u = d.user
-            user_payload = self._map_user(u)
-
-            base_obj = {
-                "deposit_id": d.id,
-                "deposit_date": self._naturaltime(getattr(d, "deposited_at", None)),
-                "user": user_payload,
-                "reactions_summary": reactions_by_dep.get(d.id, []),
-            }
-            if authed:
-                base_obj["my_reaction"] = my_reac_by_dep.get(d.id)
-
-            if idx == 0:
-                song_payload = self._map_song_full(s, include_id=False)
-                base_obj["song"] = song_payload
-            else:
-                if authed:
-                    ds = discovered_by_dep.get(d.id)
-                    already_discovered = bool(ds)
-                    if already_discovered:
-                        song_payload = self._map_song_full(s, include_id=True)
-                        discovered_at = self._naturaltime(getattr(ds, "discovered_at", None))
-                    else:
-                        song_payload = self._map_song_teaser(s)
-                        discovered_at = None
-                    base_obj.update({
-                        "already_discovered": already_discovered,
-                        "discovered_at": discovered_at,
-                        "song": song_payload,
-                    })
-                else:
-                    song_payload = self._map_song_teaser(s)
-                    base_obj.update({
-                        "already_discovered": False,
-                        "discovered_at": None,
-                        "song": song_payload,
-                    })
-            out.append(base_obj)
-
-        return out
-
-    # --------- GET ---------
-    def get(self, request, format=None):
-        name = request.GET.get(self.lookup_url_kwarg)
-        if name is None:
-            return Response({'Bad Request': 'Name of the box not found in request'}, status=status.HTTP_400_BAD_REQUEST)
-
-        box_qs = Box.objects.filter(url=name)
-        if not box_qs.exists():
-            return Response({'Bad Request': 'Invalid Box Name'}, status=status.HTTP_404_NOT_FOUND)
-
-        box = box_qs[0]
-        data = BoxSerializer(box).data
-
-        deposit_count = Deposit.objects.filter(box_id=box.id).count()
-        deposits_payload = self._build_deposits_payload(box, request.user, limit=10)
-
-        resp = {
-            'deposit_count': deposit_count,
-            'box': data,
-            'deposits': deposits_payload,
-            'reveal_cost': int(COST_REVEAL_BOX),
-        }
-        return Response(resp, status=status.HTTP_200_OK)
-
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
         """
@@ -280,8 +138,8 @@ class GetBox(APIView):
           4) Répondre : {"successes": [...], "added_deposit": {...}, "points_balance": <int|None>}
         """
         # --- 0) Lecture & validations minimales
-        option = request.data.get('option') or {}
-        box_name = request.data.get('boxName')
+        option = request.data.get("option") or {}
+        box_name = request.data.get("boxName")
         if not box_name:
             return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -289,10 +147,10 @@ class GetBox(APIView):
         if not box:
             return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-        song_name = (option.get('name') or "").strip()
-        song_author = (option.get('artist') or "").strip()
-        song_platform_id = option.get('platform_id')  # 1=Spotify, 2=Deezer
-        incoming_url = option.get('url')
+        song_name = (option.get("name") or "").strip()
+        song_author = (option.get("artist") or "").strip()
+        song_platform_id = option.get("platform_id")  # 1=Spotify, 2=Deezer
+        incoming_url = option.get("url")
         if not song_name or not song_author:
             return Response({"detail": "Titre et artiste requis"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -300,8 +158,6 @@ class GetBox(APIView):
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
         # --- 1) Calcul des succès / points
-
-        
         successes: dict = {}
         points_to_add = NB_POINTS_ADD_SONG
 
@@ -310,50 +166,51 @@ class GetBox(APIView):
             consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
             points_to_add += consecutive_days_points
             nb_consecutive_days += 1
-            successes['consecutive_days'] = {
-                'name': "Amour fou",
-                'desc': f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                'points': consecutive_days_points,
-                'emoji': "🔥"
-        }
+            successes["consecutive_days"] = {
+                "name": "Amour fou",
+                "desc": f"{nb_consecutive_days} jours consécutifs avec cette boite",
+                "points": consecutive_days_points,
+                "emoji": "🔥",
+            }
 
         if user and is_first_user_deposit(user, box):
             points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            successes['first_user_deposit_box'] = {
-                'name': "Explorateur·ice",
-                'desc': "Tu n'as jamais déposé ici",
-                'points': NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
-                'emoji': "🔍"
+            successes["first_user_deposit_box"] = {
+                "name": "Explorateur·ice",
+                "desc": "Tu n'as jamais déposé ici",
+                "points": NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
+                "emoji": "🔍",
             }
 
         if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            successes['first_song_deposit'] = {
-                'name': "Far West",
-                'desc': "Cette chanson n'a jamais été déposée ici",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
-                'emoji': "🤠"
+            successes["first_song_deposit"] = {
+                "name": "Far West",
+                "desc": "Cette chanson n'a jamais été déposée ici",
+                "points": NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
+                "emoji": "🤠",
             }
+
         if is_first_song_deposit_global_by_title_artist(song_name, song_author):
             points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-            successes['first_song_deposit_global'] = {
-                'name': "Preums",
-                'desc': "Cette chanson n'a jamais été déposée sur le réseau",
-                'points': NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
-                'emoji': "🥇"
+            successes["first_song_deposit_global"] = {
+                "name": "Preums",
+                "desc": "Cette chanson n'a jamais été déposée sur le réseau",
+                "points": NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
+                "emoji": "🥇",
             }
 
-        successes['default_deposit'] = {
-            'name': "Pépite",
-            'desc': "Tu as partagé·e une chanson",
-            'points': NB_POINTS_ADD_SONG,
-            'emoji': "💎"
+        successes["default_deposit"] = {
+            "name": "Pépite",
+            "desc": "Tu as partagé·e une chanson",
+            "points": NB_POINTS_ADD_SONG,
+            "emoji": "💎",
         }
 
-        successes['points_total'] = {
-            'name': "Total",
-            'desc': "Points gagnés pour ce dépôt",
-            'points': points_to_add
+        successes["points_total"] = {
+            "name": "Total",
+            "desc": "Points gagnés pour ce dépôt",
+            "points": points_to_add,
         }
 
         # --- 2) Upsert Song + 3) Créer Deposit (atomique ensemble)
@@ -363,11 +220,11 @@ class GetBox(APIView):
                 song.n_deposits = (song.n_deposits or 0) + 1
             except Song.DoesNotExist:
                 song = Song(
-                    song_id=option.get('id'),
+                    song_id=option.get("id"),
                     title=song_name,
                     artist=song_author,
-                    image_url=option.get('image_url') or "",
-                    duration=option.get('duration') or 0,
+                    image_url=option.get("image_url") or "",
+                    duration=option.get("duration") or 0,
                 )
 
             # URL de la plateforme utilisée
@@ -376,7 +233,7 @@ class GetBox(APIView):
             elif song_platform_id == 2 and incoming_url:
                 song.deezer_url = incoming_url
 
-            # Compléter l’autre URL via agrégateur (best-effort)
+            # Compléter l'autre URL via agrégateur (best-effort)
             try:
                 request_platform = None
                 if song_platform_id == 1 and not song.deezer_url:
@@ -385,7 +242,7 @@ class GetBox(APIView):
                     request_platform = "spotify"
 
                 if request_platform:
-                    aggreg_url = request.build_absolute_uri(reverse('api_agg:aggreg'))
+                    aggreg_url = request.build_absolute_uri(reverse("api_agg:aggreg"))
                     payload = {
                         "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
                         "platform": request_platform,
@@ -415,14 +272,14 @@ class GetBox(APIView):
         points_balance = None
         try:
             if user and getattr(user, "is_authenticated", False):
-                add_points_url = request.build_absolute_uri(reverse('add-points'))
-                csrftoken_cookie = request.COOKIES.get('csrftoken')
+                add_points_url = request.build_absolute_uri(reverse("add-points"))
+                csrftoken_cookie = request.COOKIES.get("csrftoken")
                 csrftoken_header = csrftoken_cookie or get_token(request)
 
                 headers_bg = {
                     "Content-Type": "application/json",
                     "X-CSRFToken": csrftoken_header,
-                    "Referer": request.build_absolute_uri('/'),
+                    "Referer": request.build_absolute_uri("/"),
                 }
                 r = requests.post(
                     add_points_url,
@@ -440,12 +297,43 @@ class GetBox(APIView):
         except Exception:
             pass  # silencieux
 
-        # --- 5) Réponse
+        # --- 5) Réponse (tout inline, sans helpers)
+        # naturaltime court "il y a X ..." (sans la partie après la virgule)
+        deposit_date_txt = None
+        if getattr(new_deposit, "deposited_at", None):
+            deposit_date_txt = naturaltime(localtime(new_deposit.deposited_at))
+            deposit_date_txt = deposit_date_txt.split(",")[0].strip()
+
+        # map song "full"
+        song_payload = {
+            "title": getattr(song, "title", None),
+            "artist": getattr(song, "artist", None),
+            "spotify_url": getattr(song, "spotify_url", None),
+            "deezer_url": getattr(song, "deezer_url", None),
+            "img_url": getattr(song, "image_url", None),
+        }
+
+        # map user
+        if user and getattr(user, "is_authenticated", False):
+            profile_pic_url = None
+            if getattr(user, "profile_picture", None):
+                try:
+                    profile_pic_url = user.profile_picture.url
+                except Exception:
+                    profile_pic_url = None
+            user_payload = {
+                "id": user.id,
+                "username": getattr(user, "username", None),
+                "profile_pic_url": profile_pic_url,
+            }
+        else:
+            user_payload = None
+
         added_deposit = {
             "deposit_id": new_deposit.id,
-            "deposit_date": self._naturaltime(getattr(new_deposit, "deposited_at", None)),
-            "song": self._map_song_full(song, include_id=False),
-            "user": self._map_user(user),
+            "deposit_date": deposit_date_txt,
+            "song": song_payload,
+            "user": user_payload,
         }
 
         response = {
@@ -454,7 +342,6 @@ class GetBox(APIView):
             "points_balance": points_balance,
         }
         return Response(response, status=status.HTTP_200_OK)
-
 
 class Location(APIView):
     def post(self, request):
@@ -1019,6 +906,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
