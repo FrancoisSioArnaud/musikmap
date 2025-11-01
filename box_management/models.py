@@ -48,17 +48,56 @@ class Song(models.Model):
     def __str__(self):
         return f"{self.title} - {self.artist}"
 
+class DepositQuerySet(models.QuerySet):
+    def with_related(self):
+        """Précharge les FK pour éviter le N+1 dans les vues/serializers."""
+        return self.select_related("song", "box", "user")
+
+    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+        """Retourne l'id si on passe un objet, sinon la valeur telle quelle."""
+        return getattr(obj_or_id, "pk", obj_or_id)
+
+    def latest_for_box(self, box_or_id: Union[int, "Box"], limit: Optional[int] = None):
+        """
+        Derniers dépôts d'une box, triés du plus récent au plus ancien.
+        Utilisation :
+            Deposit.objects.latest_for_box(box, limit=20)
+            Deposit.objects.latest_for_box(box_id, limit=10)
+        """
+        bid = self._coerce_id(box_or_id)
+        qs = (
+            self.filter(box_id=bid)
+            .with_related()
+            .order_by("-deposited_at")
+        )
+        return qs[:int(limit)] if limit else qs
+
+    def latest_for_user(self, user_or_id: Union[int, "CustomUser"], limit: Optional[int] = None):
+        """
+        Derniers dépôts d'un utilisateur, triés du plus récent au plus ancien.
+        Utilisation :
+            Deposit.objects.latest_for_user(user, limit=20)
+            Deposit.objects.latest_for_user(user_id, limit=10)
+        """
+        uid = self._coerce_id(user_or_id)
+        qs = (
+            self.filter(user_id=uid)
+            .with_related()
+            .order_by("-deposited_at")
+        )
+        return qs[:int(limit)] if limit else qs
+
 
 class Deposit(models.Model):
     deposited_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     song = models.ForeignKey(
-        Song,
+        "Song",
         on_delete=models.CASCADE,
         related_name="deposits",
     )
     box = models.ForeignKey(
-        Box,
+        "Box",
         on_delete=models.CASCADE,
         related_name="deposits",
     )
@@ -69,6 +108,19 @@ class Deposit(models.Model):
         blank=True,
         related_name="deposits",
     )
+
+    objects = DepositQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-deposited_at"]
+        indexes = [
+            models.Index(fields=["box", "deposited_at"]),
+            models.Index(fields=["song", "deposited_at"]),
+            models.Index(fields=["user", "deposited_at"]),
+        ]
+
+    def __str__(self):
+        return f"Deposit #{self.pk} · song={self.song_id} · box={self.box_id}"
 
     class Meta:
         ordering = ["-deposited_at"]
@@ -157,16 +209,43 @@ class EmojiRight(models.Model):
     def __str__(self):
         return f"{self.user} → {self.emoji}"
 
+class ReactionQuerySet(models.QuerySet):
+    def with_related(self):
+        # FK simples → JOIN en 1 requête pour emoji et user
+        return self.select_related("emoji", "user")
+
+    def recent(self):
+        return self.order_by("-created_at")
+
+    def for_deposit(self, dep_or_id: Union[int, "Deposit"]):
+        dep_id = getattr(dep_or_id, "pk", dep_or_id)
+        return self.filter(deposit_id=dep_id)
+
+    def for_deposits(self, dep_ids: Iterable[int]):
+        return self.filter(deposit_id__in=list(dep_ids))
+
+    def summary_by_emoji(self):
+        """
+        Compte par emoji pour un set courant (ex: un dépôt)
+        Renvoie : [{'emoji': '🔥', 'count': 3}, ...]
+        """
+        return (
+            self.values("emoji__char")
+            .annotate(count=Count("id"))
+            .order_by("-count", "emoji__char")
+        )
+
 
 class Reaction(models.Model):
-    """Une réaction d’un user sur un dépôt (un seul par couple user/deposit)."""
-    deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE, related_name="reactions")
+    deposit = models.ForeignKey("Deposit", on_delete=models.CASCADE, related_name="reactions")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reactions")
-    # PROTECT = on ne supprime pas un emoji utilisé, tu as raison
-    emoji = models.ForeignKey(Emoji, on_delete=models.PROTECT, related_name="reactions")
+    emoji = models.ForeignKey("Emoji", on_delete=models.PROTECT, related_name="reactions")
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # branchement du QuerySet custom
+    objects = ReactionQuerySet.as_manager()
 
     class Meta:
         constraints = [
