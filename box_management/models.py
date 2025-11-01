@@ -122,16 +122,6 @@ class Deposit(models.Model):
     def __str__(self):
         return f"Deposit #{self.pk} · song={self.song_id} · box={self.box_id}"
 
-    class Meta:
-        ordering = ["-deposited_at"]
-        indexes = [
-            models.Index(fields=["box", "deposited_at"]),
-            models.Index(fields=["song", "deposited_at"]),
-            models.Index(fields=["user", "deposited_at"]),
-        ]
-
-    def __str__(self):
-        return f"Deposit #{self.pk} · song={self.song_id} · box={self.box_id}"
 
 
 class LocationPoint(models.Model):
@@ -259,3 +249,4 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
