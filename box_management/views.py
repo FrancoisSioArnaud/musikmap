@@ -110,48 +110,63 @@ def _reactions_summary_for_deposits(dep_ids):
 
 
 
+
+from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import AnonymousUser
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import Box, Deposit, Reaction
+from .utils import build_deposits_payload
+
+
 class GetMain(APIView):
     """
-    GET /box-management/get-main/<int:box_id>/
-    → Retourne le dernier dépôt d'une box donnée.
-    
+    GET /box-management/get-main/<slug:box_url>/
+    → Retourne le dernier dépôt d'une box donnée (via son slug URL).
+
     - 404 si la box n'existe pas
     - [] si aucun dépôt n'est encore présent
     - utilise build_deposits_payload (utils.py)
     """
 
-    def get(self, request, box_id: int, *args, **kwargs):
-        # 1️⃣ Vérifie que la box existe (sinon 404)
-        box = get_object_or_404(Box, pk=box_id)
+    def get(self, request, box_url: str, *args, **kwargs):
+        # 1) Box par URL (slug) → 404 si introuvable
+        box = get_object_or_404(Box, url=box_url)
 
-        # 2️⃣ Charge le dernier dépôt pour cette box
+        # 2) Dernier dépôt pour cette box (relations + réactions préchargées)
         qs = (
             Deposit.objects
-            .latest_for_box(box, limit=1)
+            .latest_for_box(box, limit=1)  # ton QuerySet custom
             .prefetch_related(
                 Prefetch(
                     "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    queryset=Reaction.objects
+                        .select_related("emoji", "user")
+                        .order_by("created_at", "id"),
                     to_attr="prefetched_reactions",
                 )
             )
         )
+        deposits = list(qs)  # 0..1 élément
 
-        deposits = list(qs)  # force l'évaluation (liste vide possible)
-
-        # 3️⃣ Détermine le viewer
+        # 3) Viewer (auth facultative)
         viewer = (
             request.user
-            if (hasattr(request, "user") and getattr(request.user, "is_authenticated", False))
+            if (hasattr(request, "user")
+                and not isinstance(request.user, AnonymousUser)
+                and getattr(request.user, "is_authenticated", False))
             else None
         )
 
-        # 4️⃣ Construit le payload (ne recharge rien)
+        # 4) Payload via utils (zéro re-get)
         payload = build_deposits_payload(deposits, viewer=viewer, include_user=True)
 
-        # 5️⃣ Retourne la réponse (liste, même si 0 ou 1 élément)
+        # 5) Retourne une liste (vide ou 1 élément)
         return Response(payload, status=status.HTTP_200_OK)
-
 
 
 class GetBox(APIView):
@@ -978,6 +993,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
