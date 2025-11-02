@@ -6,7 +6,7 @@ import theme from "../theme";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
-import MusicBox from "./MusicBox/MusicBox";
+//import MusicBox from "./MusicBox/MusicBox"; // legacy
 import UserProfilePage from "./UserProfilePage";
 import RedirectToMobile from "./RedirectToMobile";
 import { UserContext } from "./UserContext";
@@ -18,6 +18,12 @@ import SuccessfulLogout from "./SuccessfulLogout";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
+import FlowboxLayout from "./Flowbox/Layout";
+import Intro from "./Flowbox/Intro";
+import Main from "./Flowbox/Main";
+import Search from "./Flowbox/Search";
+import Reveal from "./Flowbox/Reveal";
+import ReactPage from "./Flowbox/ReactPage";
 
 
 import {
@@ -84,9 +90,19 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/profile/settings" element={<UserSettings />} />
                 <Route path="/profile/edit" element={<UserProfileEdit />} />
-                <Route path="/box/:boxName" element={<MusicBox />} />
+                {/* <Route path="/box/:boxName" element={<MusicBox />} /> */}
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/profile/:username" element={<UserProfilePage />} />
+                <Route path="/flowbox/:boxUrl" element={<FlowboxLayout />}>
+                  {/* index → /flowbox/:boxUrl */}
+                  <Route index element={<Intro />} />
+                  {/* /flowbox/:boxUrl/discover */}
+                  <Route path="discover" element={<Discover />} />
+                  {/* /flowbox/:boxUrl/search */}
+                  <Route path="search" element={<Search />} />
+                  {/* /flowbox/:boxUrl/older */}
+                  <Route path="older" element={<Older />} />
+                </Route>
               </Route>
   
               {/* ====== Routes SANS header (auth) ====== */}
@@ -102,6 +118,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
