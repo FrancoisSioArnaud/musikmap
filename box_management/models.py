@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db.models import Count
 from typing import Union, Optional, Iterable
 from users.models import CustomUser
+from typing import Any, Dict, List, Optional, Union, Iterable, Sequence
 
 
 class Box(models.Model):
@@ -251,5 +252,6 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
 
