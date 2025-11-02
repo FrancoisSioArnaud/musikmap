@@ -18,7 +18,6 @@ import SuccessfulLogout from "./SuccessfulLogout";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
-import FlowboxLayout from "./Flowbox/Layout";
 import Intro from "./Flowbox/Onboarding";
 
 
@@ -109,6 +108,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
