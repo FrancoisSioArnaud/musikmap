@@ -109,24 +109,96 @@ def _reactions_summary_for_deposits(dep_ids):
 # -----------------------
 
 
+
+class GetMain(APIView):
+    """
+    GET /box-management/get-main/<int:box_id>/
+    → Retourne le dernier dépôt d'une box donnée.
+    
+    - 404 si la box n'existe pas
+    - [] si aucun dépôt n'est encore présent
+    - utilise build_deposits_payload (utils.py)
+    """
+
+    def get(self, request, box_id: int, *args, **kwargs):
+        # 1️⃣ Vérifie que la box existe (sinon 404)
+        box = get_object_or_404(Box, pk=box_id)
+
+        # 2️⃣ Charge le dernier dépôt pour cette box
+        qs = (
+            Deposit.objects
+            .latest_for_box(box, limit=1)
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+        )
+
+        deposits = list(qs)  # force l'évaluation (liste vide possible)
+
+        # 3️⃣ Détermine le viewer
+        viewer = (
+            request.user
+            if (hasattr(request, "user") and getattr(request.user, "is_authenticated", False))
+            else None
+        )
+
+        # 4️⃣ Construit le payload (ne recharge rien)
+        payload = build_deposits_payload(deposits, viewer=viewer, include_user=True)
+
+        # 5️⃣ Retourne la réponse (liste, même si 0 ou 1 élément)
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+
 class GetBox(APIView):
     lookup_url_kwarg = "name"
     serializer_class = BoxSerializer
 
     # --------- GET ---------
     def get(self, request, format=None):
-        name = request.GET.get(self.lookup_url_kwarg)
-        if not name:
-            return Response({"detail": "Paramètre 'name' manquant."}, status=status.HTTP_400_BAD_REQUEST)
+        slug = request.GET.get(self.lookup_url_kwarg)
+        if not slug:
+            return Response(
+                {"detail": "Merci de spécifier le nom d'une boîte"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        box = Box.objects.filter(url=name).first()
+        # Une seule requête : on annote le nombre de dépôts et la date max
+        box = (
+            Box.objects
+            .filter(url=slug)
+            .annotate(
+                deposit_count=Count("deposits"),
+                last_deposit_at=Max("deposits__deposited_at"),
+            )
+            .only("name")  # on ne lira que le nom
+            .first()
+        )
+
         if not box:
-            return Response({"detail": "Boîte introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Désolé. Cette boîte n'existe pas"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        data = BoxSerializer(box).data
-        deposit_count = Deposit.objects.filter(box_id=box.id).count()
+        # naturaltime(localtime) si on a au moins un dépôt
+        if box.last_deposit_at:
+            last_deposit_date = naturaltime(localtime(box.last_deposit_at))
+        else:
+            last_deposit_date = None
 
-        return Response({"box": data, "deposit_count": deposit_count}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "name": box.name,
+                "deposit_count": box.deposit_count,
+                "last_deposit_date": last_deposit_date,  # ex: "il y a 3 heures" ou None
+            },
+            status=status.HTTP_200_OK,
+        )
 
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
@@ -906,6 +978,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
