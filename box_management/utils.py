@@ -93,37 +93,68 @@ def _build_deposit_from_instance(dep: Deposit, *, include_user: bool, hidden: bo
 
 
 
-def get_deposit(deposit_id: int, *, viewer: Optional[CustomUser] = None, include_user: bool = True) -> Dict[str, Any]:
+def build_deposits_payload(
+    deposits: Union[Deposit, Iterable[Deposit], Sequence[Deposit]],
+    *,
+    viewer: Optional[CustomUser] = None,
+    include_user: bool = True,
+) -> List[Dict[str, Any]]:
     """
-    1) Charge l'objet Deposit (select_related + prefetch réactions)
-    2) Annote is_revealed pour le viewer (si fourni)
-    3) Construit le payload UNIQUEMENT depuis l'objet chargé (zéro re-get par ID)
+    Construit une liste de payloads de dépôts à partir d'instances déjà chargées.
+
+    - N'effectue AUCUNE requête de "get par ID".
+    - Optionnellement annote "is_revealed" pour le viewer fourni (en 1 requête bulk).
+    - Construit le payload final via _build_deposit_from_instance(...).
+
+    Paramètres
+    ----------
+    deposits : Deposit | Iterable[Deposit]
+        Un objet Deposit unique, ou une collection (list, queryset, generator...).
+        L'ordre de sortie respecte l'ordre d'entrée.
+    viewer : Optional[CustomUser]
+        Utilisateur courant pour déterminer la révélation (DiscoveredSong).
+        Si None => tous les dépôts sont considérés "non révélés".
+    include_user : bool
+        Inclure ou non la clé "user" dans le payload.
+
+    Retour
+    ------
+    List[Dict[str, Any]]
+        Une liste de payloads construits.
     """
-    # Annotation de visibilité (is_revealed) via DiscoveredSong
-    if viewer is None:
-        # tout hidden si pas de viewer
-        qs = Deposit.objects.select_related("song", "box", "user").prefetch_related(
-            Prefetch(
-                "reactions",
-                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                to_attr="prefetched_reactions",
-            )
-        ).annotate(is_revealed=Value(False, output_field=BooleanField()))
+    # Normalisation en liste tout en respectant l’ordre fourni
+    if isinstance(deposits, Deposit):
+        deps: List[Deposit] = [deposits]
     else:
-        ds = DiscoveredSong.objects.filter(user_id=viewer.id, deposit_id=OuterRef("pk"))
-        qs = Deposit.objects.select_related("song", "box", "user").prefetch_related(
-            Prefetch(
-                "reactions",
-                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                to_attr="prefetched_reactions",
-            )
-        ).annotate(is_revealed=Exists(ds))
+        deps = list(deposits or [])
 
-    dep: Deposit = qs.get(pk=deposit_id)
-    hidden = not getattr(dep, "is_revealed", False)
+    if not deps:
+        return []
 
-    # construction finale, 100% basée sur l'instance
-    return _build_deposit_from_instance(dep, include_user=include_user, hidden=hidden, current_user=viewer)
+    # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+    if viewer is None:
+        revealed_ids = set()  # personne -> rien de révélé
+    else:
+        dep_ids = [d.pk for d in deps]
+        revealed_ids = set(
+            DiscoveredSong.objects
+            .filter(user_id=getattr(viewer, "id", None), deposit_id__in=dep_ids)
+            .values_list("deposit_id", flat=True)
+        )
+
+    # ------- Construction des payloads à partir des instances -------
+    out: List[Dict[str, Any]] = []
+    for dep in deps:
+        hidden = dep.pk not in revealed_ids
+        payload = _build_deposit_from_instance(
+            dep,
+            include_user=include_user,
+            hidden=hidden,
+            current_user=viewer,
+        )
+        out.append(payload)
+
+    return out
 
 
 def normalize_string(input_string: str) -> str:
@@ -148,4 +179,5 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
+
 
