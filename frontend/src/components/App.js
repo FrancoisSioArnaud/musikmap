@@ -93,14 +93,14 @@ export default function App() {
                 {/* <Route path="/box/:boxName" element={<MusicBox />} /> */}
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/profile/:username" element={<UserProfilePage />} />
-                <Route path="/flowbox/:boxUrl" element={<FlowboxLayout />}>
-                  {/* index → /flowbox/:boxUrl */}
+                <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
+                  {/* index → /flowbox/:boxSlug */}
                   <Route index element={<Intro />} />
-                  {/* /flowbox/:boxUrl/discover */}
+                  {/* /flowbox/:boxSlug/discover */}
                   <Route path="discover" element={<Discover />} />
-                  {/* /flowbox/:boxUrl/search */}
+                  {/* /flowbox/:boxSlug/search */}
                   <Route path="search" element={<Search />} />
-                  {/* /flowbox/:boxUrl/older */}
+                  {/* /flowbox/:boxSlug/older */}
                   <Route path="older" element={<Older />} />
                 </Route>
               </Route>
@@ -118,6 +118,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
