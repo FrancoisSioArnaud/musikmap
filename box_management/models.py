@@ -2,6 +2,8 @@
 
 from django.db import models
 from django.utils import timezone
+from django.db.models import Count
+from typing import Union, Optional, Iterable
 from users.models import CustomUser
 
 
@@ -249,4 +251,5 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
