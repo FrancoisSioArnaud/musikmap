@@ -6,6 +6,7 @@ from .views import (
 
 urlpatterns = [
     path('get-box', GetBox.as_view()),
+    path("get-main/<slug:box_url>/", GetMain.as_view(), name="get-main"),
     path('verify-location', Location.as_view()),
     path('current-box-management', CurrentBoxManagement.as_view()),
     path('discovered-songs', ManageDiscoveredSongs.as_view()),
@@ -15,4 +16,5 @@ urlpatterns = [
     path('emojis/purchase', PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path('reactions', ReactionView.as_view(), name="reactions"),
 ]
+
 
