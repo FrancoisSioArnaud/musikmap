@@ -6,6 +6,7 @@ export default function FlowboxLayout() {
 
   return (
     <>
+      <p>FlowBox layout</p>
       <Outlet />
       <ScrollRestoration />
     </>
