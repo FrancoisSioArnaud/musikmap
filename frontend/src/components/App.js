@@ -19,11 +19,8 @@ import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
 import FlowboxLayout from "./Flowbox/Layout";
-import Intro from "./Flowbox/Intro";
-import Main from "./Flowbox/Main";
-import Search from "./Flowbox/Search";
-import Reveal from "./Flowbox/Reveal";
-import ReactPage from "./Flowbox/ReactPage";
+import Intro from "./Flowbox/Onboarding";
+
 
 
 import {
@@ -95,13 +92,7 @@ export default function App() {
                 <Route path="/profile/:username" element={<UserProfilePage />} />
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   {/* index → /flowbox/:boxSlug */}
-                  <Route index element={<Intro />} />
-                  {/* /flowbox/:boxSlug/discover */}
-                  <Route path="discover" element={<Discover />} />
-                  {/* /flowbox/:boxSlug/search */}
-                  <Route path="search" element={<Search />} />
-                  {/* /flowbox/:boxSlug/older */}
-                  <Route path="older" element={<Older />} />
+                  <Route index element={<Onboarding />} />
                 </Route>
               </Route>
   
@@ -118,6 +109,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
