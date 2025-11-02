@@ -12,6 +12,7 @@ from django.utils.timezone import localtime
 
 from users.models import CustomUser
 from .models import Deposit, Reaction
+from typing import Any, Dict, List, Optional, Union, Iterable, Sequence
 
 
 # ---------- petits builders "from instance only" ----------
@@ -179,5 +180,6 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
+
 
 
