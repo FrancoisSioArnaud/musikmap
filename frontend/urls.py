@@ -17,7 +17,9 @@ urlpatterns = [
     path('profile/<str:username>', index),             # profil public par name
     path('library', index),
     path('box/<str:boxName>', index),
+    path('flowbox/<str:boxName>', index),
 ]
+
 
 
 
