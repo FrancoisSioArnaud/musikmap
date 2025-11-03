@@ -174,15 +174,20 @@ class GetBox(APIView):
     serializer_class = BoxSerializer
 
     # --------- GET ---------
+    """
+    GET /box-management/get-box/?name=<slug>
+    → Retourne les infos principales d'une box (nom, nombre de dépôts, date du dernier dépôt).
+    """
+
     def get(self, request, format=None):
-        slug = request.GET.get(self.lookup_url_kwarg)
+        slug = request.GET.get("name")  # ✅ param GET "name"
         if not slug:
             return Response(
-                {"detail": "Merci de spécifier le nom d'une boîte"},
+                {"detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Une seule requête : on annote le nombre de dépôts et la date max
+        # On enrichit avec le nombre de dépôts et la date du dernier
         box = (
             Box.objects
             .filter(url=slug)
@@ -190,30 +195,27 @@ class GetBox(APIView):
                 deposit_count=Count("deposits"),
                 last_deposit_at=Max("deposits__deposited_at"),
             )
-            .only("name")  # on ne lira que le nom
+            .only("name")
             .first()
         )
 
         if not box:
             return Response(
-                {"detail": "Désolé. Cette boîte n'existe pas"},
+                {"detail": "Désolé. Cette boîte n'existe pas."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # naturaltime(localtime) si on a au moins un dépôt
-        if box.last_deposit_at:
-            last_deposit_date = naturaltime(localtime(box.last_deposit_at))
-        else:
-            last_deposit_date = None
-
-        return Response(
-            {
-                "name": box.name,
-                "deposit_count": box.deposit_count,
-                "last_deposit_date": last_deposit_date,  # ex: "il y a 3 heures" ou None
-            },
-            status=status.HTTP_200_OK,
+        last_deposit_date = (
+            naturaltime(localtime(box.last_deposit_at))
+            if box.last_deposit_at else None
         )
+
+        data = {
+            "name": box.name,
+            "deposit_count": box.deposit_count,
+            "last_deposit_date": last_deposit_date,
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
@@ -993,6 +995,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
