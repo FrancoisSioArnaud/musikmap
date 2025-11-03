@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.contrib.auth import get_user_model
 
 # DRF
