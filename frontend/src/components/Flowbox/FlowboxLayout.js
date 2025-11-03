@@ -6,7 +6,7 @@ export default function FlowboxLayout() {
   console.log("[FlowboxLayout] render slug=", boxSlug)
   return (
     <>
-      <Typography variant="h1">FlowBox layout</Typography>
+      <p>FlowBox layout</p>
       <Outlet />
       {/*<ScrollRestoration />*/}
     </>
