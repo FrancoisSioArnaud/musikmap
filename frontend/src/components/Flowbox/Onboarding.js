@@ -5,6 +5,9 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
+import Paper from "@mui/material/Paper";
+import Skeleton from "@mui/material/Skeleton";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
 export default function Onboarding() {
   const { boxSlug } = useParams();
@@ -12,7 +15,6 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --- Chargement de la box ---
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -38,7 +40,7 @@ export default function Onboarding() {
       });
   }, [boxSlug]);
 
-  // --- Affichage selon l’état ---
+  // === États d’attente et d’erreur ===
   if (loading) {
     return (
       <Box
@@ -74,54 +76,66 @@ export default function Onboarding() {
     );
   }
 
-  // --- Fond hero (image ou dégradé simple) ---
-  const heroBg = box?.image_url
-    ? `url("${box.image_url}")`
-    : "linear-gradient(180deg, #111 0%, #000 100%)";
-
-  // --- Contenu principal ---
+  // === HERO identique à MusicBox ===
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <Box
-        sx={{
-          position: "relative",
-          height: 400,
-          display: "flex",
-          alignItems: "flex-end",
-          backgroundImage: heroBg,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          color: "#fff",
-          p: 3,
-        }}
-      >
+    <Paper
+      elevation={3}
+      sx={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        backgroundImage: "url('../static/images/onboardingBgTan.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <Box sx={{ mt: "auto" }}>
         <Box
           sx={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.0) 100%)",
+            display: "grid",
+            position: "fixed",
+            bottom: "20px",
+            left: "20px",
+            right: "20px",
           }}
-        />
-        <Box sx={{ position: "relative" }}>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            {box?.name}
-          </Typography>
-          {box?.description && (
-            <Typography sx={{ mt: 1 }}>{box.description}</Typography>
+        >
+          {loading ? (
+            <Skeleton variant="text" width={180} height={24} />
+          ) : (
+            <Typography variant="subtitle1">
+              {box?.deposit_count || 0} Dépôts
+            </Typography>
           )}
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ mt: 3 }}
-            onClick={() =>
-              console.log("TODO: Naviguer vers /flowbox/" + boxSlug + "/main")
-            }
-          >
-            Entrer dans la boîte
-          </Button>
+
+          {loading ? (
+            <Skeleton variant="text" width={260} height={40} />
+          ) : (
+            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
+              {box?.name}
+            </Typography>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              disabled={loading}
+              startIcon={<PlayArrowIcon />}
+              onClick={() =>
+                console.log(
+                  "TODO: Naviguer vers /flowbox/" + boxSlug + "/main"
+                )
+              }
+            >
+              Ouvrir la boîte
+            </Button>
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </Paper>
   );
 }
