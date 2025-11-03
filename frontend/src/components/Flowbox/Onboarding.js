@@ -15,7 +15,7 @@ import Alert from "@mui/material/Alert";
  */
 
 const ENDPOINTS = [
-  (slug) => `/api/get-box.get?slug=${encodeURIComponent(slug)}`,
+  (slug) => `/api/box-management/get-box.get?slug=${encodeURIComponent(slug)}`,
   // (slug) => `/api/box-management/get-box.get?slug=${encodeURIComponent(slug)}`,
   // (slug) => `/api/box/get-box.get?slug=${encodeURIComponent(slug)}`,
 ];
