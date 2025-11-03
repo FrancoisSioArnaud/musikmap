@@ -107,7 +107,7 @@ export default function Onboarding() {
             {box?.deposit_count || 0} partages
           </Typography>
           <Typography variant="subtitle1">
-            Dernier partage {box?.deposit_count || 0}
+            Dernier partage {box?.last_deposit_date || 0}
           </Typography>
           
 
