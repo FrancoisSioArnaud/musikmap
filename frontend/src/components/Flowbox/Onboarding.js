@@ -26,6 +26,7 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
+  console.log("[Onboarding] render slug=", boxSlug);
   useEffect(() => {
     let aborted = false;
     const ctrl = new AbortController();
