@@ -93,6 +93,8 @@ export default function App() {
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   {/* index → /flowbox/:boxSlug */}
                   <Route index element={<Onboarding />} />
+                  <Route path="discover" element={<Discover />} />
+                  
                 </Route>
               </Route>
   
@@ -109,6 +111,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
