@@ -102,21 +102,19 @@ export default function Onboarding() {
             right: "20px",
           }}
         >
-          {loading ? (
-            <Skeleton variant="text" width={180} height={24} />
-          ) : (
-            <Typography variant="subtitle1">
-              {box?.deposit_count || 0} Dépôts
-            </Typography>
-          )}
 
-          {loading ? (
-            <Skeleton variant="text" width={260} height={40} />
-          ) : (
-            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
-              {box?.name}
-            </Typography>
-          )}
+          <Typography variant="subtitle1">
+            {box?.deposit_count || 0} partages
+          </Typography>
+          <Typography variant="subtitle1">
+            Dernier partage {box?.deposit_count || 0}
+          </Typography>
+          
+
+          <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
+            {box?.name}
+          </Typography>
+
 
           <Box sx={{ mt: 2 }}>
             <Button
