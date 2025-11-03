@@ -8,14 +8,6 @@ export default function Discover() {
 
   return (
     <Box
-      sx={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        bgcolor: "background.default",
-        color: "text.primary",
-        p: 3,
-      }}
     >
       <Typography variant="h4" component="h1" gutterBottom>
         Découvrir la boîte : {boxSlug}
