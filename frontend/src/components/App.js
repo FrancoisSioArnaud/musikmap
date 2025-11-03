@@ -20,6 +20,7 @@ import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
 import FlowboxLayout from "./Flowbox/FlowboxLayout";
 import Onboarding from "./Flowbox/Onboarding";
+import Discover from "./Flowbox/Discover";
 
 
 
@@ -111,6 +112,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
