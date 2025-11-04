@@ -18,15 +18,21 @@ from typing import Any, Dict, List, Optional, Union, Iterable, Sequence
 # ---------- petits builders "from instance only" ----------
 
 def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
-    """Ne fait AUCUNE requête : lit uniquement l'instance déjà chargée."""
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
     if not user:
         return {"username": "Anonyme", "profile_pic_url": default_pic}
+
     pic = getattr(user, "profile_picture", None)
+    if pic:  # <= True seulement si un fichier est bien associé
+        profile_url = pic.url  # sûr ici, pas de ValueError "no file associated"
+    else:
+        profile_url = default_pic
+
     return {
         "username": getattr(user, "username", "Anonyme"),
-        "profile_pic_url": (getattr(pic, "url", None) or default_pic),
+        "profile_pic_url": profile_url,
     }
+
 
 
 def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
@@ -180,6 +186,7 @@ def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c
+
 
 
 
