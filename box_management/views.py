@@ -432,51 +432,66 @@ class GetBox(APIView):
         }
         return Response(response, status=status.HTTP_200_OK)
 
+# box_management/views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+from .models import Box, LocationPoint
+from .utils import calculate_distance  # suppose que ta fonction est bien définie ici
+
 class Location(APIView):
+    """
+    POST /box-management/verify-location
+
+    Corps attendu:
+    {
+      "latitude": <float>,
+      "longitude": <float>,
+      "box": { "url": "<box_slug>" }
+    }
+
+    Réponses:
+      - 200: localisation valide
+      - 403: localisation invalide (trop loin)
+      - 404: pas de points de localisation configurés pour cette box
+      - 400: payload invalide
+    """
+
     def post(self, request):
-        latitude = float(request.data.get('latitude'))
-        longitude = float(request.data.get('longitude'))
-        box = request.data.get('box')
-        box = Box.objects.filter(id=box.get('id')).get()
+        try:
+            latitude = float(request.data.get("latitude"))
+            longitude = float(request.data.get("longitude"))
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid latitude/longitude"}, status=status.HTTP_400_BAD_REQUEST)
 
-        points = LocationPoint.objects.filter(box_id=box)
+        box_payload = request.data.get("box") or {}
+        box_url = box_payload.get("url")
+        if not box_url:
+            return Response({"error": "Missing box.url"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Box via son slug/url
+        box = get_object_or_404(Box, url=box_url)
+
+        # Points de localisation liés à la box
+        points = LocationPoint.objects.filter(box=box)
         if not points.exists():
-            return Response({'error': 'No location points for this box'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "No location points for this box"}, status=status.HTTP_404_NOT_FOUND)
 
-        is_valid_location = False
+        # Vérification de la distance pour chaque point
         for point in points:
-            max_dist = point.dist_location
-            target_latitude = point.latitude
-            target_longitude = point.longitude
-            distance = calculate_distance(latitude, longitude, target_latitude, target_longitude)
-            if distance <= max_dist:
-                is_valid_location = True
-                break
+            max_dist = point.dist_location  # rayon admissible (en mètres)
+            target_lat = point.latitude
+            target_lng = point.longitude
+            dist = calculate_distance(latitude, longitude, target_lat, target_lng)
+            if dist <= max_dist:
+                # ✅ Localisation OK → HTTP 200 sans payload obligatoire
+                return Response(status=status.HTTP_200_OK)
 
-        if is_valid_location:
-            return Response({'valid': True}, status=status.HTTP_200_OK)
-        else:
-            return Response({'valid': False, 'lat': latitude, 'long': longitude}, status=status.HTTP_403_FORBIDDEN)
-
-
-class CurrentBoxManagement(APIView):
-    def get(self, request, format=None):
-        try:
-            current_box_name = request.session['current_box_name']
-            return Response({'current_box_name': current_box_name}, status=status.HTTP_200_OK)
-        except KeyError:
-            return Response({'error': "La clé current_box_name n'existe pas"}, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request, format=None):
-        if 'current_box_name' not in request.data:
-            return Response({'errors': "Aucun nom de boîte n'a été fournie."}, status=status.HTTP_401_UNAUTHORIZED)
-        current_box_name = request.data.get('current_box_name')
-        try:
-            request.session['current_box_name'] = current_box_name
-            request.session.modified = True
-            return Response({'status': 'Le nom de la boîte actuelle a été modifié avec succès.'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # ❌ Trop loin → HTTP 403
+        return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class ManageDiscoveredSongs(APIView):
@@ -995,6 +1010,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
