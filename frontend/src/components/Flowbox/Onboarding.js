@@ -8,195 +8,136 @@ import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-
-// 👇 ajout
 import EnableLocation from "../Flowbox/EnableLocation";
 
 export default function Onboarding() {
-  const navigate = useNavigate();
   const { boxSlug } = useParams();
+  const navigate = useNavigate();
 
   const [box, setBox] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [pageError, setPageError] = useState("");        // Erreurs globales (affichage type "Impossible de récupérer la boîte")
+  const [sheetOpen, setSheetOpen] = useState(false);     // Modale EnableLocation
+  const [geoLoading, setGeoLoading] = useState(false);   // Spinner bouton "Autoriser"
 
-  // --- état modale EnableLocation
-  const [enableOpen, setEnableOpen] = useState(false);
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoError, setGeoError] = useState("");
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
-    console.log("[Onboarding] Fetch:", url);
-
-    fetch(url, { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (!data || !data.name) throw new Error("Payload inattendu");
-        setBox(data);
-      })
-      .catch((err) => {
-        console.error("[Onboarding] Erreur:", err);
-        setError("Impossible de récupérer la boîte.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [boxSlug]);
-
-  // --- clic sur "Ouvrir la boîte" → ouvrir la modale, pas d’appel réseau
-  const handleOpenModal = useCallback(() => {
-    setGeoError("");
-    setEnableOpen(true);
+  // ---- Gestion centralisée des erreurs
+  const handleError = useCallback((msg) => {
+    setGeoLoading(false);
+    setSheetOpen(false);
+    setLoading(false);
+    setPageError(msg || "Une erreur inattendue s’est produite.");
   }, []);
 
-  // --- iOS-friendly : demande d’autorisation via getCurrentPosition
-  //     puis fallback court en watchPosition pour forcer le prompt si besoin
-  const handleAuthorize = useCallback(() => {
-    setGeoError("");
-    if (!("geolocation" in navigator)) {
-      setGeoError("La géolocalisation n’est pas supportée sur cet appareil.");
-      return;
-    }
-
-    setGeoLoading(true);
-
-    const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 };
-
-    const onSuccess = () => {
-      // On a obtenu une position → on considère l’autorisation accordée.
-      // Pas de vérif serveur ici. On navigue vers Discover.
-      setGeoLoading(false);
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`);
-      // NB: pas besoin de fermer explicitement la Drawer (navigation l’unmonte).
-    };
-
-    const onError = (err) => {
-      // Fallback iOS: court watchPosition pour déclencher le prompt
+  // ---- Fetch des infos de la boîte
+  useEffect(() => {
+    (async () => {
       try {
-        const wid = navigator.geolocation.watchPosition(
-          () => {
-            try { navigator.geolocation.clearWatch(wid); } catch {}
-            onSuccess();
-          },
-          (err2) => {
-            try { navigator.geolocation.clearWatch(wid); } catch {}
-            setGeoLoading(false);
-            setGeoError(err2?.message || "Impossible d’obtenir la position.");
-          },
-          { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
-        );
-        // Sécurité: stop le watch après 15s si rien ne vient
-        setTimeout(() => {
-          try { navigator.geolocation.clearWatch(wid); } catch {}
-        }, 15000);
-      } catch (e2) {
-        setGeoLoading(false);
-        setGeoError(err?.message || "Impossible d’obtenir la position.");
+        setLoading(true);
+        setPageError("");
+        const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
+        const res = await fetch(url, { credentials: "include", headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data || !data.name) throw new Error("Payload inattendu");
+        setBox(data);
+      } catch (e) {
+        handleError("Impossible de récupérer la boîte.");
+      } finally {
+        setLoading(false);
       }
-    };
+    })();
+  }, [boxSlug, handleError]);
 
-    try {
+  // ---- Demande géoloc (avec fallback iOS watchPosition court)
+  const requestLocationOnce = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!("geolocation" in navigator)) {
+        reject(new Error("La géolocalisation n’est pas supportée sur cet appareil."));
+        return;
+      }
+      const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 };
       navigator.geolocation.getCurrentPosition(
-        () => onSuccess(),
-        (err) => onError(err),
+        (pos) => resolve(pos),
+        (err) => {
+          // Fallback iOS : déclenche le prompt via un watchPosition court
+          try {
+            const wid = navigator.geolocation.watchPosition(
+              (pos2) => { try { navigator.geolocation.clearWatch(wid); } catch {} resolve(pos2); },
+              (err2) => { try { navigator.geolocation.clearWatch(wid); } catch {} reject(err2); },
+              { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
+            );
+            setTimeout(() => { try { navigator.geolocation.clearWatch(wid); } catch {} }, 15000);
+          } catch {
+            reject(err || new Error("Impossible d’obtenir la position."));
+          }
+        },
         opts
       );
-    } catch (e) {
-      setGeoLoading(false);
-      setGeoError(e?.message || "Erreur de géolocalisation.");
-    }
-  }, [boxSlug, navigate]);
+    });
+  }, []);
 
-  // === États d’attente et d’erreur ===
-  if (loading) {
+  // ---- UI : ouvrir la modale
+  const openSheet = useCallback(() => {
+    setPageError("");  // on efface une éventuelle erreur précédente
+    setSheetOpen(true);
+  }, []);
+
+  // ---- Click "Autoriser" dans la modale
+  const handleAuthorize = useCallback(async () => {
+    setGeoLoading(true);
+    try {
+      await requestLocationOnce();       // On ne vérifie pas le serveur ici
+      setGeoLoading(false);
+      // Navigation immédiate vers Discover
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`);
+    } catch {
+      // Refus / timeout / erreur → message centralisé
+      handleError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
+    }
+  }, [requestLocationOnce, navigate, boxSlug, handleError]);
+
+  // === Écrans de chargement / erreur ===
+  if (loading && !pageError) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <CircularProgress />
         <Typography sx={{ mt: 2 }}>Chargement de la boîte…</Typography>
       </Box>
     );
   }
 
-  if (error) {
+  if (pageError) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-          p: 2,
-        }}
-      >
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={() => window.location.reload()}>
-          Réessayer
-        </Button>
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>{pageError}</Alert>
+        <Button variant="contained" onClick={() => window.location.reload()}>Réessayer</Button>
       </Box>
     );
   }
 
-  // === HERO identique à MusicBox ===
+  // === HERO (identique à l’existant, épuré)
   return (
     <>
       <Paper
         elevation={3}
         sx={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
+          position: "fixed", inset: 0,
           backgroundImage: "url('../static/images/onboardingBgTan.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat",
         }}
       >
         <Box sx={{ mt: "auto" }}>
-          <Box
-            sx={{
-              display: "grid",
-              position: "fixed",
-              bottom: "20px",
-              left: "20px",
-              right: "20px",
-            }}
-          >
-            <Typography variant="subtitle1">
-              {box?.deposit_count || 0} partages
-            </Typography>
-            <Typography variant="subtitle1">
-              Dernier partage {box?.last_deposit_date || 0}
-            </Typography>
-
-            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
-              {box?.name}
-            </Typography>
-
+          <Box sx={{ display: "grid", position: "fixed", bottom: 20, left: 20, right: 20, gap: 0.5 }}>
+            <Typography variant="subtitle1">{box?.deposit_count || 0} partages</Typography>
+            <Typography variant="subtitle1">Dernier partage {box?.last_deposit_date || 0}</Typography>
+            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>{box?.name}</Typography>
             <Box sx={{ mt: 2 }}>
               <Button
                 variant="contained"
                 size="large"
                 fullWidth
                 startIcon={<PlayArrowIcon />}
-                onClick={handleOpenModal}
-                disabled={loading}
-                aria-describedby="open-box-desc"
+                onClick={openSheet}
               >
                 Ouvrir la boîte
               </Button>
@@ -205,14 +146,14 @@ export default function Onboarding() {
         </Box>
       </Paper>
 
-      {/* Modale autorisation géoloc */}
+      {/* Modale "Autoriser la localisation" */}
       <EnableLocation
-        open={enableOpen}
+        open={sheetOpen}
         boxTitle={box?.name || "Boîte"}
         loading={geoLoading}
-        error={geoError}
+        error={""}                           // les erreurs bloquantes passent par handleError() pour affichage global
         onAuthorize={handleAuthorize}
-        onClose={() => setEnableOpen(false)}
+        onClose={() => setSheetOpen(false)}
       />
     </>
   );
