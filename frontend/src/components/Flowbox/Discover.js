@@ -1,13 +1,24 @@
 // frontend/src/components/Flowbox/Discover.js
 
-import React, { useCallback, useEffect, useRef, useState, useContext } from "react";
+import React, { useCallback, useEffect, useRef, useState, useContext, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
 import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Button from "@mui/material/Button";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+import SearchIcon from "@mui/icons-material/Search";
+import AlbumIcon from "@mui/icons-material/Album";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
 
 import Deposit from "../Common/Deposit";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import LiveSearch from "./LiveSearch";
 
 /** ----- Helpers géoloc (avec fallback iOS) ----- */
 function getPositionOnce(opts = {}) {
@@ -27,9 +38,9 @@ function getPositionOnce(opts = {}) {
               try { navigator.geolocation.clearWatch(wid); } catch {}
               resolve(pos2);
             },
-            (err2) => {
+            () => {
               try { navigator.geolocation.clearWatch(wid); } catch {}
-              reject(err2);
+              reject(err || new Error("Impossible d’obtenir la position."));
             },
             { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
           );
@@ -64,8 +75,7 @@ async function verifyLocationWithServer(boxSlug, coords) {
     body: JSON.stringify(payload),
   });
 
-  // On se base sur le code HTTP (200=OK, 403=loin, 404/5xx=erreur générique)
-  return res;
+  return res; // 200=OK, 403=loin, 401/404/5xx => erreur
 }
 
 /** ----- GET main ----- */
@@ -87,6 +97,19 @@ export default function Discover() {
   const [loading, setLoading] = useState(true);
   const [mainDep, setMainDep] = useState(null);
 
+  // Drawer unique
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerView, setDrawerView] = useState("search"); // "search" | "achievements"
+
+  // Succès / points (après dépôt)
+  const [successes, setSuccesses] = useState([]);
+
+  const totalPoints = useMemo(() => {
+    const arr = Array.isArray(successes) ? successes : [];
+    const byName = (name) => arr.find((s) => (s?.name || "").toLowerCase() === name);
+    return byName("total")?.points ?? byName("points_total")?.points ?? 0;
+  }, [successes]);
+
   // interval pour re-check (10s)
   const intervalRef = useRef(null);
 
@@ -105,7 +128,6 @@ export default function Discover() {
     try {
       pos = await getPositionOnce();
     } catch (e) {
-      // Refus / timeout / pas de GPS → retour Onboarding
       goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
       return;
     }
@@ -123,7 +145,7 @@ export default function Discover() {
           }
           setMainDep(arr[0]);
           setLoading(false);
-        } catch (e) {
+        } catch {
           goOnboardingWithError("Erreur de vérification de localisation");
           return;
         }
@@ -134,11 +156,10 @@ export default function Discover() {
         goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
         return;
       } else {
-        // 404, 5xx, JSON cassé, etc.
         goOnboardingWithError("Erreur de vérification de localisation");
         return;
       }
-    } catch (e) {
+    } catch {
       goOnboardingWithError("Erreur de vérification de localisation");
       return;
     }
@@ -177,7 +198,6 @@ export default function Discover() {
       }
     };
 
-    // démarrer l’intervalle dès qu’on n’est plus en chargement initial
     if (!loading) {
       intervalRef.current && clearInterval(intervalRef.current);
       intervalRef.current = setInterval(tick, 10000);
@@ -191,6 +211,26 @@ export default function Discover() {
     };
   }, [loading, boxSlug, goOnboardingWithError]);
 
+  /** ---------- Drawer (Search / Achievements) ---------- */
+  const openSearch = () => {
+    setDrawerView("search");
+    setIsDrawerOpen(true);
+  };
+  const closeDrawer = () => setIsDrawerOpen(false);
+
+  // Après POST réussi (LiveSearch)
+  const handleDepositSuccess = (_addedDeposit, succ) => {
+    // ⛔️ Tu ne veux PAS remplacer la mainDep ici.
+    setSuccesses(Array.isArray(succ) ? succ : []);
+    setDrawerView("achievements");
+    setIsDrawerOpen(true);
+  };
+
+  const handleBackToBox = () => {
+    // fermeture simple; backdrop/ESC autorisés
+    setIsDrawerOpen(false);
+  };
+
   // ----- UI -----
   if (loading) {
     return (
@@ -201,38 +241,169 @@ export default function Discover() {
   }
 
   return (
+    <>
+      <Box className="intro" sx={{ px: 2, pt: 4 }}>
+        <Typography component="h1" variant="h1">
+          Bonne écoute !
+        </Typography>
+        <Typography component="h2" variant="body1">
+          Découvre puis remplace la chanson actuellement dans la boîte
+        </Typography>
+      </Box>
 
-    <Box className="intro">
-      <Typography component="h1" variant="h1">
-        Bonne écoute !
-      </Typography>
-      <Typography component="h2" variant="body1">
-        Découvre puis remplace la chanson actuellement dans la boîte
-      </Typography>
-    </Box>
-    
-    <Box sx={{ p: 2 }}>
-      {mainDep && (
-        <Deposit
-          dep={mainDep}
-          user={user}
-          variant="main"
-          showReact={true}
-          showPlay={true}
-          showUser={true}
-        />
-      )}
-    </Box>
+      <Box sx={{ p: 2 }}>
+        {mainDep && (
+          <Deposit
+            dep={mainDep}
+            user={user}
+            variant="main"
+            showReact={true}
+            showPlay={true}
+            showUser={true}
+          />
+        )}
+      </Box>
 
-    <Button
-      fullWidth
-      variant="contained"
-      size="large"
-      onClick={openSearch}
-      startIcon={<SearchIcon />}
-      className="bottom_fixed"
-    >
-      Déposer une chanson
-    </Button>
+      <Button
+        fullWidth
+        variant="contained"
+        size="large"
+        onClick={openSearch}
+        startIcon={<SearchIcon />}
+        className="bottom_fixed"
+      >
+        Déposer une chanson
+      </Button>
+
+      {/* Drawer unique — Search <-> Achievements */}
+      <Drawer
+        anchor="right"
+        open={isDrawerOpen}
+        onClose={closeDrawer}            // ✅ backdrop + ESC ferment le drawer
+        PaperProps={{
+          sx: {
+            width: "100vw",
+            maxWidth: 560,
+            height: "100dvh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        {/* HEADER du drawer — 51px fixes */}
+        <Box
+          component="header"
+          sx={{
+            height: 51,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            px: 1,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            flex: "0 0 auto",
+          }}
+        >
+          <IconButton aria-label="Fermer" onClick={closeDrawer}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        {/* CONTENU plein écran */}
+        <Box
+          component="main"
+          sx={{
+            flex: "1 1 auto",
+            minHeight: 0,
+            overflow: "auto",
+          }}
+        >
+          <Box sx={{ boxSizing: "border-box", minHeight: "100%" }}>
+            {drawerView === "search" ? (
+              <LiveSearch
+                isSpotifyAuthenticated={true}
+                isDeezerAuthenticated={true}
+                boxName={boxSlug}        // ✅ boxName = slug
+                user={user}
+                onDepositSuccess={handleDepositSuccess}
+                onClose={closeDrawer}
+              />
+            ) : (
+              <AchievementsPanel
+                successes={Array.isArray(successes) ? successes : []}
+                onPrimaryCta={handleBackToBox}
+              />
+            )}
+          </Box>
+        </Box>
+      </Drawer>
+    </>
+  );
+}
+
+/* -------- Achievements (masque total/points_total) -------- */
+function AchievementsPanel({ successes = [], onPrimaryCta }) {
+  const totalPoints =
+    successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
+    successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
+    0;
+
+  const listItems = successes.filter((s) => {
+    const n = (s?.name || "").toLowerCase();
+    return n !== "total" && n !== "points_total";
+  });
+
+  return (
+    <Box sx={{ display: "grid", gap: 0, pb: "76px" }}>
+      <Box className="intro_small" sx={{ px: 3, pt: 3, textAlign: "center" }}>
+        <Typography variant="h1" color="rgb(123, 213, 40)">
+          Pépite Déposée
+        </Typography>
+
+        <Box className="points_container point_container_big" style={{ margin: "12px auto" }}>
+          <Typography component="span" variant="body1">+{totalPoints}</Typography>
+          <AlbumIcon />
+        </Box>
+        <Typography component="span" variant="body1">
+          ...et plein de points gagnés !
+        </Typography>
+        <Typography component="span" variant="h5" display="block" sx={{ mt: 1 }}>
+          Voici le détail de tes points
+        </Typography>
+      </Box>
+
+      <List className="success_container">
+        {listItems.map((ach, idx) => (
+          <ListItem key={idx} className="success" sx={{ pt: 0, pb: 0 }}>
+            {typeof ach.emoji === "string" && ach.emoji.trim() !== "" && (
+              <Box className="success_design" sx={{ display: "flex", alignItems: "center", gap: 1, mr: 2 }}>
+                <Typography variant="body1" className="success_emoji" aria-label={`emoji ${ach.name}`}>
+                  {ach.emoji}
+                </Typography>
+                <Box className="points_container point_container_big">
+                  <Typography component="span" variant="body1">+{ach.points}</Typography>
+                  <AlbumIcon />
+                </Box>
+              </Box>
+            )}
+
+            <Box className="success_infos" sx={{ minWidth: 0 }}>
+              <Typography variant="h3" className="success_title">
+                {ach.name}
+              </Typography>
+              <Typography variant="body1" className="success_desc">
+                {ach.desc}
+              </Typography>
+            </Box>
+          </ListItem>
+        ))}
+      </List>
+
+      <Box className="bottom_fixed" sx={{ p: 2 }}>
+        <Button fullWidth variant="contained" onClick={onPrimaryCta}>
+          Ok !
+        </Button>
+      </Box>
+    </Box>
   );
 }
