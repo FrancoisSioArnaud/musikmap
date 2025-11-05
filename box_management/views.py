@@ -238,7 +238,7 @@ class GetBox(APIView):
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
-        if not box_name:
+        if not box_slug:
             return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
         box = Box.objects.filter(url=box_slug).first()
@@ -1040,6 +1040,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
