@@ -13,8 +13,8 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 
-import { getCookie } from "../../Security/TokensUtils";
-import { UserContext } from "../../UserContext";
+import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
