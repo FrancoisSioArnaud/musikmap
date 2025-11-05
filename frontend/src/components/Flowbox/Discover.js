@@ -201,6 +201,16 @@ export default function Discover() {
   }
 
   return (
+
+    <Box className="intro">
+      <Typography component="h1" variant="h1">
+        Bonne écoute !
+      </Typography>
+      <Typography component="h2" variant="body1">
+        Découvre puis remplace la chanson actuellement dans la boîte
+      </Typography>
+    </Box>
+    
     <Box sx={{ p: 2 }}>
       {mainDep && (
         <Deposit
@@ -213,5 +223,16 @@ export default function Discover() {
         />
       )}
     </Box>
+
+    <Button
+      fullWidth
+      variant="contained"
+      size="large"
+      onClick={openSearch}
+      startIcon={<SearchIcon />}
+      className="bottom_fixed"
+    >
+      Déposer une chanson
+    </Button>
   );
 }
