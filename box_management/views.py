@@ -428,10 +428,7 @@ class GetBox(APIView):
             user_payload = None
 
         added_deposit = {
-            "deposit_id": new_deposit.id,
-            "deposit_date": deposit_date_txt,
             "song": song_payload,
-            "user": user_payload,
         }
 
         response = {
@@ -1040,6 +1037,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
