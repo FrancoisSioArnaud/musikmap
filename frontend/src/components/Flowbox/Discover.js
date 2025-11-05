@@ -200,7 +200,7 @@ export default function Discover() {
 
     if (!loading) {
       intervalRef.current && clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(tick, 10000);
+      intervalRef.current = setInterval(tick, 100000);
     }
 
     return () => {
