@@ -210,7 +210,7 @@ export default function Deposit({
             <Box className="deposit_date">
               <Box className="icon squaredesign" />
               <Typography className="squaredesign" variant="body1" component="span">
-                {"Chanson déposée " + (localDep?.deposit_date || "") + " par :"}
+                {"Chanson déposée " + (localDep?.date || "") + " par :"}
               </Typography>
             </Box>
        
@@ -321,7 +321,7 @@ export default function Deposit({
           
             <Box className="deposit_date">
               <Typography component="h3" variant="body1">
-                {`Chanson déposée ici ${localDep?.deposit_date || ""}${showUser ? " par :" : ""}`}
+                {`Chanson déposée ici ${localDep?.date || ""}${showUser ? " par :" : ""}`}
               </Typography>
             </Box>
         
