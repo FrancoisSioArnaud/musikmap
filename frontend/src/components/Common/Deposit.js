@@ -30,7 +30,6 @@ export default function Deposit({
   setDispDeposits,
   cost = 40,
   variant = "list",
-  showDate = true,
   showUser = true,
   fitContainer = true,
   showReact = true,
@@ -207,14 +206,14 @@ export default function Deposit({
       <>
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
-            {showDate && (
-              <Box className="deposit_date">
-                <Box className="icon squaredesign" />
-                <Typography className="squaredesign" variant="body1" component="span">
-                  {"Chanson déposée " + (localDep?.deposit_date || "") + " par :"}
-                </Typography>
-              </Box>
-            )}
+           
+            <Box className="deposit_date">
+              <Box className="icon squaredesign" />
+              <Typography className="squaredesign" variant="body1" component="span">
+                {"Chanson déposée " + (localDep?.deposit_date || "") + " par :"}
+              </Typography>
+            </Box>
+       
   
             {showUser && (
               <Box
@@ -317,15 +316,15 @@ export default function Deposit({
   return (
     <>
       <Card className="deposit deposit_list">
-        {(showUser || showDate) && (
+        
           <Box className="deposit_infos"> 
-            {showDate && (
-              <Box className="deposit_date">
-                <Typography component="h3" variant="body1">
-                  {`Chanson déposée ici ${localDep?.deposit_date || ""}${showUser ? " par :" : ""}`}
-                </Typography>
-              </Box>
-            )}
+          
+            <Box className="deposit_date">
+              <Typography component="h3" variant="body1">
+                {`Chanson déposée ici ${localDep?.deposit_date || ""}${showUser ? " par :" : ""}`}
+              </Typography>
+            </Box>
+        
         
             {showUser && (
               <Box
@@ -341,7 +340,7 @@ export default function Deposit({
               </Box>
             )}
           </Box>
-        )}
+    
 
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
