@@ -1,4 +1,4 @@
-// frontend/src/components/Flowbox/Discover.js
+// frontend/src/components/Flowbox/Main.js
 
 import React, { useCallback, useEffect, useRef, useState, useContext, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -89,7 +89,7 @@ async function fetchGetMain(boxSlug) {
   return Array.isArray(data) ? data : [];
 }
 
-export default function Discover() {
+export default function Main() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
