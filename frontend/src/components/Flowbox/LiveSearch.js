@@ -115,7 +115,7 @@ export default function LiveSearch({
   };
 
   // Dépôt POST (Choisir)
-  async function handleButtonClick(option, boxName) {
+  async function handleButtonClick(option, boxSlug) {
     try {
       setPostingId(option?.id ?? "__posting__");
       const csrftoken = getCookie("csrftoken");
@@ -130,7 +130,7 @@ export default function LiveSearch({
         boxName,
       };
 
-      const res = await fetch("/box-management/get-box?name=" + boxName, {
+  const res = await fetch("/box-management/get-box/?slug=" + encodeURIComponent(boxSlug), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
