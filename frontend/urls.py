@@ -10,5 +10,6 @@ urlpatterns = [
     path('profile/<str:username>', index),
     path('library', index),
     path('box/<str:boxName>', index),
-    re_path(r'^flowbox/.*$', index),  # ✅ prend /flowbox/siohome/discover
+    re_path(r'^flowbox/.*$', index), 
 ]
+
