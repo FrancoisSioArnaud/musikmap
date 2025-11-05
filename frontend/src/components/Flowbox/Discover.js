@@ -323,7 +323,7 @@ export default function Discover() {
               <LiveSearch
                 isSpotifyAuthenticated={true}
                 isDeezerAuthenticated={true}
-                boxName={boxSlug}        // ✅ boxName = slug
+                boxSlug={boxSlug}       
                 user={user}
                 onDepositSuccess={handleDepositSuccess}
                 onClose={closeDrawer}
