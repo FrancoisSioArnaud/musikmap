@@ -209,7 +209,6 @@ export default function Discover() {
           variant="main"
           showReact={true}
           showPlay={true}
-          showDate={true}
           showUser={true}
         />
       )}
