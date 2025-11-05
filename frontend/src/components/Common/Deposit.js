@@ -120,7 +120,7 @@ export default function Deposit({
           artist: revealed.artist,
           spotify_url: revealed.spotify_url,
           deezer_url: revealed.deezer_url,
-          img_url: revealed.img_url || prev?.song?.img_url,
+          image_url: revealed.image_url || prev?.song?.image_url,
         },
       }));
 
@@ -138,7 +138,7 @@ export default function Deposit({
               artist: revealed.artist,
               spotify_url: revealed.spotify_url,
               deezer_url: revealed.deezer_url,
-              img_url: revealed.img_url || arr[idx]?.song?.img_url,
+              image_url: revealed.image_url || arr[idx]?.song?.image_url,
             },
           };
         }
@@ -240,10 +240,10 @@ export default function Deposit({
               sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
               className="squaredesign img_container"
             >
-              {s?.img_url && (
+              {s?.image_url && (
                 <Box
                   component="img"
-                  src={s.img_url}
+                  src={s.image_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                   sx={{ width: "100%", maxWidth: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
                 />
@@ -349,10 +349,10 @@ export default function Deposit({
             sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
             className="squaredesign img_container"
           >
-            {s?.img_url && (
+            {s?.image_url && (
               <Box
                 component="img"
-                src={s.img_url}
+                src={s.image_url}
                 alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                 sx={{
                   width: "100%",
