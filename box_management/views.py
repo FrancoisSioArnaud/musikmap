@@ -237,11 +237,11 @@ class GetBox(APIView):
         """
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
-        box_name = request.data.get("boxName")
+        box_slug = request.data.get("boxSlug")
         if not box_name:
             return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
-        box = Box.objects.filter(url=box_name).first()
+        box = Box.objects.filter(url=box_slug).first()
         if not box:
             return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -250,7 +250,7 @@ class GetBox(APIView):
         song_platform_id = option.get("platform_id")  # 1=Spotify, 2=Deezer
         incoming_url = option.get("url")
         if not song_name or not song_author:
-            return Response({"detail": "Titre et artiste requis"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
@@ -1040,6 +1040,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
