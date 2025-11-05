@@ -19,7 +19,7 @@ import { UserContext } from "../UserContext";
 export default function LiveSearch({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
-  boxName,
+  boxSlug,
   user,
   onDepositSuccess, // (addedDeposit, successes) => void
   onClose,          // non utilisé ici, conservé pour compat
@@ -127,7 +127,7 @@ export default function LiveSearch({
 
       const data = {
         option: { ...option, platform_id: platformId },
-        boxName,
+        boxSlug,
       };
 
   const res = await fetch("/box-management/get-box/?slug=" + encodeURIComponent(boxSlug), {
@@ -247,7 +247,7 @@ export default function LiveSearch({
                     variant="contained"
                     size="small"
                     disabled={isPosting}
-                    onClick={() => handleButtonClick(option, boxName)}
+                    onClick={() => handleButtonClick(option, boxSlug)}
                     sx={{ minWidth: 0 }}
                   >
                     {isPosting ? (
