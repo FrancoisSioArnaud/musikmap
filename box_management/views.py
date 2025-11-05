@@ -307,7 +307,6 @@ class GetBox(APIView):
 
         successes["points_total"] = {
             "name": "Total",
-            "desc": "Points gagnés pour ce dépôt",
             "points": points_to_add,
         }
 
@@ -1033,6 +1032,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
