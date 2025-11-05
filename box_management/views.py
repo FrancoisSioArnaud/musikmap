@@ -364,7 +364,7 @@ class GetBox(APIView):
                 pass  # best-effort
 
             song.save()
-            new_deposit = Deposit.objects.create(song_id=song, box_id=box, user=user)
+            new_deposit = Deposit.objects.create(song=song, box=box, user=user)
 
         # --- 4) Créditer les points via endpoint (best-effort) et récupérer le solde
         points_balance = None
@@ -1040,6 +1040,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
