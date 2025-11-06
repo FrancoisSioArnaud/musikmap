@@ -21,7 +21,7 @@ import { UserContext } from "../UserContext";
 import LiveSearch from "./LiveSearch";
 
 // ⬇️ Helpers localStorage avec TTL (20 minutes)
-import { setWithTTL } from "../utils/mmStorage";
+import { setWithTTL } from "../Utils/mmStorage";
 const KEY_MAIN = "mm_main_snapshot";     // { boxSlug, timestamp, mainDeposit: {...} }
 const KEY_OLDER = "mm_older_snapshot";   // { boxSlug, timestamp, deposits: [ ... ] }
 const TTL_MINUTES = 20;
