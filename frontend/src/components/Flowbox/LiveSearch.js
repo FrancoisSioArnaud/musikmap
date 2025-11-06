@@ -16,7 +16,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid, setWithTTL } from "../../utils/mmStorage";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 const KEY_MAIN = "mm_main_snapshot";
 const KEY_OLDER = "mm_older_snapshot";
