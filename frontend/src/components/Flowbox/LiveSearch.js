@@ -12,45 +12,51 @@ import ListItem from "@mui/material/ListItem";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import { getValid, setWithTTL } from "../../utils/mmStorage";
+
+const KEY_MAIN = "mm_main_snapshot";
+const KEY_OLDER = "mm_older_snapshot";
+const TTL_MINUTES = 20;
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxSlug,
   user,
-  onDepositSuccess, // (addedDeposit, successes) => void
-  onClose,          // non utilisé ici, conservé pour compat
+  onDepositSuccess, // (maintenu pour compat, non utilisé ici)
+  onClose,          // idem
 }) {
   const { setUser } = useContext(UserContext) || {};
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
   const [selectedStreamingService, setSelectedStreamingService] = useState(
-    user?.preferred_platform || "spotify" // par défaut Spotify
+    user?.preferred_platform || "spotify"
   );
 
-  // états UI
   const [isSearching, setIsSearching] = useState(false);
-  const [postingId, setPostingId] = useState(null); // id du track en cours de POST (désactive le bouton)
+  const [postingId, setPostingId] = useState(null); // pour désactiver le bouton pendant la navigation
 
-  // Met à jour le service sélectionné si la préférence user change
+  // Préférence utilisateur
   useEffect(() => {
     if (user?.preferred_platform) {
       setSelectedStreamingService(user.preferred_platform);
     }
   }, [user?.preferred_platform]);
 
-  // Charger récents / rechercher selon service + saisie (debounce 400ms)
+  // Recherche (debounce simple)
   useEffect(() => {
     const timer = setTimeout(() => {
       const doFetch = async () => {
         try {
           setIsSearching(true);
 
-          // --- SPOTIFY ---
           if (selectedStreamingService === "spotify") {
             if (searchValue === "") {
               if (isSpotifyAuthenticated) {
@@ -58,7 +64,6 @@ export default function LiveSearch({
                 const j = await r.json();
                 setJsonResults(Array.isArray(j) ? j : []);
               } else {
-                // Non-auth + pas de recherche : rien (conforme à tes consignes)
                 setJsonResults([]);
               }
             } else {
@@ -73,7 +78,6 @@ export default function LiveSearch({
             }
           }
 
-          // --- DEEZER ---
           if (selectedStreamingService === "deezer") {
             if (searchValue === "") {
               if (isDeezerAuthenticated) {
@@ -108,69 +112,37 @@ export default function LiveSearch({
   }, [searchValue, selectedStreamingService, isDeezerAuthenticated, isSpotifyAuthenticated]);
 
   const handleStreamingServiceChange = (_e, value) => {
-    if (!value) return; // ToggleButtonGroup peut renvoyer null
+    if (!value) return;
     setSelectedStreamingService(value);
-    // on efface les résultats pour éviter un mélange de plateformes
     setJsonResults([]);
   };
 
-  // Dépôt POST (Choisir)
-  async function handleButtonClick(option, boxSlug) {
-    try {
-      setPostingId(option?.id ?? "__posting__");
-      const csrftoken = getCookie("csrftoken");
+  // NAVIGATE immédiat vers Discover (option B)
+  const goCreateDepositFlow = (option) => {
+    setPostingId(option?.id ?? "__posting__");
 
-      // Garantir platform_id attendu par le back
-      const platformId =
-        option.platform_id ??
-        (selectedStreamingService === "spotify" ? 1 : 2);
-
-      const data = {
-        option: { ...option, platform_id: platformId },
-        boxSlug,
-      };
-
-  const res = await fetch("/box-management/get-box/?slug=" + encodeURIComponent(boxSlug), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const payload = await res.json();
-      const { added_deposit, successes, points_balance } = payload || {};
-
-      // 1) Notifie SongDisplay -> affichage my_deposit + Achievements
-      if (typeof onDepositSuccess === "function") {
-        onDepositSuccess(added_deposit, successes);
-      }
-
-      // 2) Met à jour le solde global si possible, sinon cumule local pour anonymes
-      if (typeof points_balance === "number" && setUser) {
-        setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-      } else {
-        const total =
-          (successes || []).find(
-            (s) => (s.name || "").toLowerCase() === "total"
-          )?.points || 0;
-        const key = "anon_points";
-        const cur = parseInt(localStorage.getItem(key) || "0", 10);
-        localStorage.setItem(key, String(cur + total));
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Impossible de déposer cette chanson pour le moment.");
-    } finally {
-      setPostingId(null);
+    // Facultatif: vérifie qu'on a bien un snapshot Main (normalement écrit par Main)
+    const mainSnap = getValid(KEY_MAIN);
+    if (!mainSnap || mainSnap.boxSlug !== boxSlug) {
+      // Ce n’est pas bloquant (Discover redirigera vers Onboarding si besoin)
+      // On pourrait aussi l’écrire ici si on l’avait sous la main.
     }
-  }
+
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover?drawer=achievements&mode=deposit`, {
+      state: {
+        action: "createDeposit",
+        payload: { option, boxSlug },
+        origin: location.pathname + location.search,
+      },
+      replace: false,
+    });
+
+    // on réactive rapidement le bouton (la page va changer)
+    setTimeout(() => setPostingId(null), 300);
+  };
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
-      {/* En-tête + sélecteur plateforme */}
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{mb:3}}>
@@ -200,9 +172,7 @@ export default function LiveSearch({
             placeholder="Cherche une chanson"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            inputProps={{
-              inputMode: "search",
-            }}
+            inputProps={{ inputMode: "search" }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -210,44 +180,35 @@ export default function LiveSearch({
                 </InputAdornment>
               ),
             }}
-            // iOS anti-zoom: police >= 16px sur l'input
             sx={{
               borderRadius:16,
-              "& .MuiInputBase-input": {
-                fontSize: 16,
-              },
+              "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
         </Stack>
       </Paper>
 
-      {/* Loader recherche */}
       {isSearching && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
           <CircularProgress size={28} />
         </Box>
       )}
 
-      {/* Résultats */}
       <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const isPosting = postingId === (option?.id ?? "__posting__");
-
             return (
               <ListItem
                 key={option.id}
                 divider
-                sx={{
-                  overflow: "hidden",           // empêche l'étirement horizontal
-                  alignItems: "center",
-                }}
+                sx={{ overflow: "hidden", alignItems: "center" }}
                 secondaryAction={
                   <Button
                     variant="contained"
                     size="small"
                     disabled={isPosting}
-                    onClick={() => handleButtonClick(option, boxSlug)}
+                    onClick={() => goCreateDepositFlow(option)}
                     sx={{ minWidth: 0 }}
                   >
                     {isPosting ? (
@@ -261,16 +222,10 @@ export default function LiveSearch({
                   </Button>
                 }
               >
-                {/* Vignette 64px à gauche, carrée, fallback gris clair */}
                 <Box
                   sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    bgcolor: "action.hover", // gris light fallback
-                    mr: 2,
+                    width: 64, height: 64, borderRadius: 1, overflow: "hidden",
+                    flexShrink: 0, bgcolor: "action.hover", mr: 2,
                   }}
                 >
                   {option?.image_url ? (
@@ -283,45 +238,17 @@ export default function LiveSearch({
                   ) : null}
                 </Box>
 
-                {/* Titre (h3) + Artiste (paragraphe) */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minWidth: 0,
-                    mr: 2,
-                    flex: 1,
-                    overflow: "hidden", // protège contre les très longues chaînes sans espace
-                  }}
-                >
+                <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, mr: 2, flex: 1, overflow: "hidden" }}>
                   <Typography
-                    component="h3"
-                    variant="h6"
-                    noWrap
-                    sx={{
-                      fontWeight: 700,
-                      textAlign: "left",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                    }}
+                    component="h3" variant="h6" noWrap
+                    sx={{ fontWeight: 700, textAlign: "left", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}
                     title={option?.name || ""}
                   >
                     {option?.name || ""}
                   </Typography>
                   <Typography
-                    component="p"
-                    variant="body2"
-                    color="text.secondary"
-                    noWrap
-                    sx={{
-                      textAlign: "left",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                    }}
+                    component="p" variant="body2" color="text.secondary" noWrap
+                    sx={{ textAlign: "left", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}
                     title={option?.artist || ""}
                   >
                     {option?.artist || ""}
@@ -331,12 +258,7 @@ export default function LiveSearch({
             );
           })}
         </List>
-
-        {/* Si pas de résultats: on n’affiche rien (conforme à tes consignes) */}
-        {(!isSearching && jsonResults.length === 0) ? null : null}
       </Paper>
     </Stack>
   );
 }
-
-
