@@ -13,7 +13,7 @@ import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid, setWithTTL, removeKey } from "../../utils/mmStorage";
+import { getValid, setWithTTL, removeKey } from "../Utils/mmStorage";
 
 const KEY_MAIN = "mm_main_snapshot";       // { boxSlug, timestamp, mainDeposit: {...} }
 const KEY_LAST = "mm_last_deposit";        // { boxSlug, timestamp, successes, song, points_balance, option }
