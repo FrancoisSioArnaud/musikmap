@@ -20,6 +20,12 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import LiveSearch from "./LiveSearch";
 
+// ⬇️ Helpers localStorage avec TTL (20 minutes)
+import { setWithTTL } from "../utils/mmStorage";
+const KEY_MAIN = "mm_main_snapshot";     // { boxSlug, timestamp, mainDeposit: {...} }
+const KEY_OLDER = "mm_older_snapshot";   // { boxSlug, timestamp, deposits: [ ... ] }
+const TTL_MINUTES = 20;
+
 /** ----- Helpers géoloc (avec fallback iOS) ----- */
 function getPositionOnce(opts = {}) {
   return new Promise((resolve, reject) => {
@@ -143,8 +149,19 @@ export default function Main() {
             goOnboardingWithError("Erreur, cette boîte est vide");
             return;
           }
-          setMainDep(arr[0]);
+
+          // Dépôt principal (index 0) + older (index 1..n)
+          const main = arr[0];
+          const older = arr.slice(1);
+
+          setMainDep(main);
           setLoading(false);
+
+          // ⬇️ Snapshot localStorage (20 min) — utilisé ensuite par Discover
+          setWithTTL(KEY_MAIN, { boxSlug, timestamp: Date.now(), mainDeposit: main }, TTL_MINUTES);
+          if (older.length > 0) {
+            setWithTTL(KEY_OLDER, { boxSlug, timestamp: Date.now(), deposits: older }, TTL_MINUTES);
+          }
         } catch {
           goOnboardingWithError("Erreur de vérification de localisation");
           return;
@@ -218,7 +235,7 @@ export default function Main() {
   };
   const closeDrawer = () => setIsDrawerOpen(false);
 
-  // Après POST réussi (LiveSearch)
+  // Après POST réussi (LiveSearch) — (compat, non utilisé avec l’option B)
   const handleDepositSuccess = (_addedDeposit, succ) => {
     // ⛔️ Tu ne veux PAS remplacer la mainDep ici.
     setSuccesses(Array.isArray(succ) ? succ : []);
@@ -323,7 +340,7 @@ export default function Main() {
               <LiveSearch
                 isSpotifyAuthenticated={true}
                 isDeezerAuthenticated={true}
-                boxSlug={boxSlug}       
+                boxSlug={boxSlug}
                 user={user}
                 onDepositSuccess={handleDepositSuccess}
                 onClose={closeDrawer}
