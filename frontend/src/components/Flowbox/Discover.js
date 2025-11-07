@@ -1,5 +1,4 @@
-
-import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import Drawer from "@mui/material/Drawer";
@@ -13,7 +12,7 @@ import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid, setWithTTL, removeKey } from "../Utils/mmStorage";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 const KEY_MAIN = "mm_main_snapshot";       // { boxSlug, timestamp, mainDeposit: {...} }
 const KEY_LAST = "mm_last_deposit";        // { boxSlug, timestamp, successes, song, points_balance, option }
@@ -152,7 +151,7 @@ export default function Discover() {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
           successes: Array.isArray(sx) ? sx : [],
-          song: song || option || null,      // si le back renvoie "song", priorité à lui; sinon fallback: option
+          song: song || option || null,      // back actuel ne renvoie pas 'song' → fallback sur option
           points_balance: points_balance ?? null,
           option,                             // pour info/diagnostic
         };
@@ -160,7 +159,7 @@ export default function Discover() {
         setSuccesses(lastPayload.successes);
         setMyDepositSong(lastPayload.song);
 
-        // Snapshot des older si présents dans la réponse
+        // Snapshot des older si présents dans la réponse (facultatif)
         if (Array.isArray(olderMaybe)) {
           const olderSnap = { boxSlug: payload.boxSlug, timestamp: Date.now(), deposits: olderMaybe };
           setWithTTL(KEY_OLDER, olderSnap, TTL_MINUTES);
@@ -225,8 +224,8 @@ export default function Discover() {
         <Box sx={{ mb: 2 }}>
           <Deposit
             dep={{ song: {
-              title: myDepositSong.title,
-              artist: myDepositSong.artist,
+              title: myDepositSong.title || myDepositSong.name || null,   // <- fallback si option.name
+              artist: myDepositSong.artist || null,
               spotify_url: myDepositSong.spotify_url || myDepositSong.url || null,
               deezer_url: myDepositSong.deezer_url || null,
               img_url: myDepositSong.img_url || myDepositSong.image_url || null,
@@ -282,7 +281,6 @@ export default function Discover() {
             flex: "0 0 auto",
           }}
         >
-          {/* on ne permet PAS la fermeture par le X si tu veux forcer le parcours -> je laisse, mais on peut l'enlever */}
           <IconButton aria-label="Fermer" onClick={(e) => handleCloseDrawer(e, "closeButton")}>
             <CloseIcon />
           </IconButton>
