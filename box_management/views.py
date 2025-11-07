@@ -33,7 +33,7 @@ from .models import (
     Emoji, EmojiRight, Reaction
 )
 from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
-from .utils import calculate_distance
+from .utils import calculate_distance, _build_successes
 from api_aggregation.views import ApiAggregation
 
 User = get_user_model()
@@ -923,6 +923,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
