@@ -233,7 +233,7 @@ export default function Discover() {
             user={user}
             variant="list"        // composant Deposit "song only"
             showReact={false}
-            showPlay={true}
+            showPlay={false}
             showUser={false}
           />
         </Box>
