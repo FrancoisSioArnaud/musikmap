@@ -16,11 +16,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid, setWithTTL } from "../Utils/mmStorage";
+import { getValid } from "../Utils/mmStorage";
 
 const KEY_MAIN = "mm_main_snapshot";
-const KEY_OLDER = "mm_older_snapshot";
-const TTL_MINUTES = 20;
+const TTL_MINUTES = 20; // conservé si besoin futur
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
@@ -124,8 +123,7 @@ export default function LiveSearch({
     // Facultatif: vérifie qu'on a bien un snapshot Main (normalement écrit par Main)
     const mainSnap = getValid(KEY_MAIN);
     if (!mainSnap || mainSnap.boxSlug !== boxSlug) {
-      // Ce n’est pas bloquant (Discover redirigera vers Onboarding si besoin)
-      // On pourrait aussi l’écrire ici si on l’avait sous la main.
+      // Pas bloquant : Discover redirigera vers Onboarding si besoin
     }
 
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover?drawer=achievements&mode=deposit`, {
