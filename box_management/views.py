@@ -307,19 +307,10 @@ class GetBox(APIView):
         except Exception:
             pass  # silencieux
 
-        # --- 5) Réponse
-        song_payload = {
-            "title": getattr(song, "title", None),
-            "artist": getattr(song, "artist", None),
-            "spotify_url": getattr(song, "spotify_url", None),
-            "deezer_url": getattr(song, "deezer_url", None),
-            "img_url": getattr(song, "image_url", None),
-        }
 
         response = {
             "successes": list(successes),
             "points_balance": points_balance,
-            "song": song_payload,
         }
         return Response(response, status=status.HTTP_200_OK)
 
@@ -923,6 +914,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
