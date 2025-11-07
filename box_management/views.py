@@ -34,49 +34,10 @@ from .models import (
 )
 from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
 from .utils import calculate_distance
-from utils import (
-    NB_POINTS_ADD_SONG,
-    NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
-    NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
-    NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
-    NB_POINTS_CONSECUTIVE_DAYS_BOX,
-    COST_REVEAL_BOX,
-)
 from api_aggregation.views import ApiAggregation
 
 User = get_user_model()
 
-
-# -----------------------
-# Helpers "business"
-# -----------------------
-
-def is_first_user_deposit(user, box) -> bool:
-    if not user:
-        return False
-    return not Deposit.objects.filter(user=user, box_id=box).exists()
-
-
-def is_first_song_deposit_global_by_title_artist(title: str, artist: str) -> bool:
-    return not Deposit.objects.filter(song_id__title=title, song_id__artist=artist).exists()
-
-
-def is_first_song_deposit_in_box_by_title_artist(title: str, artist: str, box) -> bool:
-    return not Deposit.objects.filter(
-        box_id=box, song_id__title=title, song_id__artist=artist
-    ).exists()
-
-
-def get_consecutive_deposit_days(user, box) -> int:
-    deposits = Deposit.objects.filter(user=user, box_id=box).order_by('-deposited_at')
-    current_date = date.today()
-    previous_date = current_date - timedelta(days=1)
-    consecutive_days = 0
-    for deposit in deposits:
-        if deposit.deposited_at.date() == previous_date:
-            consecutive_days += 1
-            previous_date -= timedelta(days=1)
-    return consecutive_days
 
 
 # --- Helper pour réactions ---
@@ -239,7 +200,7 @@ class GetBox(APIView):
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
         if not box_slug:
-            return Response({"detail": "boxName manquant"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "boxSlug manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
         box = Box.objects.filter(url=box_slug).first()
         if not box:
@@ -255,60 +216,12 @@ class GetBox(APIView):
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-        # --- 1) Calcul des succès / points
-        successes: dict = {}
-        points_to_add = NB_POINTS_ADD_SONG
-
-        nb_consecutive_days: int = get_consecutive_deposit_days(user, box) if user else 0
-        if nb_consecutive_days:
-            consecutive_days_points = nb_consecutive_days * NB_POINTS_CONSECUTIVE_DAYS_BOX
-            points_to_add += consecutive_days_points
-            nb_consecutive_days += 1
-            successes["consecutive_days"] = {
-                "name": "Amour fou",
-                "desc": f"{nb_consecutive_days} jours consécutifs avec cette boite",
-                "points": consecutive_days_points,
-                "emoji": "🔥",
-            }
-
-        if user and is_first_user_deposit(user, box):
-            points_to_add += NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
-            successes["first_user_deposit_box"] = {
-                "name": "Explorateur·ice",
-                "desc": "Tu n'as jamais déposé ici",
-                "points": NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
-                "emoji": "🔍",
-            }
-
-        if is_first_song_deposit_in_box_by_title_artist(song_name, song_author, box):
-            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            successes["first_song_deposit"] = {
-                "name": "Far West",
-                "desc": "Cette chanson n'a jamais été déposée ici",
-                "points": NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
-                "emoji": "🤠",
-            }
-
-        if is_first_song_deposit_global_by_title_artist(song_name, song_author):
-            points_to_add += NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
-            successes["first_song_deposit_global"] = {
-                "name": "Preums",
-                "desc": "Cette chanson n'a jamais été déposée sur le réseau",
-                "points": NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
-                "emoji": "🥇",
-            }
-
-        successes["default_deposit"] = {
-            "name": "Pépite",
-            "desc": "Tu as partagé·e une chanson",
-            "points": NB_POINTS_ADD_SONG,
-            "emoji": "💎",
-        }
-
-        successes["points_total"] = {
-            "name": "Total",
-            "points": points_to_add,
-        }
+        # --- 1) Calcul des succès / points (centralisé dans utils)
+        successes, points_to_add = _build_successes(
+            box=box,
+            user=user,
+            song={"title": song_name, "artist": song_author},
+        )
 
         # --- 2) Upsert Song + 3) Créer Deposit (atomique ensemble)
         with transaction.atomic():
@@ -394,14 +307,7 @@ class GetBox(APIView):
         except Exception:
             pass  # silencieux
 
-        # --- 5) Réponse (tout inline, sans helpers)
-        # naturaltime court "il y a X ..." (sans la partie après la virgule)
-        deposit_date_txt = None
-        if getattr(new_deposit, "deposited_at", None):
-            deposit_date_txt = naturaltime(localtime(new_deposit.deposited_at))
-            deposit_date_txt = deposit_date_txt.split(",")[0].strip()
-
-        # map song "full"
+        # --- 5) Réponse
         song_payload = {
             "title": getattr(song, "title", None),
             "artist": getattr(song, "artist", None),
@@ -410,28 +316,13 @@ class GetBox(APIView):
             "img_url": getattr(song, "image_url", None),
         }
 
-        # map user
-        if user and getattr(user, "is_authenticated", False):
-            profile_pic_url = None
-            if getattr(user, "profile_picture", None):
-                try:
-                    profile_pic_url = user.profile_picture.url
-                except Exception:
-                    profile_pic_url = None
-            user_payload = {
-                "id": user.id,
-                "username": getattr(user, "username", None),
-                "profile_pic_url": profile_pic_url,
-            }
-        else:
-            user_payload = None
-
         response = {
-            "successes": list(successes.values()),
+            "successes": list(successes),
             "points_balance": points_balance,
             "song": song_payload,
         }
         return Response(response, status=status.HTTP_200_OK)
+
 
 # box_management/views.py
 
@@ -1032,6 +923,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
