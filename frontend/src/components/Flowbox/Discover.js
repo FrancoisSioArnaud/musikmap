@@ -151,9 +151,7 @@ export default function Discover() {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
           successes: Array.isArray(sx) ? sx : [],
-          song: song || option || null,      // back actuel ne renvoie pas 'song' → fallback sur option
-          points_balance: points_balance ?? null,
-          option,                             // pour info/diagnostic
+          myDepositSong: option || null,     
         };
         setWithTTL(KEY_LAST, lastPayload, TTL_MINUTES);
         setSuccesses(lastPayload.successes);
