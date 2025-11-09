@@ -20,15 +20,7 @@ const KEY_OLDER = "mm_older_snapshot";     // { boxSlug, timestamp, deposits: [ 
 const TTL_MINUTES = 20;
 
 // -------- util -----------
-function ensurePlatformId(option) {
-  if (!option) return option;
-  if (typeof option.platform_id === "number") return option;
-  // heuristique très simple : regarde l'URL
-  const url = option.url || option.spotify_url || option.deezer_url || "";
-  const isSpotify = /open\.spotify\.com|spotify:|spotify\.link/.test(url) || (option.platform === "spotify");
-  const isDeezer = /deezer\.com/.test(url) || (option.platform === "deezer");
-  return { ...option, platform_id: isSpotify ? 1 : (isDeezer ? 2 : 1) };
-}
+
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -109,7 +101,7 @@ export default function Discover() {
         setPosting(true);
         setPostError(null);
 
-        const option = ensurePlatformId(payload.option);
+        const option = payload.option;
         const body = { option, boxSlug: payload.boxSlug };
         const csrftoken = getCookie("csrftoken");
 
@@ -221,12 +213,10 @@ export default function Discover() {
       {myDepositSong ? (
         <Box sx={{ mb: 2 }}>
           <Deposit
-            dep={{ song: {
-              title: myDepositSong.title || myDepositSong.name || null,   // <- fallback si option.name
+            dep={{ myDepositSong: {
+              title: myDepositSong.name || null,
               artist: myDepositSong.artist || null,
-              spotify_url: myDepositSong.spotify_url || myDepositSong.url || null,
-              deezer_url: myDepositSong.deezer_url || null,
-              img_url: myDepositSong.img_url || myDepositSong.image_url || null,
+              img_url: myDepositSong.image_url || null,
             }}}
             user={user}
             variant="list"        // composant Deposit "song only"
