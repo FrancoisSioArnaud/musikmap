@@ -147,7 +147,7 @@ export default function Discover() {
         };
         setWithTTL(KEY_LAST, lastPayload, TTL_MINUTES);
         setSuccesses(lastPayload.successes);
-        setMyDepositSong(lastPayload.song);
+        setMyDepositSong(lastPayload.myDepositSong);
 
         // Snapshot des older si présents dans la réponse (facultatif)
         if (Array.isArray(olderMaybe)) {
