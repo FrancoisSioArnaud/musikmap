@@ -213,7 +213,7 @@ export default function Discover() {
       {myDepositSong ? (
         <Box sx={{ mb: 2 }}>
           <Deposit
-            dep={{ myDepositSong: {
+            dep={{ song: {
               title: myDepositSong.name || null,
               artist: myDepositSong.artist || null,
               img_url: myDepositSong.image_url || null,
