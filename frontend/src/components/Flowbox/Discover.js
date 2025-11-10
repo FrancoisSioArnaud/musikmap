@@ -216,7 +216,7 @@ export default function Discover() {
             dep={{ song: {
               title: myDepositSong.name || null,
               artist: myDepositSong.artist || null,
-              img_url: myDepositSong.image_url || null,
+              image_url: myDepositSong.image_url || null,
             }}}
             user={user}
             variant="list"        // composant Deposit "song only"
