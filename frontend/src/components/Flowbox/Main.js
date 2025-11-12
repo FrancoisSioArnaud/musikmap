@@ -20,10 +20,10 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import LiveSearch from "./LiveSearch";
 
-// ⬇️ Helpers localStorage avec TTL (20 minutes)
-import { setWithTTL } from "../Utils/mmStorage";
-const KEY_MAIN = "mm_main_snapshot";     // { boxSlug, timestamp, mainDeposit: {...} }
-const KEY_OLDER = "mm_older_snapshot";   // { boxSlug, timestamp, deposits: [ ... ] }
+// Helpers localStorage unifié
+import { getValid, setWithTTL } from "../Utils/mmStorage";
+
+const KEY_BOX_CONTENT = "mm_box_content"; // clé unique
 const TTL_MINUTES = 20;
 
 /** ----- Helpers géoloc (avec fallback iOS) ----- */
@@ -126,6 +126,21 @@ export default function Main() {
     });
   }, [navigate, boxSlug]);
 
+  // Écrit/merge dans mm_box_content
+  const writeBoxContent = useCallback((partial) => {
+    const prev = getValid(KEY_BOX_CONTENT);
+    const merged = {
+      boxSlug,
+      timestamp: Date.now(),
+      main: partial.main ?? prev?.main ?? null,
+      myDeposit: partial.myDeposit ?? prev?.myDeposit ?? null,
+      successes: Array.isArray(partial.successes) ? partial.successes : (Array.isArray(prev?.successes) ? prev.successes : []),
+      older: Array.isArray(partial.older) ? partial.older : (Array.isArray(prev?.older) ? prev.older : []),
+    };
+    setWithTTL(KEY_BOX_CONTENT, merged, TTL_MINUTES);
+    return merged;
+  }, [boxSlug]);
+
   const initialFlow = useCallback(async () => {
     setLoading(true);
 
@@ -150,18 +165,16 @@ export default function Main() {
             return;
           }
 
-          // Dépôt principal (index 0) + older (index 1..n)
           const main = arr[0];
           const older = arr.slice(1);
 
           setMainDep(main);
           setLoading(false);
 
-          // ⬇️ Snapshot localStorage (20 min) — utilisé ensuite par Discover
-          setWithTTL(KEY_MAIN, { boxSlug, timestamp: Date.now(), mainDeposit: main }, TTL_MINUTES);
-          if (older.length > 0) {
-            setWithTTL(KEY_OLDER, { boxSlug, timestamp: Date.now(), deposits: older }, TTL_MINUTES);
-          }
+          // ⬇️ Écriture unifiée dans mm_box_content (préserve myDeposit/successes existants)
+          const merged = writeBoxContent({ main, older });
+          // Option : si tu veux afficher des succès existants dans le drawer local
+          setSuccesses(Array.isArray(merged.successes) ? merged.successes : []);
         } catch {
           goOnboardingWithError("Erreur de vérification de localisation");
           return;
@@ -180,7 +193,7 @@ export default function Main() {
       goOnboardingWithError("Erreur de vérification de localisation");
       return;
     }
-  }, [boxSlug, goOnboardingWithError]);
+  }, [boxSlug, goOnboardingWithError, writeBoxContent]);
 
   // Mount → lancer le flow initial
   useEffect(() => {
@@ -191,7 +204,7 @@ export default function Main() {
     return () => { cancelled = true; };
   }, [initialFlow]);
 
-  // Re-check périodique toutes les 10s (GPS + verify)
+  // Re-check périodique toutes les ~100s (GPS + verify)
   useEffect(() => {
     const tick = async () => {
       try {
@@ -237,14 +250,12 @@ export default function Main() {
 
   // Après POST réussi (LiveSearch) — (compat, non utilisé avec l’option B)
   const handleDepositSuccess = (_addedDeposit, succ) => {
-    // ⛔️ Tu ne veux PAS remplacer la mainDep ici.
     setSuccesses(Array.isArray(succ) ? succ : []);
     setDrawerView("achievements");
     setIsDrawerOpen(true);
   };
 
   const handleBackToBox = () => {
-    // fermeture simple; backdrop/ESC autorisés
     setIsDrawerOpen(false);
   };
 
@@ -296,7 +307,7 @@ export default function Main() {
       <Drawer
         anchor="right"
         open={isDrawerOpen}
-        onClose={closeDrawer}            // ✅ backdrop + ESC ferment le drawer
+        onClose={closeDrawer}
         PaperProps={{
           sx: {
             width: "100vw",
@@ -327,14 +338,7 @@ export default function Main() {
         </Box>
 
         {/* CONTENU plein écran */}
-        <Box
-          component="main"
-          sx={{
-            flex: "1 1 auto",
-            minHeight: 0,
-            overflow: "auto",
-          }}
-        >
+        <Box component="main" sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
           <Box sx={{ boxSizing: "border-box", minHeight: "100%" }}>
             {drawerView === "search" ? (
               <LiveSearch
