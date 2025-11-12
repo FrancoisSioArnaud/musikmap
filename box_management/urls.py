@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    GetBox, GetMain, Location, CurrentBoxManagement, ManageDiscoveredSongs, RevealSong, UserDepositsView,
+    GetBox, GetMain, Location, ManageDiscoveredSongs, RevealSong, UserDepositsView,
     EmojiCatalogView, PurchaseEmojiView, ReactionView
 )
 
@@ -15,6 +15,7 @@ urlpatterns = [
     path('emojis/purchase', PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path('reactions', ReactionView.as_view(), name="reactions"),
 ]
+
 
 
 
