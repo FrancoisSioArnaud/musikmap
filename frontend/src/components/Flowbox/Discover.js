@@ -75,7 +75,7 @@ export default function Discover() {
     // MyDeposit + successes si présents (suite à un POST récent)
     if (snapLast && snapLast.boxSlug === boxSlug) {
       if (Array.isArray(snapLast.successes)) setSuccesses(snapLast.successes);
-      if (snapLast.song) setMyDepositSong(snapLast.song);
+      if (snapLast.myDepositSong) setMyDepositSong(snapLast.myDepositSong);
     }
 
     // Older deposits snapshot (si présent)
