@@ -1,3 +1,5 @@
+// frontend/src/components/Flowbox/Discover.js
+
 import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -14,13 +16,13 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 
-const KEY_MAIN = "mm_main_snapshot";       // { boxSlug, timestamp, mainDeposit: {...} }
-const KEY_LAST = "mm_last_deposit";        // { boxSlug, timestamp, successes, song, points_balance, option }
-const KEY_OLDER = "mm_older_snapshot";     // { boxSlug, timestamp, deposits: [ ... ] }
+const KEY_BOX_CONTENT = "mm_box_content"; // clé unique
 const TTL_MINUTES = 20;
 
-// -------- util -----------
-
+// Anciennes clés (pour migration douce)
+const LEGACY_KEY_MAIN = "mm_main_snapshot";   // { boxSlug, timestamp, mainDeposit: {...} }
+const LEGACY_KEY_LAST = "mm_last_deposit";    // { boxSlug, timestamp, successes, song|myDepositSong, points_balance, option }
+const LEGACY_KEY_OLDER = "mm_older_snapshot"; // { boxSlug, timestamp, deposits: [ ... ] }
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -36,12 +38,10 @@ export default function Discover() {
   // anti double POST (StrictMode)
   const didPostRef = useRef(false);
 
-  // État local reconstruit depuis localStorage
-  const [mainDep, setMainDep] = useState(null);
-  const [myDepositSong, setMyDepositSong] = useState(null);   // uniquement la partie song affichée
-  const [olderDeposits, setOlderDeposits] = useState([]);
+  // État local : objet unique "boxContent"
+  const [boxContent, setBoxContent] = useState(null);
 
-  // succès affichés dans le drawer
+  // On garde aussi un état local pour l'affichage instantané des succès pendant le POST
   const [successes, setSuccesses] = useState([]);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState(null);
@@ -58,37 +58,86 @@ export default function Discover() {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/Main`, { replace: true });
   }, [navigate, boxSlug]);
 
+  // -------- helpers --------
+  const normalizeOptionToSong = (option) => {
+    if (!option) return null;
+    // option vient du LiveSearch: { name, artist, image_url, platform_id? ... }
+    return {
+      title: option.name || null,
+      artist: option.artist || null,
+      image_url: option.image_url || null,
+    };
+  };
+
+  const saveBoxContent = (content) => {
+    const payload = {
+      ...content,
+      boxSlug,
+      timestamp: Date.now(),
+    };
+    setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
+    setBoxContent(payload);
+    setSuccesses(Array.isArray(payload.successes) ? payload.successes : []);
+  };
+
+  const migrateLegacyIfNeeded = () => {
+    // Tente de reconstituer mm_box_content depuis les anciennes clés s'il n'existe pas
+    const snap = getValid(KEY_BOX_CONTENT);
+    if (snap && snap.boxSlug === boxSlug && snap.main) {
+      return snap;
+    }
+
+    const legacyMain = getValid(LEGACY_KEY_MAIN);
+    const legacyLast = getValid(LEGACY_KEY_LAST);
+    const legacyOlder = getValid(LEGACY_KEY_OLDER);
+
+    if (!legacyMain && !legacyLast && !legacyOlder) return null;
+
+    // Repack
+    const repacked = {
+      boxSlug: legacyMain?.boxSlug || legacyLast?.boxSlug || boxSlug,
+      timestamp: Date.now(),
+      main: legacyMain?.mainDeposit || null,
+      myDeposit: legacyLast
+        ? {
+            song:
+              legacyLast.song ||
+              legacyLast.myDepositSong ||
+              (legacyLast.option ? normalizeOptionToSong(legacyLast.option) : null),
+          }
+        : null,
+      successes: Array.isArray(legacyLast?.successes) ? legacyLast.successes : [],
+      older: Array.isArray(legacyOlder?.deposits) ? legacyOlder.deposits : [],
+    };
+
+    // Sauvegarde unifiée
+    saveBoxContent(repacked);
+    return repacked;
+  };
+
   // --------- reconstruct depuis localStorage -----------
   useEffect(() => {
-    const snapMain = getValid(KEY_MAIN);
-    const snapLast = getValid(KEY_LAST);
-    const snapOlder = getValid(KEY_OLDER);
-
-    // MainDeposit obligatoire pour affichage Discover "full-cookie"
-    if (!snapMain || snapMain.boxSlug !== boxSlug || !snapMain.mainDeposit) {
-      // Pas de snapshot valide => accès expiré
-      redirectOnboardingExpired();
+    const snap = getValid(KEY_BOX_CONTENT);
+    if (snap && snap.boxSlug === boxSlug && snap.main) {
+      setBoxContent(snap);
+      setSuccesses(Array.isArray(snap.successes) ? snap.successes : []);
       return;
     }
-    setMainDep(snapMain.mainDeposit);
 
-    // MyDeposit + successes si présents (suite à un POST récent)
-    if (snapLast && snapLast.boxSlug === boxSlug) {
-      if (Array.isArray(snapLast.successes)) setSuccesses(snapLast.successes);
-      if (snapLast.myDepositSong) setMyDepositSong(snapLast.myDepositSong);
+    // sinon, migration depuis legacy si possible
+    const migrated = migrateLegacyIfNeeded();
+    if (migrated && migrated.main && migrated.boxSlug === boxSlug) {
+      setBoxContent(migrated);
+      setSuccesses(Array.isArray(migrated.successes) ? migrated.successes : []);
+      return;
     }
 
-    // Older deposits snapshot (si présent)
-    if (snapOlder && snapOlder.boxSlug === boxSlug && Array.isArray(snapOlder.deposits)) {
-      setOlderDeposits(snapOlder.deposits);
-    }
+    // Rien d'utilisable => accès expiré
+    redirectOnboardingExpired();
   }, [boxSlug, redirectOnboardingExpired]);
 
-  // --------- POST (option B) déclenché au montage si demandé par query + location.state -----------
+  // --------- POST (création dépôt) si drawer=achievements&mode=deposit -----------
   useEffect(() => {
-    // on post seulement si:
-    // - drawer=achievements & mode=deposit
-    // - ET on a un payload depuis location.state
     const action = location.state?.action;
     const payload = location.state?.payload;
     if (!shouldOpenAchievements || mode !== "deposit") return;
@@ -121,40 +170,56 @@ export default function Discover() {
           throw new Error(txt || `HTTP ${res.status}`);
         }
 
-        const data = await res.json().catch(() => null) || {};
-        const { successes: sx = [], points_balance = null, song = null, deposits: olderMaybe = null } = data;
+        const data = (await res.json().catch(() => null)) || {};
+        const {
+          successes: sx = [],
+          points_balance = null,
+          song = null,              // (facultatif côté API) – pas indispensable si on a déjà option
+          deposits: olderMaybe = null,
+          main: mainMaybe = null,   // (si un jour l'API renvoie le main directement)
+        } = data;
 
         // MAJ points
         if (typeof points_balance === "number" && setUser) {
           setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-        } else {
-          // anonyme: stocke dans localStorage pour info cumul
+        } else if (Array.isArray(sx)) {
+          // anonyme: stocke total de points localement (indicatif)
           const total =
-            (sx || []).find((s) => (s.name || "").toLowerCase() === "total")?.points ||
-            (sx || []).find((s) => (s.name || "").toLowerCase() === "points_total")?.points ||
+            sx.find((s) => (s.name || "").toLowerCase() === "total")?.points ??
+            sx.find((s) => (s.name || "").toLowerCase() === "points_total")?.points ??
             0;
           const key = "anon_points";
           const cur = parseInt(localStorage.getItem(key) || "0", 10);
-          localStorage.setItem(key, String(cur + total));
+          localStorage.setItem(key, String(cur + (Number(total) || 0)));
         }
 
-        // Store mm_last_deposit (20 min) — on garde aussi l'option pour reconst. myDeposit si besoin
-        const lastPayload = {
+        // Normalise la chanson déposée pour le format cible
+        const normalizedSong = song
+          ? {
+              title: song.title ?? option.name ?? null,
+              artist: song.artist ?? option.artist ?? null,
+              image_url: song.image_url ?? option.image_url ?? null,
+            }
+          : normalizeOptionToSong(option);
+
+        // Base actuelle (si existante) pour préserver "main" et "older" lors de l’update
+        const prev = getValid(KEY_BOX_CONTENT);
+        const nextContent = {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
+          main: mainMaybe || prev?.main || boxContent?.main || null,
+          myDeposit: { song: normalizedSong },
           successes: Array.isArray(sx) ? sx : [],
-          myDepositSong: option || null,     
+          older: Array.isArray(olderMaybe)
+            ? olderMaybe
+            : Array.isArray(prev?.older)
+            ? prev.older
+            : Array.isArray(boxContent?.older)
+            ? boxContent.older
+            : [],
         };
-        setWithTTL(KEY_LAST, lastPayload, TTL_MINUTES);
-        setSuccesses(lastPayload.successes);
-        setMyDepositSong(lastPayload.myDepositSong);
 
-        // Snapshot des older si présents dans la réponse (facultatif)
-        if (Array.isArray(olderMaybe)) {
-          const olderSnap = { boxSlug: payload.boxSlug, timestamp: Date.now(), deposits: olderMaybe };
-          setWithTTL(KEY_OLDER, olderSnap, TTL_MINUTES);
-          setOlderDeposits(olderMaybe);
-        }
+        saveBoxContent(nextContent);
       } catch (e) {
         setPostError(e?.message || "Échec de création du dépôt");
       } finally {
@@ -163,14 +228,13 @@ export default function Discover() {
     };
 
     run();
-  }, [shouldOpenAchievements, mode, location.state, setUser]);
+  }, [shouldOpenAchievements, mode, location.state, setUser, boxContent]);
 
   // --------- drawer handlers ----------
   const handleCloseDrawer = (event, reason) => {
     // Bloque backdrop & ESC
     if (reason === "backdropClick" || reason === "escapeKeyDown") return;
 
-    // On retire drawer & mode des query params
     const next = new URLSearchParams(searchParams);
     next.delete("drawer");
     next.delete("mode");
@@ -178,7 +242,6 @@ export default function Discover() {
   };
 
   const onAchievementsOk = () => {
-    // même action que close, sans autoriser backdrop/esc
     const next = new URLSearchParams(searchParams);
     next.delete("drawer");
     next.delete("mode");
@@ -186,6 +249,10 @@ export default function Discover() {
   };
 
   // --------- rendu ----------
+  const mainDep = boxContent?.main || null;
+  const myDepositSong = boxContent?.myDeposit?.song || null;
+  const olderDeposits = Array.isArray(boxContent?.older) ? boxContent.older : [];
+
   return (
     <Box sx={{ px: 2, pt: 3, pb: 10 }}>
       <Box className="intro" sx={{ mb: 2 }}>
@@ -195,7 +262,7 @@ export default function Discover() {
         </Typography>
       </Box>
 
-      {/* 1) MainDeposit (depuis mm_main_snapshot) */}
+      {/* 1) MainDeposit */}
       {mainDep ? (
         <Box sx={{ mb: 2 }}>
           <Deposit
@@ -214,12 +281,12 @@ export default function Discover() {
         <Box sx={{ mb: 2 }}>
           <Deposit
             dep={{ song: {
-              title: myDepositSong.name || null,
+              title: myDepositSong.title || null,
               artist: myDepositSong.artist || null,
               image_url: myDepositSong.image_url || null,
             }}}
             user={user}
-            variant="list"        // composant Deposit "song only"
+            variant="list"
             showReact={false}
             showPlay={false}
             showUser={false}
@@ -227,8 +294,8 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* 3) OlderDeposits (snapshot si dispo) */}
-      {Array.isArray(olderDeposits) && olderDeposits.length > 0 ? (
+      {/* 3) OlderDeposits */}
+      {olderDeposits.length > 0 ? (
         <Box sx={{ mb: 4 }}>
           {olderDeposits.map((d, idx) => (
             <Box key={d?.id ?? idx} sx={{ mb: 1.5 }}>
@@ -245,7 +312,7 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* Drawer Achievements (ouvert via query) */}
+      {/* Drawer Achievements */}
       <Drawer
         anchor="right"
         open={shouldOpenAchievements}
@@ -300,7 +367,10 @@ export default function Discover() {
                 </Box>
               </Box>
             ) : (
-              <AchievementsPanel successes={Array.isArray(successes) ? successes : []} onPrimaryCta={onAchievementsOk} />
+              <AchievementsPanel
+                successes={Array.isArray(successes) ? successes : []}
+                onPrimaryCta={onAchievementsOk}
+              />
             )}
           </Box>
         </Box>
