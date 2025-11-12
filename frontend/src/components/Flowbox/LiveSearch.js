@@ -1,3 +1,5 @@
+// frontend/src/components/Flowbox/LiveSearch.js
+
 import React, { useState, useEffect, useContext } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -18,16 +20,16 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid } from "../Utils/mmStorage";
 
-const KEY_MAIN = "mm_main_snapshot";
-const TTL_MINUTES = 20; // conservé si besoin futur
+const KEY_BOX_CONTENT = "mm_box_content";  // nouvelle clé unique
+const TTL_MINUTES = 20; // (conservé si besoin futur)
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
   isDeezerAuthenticated,
   boxSlug,
   user,
-  onDepositSuccess, // (maintenu pour compat, non utilisé ici)
-  onClose,          // idem
+  onDepositSuccess, // (compat)
+  onClose,          // (compat)
 }) {
   const { setUser } = useContext(UserContext) || {};
   const navigate = useNavigate();
@@ -117,13 +119,14 @@ export default function LiveSearch({
   };
 
   // NAVIGATE immédiat vers Discover (option B)
+  // Discover fera le POST et mettra à jour mm_box_content (main, myDeposit, successes, older)
   const goCreateDepositFlow = (option) => {
     setPostingId(option?.id ?? "__posting__");
 
-    // Facultatif: vérifie qu'on a bien un snapshot Main (normalement écrit par Main)
-    const mainSnap = getValid(KEY_MAIN);
-    if (!mainSnap || mainSnap.boxSlug !== boxSlug) {
-      // Pas bloquant : Discover redirigera vers Onboarding si besoin
+    // Vérif souple: mm_box_content présent & correspond au boxSlug courant (pas bloquant)
+    const content = getValid(KEY_BOX_CONTENT);
+    if (!content || content.boxSlug !== boxSlug) {
+      // Pas bloquant : Discover gérera la redirection Onboarding si besoin
     }
 
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover?drawer=achievements&mode=deposit`, {
