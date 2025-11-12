@@ -377,25 +377,6 @@ class Location(APIView):
         return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
 
 
-class CurrentBoxManagement(APIView):
-    def get(self, request, format=None):
-        try:
-            current_box_name = request.session['current_box_name']
-            return Response({'current_box_name': current_box_name}, status=status.HTTP_200_OK)
-        except KeyError:
-            return Response({'error': "La clé current_box_name n'existe pas"}, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request, format=None):
-        if 'current_box_name' not in request.data:
-            return Response({'errors': "Aucun nom de boîte n'a été fournie."}, status=status.HTTP_401_UNAUTHORIZED)
-        current_box_name = request.data.get('current_box_name')
-        try:
-            request.session['current_box_name'] = current_box_name
-            request.session.modified = True
-            return Response({'status': 'Le nom de la boîte actuelle a été modifié avec succès.'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class ManageDiscoveredSongs(APIView):
@@ -914,6 +895,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
