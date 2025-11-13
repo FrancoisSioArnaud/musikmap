@@ -251,9 +251,17 @@ export default function Discover() {
 
       {/* 3) OlderDeposits */}
       {olderDeposits.length > 0 ? (
-        <Box sx={{ mb: 4 }}>
+        <Box id="older_deposits">
+          <Box className="intro" sx={{p:4}}>
+            <Typography component="h2" variant="h3" sx={{mt:5}}>
+              Pépites déposées plus tôt
+            </Typography>
+            <Typography component="body" variant="body1">
+              Utilise tes points fraichement gagnés pour les découvrir
+            </Typography>
+          </Box>
           {olderDeposits.map((d, idx) => (
-            <Box key={d?.id ?? idx} sx={{ mb: 1.5 }}>
+            <Box id="older_deposits_list">
               <Deposit
                 dep={d}
                 user={user}
