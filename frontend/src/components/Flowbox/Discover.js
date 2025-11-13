@@ -260,8 +260,8 @@ export default function Discover() {
               Utilise tes points fraichement gagnés pour les découvrir
             </Typography>
           </Box>
-          {olderDeposits.map((d, idx) => (
-            <Box id="older_deposits_list">
+          <Box id="older_deposits_list">
+            {olderDeposits.map((d, idx) => (
               <Deposit
                 dep={d}
                 user={user}
