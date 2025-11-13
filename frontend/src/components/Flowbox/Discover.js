@@ -270,8 +270,9 @@ export default function Discover() {
                 showPlay={true}
                 showUser={true}
               />
-            </Box>
-          ))}
+           
+            ))}
+          </Box>
         </Box>
       ) : null}
 
