@@ -178,7 +178,7 @@ class GetBox(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
-     # --------- POST (création d’un dépôt) ---------
+    # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
         """
         Étapes :
@@ -193,7 +193,6 @@ class GetBox(APIView):
                {
                  "successes": [...],
                  "points_balance": <int|None>,
-                 "song": {...},
                  "older_deposits": [ ... payloads ... ]
                }
         """
@@ -207,12 +206,13 @@ class GetBox(APIView):
         if not box:
             return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
+        # ⚠️ On garde ces lignes : elles servent à l'upsert de Song
         song_name = (option.get("name") or "").strip()
         song_artist = (option.get("artist") or "").strip()
         image_url = (option.get("image_url") or "").strip()
         spotify_url = (option.get("spotify_url") or "").strip() or None
         deezer_url = (option.get("deezer_url") or "").strip() or None
-        platform_id = (option.get("platform_id") or "").strip() or None
+        platform_id = (option.get("platform_id") or "").strip() or None 
 
         if not song_name or not song_artist:
             return Response({"detail": "Chanson invalide (name/artist requis)."}, status=status.HTTP_400_BAD_REQUEST)
@@ -288,7 +288,6 @@ class GetBox(APIView):
             )
 
         # --- 4) Succès / points (branche ici ta logique existante)
-        # Exemple minimal (à remplacer par ton vrai _build_successes + appel /users/add-points)
         successes = []
         points_balance = getattr(user, "points", None) if user is not None else None
 
@@ -304,19 +303,10 @@ class GetBox(APIView):
             {
                 "successes": successes,
                 "points_balance": points_balance,
-                "song": {
-                    "title": song.title,
-                    "artist": song.artist,
-                    "image_url": song.image_url,
-                    "spotify_url": song.spotify_url or None,
-                    "deezer_url": song.deezer_url or None,
-                },
-                # 🔑 Nouveau nom demandé côté API :
                 "older_deposits": older_payload,
             },
             status=status.HTTP_201_CREATED,
         )
-
 
 class Location(APIView):
     """
@@ -888,6 +878,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
