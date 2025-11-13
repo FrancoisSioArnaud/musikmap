@@ -1,40 +1,42 @@
-# stdlib
+# ===== Standard library =====
 import json
 import requests
 from datetime import date, timedelta
 
-# Django
+# ===== Django =====
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
-from django.middleware.csrf import get_token
-from django.urls import reverse
-from django.utils.timezone import localtime
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction
-from django.db.models import Count, Max
-from django.contrib.auth import get_user_model
+from django.db.models import Count, Max, Prefetch
+from django.middleware.csrf import get_token
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils.timezone import localtime
 
-# DRF
+# ===== Django REST Framework =====
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 
-
-
-
-
+# ===== Project =====
+from api_aggregation.views import ApiAggregation
 from users.models import CustomUser
-from .models import Deposit  # + Song si tu en as besoin ailleurs
-
-
-# Projet
 from .models import (
-    Box, Deposit, Song, LocationPoint, DiscoveredSong,
-    Emoji, EmojiRight, Reaction
+    Box,
+    Deposit,
+    DiscoveredSong,
+    Emoji,
+    EmojiRight,
+    LocationPoint,
+    Reaction,
+    Song,
 )
 from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
-from .utils import calculate_distance, _build_successes
-from api_aggregation.views import ApiAggregation
+from .utils import calculate_distance, _build_successes, build_deposits_payload
+
+
 
 User = get_user_model()
 
@@ -71,17 +73,6 @@ def _reactions_summary_for_deposits(dep_ids):
 
 
 
-
-from django.db.models import Prefetch
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import AnonymousUser
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-
-from .models import Box, Deposit, Reaction
-from .utils import build_deposits_payload
 
 
 class GetMain(APIView):
@@ -315,15 +306,7 @@ class GetBox(APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
-# box_management/views.py
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-
-from .models import Box, LocationPoint
-from .utils import calculate_distance  # suppose que ta fonction est bien définie ici
 
 class Location(APIView):
     """
@@ -895,34 +878,5 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
