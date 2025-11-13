@@ -330,6 +330,15 @@ class GetBox(APIView):
             pass  # silencieux
 
 
+        # --- 5) Sérialisation des résultats pour le frontend ----
+        # older_deposits -> payload JSON
+        older_deposits_payload = build_deposits_payload(
+            older_deposits_qs,
+            viewer=user,
+            include_user=True,
+        )
+
+
         response = {
             "successes": list(successes),
             "points_balance": points_balance,
@@ -911,6 +920,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
