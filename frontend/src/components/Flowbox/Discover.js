@@ -65,7 +65,7 @@ export default function Discover() {
   };
 
   const saveBoxContent = (content) => {
-    // On force la structure unifiée (pas de champ "older")
+    // Unification : plus de 'older', uniquement 'olderDeposits'
     const payload = {
       ...content,
       boxSlug,
@@ -127,9 +127,9 @@ export default function Discover() {
         const {
           successes: sx = [],
           points_balance = null,
-          song = null,                 // (facultatif côté API)
-          older_deposits: olderMaybe = null, // 🔑 nouvelle clé API
-          main: mainMaybe = null,      // (si un jour l'API renvoie le main directement)
+          song = null,                // (facultatif côté API)
+          older_deposits: olderApi = null, // 🔥 nouvelle clé côté API
+          main: mainMaybe = null,     // (si un jour l'API renvoie le main directement)
         } = data;
 
         // MAJ points
@@ -155,7 +155,7 @@ export default function Discover() {
             }
           : normalizeOptionToSong(option);
 
-        // Base actuelle pour préserver "main" et "olderDeposits" lors de l’update
+        // Base actuelle (si existante) pour préserver "main" et "olderDeposits" lors de l’update
         const prev = getValid(KEY_BOX_CONTENT);
         const nextContent = {
           boxSlug: payload.boxSlug,
@@ -163,9 +163,8 @@ export default function Discover() {
           main: mainMaybe || prev?.main || boxContent?.main || null,
           myDeposit: { song: normalizedSong },
           successes: Array.isArray(sx) ? sx : [],
-          // ⚠️ On n'utilise plus "older", seulement "olderDeposits"
-          olderDeposits: Array.isArray(olderMaybe)
-            ? olderMaybe
+          olderDeposits: Array.isArray(olderApi)
+            ? olderApi
             : Array.isArray(prev?.olderDeposits)
             ? prev.olderDeposits
             : Array.isArray(boxContent?.olderDeposits)
@@ -182,7 +181,7 @@ export default function Discover() {
     };
 
     run();
-  }, [shouldOpenAchievements, mode, location.state, setUser, boxContent]);
+  }, [shouldOpenAchievements, mode, location.state, setUser, boxContent, boxSlug]);
 
   // --------- drawer handlers ----------
   const handleCloseDrawer = (event, reason) => {
