@@ -207,8 +207,8 @@ export default function Discover() {
   const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 10 }}>
-      <Box className="intro" sx={{ mb: 2 }}>
+    <Box >
+      <Box className="intro">
         <Typography component="h1" variant="h1">Découvertes</Typography>
         <Typography component="h2" variant="body1">
           La boîte et tes derniers dépôts
@@ -217,7 +217,7 @@ export default function Discover() {
 
       {/* 1) MainDeposit */}
       {mainDep ? (
-        <Box sx={{ mb: 2 }}>
+        <Box >
           <Deposit
             dep={mainDep}
             user={user}
@@ -231,7 +231,7 @@ export default function Discover() {
 
       {/* 2) MyDeposit (song only) */}
       {myDepositSong ? (
-        <Box sx={{ mb: 2 }}>
+        <Box>
           <Deposit
             dep={{
               song: {
