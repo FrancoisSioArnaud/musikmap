@@ -216,9 +216,9 @@ class GetBox(APIView):
             .first()
         )
 
-        older_qs = Deposit.objects.none()
+        older_deposits = Deposit.objects.none()
         if prev_head is not None:
-            older_qs = (
+            older_deposits = (
                 Deposit.objects
                 .filter(box=box)
                 .filter(
@@ -911,6 +911,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
