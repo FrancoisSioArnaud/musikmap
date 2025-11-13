@@ -14,7 +14,7 @@
 }
 #older_deposits_list{
   display: flex;
-  overflow: scroll;
+  overflow-x: scroll;
   gap: 20px;
   padding: 16px;
   padding-bottom: 32px;
