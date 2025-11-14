@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union, Iterable, Sequence, Tuple
 from datetime import timedelta
 
 from django.conf import settings
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Prefetch, Q
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.utils.timezone import localtime, localdate, timezone
 
@@ -156,6 +156,50 @@ def build_deposits_payload(
         out.append(payload)
 
     return out
+
+
+def _get_prev_head_and_older(box, limit: int = 10):
+    """
+    Retourne un snapshot de la box AVANT création d'un nouveau dépôt.
+
+    - prev_head : dernier dépôt actuel (le plus récent) pour cette box.
+    - older_deposits_qs : jusqu'à `limit` dépôts STRICTEMENT avant prev_head,
+      avec song/user préchargés et réactions préfetchées.
+
+    Si la box n'a encore aucun dépôt :
+      → (None, Deposit.objects.none()).
+    """
+    prev_head = (
+        Deposit.objects
+        .filter(box=box)
+        .order_by("-deposited_at", "-id")
+        .first()
+    )
+
+    if prev_head is None:
+        return None, Deposit.objects.none()
+
+    older_deposits_qs = (
+        Deposit.objects
+        .filter(box=box)
+        .filter(
+            Q(deposited_at__lt=prev_head.deposited_at) |
+            Q(deposited_at=prev_head.deposited_at, id__lt=prev_head.id)
+        )
+        .select_related("song", "user")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects
+                .select_related("emoji", "user")
+                .order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-deposited_at", "-id")[:limit]
+    )
+
+    return prev_head, older_deposits_qs
 
 
 # ---------- Normalisation & distance ----------
@@ -318,3 +362,4 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
