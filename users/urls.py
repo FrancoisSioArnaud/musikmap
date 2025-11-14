@@ -1,3 +1,4 @@
+#users/urls.py
 from django.urls import path
 from . import views
 
@@ -14,5 +15,6 @@ urlpatterns = [
     path('get-user-info', views.GetUserInfo.as_view(), name='get-user-info'),
     path('change-username', views.ChangeUsername.as_view(), name='change-username'),
 ]
+
 
 
