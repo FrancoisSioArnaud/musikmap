@@ -34,7 +34,7 @@ from .models import (
     Song,
 )
 from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
-from .utils import calculate_distance, build_successes, build_deposits_payload, get_prev_head_and_older,
+from .utils import calculate_distance, _build_successes, _build_deposits_payload, _get_prev_head_and_older,
 
 
 
@@ -82,7 +82,7 @@ class GetMain(APIView):
 
     - 404 si la box n'existe pas
     - [] si aucun dépôt n'est encore présent
-    - utilise build_deposits_payload (utils.py)
+    - utilise _build_deposits_payload (utils.py)
     """
 
     def get(self, request, box_url: str, *args, **kwargs):
@@ -125,7 +125,7 @@ class GetMain(APIView):
                 )
     
             # 4) Payload via utils (zéro re-get)
-            payload = build_deposits_payload(deposits, viewer=viewer, include_user=True)
+            payload = _build_deposits_payload(deposits, viewer=viewer, include_user=True)
     
             # 5) Retourne une liste (vide ou 1 élément)
             return Response(payload, status=status.HTTP_200_OK)
@@ -183,61 +183,44 @@ class GetBox(APIView):
     def post(self, request, format=None):
         """
         Étapes simplifiées :
-          1) Upsert Song
-          2) Créer Deposit (dans la même transaction DB)
-          3) Créditer les points via /users/add-points (best-effort)
-          4) Répondre : {"successes": [...], "added_deposit": {...}, "points_balance": <int|None>}
+          1) Snapshot avant création (prev_head + older)
+          2) Upsert Song + création Deposit (transaction atomique)
+          3) Calcul des succès / points
+          4) Créditer les points via /users/add-points (best-effort)
+          5) Répondre : {"successes": [...], "older_deposits": [...], "points_balance": <int|None>}
         """
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
         if not box_slug:
-            return Response({"detail": "boxSlug manquant"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "boxSlug manquant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         box = Box.objects.filter(url=box_slug).first()
         if not box:
-            return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Boîte introuvable"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         song_name = (option.get("name") or "").strip()
         song_author = (option.get("artist") or "").strip()
         song_platform_id = option.get("platform_id")  # 1=Spotify, 2=Deezer
         incoming_url = option.get("url")
         if not song_name or not song_author:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Titre ou artiste manquant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-                # --- 1) ÉTAT AVANT CRÉATION : prev_head + 10 précédents
-        prev_head = (
-            Deposit.objects
-            .filter(box=box)
-            .order_by("-deposited_at", "-id")
-            .first()
-        )
+        # --- 1) ÉTAT AVANT CRÉATION : prev_head + 10 précédents
+        prev_head, older_deposits_qs = _get_prev_head_and_older(box, limit=10)
 
-        older_deposits_payload = Deposit.objects.none()
-        if prev_head is not None:
-            older_deposits_payload = (
-                Deposit.objects
-                .filter(box=box)
-                .filter(
-                    Q(deposited_at__lt=prev_head.deposited_at) |
-                    Q(deposited_at=prev_head.deposited_at, id__lt=prev_head.id)
-                )
-                .select_related("song", "user")
-                .prefetch_related(
-                    Prefetch(
-                        "reactions",
-                        queryset=Reaction.objects
-                        .select_related("emoji", "user")
-                        .order_by("created_at", "id"),
-                        to_attr="prefetched_reactions",
-                    )
-                )
-                .order_by("-deposited_at", "-id")[:10]
-            )
-        
         # --- 2) Calcul des succès / points (centralisé dans utils)
         successes, points_to_add = _build_successes(
             box=box,
@@ -245,10 +228,13 @@ class GetBox(APIView):
             song={"title": song_name, "artist": song_author},
         )
 
-        # --- 3) Upsert Song Créer Deposit (atomique ensemble)
+        # --- 3) Upsert Song + création Deposit (atomique ensemble)
         with transaction.atomic():
             try:
-                song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
+                song = Song.objects.get(
+                    title__iexact=song_name,
+                    artist__iexact=song_author,
+                )
                 song.n_deposits = (song.n_deposits or 0) + 1
             except Song.DoesNotExist:
                 song = Song(
@@ -276,10 +262,17 @@ class GetBox(APIView):
                 if request_platform:
                     aggreg_url = request.build_absolute_uri(reverse("api_agg:aggreg"))
                     payload = {
-                        "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
+                        "song": {
+                            "title": song.title,
+                            "artist": song.artist,
+                            "duration": song.duration,
+                        },
                         "platform": request_platform,
                     }
-                    headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
+                    headers = {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": get_token(request),
+                    }
                     r = requests.post(
                         aggreg_url,
                         data=json.dumps(payload),
@@ -295,7 +288,8 @@ class GetBox(APIView):
                             elif request_platform == "spotify":
                                 song.spotify_url = other_url
             except Exception:
-                pass  # best-effort
+                # best-effort : on ne bloque pas le dépôt si l'agrégateur plante
+                pass
 
             song.save()
             new_deposit = Deposit.objects.create(song=song, box=box, user=user)
@@ -322,22 +316,21 @@ class GetBox(APIView):
                 )
                 if r.ok:
                     try:
-                        user.refresh_from_db(fields=["points"])
-                    except Exception:
-                        user.refresh_from_db()
-                    points_balance = getattr(user, "points", None)
+                        data = r.json()
+                        points_balance = data.get("points_balance")
+                    except ValueError:
+                        # JSON invalide → on laisse points_balance à None
+                        points_balance = None
         except Exception:
-            pass  # silencieux
-
+            # silencieux : on ne casse pas le dépôt si l'ajout de points échoue
+            pass
 
         # --- 5) Sérialisation des résultats pour le frontend ----
-        # older_deposits -> payload JSON
         older_deposits = build_deposits_payload(
-            older_deposits_payload,
+            older_deposits_qs,
             viewer=user,
             include_user=True,
         )
-
 
         response = {
             "successes": list(successes),
@@ -345,10 +338,6 @@ class GetBox(APIView):
             "older_deposits": older_deposits,
         }
         return Response(response, status=status.HTTP_200_OK)
-
-
-
-
 
 class Location(APIView):
     """
@@ -920,6 +909,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
