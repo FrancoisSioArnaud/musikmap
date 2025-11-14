@@ -110,7 +110,7 @@ def _build_deposit_from_instance(
     return payload
 
 
-def build_deposits_payload(
+def _build_deposits_payload(
     deposits: Union[Deposit, Iterable[Deposit], Sequence[Deposit]],
     *,
     viewer: Optional[CustomUser] = None,
@@ -213,7 +213,7 @@ def normalize_string(input_string: str) -> str:
     return normalized_string
 
 
-def calculate_distance(lat1, lon1, lat2, lon2) -> float:
+def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
     """
     Calcule la distance entre deux points géographiques (Haversine).
     """
@@ -362,4 +362,5 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
