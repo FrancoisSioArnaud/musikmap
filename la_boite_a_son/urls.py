@@ -1,3 +1,4 @@
+#la_boite_a_son/urls.py
 """la_boite_a_son URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -31,6 +32,7 @@ urlpatterns = [
     path('api_agg/', include('api_aggregation.urls')),
     path('oauth/', include('social_django.urls', namespace='social')),  # Social-Auth endpoints
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 
 
 
