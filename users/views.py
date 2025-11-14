@@ -335,23 +335,39 @@ class AddUserPoints(APIView):
     def post(self, request, format=None):
         # Guard clause that checks if user is logged in
         if not request.user.is_authenticated:
-            return Response({'errors': 'Utilisateur non connecté.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {'errors': 'Utilisateur non connecté.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         user = request.user
         points = request.data.get('points')
 
-        if not points:
-            return Response({'errors': 'Veuillez fournir un nombre de points valide.'}, status=status.HTTP_400_BAD_REQUEST)
+        if points is None:
+            return Response(
+                {'errors': 'Veuillez fournir un nombre de points valide.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             points = int(points)
-            user.points += points
-            user.save()
+        except (TypeError, ValueError):
+            return Response(
+                {'errors': 'Veuillez fournir un nombre de points valide.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            return Response({'status': 'Points mis à jour avec succès.'}, status=status.HTTP_200_OK)
-        except ValueError:
-            return Response({'errors': 'Veuillez fournir un nombre de points valide.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Mise à jour des points
+        user.points += points
+        user.save()
 
+        return Response(
+            {
+                'status': 'Points mis à jour avec succès.',
+                'points_balance': user.points,
+            },
+            status=status.HTTP_200_OK
+        )
 
 class GetUserPoints(APIView):
     '''
@@ -435,6 +451,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
