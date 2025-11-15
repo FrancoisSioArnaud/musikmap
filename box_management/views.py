@@ -184,10 +184,11 @@ class GetBox(APIView):
         """
         Étapes simplifiées :
           1) Snapshot avant création (prev_head + older)
-          2) Upsert Song + création Deposit (transaction atomique)
-          3) Calcul des succès / points
-          4) Créditer les points via /users/add-points (best-effort)
-          5) Répondre : {"successes": [...], "older_deposits": [...], "points_balance": <int|None>}
+          2) Upsert Song (transaction atomique)
+          3) Calcul des succès / points à partir de l'instance Song
+          4) Création du Deposit
+          5) Créditer les points via /users/add-points (best-effort)
+          6) Répondre : {"successes": [...], "older_deposits": [...], "points_balance": <int|None>}
         """
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
@@ -207,7 +208,12 @@ class GetBox(APIView):
 
         song_name = (option.get("name") or "").strip()
         song_author = (option.get("artist") or "").strip()
-        song_platform_id = option.get("platform_id")  # 1=Spotify, 2=Deezer
+
+        try:
+            song_platform_id = int(option.get("platform_id"))
+        except (TypeError, ValueError):
+            song_platform_id = None
+
         incoming_url = option.get("url")
         if not song_name or not song_author:
             return Response(
@@ -218,18 +224,12 @@ class GetBox(APIView):
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-        # --- 1) ÉTAT AVANT CRÉATION : prev_head + 10 précédents
-        prev_head, older_deposits_qs = _get_prev_head_and_older(box, limit=10)
+        # --- 1) ÉTAT AVANT CRÉATION : prev_head + 15 précédents (payload older_deposits)
+        prev_head, older_deposits_qs = _get_prev_head_and_older(box, limit=15)
 
-        # --- 2) Calcul des succès / points (centralisé dans utils)
-        successes, points_to_add = _build_successes(
-            box=box,
-            user=user,
-            song={"title": song_name, "artist": song_author},
-        )
-
-        # --- 3) Upsert Song + création Deposit (atomique ensemble)
+        # --- 2) Upsert Song + calcul des succès + création Deposit (atomique ensemble)
         with transaction.atomic():
+            # 2.a) Upsert Song
             try:
                 song = Song.objects.get(
                     title__iexact=song_name,
@@ -292,9 +292,18 @@ class GetBox(APIView):
                 pass
 
             song.save()
+
+            # 2.b) Calcul des succès / points à partir de l'instance Song (optimisée)
+            successes, points_to_add = _build_successes(
+                box=box,
+                user=user,
+                song=song,
+            )
+
+            # 2.c) Création du Deposit APRES calcul des succès (pour ne pas biaiser les "first")
             new_deposit = Deposit.objects.create(song=song, box=box, user=user)
 
-        # --- 4) Créditer les points via endpoint (best-effort) et récupérer le solde
+        # --- 3) Créditer les points via endpoint (best-effort) et récupérer le solde
         points_balance = None
         try:
             if user and getattr(user, "is_authenticated", False):
@@ -325,7 +334,7 @@ class GetBox(APIView):
             # silencieux : on ne casse pas le dépôt si l'ajout de points échoue
             pass
 
-        # --- 5) Sérialisation des résultats pour le frontend ----
+        # --- 4) Sérialisation des résultats pour le frontend ----
         older_deposits = build_deposits_payload(
             older_deposits_qs,
             viewer=user,
@@ -338,6 +347,8 @@ class GetBox(APIView):
             "older_deposits": older_deposits,
         }
         return Response(response, status=status.HTTP_200_OK)
+
+
 
 class Location(APIView):
     """
@@ -909,6 +920,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
