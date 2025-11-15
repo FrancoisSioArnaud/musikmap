@@ -12,7 +12,7 @@ from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.utils.timezone import localtime, localdate, timezone
 
 from users.models import CustomUser
-from .models import Deposit, Reaction, DiscoveredSong
+from .models import Deposit, Reaction, DiscoveredSong, Song
 
 # Barèmes & coûts (importés depuis ton module utils global)
 from utils import (
@@ -294,24 +294,88 @@ def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
     return streak
 
 
-def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], int]:
+def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[List[Dict[str, Any]], int]:
     """
     Calcule la liste des 'successes' (achievements) + le total de points.
+
     Entrée:
       - box: instance de Box
       - user: CustomUser | None
-      - song: dict minimal {"title": str, "artist": str}
-    Sortie:
-      - (successes_list, points_total)
+      - song: instance de Song (déjà upsertée)
+
+    Optimisations :
+      - 1 requête pour tous les dépôts user+box (streak + "premier dépôt ici").
+      - 1 requête pour tous les dépôts de cette song (global + dans cette box).
     """
-    title = (song.get("title") or "").strip()
-    artist = (song.get("artist") or "").strip()
+    from django.utils.timezone import localtime, localdate  # déjà importés plus haut, mais pour clarté locale
+
+    title = (getattr(song, "title", "") or "").strip()
+    artist = (getattr(song, "artist", "") or "").strip()
 
     successes: Dict[str, Dict[str, Any]] = {}
     points_to_add = int(NB_POINTS_ADD_SONG)
 
+    # ---------- Helper interne : calcul de streak à partir d'une liste de datetimes ----------
+    def _compute_streak_from_dates(dates: List) -> int:
+        """
+        Reprend la logique de _get_consecutive_deposit_days, mais en pur Python
+        à partir d'une liste de datetimes déjà récupérés.
+        """
+        if not dates:
+            return 0
+
+        today = localdate()
+        target = today - timedelta(days=1)  # on ne compte pas aujourd'hui
+        streak = 0
+
+        # Liste des dates (locales) distinctes des dépôts, récentes → anciennes
+        seen_days: List = []
+        for dt in dates:
+            try:
+                d = localtime(dt).date()
+            except Exception:
+                d = timezone.localtime(dt).date()
+            if not seen_days or seen_days[-1] != d:
+                seen_days.append(d)
+
+        for d in seen_days:
+            if d == target:
+                streak += 1
+                target -= timedelta(days=1)
+            elif d < target:
+                break  # trou dans la chaîne
+
+        return streak
+
+    # ===================== 1) Requêtes mutualisées =====================
+
+    # --- 1.a) Tous les dépôts de cet user dans cette box (streak + "premier dépôt ici")
+    user_box_dates: List = []
+    has_user_deposit_in_box = False
+    if user:
+        user_box_dates = list(
+            Deposit.objects
+            .filter(user=user, box=box)
+            .order_by("-deposited_at")
+            .values_list("deposited_at", flat=True)
+        )
+        has_user_deposit_in_box = len(user_box_dates) > 0
+
+    # --- 1.b) Tous les dépôts de cette chanson (song) (global + dans cette box)
+    # On s'appuie sur le fait que Song est upsertée par (title, artist),
+    # donc il n'existe qu'une seule instance logique pour ce couple.
+    song_box_ids: List[int] = []
+    if title and artist:
+        song_box_ids = list(
+            Deposit.objects
+            .filter(song=song)
+            .values_list("box_id", flat=True)
+        )
+
+    # ===================== 2) Construction des achievements =====================
+
     # 1) Série de jours consécutifs
-    nb_consecutive_days = _get_consecutive_deposit_days(user, box) if user else 0
+    nb_consecutive_days = _compute_streak_from_dates(user_box_dates) if user else 0
     if nb_consecutive_days > 0:
         bonus = nb_consecutive_days * int(NB_POINTS_CONSECUTIVE_DAYS_BOX)
         points_to_add += bonus
@@ -323,7 +387,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -
         }
 
     # 2) Premier dépôt de cet utilisateur dans cette box
-    if _is_first_user_deposit(user, box):
+    if user and not has_user_deposit_in_box:
         points_to_add += int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX)
         successes["first_user_deposit_box"] = {
             "name": "Explorateur·ice",
@@ -333,7 +397,11 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -
         }
 
     # 3) Première fois (title, artist) dans la box
-    if _is_first_song_deposit_in_box_by_title_artist(title, artist, box):
+    is_first_song_in_box = False
+    if title and artist:
+        is_first_song_in_box = box.id not in song_box_ids
+
+    if is_first_song_in_box:
         points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX)
         successes["first_song_deposit"] = {
             "name": "Far West",
@@ -343,7 +411,11 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Dict[str, Any]) -
         }
 
     # 4) Première fois (title, artist) sur le réseau
-    if _is_first_song_deposit_global_by_title_artist(title, artist):
+    is_first_song_global = False
+    if title and artist:
+        is_first_song_global = len(song_box_ids) == 0
+
+    if is_first_song_global:
         points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL)
         successes["first_song_deposit_global"] = {
             "name": "Preums",
