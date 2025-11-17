@@ -329,45 +329,67 @@ class CheckAuthentication(APIView):
 
 
 class AddUserPoints(APIView):
-    '''
-    Class goal : add (or delete) points to the user connected
-    '''
+    """
+    Class goal : add (or delete) points to the connected user.
+    """
     def post(self, request, format=None):
-        # Guard clause that checks if user is logged in
+        # 1) Auth requise
         if not request.user.is_authenticated:
             return Response(
-                {'errors': 'Utilisateur non connecté.'},
-                status=status.HTTP_401_UNAUTHORIZED
+                {"errors": "Utilisateur non connecté."},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
         user = request.user
-        points = request.data.get('points')
+        points = request.data.get("points")
 
+        # 2) Validation basique
         if points is None:
             return Response(
-                {'errors': 'Veuillez fournir un nombre de points valide.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"errors": "Veuillez fournir un nombre de points valide."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             points = int(points)
         except (TypeError, ValueError):
             return Response(
-                {'errors': 'Veuillez fournir un nombre de points valide.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"errors": "Veuillez fournir un nombre de points valide."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Mise à jour des points
-        user.points += points
-        user.save()
+        # 3) Récupération du solde actuel
+        try:
+            user.refresh_from_db(fields=["points"])
+        except Exception:
+            user.refresh_from_db()
+
+        current = getattr(user, "points", 0)
+        new_balance = current + points
+
+        # 4) Interdiction des soldes négatifs
+        if new_balance < 0:
+            return Response(
+                {
+                    "error": "insufficient_funds",
+                    "message": "Pas assez de points pour effectuer cette action.",
+                    "points_balance": current,  # On renvoie aussi le solde actuel
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 5) Mise à jour autorisée
+        user.points = new_balance
+        user.save(update_fields=["points"])
 
         return Response(
             {
-                'status': 'Points mis à jour avec succès.',
-                'points_balance': user.points,
+                "status": "Points mis à jour avec succès.",
+                "points_balance": user.points,
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
+
 
 class GetUserPoints(APIView):
     '''
@@ -451,6 +473,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
