@@ -28,10 +28,14 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     From the admin interface, it is possible to export the deposits by box and month in order to study the statistics
     and create graphs.
     """
-    list_display = ('id', 'song_id', 'box_id', 'deposited_at', 'user')
-    list_filter = ('id', 'song_id', 'box_id', 'deposited_at', 'user')
-    search_fields = ('id', 'song_id__title', 'box_id__name', 'user')
+    # ✅ Ajout de public_key dans la liste
+    list_display = ('id', 'public_key', 'song_id', 'box_id', 'deposited_at', 'user')
+    list_filter = ('id', 'public_key', 'song_id', 'box_id', 'deposited_at', 'user')
+    search_fields = ('id', 'public_key', 'song_id__title', 'box_id__name', 'user')
     ordering = ('-deposited_at',)
+
+    # ✅ Lecture seule dans le formulaire admin
+    readonly_fields = ('public_key',)
 
     def export_deposits_global(self, request, queryset):
         """
@@ -90,15 +94,20 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         writer.writerow(['Box', 'Week', 'Day', 'Number of Deposits'])
 
         # Export by box, week and day
-        deposits = Deposit.objects.values('box_id__name').annotate(week=TruncWeek('deposited_at'),
-                                                                   day=TruncDay('deposited_at')).values('box_id__name',
-                                                                                                        'week',
-                                                                                                        'day').annotate(
-            count=Count('id'))
+        deposits = Deposit.objects.values('box_id__name').annotate(
+            week=TruncWeek('deposited_at'),
+            day=TruncDay('deposited_at')
+        ).values(
+            'box_id__name', 'week', 'day'
+        ).annotate(count=Count('id'))
+
         for deposit in deposits:
             writer.writerow(
-                [deposit['box_id__name'], deposit['week'].strftime('%Y-%W'), deposit['day'].strftime('%Y-%m-%d'),
-                 deposit['count']])
+                [deposit['box_id__name'],
+                 deposit['week'].strftime('%Y-%W'),
+                 deposit['day'].strftime('%Y-%m-%d'),
+                 deposit['count']]
+            )
 
         return response
 
@@ -123,8 +132,10 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         # Export users by box, month and week
         active_users = CustomUser.objects.values('username', 'deposit__box_id__name').annotate(
             month=TruncMonth('deposit__deposited_at'),
-            week=TruncWeek('deposit__deposited_at')).values(
-            'username', 'deposit__box_id__name', 'month', 'week').annotate(count=Count('deposit__id'))
+            week=TruncWeek('deposit__deposited_at')
+        ).values(
+            'username', 'deposit__box_id__name', 'month', 'week'
+        ).annotate(count=Count('deposit__id'))
 
         # Filter users with deposits
         active_users = active_users.filter(count__gt=0)
@@ -133,7 +144,8 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             month = user['month'].strftime('%Y-%m') if user['month'] is not None else ''
             week = user['week'].strftime('%Y-%W') if user['week'] is not None else ''
             writer.writerow(
-                [user['username'], user['deposit__box_id__name'], month, week, user['count']])
+                [user['username'], user['deposit__box_id__name'], month, week, user['count']]
+            )
 
         return response
 
@@ -160,22 +172,32 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         popular_songs = Song.objects.values('title', 'deposit__box_id__name').annotate(
             month=TruncMonth('deposit__deposited_at'),
             week=TruncWeek('deposit__deposited_at'),
-            day=TruncDay('deposit__deposited_at')).values(
-            'title', 'deposit__box_id__name', 'month', 'week', 'day').annotate(count=Count('deposit__id'))
+            day=TruncDay('deposit__deposited_at')
+        ).values(
+            'title', 'deposit__box_id__name', 'month', 'week', 'day'
+        ).annotate(count=Count('deposit__id'))
 
         for song in popular_songs:
             writer.writerow(
-                [song['title'], song['deposit__box_id__name'], song['month'].strftime('%Y-%m'),
-                 song['week'].strftime('%Y-%W'), song['day'].strftime('%Y-%m-%d'), song['count']])
+                [song['title'],
+                 song['deposit__box_id__name'],
+                 song['month'].strftime('%Y-%m'),
+                 song['week'].strftime('%Y-%W'),
+                 song['day'].strftime('%Y-%m-%d'),
+                 song['count']]
+            )
 
         return response
 
     export_popular_songs_csv.short_description = "Export popular songs as CSV"
 
     # Add custom actions to admin to export data
-    actions = ['export_deposits_global', 'export_deposits_distribution', 'export_active_users_csv',
-               'export_popular_songs_csv']
-
+    actions = [
+        'export_deposits_global',
+        'export_deposits_distribution',
+        'export_active_users_csv',
+        'export_popular_songs_csv',
+    ]
 
 
 class DiscoveredSongAdmin(admin.ModelAdmin):
@@ -226,13 +248,3 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box_id__name",
     )
     ordering = ("-created_at",)
-
-
-
-
-
-
-
-
-
-
