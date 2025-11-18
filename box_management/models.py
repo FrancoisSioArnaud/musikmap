@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db.models import Count
 from typing import Union, Optional, Iterable
 from users.models import CustomUser
+import secrets
 
 
 
@@ -94,22 +95,16 @@ class DepositQuerySet(models.QuerySet):
 class Deposit(models.Model):
     deposited_at = models.DateTimeField(default=timezone.now, db_index=True)
 
-    song = models.ForeignKey(
-        "Song",
-        on_delete=models.CASCADE,
-        related_name="deposits",
-    )
-    box = models.ForeignKey(
-        "Box",
-        on_delete=models.CASCADE,
-        related_name="deposits",
-    )
-    user = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="deposits",
+    song = models.ForeignKey("Song", on_delete=models.CASCADE, related_name="deposits")
+    box = models.ForeignKey("Box", on_delete=models.CASCADE, related_name="deposits")
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="deposits")
+
+    # 🚨 La nouvelle clé publique (exposée au front)
+    public_key = models.CharField(
+        max_length=16,
+        unique=True,
+        db_index=True,
+        editable=False
     )
 
     objects = DepositQuerySet.as_manager()
@@ -120,10 +115,34 @@ class Deposit(models.Model):
             models.Index(fields=["box", "deposited_at"]),
             models.Index(fields=["song", "deposited_at"]),
             models.Index(fields=["user", "deposited_at"]),
+            # ⚡ index supplémentaire pour rechercher rapidement
+            models.Index(fields=["public_key"]),
         ]
 
     def __str__(self):
-        return f"Deposit #{self.pk} · song={self.song_id} · box={self.box_id}"
+        return f"Deposit {self.public_key} (song={self.song_id}, box={self.box_id})"
+
+    # --------------------------------------------
+    # 🔑 Génération automatique d'une clé unique
+    # --------------------------------------------
+    def save(self, *args, **kwargs):
+        if not self.public_key:
+            # on génère une clé unique de 16 chars
+            self.public_key = self._generate_unique_key()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def _generate_key():
+        # 16 caractères safe (A-Za-z0-9)
+        return secrets.token_urlsafe(12)[:16]
+
+    @classmethod
+    def _generate_unique_key(cls):
+        """Génère une clé qui n'existe pas déjà en base."""
+        key = cls._generate_key()
+        while cls.objects.filter(public_key=key).exists():
+            key = cls._generate_key()
+        return key
 
 
 
@@ -252,6 +271,7 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
 
 
