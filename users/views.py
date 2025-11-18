@@ -346,7 +346,7 @@ class AddUserPoints(APIView):
         # 2) Validation basique
         if points is None:
             return Response(
-                {"errors": "Veuillez fournir un nombre de points valide."},
+                {"errors": "Nombre de points invalide."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -354,7 +354,7 @@ class AddUserPoints(APIView):
             points = int(points)
         except (TypeError, ValueError):
             return Response(
-                {"errors": "Veuillez fournir un nombre de points valide."},
+                {"errors": "Nombre de points invalide."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -371,7 +371,7 @@ class AddUserPoints(APIView):
         if new_balance < 0:
             return Response(
                 {
-                    "error": "insufficient_funds",
+                    "error": "Solde insuffisant.",
                     "message": "Pas assez de points pour effectuer cette action.",
                     "points_balance": current,  # On renvoie aussi le solde actuel
                 },
@@ -473,6 +473,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
