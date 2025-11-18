@@ -629,17 +629,17 @@ class RevealSong(APIView):
             )
 
         # 2) Paramètres
-        deposit_id = request.data.get("deposit_id")
-        if not deposit_id:
+        public_key = request.data.get("dep_public_key")
+        if not public_key:
             return Response(
-                {"detail": "deposit_id manquant"},
+                {"detail": "Clé publique manquante"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # 3) Récupérer le dépôt + chanson
         try:
             # ✅ on utilise bien le nom du champ FK: "song"
-            deposit = Deposit.objects.select_related("song").get(pk=deposit_id)
+            deposit = Deposit.objects.select_related("song").get(public_key=public_key)
         except Deposit.DoesNotExist:
             return Response(
                 {"detail": "Dépôt introuvable"},
@@ -947,6 +947,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
