@@ -79,7 +79,7 @@ export default function Deposit({
     try {
       if (!user || !user.username) {
         const goLogin = window.confirm(
-          "Crée-toi un compte pour pouvoir révéler cette chanson"
+          "Crée-toi un compte pour cumuler tes points et pouvoir révéler cette chanson"
         );
         if (goLogin) {
           navigate(
@@ -93,7 +93,7 @@ export default function Deposit({
       const res = await fetch("/box-management/revealSong", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ deposit_id: localDep.deposit_id }),
+        body: JSON.stringify({ dep_public_key: localDep.public_key }),
         credentials: "same-origin",
       });
       const payload = await res.json().catch(() => ({}));
