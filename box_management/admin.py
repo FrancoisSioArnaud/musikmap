@@ -30,7 +30,7 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     """
     # ✅ Ajout de public_key dans la liste
     list_display = ('id', 'public_key', 'song_id', 'box_id', 'deposited_at', 'user')
-    list_filter = ('id', 'public_key', 'song_id', 'box_id', 'deposited_at', 'user')
+    list_filter = ('song_id', 'box_id', 'user')
     search_fields = ('id', 'public_key', 'song_id__title', 'box_id__name', 'user')
     ordering = ('-deposited_at',)
 
@@ -248,3 +248,4 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box_id__name",
     )
     ordering = ("-created_at",)
+
