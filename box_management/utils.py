@@ -98,6 +98,7 @@ def _build_deposit_from_instance(
 ) -> Dict[str, Any]:
     """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
     payload: Dict[str, Any] = {
+        "public_key": dep.public_key,
         "date": naturaltime(localtime(dep.deposited_at)),
         "song": _build_song_from_instance(dep.song, hidden),
     }
@@ -434,5 +435,6 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
