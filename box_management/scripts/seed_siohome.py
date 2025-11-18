@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from models import Box, Song, Deposit
+from box_management.models import Box, Song, Deposit
 from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID, CLIENT_SECRET as SPOTIFY_CLIENT_SECRET
 
 
