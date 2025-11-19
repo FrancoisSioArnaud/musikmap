@@ -405,41 +405,54 @@ class Location(APIView):
         return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
 
 
-
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
     GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
     """
 
-    def post(self, request):
+    def post(self, request, format=None):
         user = request.user
         if not user.is_authenticated:
             return Response(
                 {'error': 'Vous devez être connecté pour effectuer cette action.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
         deposit_id = request.data.get('deposit_id')
         if not deposit_id:
-            return Response({'error': 'Identifiant de dépôt manquant.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'Identifiant de dépôt manquant.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         discovered_type = request.data.get('discovered_type') or "revealed"
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
         try:
-            deposit = Deposit.objects.select_related('song_id').get(pk=deposit_id)
+            # on utilise bien le nom du champ FK: "song"
+            deposit = Deposit.objects.select_related('song').get(pk=deposit_id)
         except Deposit.DoesNotExist:
-            return Response({'error': "Dépôt introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'error': "Dépôt introuvable."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        if DiscoveredSong.objects.filter(user_id=user, deposit_id=deposit).exists():
-            return Response({'error': 'Ce dépôt est déjà découvert.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Vérifie si déjà découvert pour ce user / ce dépôt
+        if DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
+            return Response(
+                {'error': 'Ce dépôt est déjà découvert.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        # Crée la découverte
         DiscoveredSong.objects.create(
-            user_id=user,
-            deposit_id=deposit,
-            discovered_type=discovered_type
+            user=user,
+            deposit=deposit,
+            discovered_type=discovered_type,
         )
+
         return Response({'success': True}, status=status.HTTP_200_OK)
 
     def get(self, request):
@@ -872,6 +885,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
