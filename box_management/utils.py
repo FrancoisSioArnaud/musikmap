@@ -39,28 +39,17 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
     }
 
 
-def _build_deposit_from_instance(
-    dep: Deposit,
-    *,
-    include_user: bool,
-    hidden: bool,
-    current_user: Optional[CustomUser] = None,
-) -> Dict[str, Any]:
-    """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
-    payload: Dict[str, Any] = {
-        "public_key": dep.public_key,
-        # Date brute en UTC, au format ISO 8601
-        "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat(),
-        "song": _build_song_from_instance(dep.song, hidden),
+def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
+    """Ne fait AUCUNE requête : lit uniquement l'instance déjà chargée."""
+    if hidden:
+        return {"image_url": song.image_url}
+    return {
+        "image_url": song.image_url,
+        "title": song.title,
+        "artist": song.artist,
+        "spotify_url": song.spotify_url or None,
+        "deezer_url": song.deezer_url or None,
     }
-    if include_user:
-        payload["user"] = _build_user_from_instance(dep.user)
-
-    rx = _build_reactions_from_instance(dep, current_user=current_user)
-    payload["reactions"] = rx["detail"]
-    payload["reactions_summary"] = rx["summary"]
-    return payload
-
 
 
 def _iter_reactions_from_instance(dep: Deposit):
@@ -98,7 +87,6 @@ def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUs
     summary = [{"emoji": e, "count": c} for e, c in sorted(counts.items(), key=lambda x: (-x[1], x[0]))]
     return {"detail": detail, "summary": summary}
 
-
 def _build_deposit_from_instance(
     dep: Deposit,
     *,
@@ -109,7 +97,8 @@ def _build_deposit_from_instance(
     """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
     payload: Dict[str, Any] = {
         "public_key": dep.public_key,
-        "date": naturaltime(localtime(dep.deposited_at)),
+        # Date brute en UTC, au format ISO 8601
+        "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat(),
         "song": _build_song_from_instance(dep.song, hidden),
     }
     if include_user:
@@ -119,6 +108,7 @@ def _build_deposit_from_instance(
     payload["reactions"] = rx["detail"]
     payload["reactions_summary"] = rx["summary"]
     return payload
+
 
 
 def _build_deposits_payload(
@@ -445,7 +435,5 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
-
-
 
 
