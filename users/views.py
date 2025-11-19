@@ -371,7 +371,7 @@ class AddUserPoints(APIView):
         if new_balance < 0:
             return Response(
                 {
-                    "error": "Solde insuffisant.",
+                    "error": "insufficient_funds",
                     "message": "Pas assez de points pour effectuer cette action.",
                     "points_balance": current,  # On renvoie aussi le solde actuel
                 },
@@ -389,6 +389,7 @@ class AddUserPoints(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
 
 
 class GetUserPoints(APIView):
@@ -473,6 +474,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
