@@ -1,344 +1,634 @@
-// frontend/src/components/Flowbox/Discover.js
+import React, { useState, useContext, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-
-import Drawer from "@mui/material/Drawer";
 import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
+import Button from "@mui/material/Button";
+import Avatar from "@mui/material/Avatar";
+import Snackbar from "@mui/material/Snackbar";
+import SnackbarContent from "@mui/material/SnackbarContent";
+import Slide from "@mui/material/Slide";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AlbumIcon from "@mui/icons-material/Album";
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 
-import Deposit from "../Common/Deposit";
-import AchievementsPanel from "./AchievementsPanel";
+import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import ReactionModal from "../Reactions/ReactionModal";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 
-const KEY_BOX_CONTENT = "mm_box_content"; // clé unique
+function SlideDownTransition(props) {
+  return <Slide {...props} direction="down" />;
+}
+
+// Même clé / TTL que dans Discover.js
+const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
 
-export default function Discover() {
+export default function Deposit({
+  dep,
+  user,
+  setDispDeposits,
+  cost = 40,
+  variant = "list",
+  showUser = true,
+  fitContainer = true, // non utilisé mais gardé pour compat
+  showReact = true,
+  showPlay = true,
+}) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { boxSlug } = useParams();
-  const { user, setUser } = useContext(UserContext) || {};
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { setUser } = useContext(UserContext) || {};
 
-  // drawer state (piloté par query)
-  const shouldOpenAchievements = searchParams.get("drawer") === "achievements";
-  const mode = searchParams.get("mode"); // "deposit"
-
-  // anti double POST (StrictMode)
-  const didPostRef = useRef(false);
-
-  // État local : objet unique "boxContent"
-  const [boxContent, setBoxContent] = useState(null);
-
-  // On garde aussi un état local pour l'affichage instantané des succès pendant le POST
-  const [successes, setSuccesses] = useState([]);
-  const [posting, setPosting] = useState(false);
-  const [postError, setPostError] = useState(null);
-
-  // -------- redirections utilitaires ----------
-  const redirectOnboardingExpired = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
-      replace: true,
-      state: { error: "Accès à la boîte expiré" },
-    });
-  }, [navigate, boxSlug]);
-
-  const redirectBackToMain = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/Main`, { replace: true });
-  }, [navigate, boxSlug]);
-
-  // -------- helpers --------
-  const normalizeOptionToSong = (option) => {
-    if (!option) return null;
-    // option vient du LiveSearch: { name, artist, image_url, platform_id? ... }
-    return {
-      title: option.name || null,
-      artist: option.artist || null,
-      image_url: option.image_url || null,
-    };
-  };
-
-  const saveBoxContent = (content) => {
-    // Unification : plus de 'older', uniquement 'olderDeposits'
-    const payload = {
-      ...content,
-      boxSlug,
-      timestamp: Date.now(),
-    };
-    setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
-    setBoxContent(payload);
-    setSuccesses(Array.isArray(payload.successes) ? payload.successes : []);
-  };
-
-  // --------- reconstruct depuis localStorage -----------
+  /** ---------- ÉTAT LOCAL SYNCHRO AVEC LA PROP ---------- */
+  const [localDep, setLocalDep] = useState(dep || {});
   useEffect(() => {
-    const snap = getValid(KEY_BOX_CONTENT);
-    if (snap && snap.boxSlug === boxSlug && snap.main) {
-      setBoxContent(snap);
-      setSuccesses(Array.isArray(snap.successes) ? snap.successes : []);
-      return;
+    setLocalDep(dep || {});
+  }, [dep]);
+
+  const s = localDep?.song || {};
+  const u = localDep?.user || {};
+  const isRevealed = useMemo(
+    () => Boolean(s?.title && s?.artist),
+    [s?.title, s?.artist]
+  );
+
+  // ======= Play modal =======
+  const [playOpen, setPlayOpen] = useState(false);
+  const [playSong, setPlaySong] = useState(null);
+  const openPlayFor = (song) => {
+    setPlaySong(song || null);
+    setPlayOpen(true);
+  };
+  const closePlay = () => {
+    setPlayOpen(false);
+    setPlaySong(null);
+  };
+
+  // ======= Reaction modal =======
+  const [reactOpen, setReactOpen] = useState(false);
+  const openReact = () => setReactOpen(true);
+  const closeReact = () => setReactOpen(false);
+
+  // Snackbar (pour Reveal existant)
+  const [snackOpen, setSnackOpen] = useState(false);
+  const showRevealSnackbar = () => {
+    if (snackOpen) {
+      setSnackOpen(false);
+      setTimeout(() => setSnackOpen(true), 0);
+    } else {
+      setSnackOpen(true);
     }
+  };
 
-    // Rien d'utilisable => accès expiré
-    redirectOnboardingExpired();
-  }, [boxSlug, redirectOnboardingExpired]);
+  /**
+   * Met à jour le snapshot mm_box_content dans localStorage
+   * pour refléter la révélation de ce dépôt (si présent dans olderDeposits).
+   */
+  const updateLocalStorageSnapshot = (revealedSong) => {
+    try {
+      const snap = getValid(KEY_BOX_CONTENT);
+      if (!snap) return;
 
-  // --------- POST (création dépôt) si drawer=achievements&mode=deposit -----------
-  useEffect(() => {
-    const action = location.state?.action;
-    const payload = location.state?.payload;
-    if (!shouldOpenAchievements || mode !== "deposit") return;
-    if (action !== "createDeposit" || !payload?.option || !payload?.boxSlug) return;
-    if (didPostRef.current) return;
-    didPostRef.current = true;
+      let changed = false;
+      const next = { ...snap };
 
-    const run = async () => {
-      try {
-        setPosting(true);
-        setPostError(null);
+      // Update dans olderDeposits si on trouve le même dépôt
+      if (Array.isArray(snap.olderDeposits)) {
+        next.olderDeposits = snap.olderDeposits.map((d) => {
+          // On se base sur la clé publique, qui est présente dans le LS
+          if (!d || d.public_key !== localDep.public_key) return d;
 
-        const option = payload.option;
-        const body = { option, boxSlug: payload.boxSlug };
-        const csrftoken = getCookie("csrftoken");
-
-        const res = await fetch(`/box-management/get-box/?slug=${encodeURIComponent(payload.boxSlug)}`, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrftoken,
-            Accept: "application/json",
-          },
-          body: JSON.stringify(body),
+          changed = true;
+          return {
+            ...d,
+            discovered_at: "à l'instant",
+            song: {
+              ...(d.song || {}),
+              title: revealedSong.title,
+              artist: revealedSong.artist,
+              spotify_url: revealedSong.spotify_url,
+              deezer_url: revealedSong.deezer_url,
+              image_url: revealedSong.image_url || d.song?.image_url,
+            },
+          };
         });
+      }
 
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `HTTP ${res.status}`);
+      if (!changed) return;
+
+      next.timestamp = Date.now();
+      setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
+    } catch (e) {
+      // on ignore silencieusement les erreurs de LS
+    }
+  };
+
+  // ---- Reveal d’un dépôt
+  const revealDeposit = async () => {
+    try {
+      if (!user || !user.username) {
+        const goLogin = window.confirm(
+          "Crée-toi un compte pour cumuler tes points et pouvoir révéler cette chanson"
+        );
+        if (goLogin) {
+          navigate(
+            "/login?next=" +
+              encodeURIComponent(
+                window.location.pathname + window.location.search
+              )
+          );
         }
+        return;
+      }
 
-        const data = (await res.json().catch(() => null)) || {};
-        const {
-          successes: sx = [],
-          points_balance = null,
-          song = null,                // (facultatif côté API)
-          older_deposits: olderApi = null, // 🔥 nouvelle clé côté API
-          main: mainMaybe = null,     // (si un jour l'API renvoie le main directement)
-        } = data;
+      const csrftoken = getCookie("csrftoken");
+      const res = await fetch("/box-management/revealSong", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({ dep_public_key: localDep.public_key }),
+        credentials: "same-origin",
+      });
 
-        // MAJ points
-        if (typeof points_balance === "number" && setUser) {
-          setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-        } else if (Array.isArray(sx)) {
-          // anonyme: stocke total de points localement (indicatif)
-          const total =
-            sx.find((s) => (s.name || "").toLowerCase() === "total")?.points ??
-            sx.find((s) => (s.name || "").toLowerCase() === "points_total")?.points ??
-            0;
-          const key = "anon_points";
-          const cur = parseInt(localStorage.getItem(key) || "0", 10);
-          localStorage.setItem(key, String(cur + (Number(total) || 0)));
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Le backend renvoie idéalement payload.message
+        if (payload?.message) {
+          alert(payload.message);
+        } else if (payload?.error === "insufficient_funds") {
+          // fallback au cas où
+          alert("Tu n’as pas assez de points pour effectuer cette action.");
+        } else {
+          alert(
+            "Oops une erreur s’est produite, réessaie dans quelques instants."
+          );
         }
+        return;
+      }
 
-        // Normalise la chanson déposée pour le format cible
-        const normalizedSong = song
-          ? {
-              title: song.title ?? option.name ?? null,
-              artist: song.artist ?? option.artist ?? null,
-              image_url: song.image_url ?? option.image_url ?? null,
-            }
-          : normalizeOptionToSong(option);
+      const revealed = payload?.song || {};
 
-        // Base actuelle (si existante) pour préserver "main" et "olderDeposits" lors de l’update
-        const prev = getValid(KEY_BOX_CONTENT);
-        const nextContent = {
-          boxSlug: payload.boxSlug,
-          timestamp: Date.now(),
-          main: mainMaybe || prev?.main || boxContent?.main || null,
-          myDeposit: { song: normalizedSong },
-          successes: Array.isArray(sx) ? sx : [],
-          olderDeposits: Array.isArray(olderApi)
-            ? olderApi
-            : Array.isArray(prev?.olderDeposits)
-            ? prev.olderDeposits
-            : Array.isArray(boxContent?.olderDeposits)
-            ? boxContent.olderDeposits
+      // MAJ locale immédiate
+      setLocalDep((prev) => ({
+        ...(prev || {}),
+        discovered_at: "à l'instant",
+        song: {
+          ...(prev?.song || {}),
+          title: revealed.title,
+          artist: revealed.artist,
+          spotify_url: revealed.spotify_url,
+          deezer_url: revealed.deezer_url,
+          image_url: revealed.image_url || prev?.song?.image_url,
+        },
+      }));
+
+      // MAJ dans la liste parente si fournie (state React parent)
+      setDispDeposits?.((prev) => {
+        const arr = Array.isArray(prev) ? [...prev] : [];
+        const idx = arr.findIndex(
+          (x) => x?.deposit_id === localDep.deposit_id
+        );
+        if (idx >= 0) {
+          arr[idx] = {
+            ...arr[idx],
+            discovered_at: "à l'instant",
+            song: {
+              ...(arr[idx]?.song || {}),
+              title: revealed.title,
+              artist: revealed.artist,
+              spotify_url: revealed.spotify_url,
+              deezer_url: revealed.deezer_url,
+              image_url: revealed.image_url || arr[idx]?.song?.image_url,
+            },
+          };
+        }
+        return arr;
+      });
+
+      // MAJ du snapshot localStorage (mm_box_content → olderDeposits)
+      updateLocalStorageSnapshot(revealed);
+
+      // MAJ des points dans le UserContext
+      if (typeof payload?.points_balance === "number" && setUser) {
+        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
+      }
+
+      showRevealSnackbar();
+    } catch {
+      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+    }
+  };
+
+  // ======= Callback quand la réaction a changé (après modale) =======
+  const handleReactionApplied = (result) => {
+    // result = { my_reaction, reactions_summary }
+    // 1) MAJ locale immédiate pour refléter l’UI
+    setLocalDep((prev) => ({
+      ...(prev || {}),
+      my_reaction: result?.my_reaction || null,
+      reactions_summary: Array.isArray(result?.reactions_summary)
+        ? result.reactions_summary
+        : [],
+    }));
+
+    // 2) MAJ dans la liste parente si elle existe
+    setDispDeposits?.((prev) => {
+      const arr = Array.isArray(prev) ? [...prev] : [];
+      const idx = arr.findIndex(
+        (x) => x?.deposit_id === localDep.deposit_id
+      );
+      if (idx >= 0) {
+        arr[idx] = {
+          ...arr[idx],
+          my_reaction: result?.my_reaction || null,
+          reactions_summary: Array.isArray(result?.reactions_summary)
+            ? result.reactions_summary
             : [],
         };
-
-        saveBoxContent(nextContent);
-      } catch (e) {
-        setPostError(e?.message || "Échec de création du dépôt");
-      } finally {
-        setPosting(false);
       }
-    };
-
-    run();
-  }, [shouldOpenAchievements, mode, location.state, setUser, boxContent, boxSlug]);
-
-  // --------- drawer handlers ----------
-  const handleCloseDrawer = (event, reason) => {
-    // Bloque backdrop & ESC
-    if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-
-    const next = new URLSearchParams(searchParams);
-    next.delete("drawer");
-    next.delete("mode");
-    setSearchParams(next, { replace: true });
+      return arr;
+    });
   };
 
-  const onAchievementsOk = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("drawer");
-    next.delete("mode");
-    setSearchParams(next, { replace: true });
-  };
-
-  // --------- rendu ----------
-  const mainDep = boxContent?.main || null;
-  const myDepositSong = boxContent?.myDeposit?.song || null;
-  const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
-
-  return (
-    <Box >
-      <Box className="intro">
-        <Typography component="h1" variant="h1">Découvertes</Typography>
-        <Typography component="h2" variant="body1">
-          La boîte et tes derniers dépôts
-        </Typography>
-      </Box>
-
-      {/* 1) MainDeposit */}
-      {mainDep ? (
-        <Box >
-          <Deposit
-            dep={mainDep}
-            user={user}
-            variant="main"
-            showReact={true}
-            showPlay={true}
-            showUser={true}
-          />
-        </Box>
-      ) : null}
-
-      {/* 2) MyDeposit (song only) */}
-      {myDepositSong ? (
-        <Box>
-          <Deposit
-            dep={{
-              song: {
-                title: myDepositSong.title || null,
-                artist: myDepositSong.artist || null,
-                image_url: myDepositSong.image_url || null,
-              },
+  // Rendu compact d’un ruban de réactions (emoji × count)
+  const ReactionsStrip = ({ items = [] }) => {
+    if (!items || items.length === 0) return null;
+    return (
+      <Box className="reactions_container">
+        {items.map((it, i) => (
+          <Box
+            key={`${it.emoji || i}-${it.count || 0}`}
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "4px",
             }}
-            user={user}
-            variant="list"
-            showReact={false}
-            showPlay={false}
-            showUser={false}
-          />
-        </Box>
-      ) : null}
-
-      {/* 3) OlderDeposits */}
-      {olderDeposits.length > 0 ? (
-        <Box id="older_deposits">
-          <Box className="intro" sx={{p:4}}>
-            <Typography component="h2" variant="h3" sx={{mt:5}}>
-              Pépites déposées plus tôt
+          >
+            <Typography variant="h4" component="span">
+              {it.emoji}
             </Typography>
-            <Typography component="body" variant="body1">
-              Utilise tes points fraichement gagnés pour les découvrir
+            <Typography variant="h5" component="span">
+              × {it.count}
             </Typography>
           </Box>
-          <Box id="older_deposits_list">
-            {olderDeposits.map((d, idx) => (
-              <Deposit
-                dep={d}
-                user={user}
-                variant="list"
-                showReact={false}
-                showPlay={true}
-                showUser={true}
-              />
-           
-            ))}
-          </Box>
-        </Box>
-      ) : null}
+        ))}
+      </Box>
+    );
+  };
 
-      {/* Drawer Achievements */}
-      <Drawer
-        anchor="right"
-        open={shouldOpenAchievements}
-        onClose={handleCloseDrawer}
-        ModalProps={{ disableEscapeKeyDown: true }}
-        PaperProps={{
-          sx: { width: "100vw", maxWidth: 560, height: "100dvh", display: "flex", flexDirection: "column" },
-        }}
-      >
-        {/* HEADER */}
-        <Box
-          component="header"
-          sx={{
-            height: 51,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            px: 1,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            flex: "0 0 auto",
-          }}
-        >
-          <IconButton aria-label="Fermer" onClick={(e) => handleCloseDrawer(e, "closeButton")}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
+  // =========================
+  // RENDU VARIANT MAIN
+  // =========================
+  if (variant === "main") {
+    return (
+      <>
+        <Card className="deposit deposit_main">
+          <Box className="deposit_infos">
+            <Box className="deposit_date">
+              <Box className="icon squaredesign" />
+              <Typography
+                className="squaredesign"
+                variant="body1"
+                component="span"
+              >
+                {"Chanson déposée " + (localDep?.date || "") + " par :"}
+              </Typography>
+            </Box>
 
-        {/* CONTENU */}
-        <Box component="main" sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
-          <Box sx={{ boxSizing: "border-box", minHeight: "100%", p: 2 }}>
-            {posting && !postError ? (
-              <Box sx={{ display: "grid", placeItems: "center", height: "60vh" }}>
-                <CircularProgress />
-              </Box>
-            ) : postError ? (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <Typography color="error" sx={{ mb: 2 }}>
-                  {postError}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 3 }}>
-                  Une erreur est survenue pendant le dépôt.
-                </Typography>
-                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                  <button
-                    className="MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-fullWidth"
-                    onClick={redirectBackToMain}
-                    style={{ padding: "8px 16px", borderRadius: 8 }}
-                  >
-                    Retour à la boîte
-                  </button>
+            {showUser && (
+              <Box
+                onClick={() => {
+                  if (u?.username) navigate("/profile/" + u.username);
+                }}
+                className={
+                  u?.username ? "hasUsername deposit_user" : "deposit_user"
+                }
+              >
+                <Box className="squaredesign avatarbox">
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.username || "Anonyme"}
+                    className="avatar"
+                  />
                 </Box>
+                <Typography
+                  component="span"
+                  className="username squaredesign"
+                  variant="subtitle1"
+                >
+                  {u?.username || "Anonyme"}
+                  {u?.username && <ArrowForwardIosIcon className="icon" />}
+                </Typography>
               </Box>
-            ) : (
-              <AchievementsPanel
-                successes={Array.isArray(successes) ? successes : []}
-                onPrimaryCta={onAchievementsOk}
+            )}
+          </Box>
+
+          {/* ----- Section chanson ----- */}
+          <Box className="deposit_song">
+            <Box
+              sx={{
+                aspectRatio: "1 / 1",
+                width: "100%",
+                maxWidth: "100%",
+                overflow: "hidden",
+              }}
+              className="squaredesign img_container"
+            >
+              {s?.image_url && (
+                <Box
+                  component="img"
+                  src={s.image_url}
+                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                  sx={{
+                    width: "100%",
+                    maxWidth: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              )}
+            </Box>
+
+            <Box className="interact">
+              <Box className="texts">
+                {isRevealed && (
+                  <>
+                    <Typography
+                      component="span"
+                      className="titre squaredesign"
+                      variant="h4"
+                    >
+                      {s.title}
+                    </Typography>
+                    <Typography
+                      component="span"
+                      className="artist squaredesign"
+                      variant="body1"
+                    >
+                      {s.artist}
+                    </Typography>
+                  </>
+                )}
+              </Box>
+
+              {/* Play uniquement ici, le bouton Réagir est dans deposit_react */}
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button
+                  variant="depositInteract"
+                  className="play playMain"
+                  size="large"
+                  onClick={() => (isRevealed ? openPlayFor(s) : null)}
+                  disabled={!isRevealed}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Écouter
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* ----- Section réactions dédiée ----- */}
+          {showReact && (
+            <Box className="deposit_react">
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => (isRevealed ? openReact() : null)}
+                disabled={!isRevealed}
+                startIcon={<EmojiEmotionsIcon />}
+              >
+                Réagir
+              </Button>
+
+              {/* ruban des réactions */}
+              <ReactionsStrip items={localDep?.reactions_summary || []} />
+            </Box>
+          )}
+        </Card>
+
+        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
+        <ReactionModal
+          open={reactOpen}
+          onClose={closeReact}
+          depositId={localDep?.deposit_id}
+          currentEmoji={localDep?.my_reaction?.emoji || null}
+          onApplied={handleReactionApplied}
+        />
+      </>
+    );
+  }
+
+  // =========================
+  // RENDU VARIANT LIST
+  // =========================
+  return (
+    <>
+      <Card className="deposit deposit_list">
+        <Box className="deposit_infos">
+          <Box className="deposit_date">
+            <Typography component="h3" variant="body1">
+              {`Chanson déposée ici ${localDep?.date || ""}${
+                showUser ? " par :" : ""
+              }`}
+            </Typography>
+          </Box>
+
+          {showUser && (
+            <Box
+              className="deposit_user"
+              sx={{ display: "flex", minWidth: 0 }}
+              onClick={() => {
+                if (u?.username) navigate("/profile/" + u.username);
+              }}
+            >
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.username || "Anonyme"}
+              />
+              <Typography>{u?.username || "Anonyme"}</Typography>
+              {u?.username && <ArrowForwardIosIcon fontSize="small" />}
+            </Box>
+          )}
+        </Box>
+
+        {/* ----- Section chanson ----- */}
+        <Box className="deposit_song">
+          <Box
+            sx={{
+              aspectRatio: "1 / 1",
+              width: "100%",
+              maxWidth: "100%",
+              overflow: "hidden",
+            }}
+            className="squaredesign img_container"
+          >
+            {s?.image_url && (
+              <Box
+                component="img"
+                src={s.image_url}
+                alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                sx={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  display: "block",
+                  filter: isRevealed ? "none" : "blur(6px)",
+                }}
               />
             )}
           </Box>
+
+          <Box className="interact">
+            {isRevealed ? (
+              <>
+                <Box className="texts">
+                  <Typography
+                    component="span"
+                    className="titre squaredesign"
+                    variant="h5"
+                  >
+                    {s.title}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    className="artist squaredesign"
+                    variant="body2"
+                  >
+                    {s.artist}
+                  </Typography>
+                </Box>
+
+                {/* Play conditionnel en LIST : dépend de showPlay */}
+                {showPlay && (
+                  <Button
+                    variant="depositInteract"
+                    className="play playSecondary"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Écouter
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Box className="texts">
+                  <Typography
+                    component="span"
+                    className="titre squaredesign"
+                    variant="body1"
+                  >
+                    Utilise tes points pour révéler cette chanson
+                  </Typography>
+                </Box>
+                <Button
+                  variant="depositInteract"
+                  onClick={revealDeposit}
+                  className="decouvrir"
+                >
+                  Découvrir
+                  <Box className="points_container" sx={{ ml: "12px" }}>
+                    <Typography
+                      variant="body1"
+                      component="span"
+                      sx={{ color: "text.primary" }}
+                    >
+                      {cost}
+                    </Typography>
+                    <AlbumIcon />
+                  </Box>
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
-      </Drawer>
-    </Box>
+
+        {/* ----- Section réactions dédiée ----- */}
+        {showReact && (
+          <Box className="deposit_react">
+            {isRevealed && (
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={openReact}
+                startIcon={<EmojiEmotionsIcon />}
+              >
+                Réagir
+              </Button>
+            )}
+
+            {/* ruban des réactions toujours visible */}
+            <ReactionsStrip items={localDep?.reactions_summary || []} />
+          </Box>
+        )}
+      </Card>
+
+      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
+
+      {/* Snackbar existant */}
+      <Snackbar
+        open={snackOpen}
+        onClose={() => setSnackOpen(false)}
+        autoHideDuration={5000}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        TransitionComponent={SlideDownTransition}
+        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
+      >
+        <SnackbarContent
+          sx={{
+            bgcolor: "background.paper",
+            color: "text.primary",
+            borderRadius: 2,
+            boxShadow: 3,
+            px: 2,
+            py: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            maxWidth: 600,
+            width: "calc(100vw - 32px)",
+          }}
+          message={
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <LibraryMusicIcon fontSize="medium" />
+              <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
+                Retrouve cette chanson dans ton profil
+              </Typography>
+            </Box>
+          }
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                setSnackOpen(false);
+                navigate("/profile");
+              }}
+            >
+              Voir
+            </Button>
+          }
+        />
+      </Snackbar>
+
+      {/* Modale de réaction */}
+      <ReactionModal
+        open={reactOpen}
+        onClose={closeReact}
+        depositId={localDep?.deposit_id}
+        currentEmoji={localDep?.my_reaction?.emoji || null}
+        onApplied={handleReactionApplied}
+      />
+    </>
   );
 }
