@@ -31,7 +31,7 @@ export default function Deposit({
   cost = 40,
   variant = "list",
   showUser = true,
-  fitContainer = true,
+  fitContainer = true, // non utilisé mais gardé pour compat
   showReact = true,
   showPlay = true,
 }) {
@@ -46,7 +46,10 @@ export default function Deposit({
 
   const s = localDep?.song || {};
   const u = localDep?.user || {};
-  const isRevealed = useMemo(() => Boolean(s?.title && s?.artist), [s?.title, s?.artist]);
+  const isRevealed = useMemo(
+    () => Boolean(s?.title && s?.artist),
+    [s?.title, s?.artist]
+  );
 
   // ======= Play modal =======
   const [playOpen, setPlayOpen] = useState(false);
@@ -71,7 +74,9 @@ export default function Deposit({
     if (snackOpen) {
       setSnackOpen(false);
       setTimeout(() => setSnackOpen(true), 0);
-    } else setSnackOpen(true);
+    } else {
+      setSnackOpen(true);
+    }
   };
 
   // ---- Reveal d’un dépôt
@@ -84,23 +89,35 @@ export default function Deposit({
         if (goLogin) {
           navigate(
             "/login?next=" +
-              encodeURIComponent(window.location.pathname + window.location.search)
+              encodeURIComponent(
+                window.location.pathname + window.location.search
+              )
           );
         }
         return;
       }
+
       const csrftoken = getCookie("csrftoken");
       const res = await fetch("/box-management/revealSong", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
         body: JSON.stringify({ dep_public_key: localDep.public_key }),
         credentials: "same-origin",
       });
+
       const payload = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de crédit pour révéler cette pépite");
+        // Nouveau comportement : le backend renvoie toujours un message lisible
+        // si possible (ex: "Pas assez de points pour effectuer cette action.")
+        if (payload?.message) {
+          alert(payload.message);
+        } else if (payload?.error === "insufficient_funds") {
+          // fallback au cas où
+          alert("Tu n’as pas assez de points pour effectuer cette action.");
         } else {
           alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
         }
@@ -126,7 +143,9 @@ export default function Deposit({
       // MAJ dans la liste parente si fournie
       setDispDeposits?.((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
+        const idx = arr.findIndex(
+          (x) => x?.deposit_id === localDep.deposit_id
+        );
         if (idx >= 0) {
           arr[idx] = {
             ...arr[idx],
@@ -161,18 +180,24 @@ export default function Deposit({
     setLocalDep((prev) => ({
       ...(prev || {}),
       my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary) ? result.reactions_summary : [],
+      reactions_summary: Array.isArray(result?.reactions_summary)
+        ? result.reactions_summary
+        : [],
     }));
 
     // 2) MAJ dans la liste parente si elle existe
     setDispDeposits?.((prev) => {
       const arr = Array.isArray(prev) ? [...prev] : [];
-      const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
+      const idx = arr.findIndex(
+        (x) => x?.deposit_id === localDep.deposit_id
+      );
       if (idx >= 0) {
         arr[idx] = {
           ...arr[idx],
           my_reaction: result?.my_reaction || null,
-          reactions_summary: Array.isArray(result?.reactions_summary) ? result.reactions_summary : [],
+          reactions_summary: Array.isArray(result?.reactions_summary)
+            ? result.reactions_summary
+            : [],
         };
       }
       return arr;
@@ -185,7 +210,15 @@ export default function Deposit({
     return (
       <Box className="reactions_container">
         {items.map((it, i) => (
-          <Box key={`${it.emoji || i}-${it.count || 0}`} sx={{display : "flex", flexDirection:"row", alignItems:"center", gap:"4px"}}>
+          <Box
+            key={`${it.emoji || i}-${it.count || 0}`}
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
             <Typography variant="h4" component="span">
               {it.emoji}
             </Typography>
@@ -206,26 +239,38 @@ export default function Deposit({
       <>
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
-           
             <Box className="deposit_date">
               <Box className="icon squaredesign" />
-              <Typography className="squaredesign" variant="body1" component="span">
+              <Typography
+                className="squaredesign"
+                variant="body1"
+                component="span"
+              >
                 {"Chanson déposée " + (localDep?.date || "") + " par :"}
               </Typography>
             </Box>
-       
-  
+
             {showUser && (
               <Box
                 onClick={() => {
                   if (u?.username) navigate("/profile/" + u.username);
                 }}
-                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+                className={
+                  u?.username ? "hasUsername deposit_user" : "deposit_user"
+                }
               >
                 <Box className="squaredesign avatarbox">
-                  <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} className="avatar" />
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.username || "Anonyme"}
+                    className="avatar"
+                  />
                 </Box>
-                <Typography component="span" className="username squaredesign" variant="subtitle1">
+                <Typography
+                  component="span"
+                  className="username squaredesign"
+                  variant="subtitle1"
+                >
                   {u?.username || "Anonyme"}
                   {u?.username && <ArrowForwardIosIcon className="icon" />}
                 </Typography>
@@ -236,7 +281,12 @@ export default function Deposit({
           {/* ----- Section chanson ----- */}
           <Box className="deposit_song">
             <Box
-              sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
+              sx={{
+                aspectRatio: "1 / 1",
+                width: "100%",
+                maxWidth: "100%",
+                overflow: "hidden",
+              }}
               className="squaredesign img_container"
             >
               {s?.image_url && (
@@ -244,7 +294,13 @@ export default function Deposit({
                   component="img"
                   src={s.image_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{ width: "100%", maxWidth: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
+                  sx={{
+                    width: "100%",
+                    maxWidth: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
                 />
               )}
             </Box>
@@ -253,10 +309,18 @@ export default function Deposit({
               <Box className="texts">
                 {isRevealed && (
                   <>
-                    <Typography component="span" className="titre squaredesign" variant="h4">
+                    <Typography
+                      component="span"
+                      className="titre squaredesign"
+                      variant="h4"
+                    >
                       {s.title}
                     </Typography>
-                    <Typography component="span" className="artist squaredesign" variant="body1">
+                    <Typography
+                      component="span"
+                      className="artist squaredesign"
+                      variant="body1"
+                    >
                       {s.artist}
                     </Typography>
                   </>
@@ -316,36 +380,42 @@ export default function Deposit({
   return (
     <>
       <Card className="deposit deposit_list">
-        
-          <Box className="deposit_infos"> 
-          
-            <Box className="deposit_date">
-              <Typography component="h3" variant="body1">
-                {`Chanson déposée ici ${localDep?.date || ""}${showUser ? " par :" : ""}`}
-              </Typography>
-            </Box>
-        
-        
-            {showUser && (
-              <Box
-                className="deposit_user"
-                sx={{ display: "flex", minWidth: 0 }}
-                onClick={() => {
-                  if (u?.username) navigate("/profile/" + u.username);
-                }}
-              >
-                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} />
-                <Typography>{u?.username || "Anonyme"}</Typography>
-                {u?.username && <ArrowForwardIosIcon fontSize="small" />}
-              </Box>
-            )}
+        <Box className="deposit_infos">
+          <Box className="deposit_date">
+            <Typography component="h3" variant="body1">
+              {`Chanson déposée ici ${localDep?.date || ""}${
+                showUser ? " par :" : ""
+              }`}
+            </Typography>
           </Box>
-    
+
+          {showUser && (
+            <Box
+              className="deposit_user"
+              sx={{ display: "flex", minWidth: 0 }}
+              onClick={() => {
+                if (u?.username) navigate("/profile/" + u.username);
+              }}
+            >
+              <Avatar
+                src={u?.profile_pic_url || undefined}
+                alt={u?.username || "Anonyme"}
+              />
+              <Typography>{u?.username || "Anonyme"}</Typography>
+              {u?.username && <ArrowForwardIosIcon fontSize="small" />}
+            </Box>
+          )}
+        </Box>
 
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
           <Box
-            sx={{ aspectRatio: "1 / 1", width: "100%", maxWidth: "100%", overflow: "hidden" }}
+            sx={{
+              aspectRatio: "1 / 1",
+              width: "100%",
+              maxWidth: "100%",
+              overflow: "hidden",
+            }}
             className="squaredesign img_container"
           >
             {s?.image_url && (
@@ -369,10 +439,18 @@ export default function Deposit({
             {isRevealed ? (
               <>
                 <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="h5">
+                  <Typography
+                    component="span"
+                    className="titre squaredesign"
+                    variant="h5"
+                  >
                     {s.title}
                   </Typography>
-                  <Typography component="span" className="artist squaredesign" variant="body2">
+                  <Typography
+                    component="span"
+                    className="artist squaredesign"
+                    variant="body2"
+                  >
                     {s.artist}
                   </Typography>
                 </Box>
@@ -393,7 +471,11 @@ export default function Deposit({
             ) : (
               <>
                 <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="body1">
+                  <Typography
+                    component="span"
+                    className="titre squaredesign"
+                    variant="body1"
+                  >
                     Utilise tes points pour révéler cette chanson
                   </Typography>
                 </Box>
@@ -404,7 +486,11 @@ export default function Deposit({
                 >
                   Découvrir
                   <Box className="points_container" sx={{ ml: "12px" }}>
-                    <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                    <Typography
+                      variant="body1"
+                      component="span"
+                      sx={{ color: "text.primary" }}
+                    >
                       {cost}
                     </Typography>
                     <AlbumIcon />
