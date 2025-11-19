@@ -107,16 +107,19 @@ export default function Discover() {
         const body = { option, boxSlug: payload.boxSlug };
         const csrftoken = getCookie("csrftoken");
 
-        const res = await fetch(`/box-management/get-box/?slug=${encodeURIComponent(payload.boxSlug)}`, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrftoken,
-            Accept: "application/json",
-          },
-          body: JSON.stringify(body),
-        });
+        const res = await fetch(
+          `/box-management/get-box/?slug=${encodeURIComponent(payload.boxSlug)}`,
+          {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken,
+              Accept: "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
 
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
@@ -127,9 +130,9 @@ export default function Discover() {
         const {
           successes: sx = [],
           points_balance = null,
-          song = null,                // (facultatif côté API)
+          song = null, // (facultatif côté API)
           older_deposits: olderApi = null, // 🔥 nouvelle clé côté API
-          main: mainMaybe = null,     // (si un jour l'API renvoie le main directement)
+          main: mainMaybe = null, // (si un jour l'API renvoie le main directement)
         } = data;
 
         // MAJ points
@@ -155,13 +158,19 @@ export default function Discover() {
             }
           : normalizeOptionToSong(option);
 
+        // On fixe la date de dépôt côté front pour myDeposit
+        const isoNow = new Date().toISOString();
+
         // Base actuelle (si existante) pour préserver "main" et "olderDeposits" lors de l’update
         const prev = getValid(KEY_BOX_CONTENT);
         const nextContent = {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
           main: mainMaybe || prev?.main || boxContent?.main || null,
-          myDeposit: { song: normalizedSong },
+          myDeposit: {
+            song: normalizedSong,
+            deposited_at: isoNow, // ⬅️ ajouté : date absolue du dépôt côté front
+          },
           successes: Array.isArray(sx) ? sx : [],
           olderDeposits: Array.isArray(olderApi)
             ? olderApi
@@ -203,13 +212,17 @@ export default function Discover() {
 
   // --------- rendu ----------
   const mainDep = boxContent?.main || null;
-  const myDepositSong = boxContent?.myDeposit?.song || null;
-  const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
+  const myDeposit = boxContent?.myDeposit || null;
+  const olderDeposits = Array.isArray(boxContent?.olderDeposits)
+    ? boxContent.olderDeposits
+    : [];
 
   return (
-    <Box >
+    <Box>
       <Box className="intro">
-        <Typography component="h1" variant="h1">Découvertes</Typography>
+        <Typography component="h1" variant="h1">
+          Découvertes
+        </Typography>
         <Typography component="h2" variant="body1">
           La boîte et tes derniers dépôts
         </Typography>
@@ -217,7 +230,7 @@ export default function Discover() {
 
       {/* 1) MainDeposit */}
       {mainDep ? (
-        <Box >
+        <Box>
           <Deposit
             dep={mainDep}
             user={user}
@@ -229,17 +242,11 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* 2) MyDeposit (song only) */}
-      {myDepositSong ? (
+      {/* 2) MyDeposit (avec deposited_at côté front) */}
+      {myDeposit ? (
         <Box>
           <Deposit
-            dep={{
-              song: {
-                title: myDepositSong.title || null,
-                artist: myDepositSong.artist || null,
-                image_url: myDepositSong.image_url || null,
-              },
-            }}
+            dep={myDeposit}
             user={user}
             variant="list"
             showReact={false}
@@ -252,8 +259,8 @@ export default function Discover() {
       {/* 3) OlderDeposits */}
       {olderDeposits.length > 0 ? (
         <Box id="older_deposits">
-          <Box className="intro" sx={{p:4}}>
-            <Typography component="h2" variant="h3" sx={{mt:5}}>
+          <Box className="intro" sx={{ p: 4 }}>
+            <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
               Pépites déposées plus tôt
             </Typography>
             <Typography component="body" variant="body1">
@@ -263,6 +270,7 @@ export default function Discover() {
           <Box id="older_deposits_list">
             {olderDeposits.map((d, idx) => (
               <Deposit
+                key={d.public_key || idx}
                 dep={d}
                 user={user}
                 variant="list"
@@ -270,7 +278,6 @@ export default function Discover() {
                 showPlay={true}
                 showUser={true}
               />
-           
             ))}
           </Box>
         </Box>
@@ -283,7 +290,13 @@ export default function Discover() {
         onClose={handleCloseDrawer}
         ModalProps={{ disableEscapeKeyDown: true }}
         PaperProps={{
-          sx: { width: "100vw", maxWidth: 560, height: "100dvh", display: "flex", flexDirection: "column" },
+          sx: {
+            width: "100vw",
+            maxWidth: 560,
+            height: "100dvh",
+            display: "flex",
+            flexDirection: "column",
+          },
         }}
       >
         {/* HEADER */}
@@ -300,16 +313,28 @@ export default function Discover() {
             flex: "0 0 auto",
           }}
         >
-          <IconButton aria-label="Fermer" onClick={(e) => handleCloseDrawer(e, "closeButton")}>
+          <IconButton
+            aria-label="Fermer"
+            onClick={(e) => handleCloseDrawer(e, "closeButton")}
+          >
             <CloseIcon />
           </IconButton>
         </Box>
 
         {/* CONTENU */}
-        <Box component="main" sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
+        <Box
+          component="main"
+          sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}
+        >
           <Box sx={{ boxSizing: "border-box", minHeight: "100%", p: 2 }}>
             {posting && !postError ? (
-              <Box sx={{ display: "grid", placeItems: "center", height: "60vh" }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  placeItems: "center",
+                  height: "60vh",
+                }}
+              >
                 <CircularProgress />
               </Box>
             ) : postError ? (
