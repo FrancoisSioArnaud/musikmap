@@ -8,7 +8,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db.models import QuerySet, Prefetch, Q
-from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.utils.timezone import localtime, localdate, timezone
 
 from users.models import CustomUser
@@ -40,17 +39,28 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
     }
 
 
-def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
-    """Ne fait AUCUNE requête : lit uniquement l'instance déjà chargée."""
-    if hidden:
-        return {"image_url": song.image_url}
-    return {
-        "image_url": song.image_url,
-        "title": song.title,
-        "artist": song.artist,
-        "spotify_url": song.spotify_url or None,
-        "deezer_url": song.deezer_url or None,
+def _build_deposit_from_instance(
+    dep: Deposit,
+    *,
+    include_user: bool,
+    hidden: bool,
+    current_user: Optional[CustomUser] = None,
+) -> Dict[str, Any]:
+    """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
+    payload: Dict[str, Any] = {
+        "public_key": dep.public_key,
+        # Date brute en UTC, au format ISO 8601
+        "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat(),
+        "song": _build_song_from_instance(dep.song, hidden),
     }
+    if include_user:
+        payload["user"] = _build_user_from_instance(dep.user)
+
+    rx = _build_reactions_from_instance(dep, current_user=current_user)
+    payload["reactions"] = rx["detail"]
+    payload["reactions_summary"] = rx["summary"]
+    return payload
+
 
 
 def _iter_reactions_from_instance(dep: Deposit):
@@ -435,6 +445,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
