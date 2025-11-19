@@ -404,6 +404,130 @@ class Location(APIView):
         # ❌ Trop loin → HTTP 403
         return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
 
+class RevealSong(APIView):
+    """
+    POST /box-management/revealSong
+    Body: { "dep_public_key": <str> }
+    200: { "song": {...}, "points_balance": <int|None> }
+
+    Logique :
+      1) Vérifier auth + présence de la clé publique
+      2) Récupérer le Deposit + Song
+      3) Débiter les points via /users/add-points
+         - si status != 200 → on renvoie la réponse d'AddUserPoints telle quelle
+      4) Enregistrer la découverte (DiscoveredSong)
+      5) Renvoyer le song (via _build_song_from_instance(hidden=False)) + points_balance
+    """
+
+    def post(self, request, format=None):
+        # 1) Auth requise
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {"detail": "Authentification requise."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # 2) Paramètres
+        public_key = request.data.get("dep_public_key")
+        if not public_key:
+            return Response(
+                {"detail": "Clé publique manquante"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 3) Récupérer le dépôt + chanson
+        try:
+            deposit = (
+                Deposit.objects
+                .select_related("song")
+                .get(public_key=public_key)
+            )
+        except Deposit.DoesNotExist:
+            return Response(
+                {"detail": "Dépôt introuvable"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        song = deposit.song
+        if not song:
+            return Response(
+                {"detail": "Chanson introuvable pour ce dépôt"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # 4) Coût de la révélation
+        cost = int(COST_REVEAL_BOX)
+
+        # 5) Débit des points via AddUserPoints (HTTP interne)
+        csrf_token = get_token(request)
+        origin = request.build_absolute_uri("/")
+
+        headers_bg = {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token,
+            "Referer": origin,
+            "Origin": origin.rstrip("/"),
+        }
+        cookies = request.COOKIES
+
+        try:
+            add_points_url = request.build_absolute_uri(reverse("add-points"))
+
+            r = requests.post(
+                add_points_url,
+                cookies=cookies,
+                headers=headers_bg,
+                data=json.dumps({"points": -cost}),
+                timeout=4,
+            )
+
+            try:
+                points_payload = r.json()
+            except ValueError:
+                points_payload = {}
+
+            # 👉 Nouveau comportement :
+            # - si status != 200 → on renvoie tel quel la réponse d'AddUserPoints
+            # - si status == 200 → on continue
+            if r.status_code != 200:
+                return Response(points_payload, status=r.status_code)
+
+        except Exception:
+            return Response(
+                {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Ici, AddUserPoints a renvoyé 200 → débit OK
+        points_balance = points_payload.get("points_balance")
+
+        # 6) Enregistrer la découverte directement (sans requête HTTP)
+        try:
+            # On garde une sémantique proche de ManageDiscoveredSongs,
+            # mais en travaillant directement avec l'objet Deposit.
+            DiscoveredSong.objects.get_or_create(
+                user=user,
+                deposit=deposit,
+                defaults={"discovered_type": "revealed"},
+            )
+        except Exception:
+            # Comme auparavant : si l'enregistrement de la découverte échoue,
+            # on renvoie une erreur 502.
+            return Response(
+                {"detail": "Erreur lors de l’enregistrement de la découverte."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # 7) Réponse finale au frontend
+        song_payload = _build_song_from_instance(song, hidden=False)
+
+        data = {
+            "song": song_payload,
+            "points_balance": points_balance,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class ManageDiscoveredSongs(APIView):
     """
@@ -885,6 +1009,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
