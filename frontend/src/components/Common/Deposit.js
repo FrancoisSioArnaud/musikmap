@@ -1,3 +1,5 @@
+// frontend/src/components/Common/Deposit.js
+
 import React, { useState, useContext, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -20,6 +22,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import ReactionModal from "../Reactions/ReactionModal";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
+import { formatRelativeTime } from "../Utils/time"; // ⬅️ nouveau
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
@@ -54,6 +57,13 @@ export default function Deposit({
   const isRevealed = useMemo(
     () => Boolean(s?.title && s?.artist),
     [s?.title, s?.artist]
+  );
+
+  // Date de dépôt → "il y a X ..."
+  const depositedAt = localDep?.deposited_at || null;
+  const naturalDate = useMemo(
+    () => (depositedAt ? formatRelativeTime(depositedAt) : ""),
+    [depositedAt]
   );
 
   // ======= Play modal =======
@@ -95,6 +105,7 @@ export default function Deposit({
 
       let changed = false;
       const next = { ...snap };
+      const isoNow = new Date().toISOString();
 
       // Update dans olderDeposits si on trouve le même dépôt
       if (Array.isArray(snap.olderDeposits)) {
@@ -105,7 +116,8 @@ export default function Deposit({
           changed = true;
           return {
             ...d,
-            discovered_at: "à l'instant",
+            // Date absolue au moment de la découverte
+            discovered_at: isoNow,
             song: {
               ...(d.song || {}),
               title: revealedSong.title,
@@ -174,11 +186,13 @@ export default function Deposit({
       }
 
       const revealed = payload?.song || {};
+      const isoNow = new Date().toISOString();
 
       // MAJ locale immédiate
       setLocalDep((prev) => ({
         ...(prev || {}),
-        discovered_at: "à l'instant",
+        // Date absolue de découverte, utile pour un futur "révélée il y a X..."
+        discovered_at: isoNow,
         song: {
           ...(prev?.song || {}),
           title: revealed.title,
@@ -198,7 +212,7 @@ export default function Deposit({
         if (idx >= 0) {
           arr[idx] = {
             ...arr[idx],
-            discovered_at: "à l'instant",
+            discovered_at: isoNow,
             song: {
               ...(arr[idx]?.song || {}),
               title: revealed.title,
@@ -299,7 +313,8 @@ export default function Deposit({
                 variant="body1"
                 component="span"
               >
-                {"Chanson déposée " + (localDep?.date || "") + " par :"}
+                {/* avant : localDep.date */}
+                {"Chanson déposée " + (naturalDate || "") + " par :"}
               </Typography>
             </Box>
 
@@ -436,7 +451,8 @@ export default function Deposit({
         <Box className="deposit_infos">
           <Box className="deposit_date">
             <Typography component="h3" variant="body1">
-              {`Chanson déposée ici ${localDep?.date || ""}${
+              {/* avant : localDep.date */}
+              {`Chanson déposée ici ${naturalDate || ""}${
                 showUser ? " par :" : ""
               }`}
             </Typography>
