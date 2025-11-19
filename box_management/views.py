@@ -614,144 +614,67 @@ class ManageDiscoveredSongs(APIView):
         }
         return Response(payload, status=status.HTTP_200_OK)
 
-
-class RevealSong(APIView):
+class AddUserPoints(APIView):
     """
-    POST /box-management/revealSong
-    Body: { "deposit_id": <int> }
-    200: { "song": {...}, "points_balance": <int|None> }
+    Class goal : add (or delete) points to the connected user.
     """
-
     def post(self, request, format=None):
         # 1) Auth requise
-        user = request.user
-        if not user.is_authenticated:
+        if not request.user.is_authenticated:
             return Response(
-                {"detail": "Authentification requise."},
+                {"errors": "Utilisateur non connecté."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # 2) Paramètres
-        public_key = request.data.get("dep_public_key")
-        if not public_key:
+        user = request.user
+        points = request.data.get("points")
+
+        # 2) Validation basique
+        if points is None:
             return Response(
-                {"detail": "Clé publique manquante"},
+                {"errors": "Nombre de points invalide."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3) Récupérer le dépôt + chanson
         try:
-            # ✅ on utilise bien le nom du champ FK: "song"
-            deposit = Deposit.objects.select_related("song").get(public_key=public_key)
-        except Deposit.DoesNotExist:
+            points = int(points)
+        except (TypeError, ValueError):
             return Response(
-                {"detail": "Dépôt introuvable"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"errors": "Nombre de points invalide."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        song = deposit.song
-        if not song:
-            return Response(
-                {"detail": "Chanson introuvable pour ce dépôt"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # 4) Coût de la révélation
-        cost = int(COST_REVEAL_BOX)
-
-        # 5) Débit des points via AddUserPoints
-        #    → si échec ou fonds insuffisants, on s'arrête ici.
-
-        csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")
-
-        headers_bg = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token,
-            "Referer": origin,
-            "Origin": origin.rstrip("/"),
-        }
-        cookies = request.COOKIES
-
+        # 3) Récupération du solde actuel
         try:
-            # ⚠️ IMPORTANT :
-            # Le nom 'add-points' doit pointer vers la vue AddUserPoints.
-            add_points_url = request.build_absolute_uri(reverse("add-points"))
-
-            r = requests.post(
-                add_points_url,
-                cookies=cookies,
-                headers=headers_bg,
-                data=json.dumps({"points": -cost}),
-                timeout=4,
-            )
-
-            try:
-                points_payload = r.json()
-            except ValueError:
-                points_payload = {}
-
-            # Cas 5.1 : fonds insuffisants → on propage directement la réponse
-            if r.status_code == 400 and points_payload.get("error") == "insufficient_funds":
-                # Exemple de payload renvoyé par AddUserPoints :
-                # {
-                #   "error": "insufficient_funds",
-                #   "message": "Pas assez de points pour effectuer cette action.",
-                #   "points_balance": <int>
-                # }
-                return Response(points_payload, status=status.HTTP_400_BAD_REQUEST)
-
-            # Cas 5.2 : autre erreur → 502 générique
-            if not r.ok:
-                return Response(
-                    {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-
+            user.refresh_from_db(fields=["points"])
         except Exception:
+            user.refresh_from_db()
+
+        current = getattr(user, "points", 0)
+        new_balance = current + points
+
+        # 4) Interdiction des soldes négatifs
+        if new_balance < 0:
             return Response(
-                {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
-                status=status.HTTP_502_BAD_GATEWAY,
+                {
+                    "error": "insufficient_funds",
+                    "message": "Pas assez de points pour effectuer cette action.",
+                    "points_balance": current,  # On renvoie aussi le solde actuel
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Ici, AddUserPoints a renvoyé 200 → débit OK, on récupère points_balance
-        points_balance = points_payload.get("points_balance")
+        # 5) Mise à jour autorisée
+        user.points = new_balance
+        user.save(update_fields=["points"])
 
-        # 6) Enregistrer la découverte (DiscoveredSong)
-        try:
-            discover_url = request.build_absolute_uri("/box-management/discovered-songs")
-            r2 = requests.post(
-                discover_url,
-                cookies=cookies,
-                headers=headers_bg,
-                data=json.dumps({"deposit_id": deposit_id, "discovered_type": "revealed"}),
-                timeout=4,
-            )
-            # 400 = déjà découvert → on ne bloque pas
-            if not r2.ok and r2.status_code != 400:
-                return Response(
-                    {"detail": "Erreur lors de l’enregistrement de la découverte."},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-        except Exception:
-            return Response(
-                {"detail": "Erreur lors de l’enregistrement de la découverte."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        # 7) Réponse finale au frontend
-        data = {
-            "song": {
-                "title": song.title,
-                "artist": song.artist,
-                "spotify_url": song.spotify_url,
-                "deezer_url": song.deezer_url,
-                # tu peux renvoyer image_url aussi, le frontend le gère déjà
-                "image_url": song.image_url,
+        return Response(
+            {
+                "status": "Points mis à jour avec succès.",
+                "points_balance": user.points,
             },
-            "points_balance": points_balance,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserDepositsView(APIView):
@@ -950,6 +873,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
