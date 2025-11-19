@@ -19,10 +19,15 @@ import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import ReactionModal from "../Reactions/ReactionModal";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
+
+// Même clé / TTL que dans Discover.js
+const KEY_BOX_CONTENT = "mm_box_content";
+const TTL_MINUTES = 20;
 
 export default function Deposit({
   dep,
@@ -79,6 +84,49 @@ export default function Deposit({
     }
   };
 
+  /**
+   * Met à jour le snapshot mm_box_content dans localStorage
+   * pour refléter la révélation de ce dépôt (si présent dans olderDeposits).
+   */
+  const updateLocalStorageSnapshot = (revealedSong) => {
+    try {
+      const snap = getValid(KEY_BOX_CONTENT);
+      if (!snap) return;
+
+      let changed = false;
+      const next = { ...snap };
+
+      // Update dans olderDeposits si on trouve le même dépôt
+      if (Array.isArray(snap.olderDeposits)) {
+        next.olderDeposits = snap.olderDeposits.map((d) => {
+          // On se base sur la clé publique, qui est présente dans le LS
+          if (!d || d.public_key !== localDep.public_key) return d;
+
+          changed = true;
+          return {
+            ...d,
+            discovered_at: "à l'instant",
+            song: {
+              ...(d.song || {}),
+              title: revealedSong.title,
+              artist: revealedSong.artist,
+              spotify_url: revealedSong.spotify_url,
+              deezer_url: revealedSong.deezer_url,
+              image_url: revealedSong.image_url || d.song?.image_url,
+            },
+          };
+        });
+      }
+
+      if (!changed) return;
+
+      next.timestamp = Date.now();
+      setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
+    } catch (e) {
+      // on ignore silencieusement les erreurs de LS
+    }
+  };
+
   // ---- Reveal d’un dépôt
   const revealDeposit = async () => {
     try {
@@ -111,15 +159,16 @@ export default function Deposit({
       const payload = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        // Nouveau comportement : le backend renvoie toujours un message lisible
-        // si possible (ex: "Pas assez de points pour effectuer cette action.")
+        // Le backend renvoie idéalement payload.message
         if (payload?.message) {
           alert(payload.message);
         } else if (payload?.error === "insufficient_funds") {
           // fallback au cas où
           alert("Tu n’as pas assez de points pour effectuer cette action.");
         } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+          alert(
+            "Oops une erreur s’est produite, réessaie dans quelques instants."
+          );
         }
         return;
       }
@@ -140,7 +189,7 @@ export default function Deposit({
         },
       }));
 
-      // MAJ dans la liste parente si fournie
+      // MAJ dans la liste parente si fournie (state React parent)
       setDispDeposits?.((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
         const idx = arr.findIndex(
@@ -163,6 +212,10 @@ export default function Deposit({
         return arr;
       });
 
+      // MAJ du snapshot localStorage (mm_box_content → olderDeposits)
+      updateLocalStorageSnapshot(revealed);
+
+      // MAJ des points dans le UserContext
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
