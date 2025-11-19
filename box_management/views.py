@@ -406,7 +406,6 @@ class Location(APIView):
 
 
 
-
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
@@ -873,6 +872,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
