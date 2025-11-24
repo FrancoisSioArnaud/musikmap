@@ -1,5 +1,11 @@
 // frontend/src/components/UserProfile/Library.js
-import React, { useState, useEffect, useRef, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useCallback,
+} from "react";
 import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
@@ -7,49 +13,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 /** Nouveau: on réutilise le composant générique */
 import Deposit from "../Common/Deposit";
-
-/** Format relatif FR (ex: "il y a 3 heures") */
-function formatRelativeFr(isoDateString) {
-  if (!isoDateString) return "";
-  const d = new Date(isoDateString);
-  if (isNaN(d)) return "";
-  const now = new Date();
-  const diffSec = Math.round((d.getTime() - now.getTime()) / 1000);
-  const rtf = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
-
-  const abs = Math.abs(diffSec);
-  if (abs < 60) return rtf.format(diffSec, "second");
-  const diffMin = Math.round(diffSec / 60);
-  if (Math.abs(diffMin) < 60) return rtf.format(diffMin, "minute");
-  const diffHr = Math.round(diffSec / 3600);
-  if (Math.abs(diffHr) < 24) return rtf.format(diffHr, "hour");
-  const diffDay = Math.round(diffSec / 86400);
-  if (Math.abs(diffDay) < 7) return rtf.format(diffDay, "day");
-  const diffWeek = Math.round(diffDay / 7);
-  if (Math.abs(diffWeek) < 5) return rtf.format(diffWeek, "week");
-  const diffMonth = Math.round(diffDay / 30);
-  if (Math.abs(diffMonth) < 12) return rtf.format(diffMonth, "month");
-  const diffYear = Math.round(diffDay / 365);
-  return rtf.format(diffYear, "year");
-}
-
-/** ✅ Normalise un dépôt pour que Deposit.js lise nativement user.username */
-function normalizeDeposit(dep) {
-  const u = dep?.user || null;
-  const username = (u && (u.username ?? u.name)) || null;
-  return {
-    ...dep,
-    user: u
-      ? { ...u, username }
-      : { id: null, name: null, username: null, profile_pic_url: null },
-  };
-}
-
-/** Normalise une session complète (tous ses dépôts) */
-function normalizeSession(sess) {
-  const deposits = Array.isArray(sess?.deposits) ? sess.deposits.map(normalizeDeposit) : [];
-  return { ...sess, deposits };
-}
+import { formatRelativeTime } from "../Utils/time";
 
 export default function Library() {
   const { user } = useContext(UserContext);
@@ -67,19 +31,24 @@ export default function Library() {
     loadingRef.current = true;
     setLoading(true);
     try {
-      const res = await fetch(`/box-management/discovered-songs?limit=${limit}&offset=${nextOffset}`, {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
+      const res = await fetch(
+        `/box-management/discovered-songs?limit=${limit}&offset=${nextOffset}`,
+        {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        }
+      );
       const data = await res.json();
       if (res.ok) {
         const rawSessions = Array.isArray(data?.sessions) ? data.sessions : [];
-        const normalized = rawSessions.map(normalizeSession);
 
-        setSessions((prev) => [...prev, ...normalized]);
+        // ✅ le back renvoie déjà la bonne shape (via _build_deposits_payload)
+        setSessions((prev) => [...prev, ...rawSessions]);
         setHasMore(Boolean(data?.has_more));
         setNextOffset(
-          typeof data?.next_offset === "number" ? data.next_offset : nextOffset + rawSessions.length
+          typeof data?.next_offset === "number"
+            ? data.next_offset
+            : nextOffset + rawSessions.length
         );
       } else {
         console.error("HTTP", res.status, data);
@@ -92,22 +61,27 @@ export default function Library() {
     }
   }, [limit, nextOffset, hasMore]);
 
+  // Reset quand le composant est monté (utile si on revient plusieurs fois)
   useEffect(() => {
     setSessions([]);
     setHasMore(true);
     setNextOffset(0);
   }, []);
 
+  // Premier chargement
   useEffect(() => {
     if (sessions.length === 0 && hasMore && !loadingRef.current) {
       fetchSessions();
     }
   }, [sessions.length, hasMore, fetchSessions]);
 
+  // Infinite scroll
   useEffect(() => {
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
-      const nearBottom = window.innerHeight + window.scrollY >= (document.body.offsetHeight - 200);
+      const nearBottom =
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 200;
       if (nearBottom) {
         fetchSessions();
       }
@@ -119,7 +93,7 @@ export default function Library() {
   if (!sessions.length && !hasMore && !loading) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>Vous n'avez pas encore découvert de chansons.</Typography>
+        <Typography>Vous n&apos;avez pas encore découvert de chansons.</Typography>
       </Box>
     );
   }
@@ -127,16 +101,30 @@ export default function Library() {
   return (
     <Box sx={{ p: 4, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
-  
         return (
           <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
             {/* Header de session */}
-            <Box sx={{ display: "flex", flexDirection:"column", gap: 1, itemAlign :"center",  m: "16px" }}>
-              <Typography variant="h5" component="h2" sx={{ textAlign:"center"}}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                m: "16px",
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ textAlign: "center" }}
+              >
                 {sess?.box?.name ?? "Inconnue"}
               </Typography>
-              <Typography variant="h5" component="h2" sx={{ textAlign:"center"}}>
-                {formatRelativeFr(sess?.started_at)}
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ textAlign: "center" }}
+              >
+                {formatRelativeTime(sess?.started_at)}
               </Typography>
             </Box>
 
@@ -150,13 +138,13 @@ export default function Library() {
                   return (
                     <Deposit
                       key={`${sess.session_id}-${idx}`}
-                      dep={d}       
-                      user={user}      
+                      dep={d}
+                      user={user}
                       variant={isMain ? "main" : "list"}
                       showDate={false}
                       showUser={true}
                       fitContainer={true}
-                      showReact={false}
+                      showReact={true} // ✅ on profite des réactions renvoyées par le back
                     />
                   );
                 })}
