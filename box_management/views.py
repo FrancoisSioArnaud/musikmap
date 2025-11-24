@@ -937,18 +937,19 @@ class UserDepositsView(APIView):
 # ==========================================================
 # EMOJIS & REACTIONS
 # ==========================================================
-
 class EmojiCatalogView(APIView):
     """
     GET /box-management/emojis/catalog
-    ?deposit_id=<int> (optionnel) pour retourner aussi la réaction courante
+    ?dep_public_key=<str> (optionnel) pour retourner aussi la réaction courante
     """
     permission_classes = []
 
     def get(self, request):
-        deposit_id = request.GET.get("deposit_id")
-        basics = list(Emoji.objects.filter(active=True, basic=True).order_by('char'))
-        actives_paid = list(Emoji.objects.filter(active=True, basic=False).order_by('cost', 'char'))
+        dep_public_key = request.GET.get("dep_public_key")
+        basics = list(Emoji.objects.filter(active=True, basic=True).order_by("char"))
+        actives_paid = list(
+            Emoji.objects.filter(active=True, basic=False).order_by("cost", "char")
+        )
 
         owned_ids = []
         current_reaction = None
@@ -957,13 +958,20 @@ class EmojiCatalogView(APIView):
             # Emojis déjà possédés
             owned_ids = list(
                 EmojiRight.objects.filter(user=request.user, emoji__active=True)
-                .values_list('emoji_id', flat=True)
+                .values_list("emoji_id", flat=True)
             )
 
-            # Emoji actuellement sélectionné sur ce dépôt
-            if deposit_id:
-                r = Reaction.objects.filter(user=request.user, deposit_id=deposit_id).select_related("emoji").first()
-                if r:
+            # Emoji actuellement sélectionné sur ce dépôt (via public_key)
+            if dep_public_key:
+                r = (
+                    Reaction.objects.filter(
+                        user=request.user,
+                        deposit__public_key=dep_public_key,
+                    )
+                    .select_related("emoji")
+                    .first()
+                )
+                if r and r.emoji:
                     current_reaction = {"emoji": r.emoji.char, "id": r.emoji.id}
 
         data = {
@@ -973,7 +981,6 @@ class EmojiCatalogView(APIView):
             "current_reaction": current_reaction,
         }
         return Response(data, status=status.HTTP_200_OK)
-
 
 class PurchaseEmojiView(APIView):
     """
@@ -1028,47 +1035,73 @@ class PurchaseEmojiView(APIView):
 class ReactionView(APIView):
     """
     POST /box-management/reactions
-    Body: { "deposit_id": <int>, "emoji_id": <int|null|\"none\"> }
+    Body: { "dep_public_key": "<str>", "emoji_id": <int|null|\"none\"> }
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        deposit_id = request.data.get("deposit_id")
+        dep_public_key = request.data.get("dep_public_key")
         emoji_id = request.data.get("emoji_id")
 
-        if not deposit_id:
-            return Response({"detail": "deposit_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+        if not dep_public_key:
+            return Response(
+                {"detail": "dep_public_key manquant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        deposit = Deposit.objects.filter(id=deposit_id).first()
+        deposit = Deposit.objects.filter(public_key=dep_public_key).first()
         if not deposit:
-            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Dépôt introuvable"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # suppression ("none")
         if emoji_id in (None, "", 0, "none"):
             Reaction.objects.filter(user=request.user, deposit=deposit).delete()
-            summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
-            return Response({"my_reaction": None, "reactions_summary": summary}, status=status.HTTP_200_OK)
+            summary = _reactions_summary_for_deposits([deposit.id]).get(
+                deposit.id, []
+            )
+            return Response(
+                {"my_reaction": None, "reactions_summary": summary},
+                status=status.HTTP_200_OK,
+            )
 
         emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
         if not emoji:
-            return Response({"detail": "Emoji invalide"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Emoji invalide"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # ✅ Pas de check de droit si basic OU cost==0
         if not (emoji.basic or (emoji.cost or 0) == 0):
-            has_right = EmojiRight.objects.filter(user=request.user, emoji=emoji).exists()
+            has_right = EmojiRight.objects.filter(
+                user=request.user, emoji=emoji
+            ).exists()
             if not has_right:
-                return Response({"error": "forbidden", "message": "Emoji non débloqué"}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": "forbidden", "message": "Emoji non débloqué"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         obj, created = Reaction.objects.get_or_create(
-            user=request.user, deposit=deposit, defaults={"emoji": emoji}
+            user=request.user,
+            deposit=deposit,
+            defaults={"emoji": emoji},
         )
         if not created and obj.emoji_id != emoji.id:
             obj.emoji = emoji
             obj.save(update_fields=["emoji", "updated_at"])
 
-        summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
+        summary = _reactions_summary_for_deposits([deposit.id]).get(
+            deposit.id, []
+        )
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
-        return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+        return Response(
+            {"my_reaction": my, "reactions_summary": summary},
+            status=status.HTTP_200_OK,
+        )
 
 
 
