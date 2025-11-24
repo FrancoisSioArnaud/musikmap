@@ -1,5 +1,5 @@
 // frontend/src/components/UserProfilePage.js
-import React, { useState, useContext, useEffect, useCallback } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
@@ -29,32 +29,38 @@ function TabPanel({ index, value, children }) {
    API helpers
    =========================== */
 
-/** Résout un username en infos publiques (id, username, avatar). Retourne null si 404. */
-async function fetchPublicUserInfoByUsername(username) {
-  const res = await fetch(`/users/get-user-info?username=${encodeURIComponent(username)}`, {
-    headers: { Accept: "application/json" },
-    credentials: "same-origin",
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`get-user-info HTTP ${res.status}`);
-  return res.json(); // { id, username, profile_picture, total_deposits, ... }
-}
+/**
+ * Récupère les dépôts d’un user à partir de son username.
+ * Retourne un objet { ok, status, deposits }.
+ */
+async function fetchUserDepositsByUsername(username) {
+  if (!username) {
+    return { ok: false, status: 400, deposits: [] };
+  }
 
-/** Récupère les dépôts d’un user. Exige un userId non nul. */
-async function fetchUserDepositsFor(userId) {
-  if (userId == null) return [];
-  const url = `/box-management/user-deposits?user_id=${encodeURIComponent(userId)}`;
+  const url = `/box-management/user-deposits?username=${encodeURIComponent(username)}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
   });
+
   const data = await res.json().catch(() => null);
+
   if (!res.ok) {
     console.error("user-deposits HTTP", res.status, data);
-    return [];
+    return {
+      ok: false,
+      status: res.status,
+      deposits: [],
+    };
   }
-  return Array.isArray(data) ? data : [];
+
+  return {
+    ok: true,
+    status: res.status,
+    deposits: Array.isArray(data) ? data : [],
+  };
 }
 
 /* ===========================
@@ -75,86 +81,89 @@ export default function UserProfilePage() {
 
   // --- 2) Header (avatar + username affiché) ---
   const [headerLoading, setHeaderLoading] = useState(true);
-  const [headerUser, setHeaderUser] = useState(null); // { id, username, profile_picture }
+  const [headerUser, setHeaderUser] = useState(null); // { username, profile_picture }
 
   // --- 3) Dépôts (Partages) ---
   const [deposits, setDeposits] = useState([]);
   const [depositsLoading, setDepositsLoading] = useState(false);
 
-  const loadDeposits = useCallback(async (targetUserId) => {
-    setDepositsLoading(true);
-    try {
-      const data = await fetchUserDepositsFor(targetUserId);
-      setDeposits(data);
-    } catch (e) {
-      console.error(e);
-      setDeposits([]);
-    } finally {
-      setDepositsLoading(false);
-    }
-  }, []);
-
   // ===========================
-  //  Résoudre l'ID via get-user-info AVANT de charger les dépôts
+  //  Charger directement les dépôts via user-deposits
+  //  en utilisant le username dans l'URL (ou le user courant)
   // ===========================
   useEffect(() => {
     let cancelled = false;
 
-    async function resolveThenLoad() {
-      // Reset UI avant de relancer une résolution
+    async function loadProfileAndDeposits() {
+      // Reset UI avant de relancer un chargement
       setHeaderLoading(true);
       setHeaderUser(null);
       setDeposits([]);
-      setDepositsLoading(false);
+      setDepositsLoading(true);
 
-      // Pas de username -> rien à faire (ex: /profile sans login)
+      // Pas de username résolu -> rien à faire (ex: /profile sans login)
       if (!resolvedUsername) {
         setHeaderLoading(false);
+        setDepositsLoading(false);
         return;
       }
 
       try {
-        const info = await fetchPublicUserInfoByUsername(resolvedUsername); // null si 404
+        const { ok, status, deposits: deps } = await fetchUserDepositsByUsername(resolvedUsername);
         if (cancelled) return;
 
-        if (!info) {
-          // Profil introuvable
-          setHeaderUser(null);
+        if (!ok) {
+          // Profil introuvable (404) ou autre erreur
+          if (status === 404) {
+            // headerUser reste null -> "Profil introuvable"
+            setHeaderUser(null);
+          } else {
+            console.error("Erreur lors du chargement des dépôts :", status);
+            setHeaderUser(null);
+          }
           setHeaderLoading(false);
           setDeposits([]);
+          setDepositsLoading(false);
           return;
         }
 
-        // On a bien résolu l'utilisateur (public ou owner)
-        const hdr = {
-          id: info?.id,
-          username: info?.username,
-          profile_picture: info?.profile_picture,
-        };
-        setHeaderUser(hdr);
-        setHeaderLoading(false);
-
-        // Charger les dépôts UNIQUEMENT quand l'id est connu
-        if (hdr.id != null) {
-          await loadDeposits(hdr.id);
-        } else {
-          setDeposits([]);
+        // Profil existant (même si aucun dépôt)
+        // Pour le header :
+        // - Si owner : on essaie d'utiliser les infos du user courant (avatar)
+        // - Sinon : on affiche au moins le username, avec avatar générique
+        let profilePic = null;
+        if (isOwner && user) {
+          profilePic =
+            user.profile_picture ||
+            user.profilePicture ||
+            user.profile_pic_url ||
+            null;
         }
+
+        setHeaderUser({
+          username: resolvedUsername,
+          profile_picture: profilePic,
+        });
+
+        setDeposits(deps);
+        setHeaderLoading(false);
+        setDepositsLoading(false);
       } catch (e) {
         if (!cancelled) {
           console.error(e);
           setHeaderUser(null);
           setHeaderLoading(false);
           setDeposits([]);
+          setDepositsLoading(false);
         }
       }
     }
 
-    resolveThenLoad();
+    loadProfileAndDeposits();
     return () => {
       cancelled = true;
     };
-  }, [resolvedUsername, loadDeposits]);
+  }, [resolvedUsername, isOwner, user]);
 
   // --- 4) UI : privé (tabs) vs public (pile simple) ---
   const [tab, setTab] = useState(0);
@@ -162,10 +171,10 @@ export default function UserProfilePage() {
   return (
     <Box sx={{ pb: 8 }}>
       {/* Bandeau actions (réglages uniquement pour owner) */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" , m: "0 16px", pb:"12px"}}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", m: "0 16px", pb: "12px" }}>
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon size="medium"/>
+            <SettingsIcon size="medium" />
           </IconButton>
         )}
       </Box>
@@ -181,18 +190,17 @@ export default function UserProfilePage() {
         ) : headerUser ? (
           <>
             <Avatar
-              src={headerUser.profile_picture}
+              src={headerUser.profile_picture || undefined}
               alt={headerUser.username}
               sx={{ width: 64, height: 64 }}
             />
-      
             <Box sx={{ flex: 1 }}>
               <Typography variant="h5">{headerUser.username}</Typography>
               <Typography variant="h5" sx={{ color: "text.secondary" }}>
                 {`${deposits.length} partage${deposits.length > 1 ? "s" : ""}`}
               </Typography>
             </Box>
-      
+
             {isOwner && (
               <Button
                 variant="outlined"
@@ -213,7 +221,6 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-
       {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
       {isOwner ? (
         <>
@@ -230,14 +237,14 @@ export default function UserProfilePage() {
           {/* Onglet Partages (mes dépôts) */}
           <TabPanel value={tab} index={1}>
             {depositsLoading ? (
-              <Box sx={{ display: "grid", gap: 5 , p:4 }}>
+              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
                 <Skeleton variant="rounded" height={120} />
                 <Skeleton variant="rounded" height={120} />
               </Box>
             ) : !deposits.length ? (
               <Typography>Aucun partage pour l’instant.</Typography>
             ) : (
-              <Box sx={{ display: "grid", gap: 5, p:4 }}>
+              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
                 {deposits.map((it, idx) => (
                   <Deposit
                     key={idx}
@@ -246,7 +253,7 @@ export default function UserProfilePage() {
                     variant="list"
                     fitContainer={true}
                     showDate={false}
-                    showUser={false} 
+                    showUser={false}
                     showReact={false}
                   />
                 ))}
@@ -262,14 +269,14 @@ export default function UserProfilePage() {
           </Typography>
 
           {depositsLoading ? (
-            <Box sx={{ display: "grid", gap: 5 , p:4}}>
+            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
               <Skeleton variant="rounded" height={120} />
               <Skeleton variant="rounded" height={120} />
             </Box>
           ) : !deposits.length ? (
             <Typography>Aucun partage pour l’instant.</Typography>
           ) : (
-            <Box sx={{ display: "grid", gap: 5 , p:4 }}>
+            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
               {deposits.map((it, idx) => (
                 <Deposit
                   key={idx}
@@ -288,22 +295,3 @@ export default function UserProfilePage() {
     </Box>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
