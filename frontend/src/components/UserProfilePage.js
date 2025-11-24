@@ -38,7 +38,9 @@ async function fetchUserDepositsByUsername(username) {
     return { ok: false, status: 400, deposits: [] };
   }
 
-  const url = `/box-management/user-deposits?username=${encodeURIComponent(username)}`;
+  const url = `/box-management/user-deposits?username=${encodeURIComponent(
+    username
+  )}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -72,12 +74,15 @@ export default function UserProfilePage() {
   const params = useParams(); // { username? }
   const { user } = useContext(UserContext) || {};
 
-  // --- 1) Détection propriétaire vs public ---
-  const urlUsername = (params?.username || "").trim();
-  const isOwner = !urlUsername || (user?.username && urlUsername === user.username);
+  // --- 1) Détermination du "username cible" (targetUsername) ---
+  // - Si l'URL contient /profile/:username -> on prend celui-là (profil public)
+  // - Sinon, si un user est connecté -> on prend son username (profil privé /profile)
+  // - Sinon -> chaîne vide (pas de profil ciblé)
+  const routeUsername = (params?.username || "").trim();
+  const targetUsername = routeUsername || (user?.username || "").trim();
 
-  // Username cible à résoudre (public => param route, privé => username du contexte)
-  const resolvedUsername = urlUsername || user?.username || "";
+  // Est-ce que le profil affiché est celui de l'utilisateur connecté ?
+  const isOwner = !!user && !!targetUsername && targetUsername === user.username;
 
   // --- 2) Header (avatar + username affiché) ---
   const [headerLoading, setHeaderLoading] = useState(true);
@@ -88,8 +93,9 @@ export default function UserProfilePage() {
   const [depositsLoading, setDepositsLoading] = useState(false);
 
   // ===========================
-  //  Charger directement les dépôts via user-deposits
-  //  en utilisant le username dans l'URL (ou le user courant)
+  //  Chargement du profil + dépôts
+  //  ❗ Important : dépend SEULEMENT de targetUsername
+  //  -> Une MAJ du UserContext (points) ne relance PAS ce fetch.
   // ===========================
   useEffect(() => {
     let cancelled = false;
@@ -101,21 +107,21 @@ export default function UserProfilePage() {
       setDeposits([]);
       setDepositsLoading(true);
 
-      // Pas de username résolu -> rien à faire (ex: /profile sans login)
-      if (!resolvedUsername) {
+      // Pas de username résolu -> rien à afficher
+      if (!targetUsername) {
         setHeaderLoading(false);
         setDepositsLoading(false);
         return;
       }
 
       try {
-        const { ok, status, deposits: deps } = await fetchUserDepositsByUsername(resolvedUsername);
+        const { ok, status, deposits: deps } =
+          await fetchUserDepositsByUsername(targetUsername);
         if (cancelled) return;
 
         if (!ok) {
           // Profil introuvable (404) ou autre erreur
           if (status === 404) {
-            // headerUser reste null -> "Profil introuvable"
             setHeaderUser(null);
           } else {
             console.error("Erreur lors du chargement des dépôts :", status);
@@ -128,9 +134,9 @@ export default function UserProfilePage() {
         }
 
         // Profil existant (même si aucun dépôt)
-        // Pour le header :
-        // - Si owner : on essaie d'utiliser les infos du user courant (avatar)
-        // - Sinon : on affiche au moins le username, avec avatar générique
+        // Header :
+        // - Si c'est le owner : on essaie de récupérer sa photo depuis le UserContext
+        // - Sinon : avatar générique ou vide (headerUser.profile_picture = null)
         let profilePic = null;
         if (isOwner && user) {
           profilePic =
@@ -141,7 +147,7 @@ export default function UserProfilePage() {
         }
 
         setHeaderUser({
-          username: resolvedUsername,
+          username: targetUsername,
           profile_picture: profilePic,
         });
 
@@ -163,135 +169,4 @@ export default function UserProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [resolvedUsername, isOwner, user]);
-
-  // --- 4) UI : privé (tabs) vs public (pile simple) ---
-  const [tab, setTab] = useState(0);
-
-  return (
-    <Box sx={{ pb: 8 }}>
-      {/* Bandeau actions (réglages uniquement pour owner) */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", m: "0 16px", pb: "12px" }}>
-        {isOwner && (
-          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon size="medium" />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Header user (avatar + username + total dépôts) */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
-        {headerLoading ? (
-          <>
-            <Skeleton variant="circular" width={64} height={64} />
-            <Skeleton variant="text" sx={{ flex: 1 }} height={32} />
-            {isOwner && <Skeleton variant="rounded" width={160} height={36} />}
-          </>
-        ) : headerUser ? (
-          <>
-            <Avatar
-              src={headerUser.profile_picture || undefined}
-              alt={headerUser.username}
-              sx={{ width: 64, height: 64 }}
-            />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h5">{headerUser.username}</Typography>
-              <Typography variant="h5" sx={{ color: "text.secondary" }}>
-                {`${deposits.length} partage${deposits.length > 1 ? "s" : ""}`}
-              </Typography>
-            </Box>
-
-            {isOwner && (
-              <Button
-                variant="outlined"
-                onClick={() => navigate("/profile/edit")}
-                size="small"
-              >
-                Modifier
-              </Button>
-            )}
-          </>
-        ) : (
-          <>
-            <Avatar sx={{ width: 64, height: 64 }} />
-            <Typography variant="h5" sx={{ flex: 1 }}>
-              Profil introuvable
-            </Typography>
-          </>
-        )}
-      </Box>
-
-      {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
-      {isOwner ? (
-        <>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-            <Tab label="Découvertes" variant="h6" />
-            <Tab label="Partages" variant="h6" />
-          </Tabs>
-
-          {/* Onglet Découvertes */}
-          <TabPanel value={tab} index={0}>
-            <Library />
-          </TabPanel>
-
-          {/* Onglet Partages (mes dépôts) */}
-          <TabPanel value={tab} index={1}>
-            {depositsLoading ? (
-              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-                <Skeleton variant="rounded" height={120} />
-                <Skeleton variant="rounded" height={120} />
-              </Box>
-            ) : !deposits.length ? (
-              <Typography>Aucun partage pour l’instant.</Typography>
-            ) : (
-              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-                {deposits.map((it, idx) => (
-                  <Deposit
-                    key={idx}
-                    dep={it}
-                    user={user}
-                    variant="list"
-                    fitContainer={true}
-                    showDate={false}
-                    showUser={false}
-                    showReact={false}
-                  />
-                ))}
-              </Box>
-            )}
-          </TabPanel>
-        </>
-      ) : (
-        /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
-        <>
-          <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
-            {`Partages de ${headerUser?.username ?? urlUsername ?? ""}`}
-          </Typography>
-
-          {depositsLoading ? (
-            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-              <Skeleton variant="rounded" height={120} />
-              <Skeleton variant="rounded" height={120} />
-            </Box>
-          ) : !deposits.length ? (
-            <Typography>Aucun partage pour l’instant.</Typography>
-          ) : (
-            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-              {deposits.map((it, idx) => (
-                <Deposit
-                  key={idx}
-                  dep={it}
-                  user={user}
-                  variant="list"
-                  fitContainer={true}
-                  showDate={false}
-                  showUser={false} // header déjà affiché au-dessus
-                />
-              ))}
-            </Box>
-          )}
-        </>
-      )}
-    </Box>
-  );
-}
+  }, [targetUsername, isOwner, user]); // << NOTE: see below
