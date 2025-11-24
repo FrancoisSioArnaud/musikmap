@@ -82,7 +82,8 @@ export default function UserProfilePage() {
   const targetUsername = routeUsername || (user?.username || "").trim();
 
   // Est-ce que le profil affiché est celui de l'utilisateur connecté ?
-  const isOwner = !!user && !!targetUsername && targetUsername === user.username;
+  const isOwner =
+    !!user && !!targetUsername && targetUsername === user.username;
 
   // --- 2) Header (avatar + username affiché) ---
   const [headerLoading, setHeaderLoading] = useState(true);
@@ -94,8 +95,8 @@ export default function UserProfilePage() {
 
   // ===========================
   //  Chargement du profil + dépôts
-  //  ❗ Important : dépend SEULEMENT de targetUsername
-  //  -> Une MAJ du UserContext (points) ne relance PAS ce fetch.
+  //  ❗ Dépend SEULEMENT de targetUsername :
+  //     -> une MAJ des points dans UserContext via setUser NE relance PAS ce fetch.
   // ===========================
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +135,7 @@ export default function UserProfilePage() {
         }
 
         // Profil existant (même si aucun dépôt)
+
         // Header :
         // - Si c'est le owner : on essaie de récupérer sa photo depuis le UserContext
         // - Sinon : avatar générique ou vide (headerUser.profile_picture = null)
@@ -169,4 +171,150 @@ export default function UserProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [targetUsername, isOwner, user]); // << NOTE: see below
+  }, [targetUsername]); // 👈 plus de dépendance sur user
+
+  // --- 4) UI : privé (tabs) vs public (pile simple) ---
+  const [tab, setTab] = useState(0);
+
+  return (
+    <Box sx={{ pb: 8 }}>
+      {/* Bandeau actions (réglages uniquement pour owner) */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          m: "0 16px",
+          pb: "12px",
+        }}
+      >
+        {isOwner && (
+          <IconButton
+            aria-label="Réglages"
+            onClick={() => navigate("/profile/settings")}
+          >
+            <SettingsIcon size="medium" />
+          </IconButton>
+        )}
+      </Box>
+
+      {/* Header user (avatar + username + total dépôts) */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
+        {headerLoading ? (
+          <>
+            <Skeleton variant="circular" width={64} height={64} />
+            <Skeleton variant="text" sx={{ flex: 1 }} height={32} />
+            {isOwner && <Skeleton variant="rounded" width={160} height={36} />}
+          </>
+        ) : headerUser ? (
+          <>
+            <Avatar
+              src={headerUser.profile_picture || undefined}
+              alt={headerUser.username}
+              sx={{ width: 64, height: 64 }}
+            />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h5">{headerUser.username}</Typography>
+              <Typography variant="h5" sx={{ color: "text.secondary" }}>
+                {`${deposits.length} partage${
+                  deposits.length > 1 ? "s" : ""
+                }`}
+              </Typography>
+            </Box>
+
+            {isOwner && (
+              <Button
+                variant="outlined"
+                onClick={() => navigate("/profile/edit")}
+                size="small"
+              >
+                Modifier
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <Avatar sx={{ width: 64, height: 64 }} />
+            <Typography variant="h5" sx={{ flex: 1 }}>
+              Profil introuvable
+            </Typography>
+          </>
+        )}
+      </Box>
+
+      {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
+      {isOwner ? (
+        <>
+          <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
+            <Tab label="Découvertes" variant="h6" />
+            <Tab label="Partages" variant="h6" />
+          </Tabs>
+
+          {/* Onglet Découvertes */}
+          <TabPanel value={tab} index={0}>
+            <Library />
+          </TabPanel>
+
+          {/* Onglet Partages (mes dépôts) */}
+          <TabPanel value={tab} index={1}>
+            {depositsLoading ? (
+              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+                <Skeleton variant="rounded" height={120} />
+                <Skeleton variant="rounded" height={120} />
+              </Box>
+            ) : !deposits.length ? (
+              <Typography>Aucun partage pour l’instant.</Typography>
+            ) : (
+              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+                {deposits.map((it, idx) => (
+                  <Deposit
+                    key={idx}
+                    dep={it}
+                    user={user}
+                    variant="list"
+                    fitContainer={true}
+                    showDate={false}
+                    showUser={false}
+                    showReact={false}
+                  />
+                ))}
+              </Box>
+            )}
+          </TabPanel>
+        </>
+      ) : (
+        /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
+        <>
+          <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
+            {`Partages de ${
+              headerUser?.username ?? targetUsername ?? ""
+            }`}
+          </Typography>
+
+          {depositsLoading ? (
+            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+              <Skeleton variant="rounded" height={120} />
+              <Skeleton variant="rounded" height={120} />
+            </Box>
+          ) : !deposits.length ? (
+            <Typography>Aucun partage pour l’instant.</Typography>
+          ) : (
+            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+              {deposits.map((it, idx) => (
+                <Deposit
+                  key={idx}
+                  dep={it}
+                  user={user}
+                  variant="list"
+                  fitContainer={true}
+                  showDate={false}
+                  showUser={false} // header déjà affiché au-dessus
+                />
+              ))}
+            </Box>
+          )}
+        </>
+      )}
+    </Box>
+  );
+}
