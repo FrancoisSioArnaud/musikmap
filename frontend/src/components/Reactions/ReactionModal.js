@@ -12,10 +12,20 @@ import { getCookie } from "../Security/TokensUtils";
 import PurchaseEmojiModal from "./PurchaseEmojiModal";
 import { UserContext } from "../UserContext";
 
-export default function ReactionModal({ open, onClose, depositId, currentEmoji, onApplied }) {
+export default function ReactionModal({
+  open,
+  onClose,
+  depPublicKey,
+  currentEmoji,
+  onApplied,
+}) {
   const { setUser } = useContext(UserContext) || {};
   const [loading, setLoading] = useState(false);
-  const [catalog, setCatalog] = useState({ actives_paid: [], owned_ids: [], current_reaction: null });
+  const [catalog, setCatalog] = useState({
+    actives_paid: [],
+    owned_ids: [],
+    current_reaction: null,
+  });
   const [selected, setSelected] = useState(currentEmoji || null);
   const [purchaseTarget, setPurchaseTarget] = useState(null);
 
@@ -26,12 +36,17 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
 
   useEffect(() => {
     if (!open) return;
+    if (!depPublicKey) return;
+
     let mounted = true;
 
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch(`/box-management/emojis/catalog?deposit_id=${depositId}`, {
+        const url = `/box-management/emojis/catalog?dep_public_key=${encodeURIComponent(
+          depPublicKey
+        )}`;
+        const res = await fetch(url, {
           credentials: "same-origin",
         });
         const data = await res.json().catch(() => ({}));
@@ -51,11 +66,12 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
     return () => {
       mounted = false;
     };
-  }, [open, depositId]);
+  }, [open, depPublicKey]);
 
   if (!open) return null;
 
-  const isOwned = (emoji) => emoji.cost === 0 || catalog.owned_ids.includes(emoji.id);
+  const isOwned = (emoji) =>
+    emoji.cost === 0 || (catalog.owned_ids || []).includes(emoji.id);
 
   const onClickEmoji = (emoji) => {
     if (!emoji) {
@@ -92,29 +108,46 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
 
   const validate = async () => {
     if (!hasChanged) return onClose();
+    if (!depPublicKey) {
+      alert("Impossible d’appliquer la réaction : dépôt introuvable.");
+      return;
+    }
 
     const csrftoken = getCookie("csrftoken");
     const emojiId =
       selected === null
         ? null
-        : [...(catalog.actives_paid || [])].find((e) => e.char === selected)?.id ?? null;
+        : [...(catalog.actives_paid || [])].find(
+            (e) => e.char === selected
+          )?.id ?? null;
 
     const res = await fetch("/box-management/reactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
       credentials: "same-origin",
-      body: JSON.stringify({ deposit_id: depositId, emoji_id: emojiId }),
+      body: JSON.stringify({
+        dep_public_key: depPublicKey,
+        emoji_id: emojiId,
+      }),
     });
+
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      if (data?.error === "forbidden") alert("Tu n’as pas débloqué cet emoji.");
+      if (data?.error === "forbidden")
+        alert("Tu n’as pas débloqué cet emoji.");
       else alert("Oops, impossible d’appliquer ta réaction.");
       return;
     }
 
     onApplied?.(data);
-    setCatalog((prev) => ({ ...prev, current_reaction: data?.my_reaction || null }));
+    setCatalog((prev) => ({
+      ...prev,
+      current_reaction: data?.my_reaction || null,
+    }));
     setSelected(data?.my_reaction?.emoji || null);
     onClose();
   };
@@ -133,8 +166,11 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
         zIndex: 1300,
       }}
     >
-      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 560 }}>
-        <Card sx={{borderRadius:4}}>
+      <Box
+        onClick={(e) => e.stopPropagation()}
+        sx={{ width: "100%", maxWidth: 560 }}
+      >
+        <Card sx={{ borderRadius: 4 }}>
           <CardContent>
             <Typography component="h1" variant="h1">
               Réagir
@@ -155,7 +191,9 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                   <Button
                     onClick={() => setSelected(null)}
                     aria-label="Aucune réaction"
-                    className={`react_item react_none ${selected === null ? "selected" : ""}`}
+                    className={`react_item react_none ${
+                      selected === null ? "selected" : ""
+                    }`}
                   >
                     <HighlightOffIcon />
                   </Button>
@@ -164,9 +202,9 @@ export default function ReactionModal({ open, onClose, depositId, currentEmoji, 
                   {catalog.actives_paid.map((emoji) => {
                     const owned = isOwned(emoji);
                     const isSelected = selected === emoji.char;
-                    const buttonClass = `react_item ${isSelected ? "selected" : ""} ${
-                      !owned ? "react_notOwned" : ""
-                    }`;
+                    const buttonClass = `react_item ${
+                      isSelected ? "selected" : ""
+                    } ${!owned ? "react_notOwned" : ""}`;
 
                     return (
                       <Button
