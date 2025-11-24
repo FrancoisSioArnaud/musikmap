@@ -430,11 +430,10 @@ export default function Deposit({
           )}
         </Card>
 
-        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
         <ReactionModal
           open={reactOpen}
           onClose={closeReact}
-          depositId={localDep?.deposit_id}
+          depPublicKey={localDep?.public_key}
           currentEmoji={localDep?.my_reaction?.emoji || null}
           onApplied={handleReactionApplied}
         />
@@ -640,7 +639,7 @@ export default function Deposit({
       <ReactionModal
         open={reactOpen}
         onClose={closeReact}
-        depositId={localDep?.deposit_id}
+        depPublicKey={localDep?.public_key}
         currentEmoji={localDep?.my_reaction?.emoji || null}
         onApplied={handleReactionApplied}
       />
