@@ -528,11 +528,33 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
-
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
     GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
+
+    Format d'une session retournée :
+    {
+        "session_id": str,
+        "box": {"id": ..., "name": ..., "url": ...},
+        "started_at": "<ISO datetime>",
+        "deposits": [
+            {
+                # payload standard de _build_deposit_from_instance/_build_deposits_payload
+                "public_key": "...",
+                "deposited_at": "<ISO UTC>",
+                "song": { ... },
+                "user": { "username": "...", "profile_pic_url": "..." },
+                "reactions": [...],
+                "reactions_summary": [...],
+                # + champs spécifiques à la Library :
+                "type": "main" | "revealed",
+                "discovered_at": "<ISO datetime>",
+                "deposit_id": <int>,
+            },
+            ...
+        ]
+    }
     """
 
     def post(self, request, format=None):
@@ -555,8 +577,11 @@ class ManageDiscoveredSongs(APIView):
             discovered_type = "revealed"
 
         try:
-            # on utilise bien le nom du champ FK: "song"
-            deposit = Deposit.objects.select_related('song').get(pk=deposit_id)
+            deposit = (
+                Deposit.objects
+                .select_related('song', 'box', 'user')
+                .get(pk=deposit_id)
+            )
         except Deposit.DoesNotExist:
             return Response(
                 {'error': "Dépôt introuvable."},
@@ -599,54 +624,74 @@ class ManageDiscoveredSongs(APIView):
         limit = 10 if limit <= 0 else limit
         offset = 0 if offset < 0 else offset
 
-        # --- Helpers mapping (alignés sur GetBox)
-        def map_user(u):
-            if not u or isinstance(u, AnonymousUser):
-                return None
-            full_name = u.get_full_name() if hasattr(u, "get_full_name") else ""
-            display_name = getattr(u, "username", None)
-            profile_pic_url = None
-            if getattr(u, "profile_picture", None):
-                try:
-                    profile_pic_url = u.profile_picture.url
-                except Exception:
-                    profile_pic_url = None
-            return {"id": getattr(u, "id", None), "name": display_name, "profile_pic_url": profile_pic_url}
-
-        def map_song_full(s, include_id=True):
-            if not s:
-                return {"title": None, "artist": None, "spotify_url": None, "deezer_url": None, "img_url": None}
-            payload = {
-                "title": getattr(s, "title", None),
-                "artist": getattr(s, "artist", None),
-                "spotify_url": getattr(s, "spotify_url", None),
-                "deezer_url": getattr(s, "deezer_url", None),
-                "img_url": getattr(s, "image_url", None),
-            }
-            if include_id:
-                payload["id"] = getattr(s, "id", None)
-            return payload
-
-        def deposit_payload(ds_obj):
-            dep = ds_obj.deposit_id
-            s = dep.song_id
-            u = dep.user
-            return {
-                "type": ds_obj.discovered_type,
-                "discovered_at": ds_obj.discovered_at.isoformat(),
-                "deposit_id": dep.id,
-                "deposit_date": naturaltime(localtime(getattr(dep, "deposited_at", None))) if getattr(dep, "deposited_at", None) else None,
-                "song": map_song_full(s, include_id=True),
-                "user": map_user(u),
-            }
-
         # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
         events = list(
             DiscoveredSong.objects
             .filter(user_id=user)
-            .select_related('deposit_id', 'deposit_id__song_id', 'deposit_id__user', 'deposit_id__box_id')
+            .select_related(
+                'deposit_id',
+                'deposit_id__song_id',
+                'deposit_id__user',
+                'deposit_id__box_id',
+            )
+            .prefetch_related(
+                Prefetch(
+                    'deposit_id__reactions',
+                    queryset=Reaction.objects
+                    .with_related()  # emoji + user
+                    .order_by('created_at', 'id'),
+                    to_attr='prefetched_reactions',
+                )
+            )
             .order_by('discovered_at', 'id')  # ASC, puis tie-break sur id
         )
+
+        if not events:
+            payload = {
+                "sessions": [],
+                "limit": limit,
+                "offset": offset,
+                "has_more": False,
+                "next_offset": offset,
+            }
+            return Response(payload, status=status.HTTP_200_OK)
+
+        # --- 2) Construction des payloads de dépôts via _build_deposits_payload
+
+        # Liste des dépôts uniques utilisés dans ces events
+        deposits = [ds.deposit_id for ds in events]
+        unique_deposits = []
+        seen_ids = set()
+        for d in deposits:
+            if d.pk not in seen_ids:
+                seen_ids.add(d.pk)
+                unique_deposits.append(d)
+
+        # Payloads complets pour ces dépôts, vus par ce user
+        deposits_payload_list = _build_deposits_payload(
+            unique_deposits,
+            viewer=user,       # pour marquer comme "revealed" et récupérer my_reaction
+            include_user=True, # pour que le front ait u.username / u.profile_pic_url
+        )
+
+        # Dict {deposit_id: payload}
+        deposit_payload_by_id = {
+            dep.pk: payload
+            for dep, payload in zip(unique_deposits, deposits_payload_list)
+        }
+
+        # Helper pour un DiscoveredSong → payload enrichi
+        def deposit_payload(ds_obj):
+            dep = ds_obj.deposit_id
+            base = deposit_payload_by_id.get(dep.pk, {})
+            return {
+                **base,
+                "type": ds_obj.discovered_type,
+                "discovered_at": ds_obj.discovered_at.isoformat(),
+                "deposit_id": dep.pk,
+            }
+
+        # --- 3) Construction des sessions (même logique que ton code initial)
 
         # Indices des mains (ASC)
         main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
@@ -654,7 +699,7 @@ class ManageDiscoveredSongs(APIView):
         sessions_all = []
         consumed = [False] * len(events)
 
-        # --- 2) Sessions pilotées par 'main'
+        # 3.a) Sessions pilotées par 'main'
         for idx, mi in enumerate(main_indices):
             main_ds = events[mi]
             box = main_ds.deposit_id.box_id
@@ -662,7 +707,7 @@ class ManageDiscoveredSongs(APIView):
             deadline = start + timedelta(seconds=3600)
             end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
 
-            deposits = [deposit_payload(main_ds)]
+            deposits_list = [deposit_payload(main_ds)]
             consumed[mi] = True
 
             # revealed après le main, même box, <= +1h, avant le prochain main
@@ -673,17 +718,17 @@ class ManageDiscoveredSongs(APIView):
                 if ds.deposit_id.box_id.id != box.id:
                     continue
                 if ds.discovered_at <= deadline:
-                    deposits.append(deposit_payload(ds))
+                    deposits_list.append(deposit_payload(ds))
                     consumed[j] = True
 
             sessions_all.append({
                 "session_id": str(main_ds.id),
                 "box": {"id": box.id, "name": box.name, "url": box.url},
                 "started_at": start.isoformat(),
-                "deposits": deposits,
+                "deposits": deposits_list,
             })
 
-        # --- 3) Sessions orphelines
+        # 3.b) Sessions orphelines (revealed sans main associé)
         next_main_pos_from = [None] * len(events)
         next_idx = None
         for i in range(len(events) - 1, -1, -1):
@@ -704,7 +749,7 @@ class ManageDiscoveredSongs(APIView):
             deadline = start + timedelta(seconds=3600)
             stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
 
-            deposits = [deposit_payload(start_ds)]
+            deposits_list = [deposit_payload(start_ds)]
             consumed[i] = True
 
             j = i + 1
@@ -713,8 +758,12 @@ class ManageDiscoveredSongs(APIView):
                     j += 1
                     continue
                 ds2 = events[j]
-                if ds2.discovered_type == "revealed" and ds2.deposit_id.box_id.id == box.id and ds2.discovered_at <= deadline:
-                    deposits.append(deposit_payload(ds2))
+                if (
+                    ds2.discovered_type == "revealed"
+                    and ds2.deposit_id.box_id.id == box.id
+                    and ds2.discovered_at <= deadline
+                ):
+                    deposits_list.append(deposit_payload(ds2))
                     consumed[j] = True
                     j += 1
                     continue
@@ -726,7 +775,7 @@ class ManageDiscoveredSongs(APIView):
                 "session_id": f"orph-{orph_counter}",
                 "box": {"id": box.id, "name": box.name, "url": box.url},
                 "started_at": start.isoformat(),
-                "deposits": deposits,
+                "deposits": deposits_list,
             })
             orph_counter += 1
             i = j if j is not None else (i + 1)
@@ -749,7 +798,6 @@ class ManageDiscoveredSongs(APIView):
             "next_offset": next_offset,
         }
         return Response(payload, status=status.HTTP_200_OK)
-
 class AddUserPoints(APIView):
     """
     Class goal : add (or delete) points to the connected user.
@@ -1018,6 +1066,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
