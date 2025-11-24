@@ -817,62 +817,71 @@ class UserDepositsView(APIView):
     permission_classes = []  # public
 
     def get(self, request):
-        # 1) Lecture & validation du paramètre user_id
-        raw_user_id = (request.GET.get("user_id") or "").strip()
-        if not raw_user_id:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+        """
+        Récupère les derniers dépôts d'un utilisateur à partir de son username.
 
-        try:
-            user_id = int(raw_user_id)
-        except ValueError:
-            return Response({"errors": ["Pas d'utilisateur spécifié"]}, status=status.HTTP_400_BAD_REQUEST)
+        - Entrée : ?username=<str>
+        - Sortie : liste de payloads de dépôts construits avec _build_deposits_payload,
+          sans info de user (include_user=False), mais avec :
+            - deposited_at (date ISO 8601 UTC)
+            - song (hidden si viewer n'a pas découvert le dépôt)
+            - reactions + reactions_summary
+        """
+        # 1) Lecture & validation du paramètre username
+        raw_username = (request.GET.get("username") or "").strip()
+        if not raw_username:
+            return Response(
+                {"errors": ["Pas d'utilisateur spécifié"]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # 2) Vérification que l'utilisateur existe
-        target_user = User.objects.filter(id=user_id).first()
+        # 2) Vérification que l'utilisateur cible existe
+        target_user = (
+            User.objects
+            .filter(username__iexact=raw_username)
+            .first()
+        )
         if not target_user:
-            return Response({"errors": ["Utilisateur inexistant"]}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"errors": ["Utilisateur inexistant"]},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        # 3) Récupération des 500 dépôts les plus récents
-        deposits = (
+        # 3) Récupération des 500 dépôts les plus récents de cet utilisateur
+        #    avec préchargement des FK + réactions pour éviter le N+1
+        deposits_qs = (
             Deposit.objects
-            .filter(user_id=user_id)
-            .select_related("song_id", "box_id")
-            .order_by("-deposited_at")[:500]
+            .filter(user=target_user)
+            .select_related("song", "box", "user")
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects
+                    .with_related()  # emoji + user
+                    .order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+            .order_by("-deposited_at", "-id")[:500]
         )
 
+        deposits = list(deposits_qs)
         if not deposits:
             return Response([], status=status.HTTP_200_OK)
 
-        # 4) Préparer les IDs pour récupérer les réactions en une seule requête
-        dep_ids = [d.id for d in deposits]
-        reactions_by_dep = _reactions_summary_for_deposits(dep_ids)
+        # 4) Détermination du viewer pour le système "hidden / revealed"
+        #    - si l'utilisateur n'est pas authentifié → viewer=None → tout hidden
+        viewer = request.user if getattr(request.user, "is_authenticated", False) else None
 
-        # 5) Construction de la réponse JSON
-        response_data = []
-        for deposit in deposits:
-            song = getattr(deposit, "song_id", None)
-            box = getattr(deposit, "box_id", None)
-            deposited_at = getattr(deposit, "deposited_at", None)
+        # 5) Construction du payload via les builders utilitaires
+        #    include_user=False : on n'envoie PAS la clé "user" dans chaque dépôt
+        payload = _build_deposits_payload(
+            deposits,
+            viewer=viewer,
+            include_user=False,
+        )
 
-            title = getattr(song, "title", None)
-            artist = getattr(song, "artist", None)
-            img_url = getattr(song, "image_url", None)
-            box_name = getattr(box, "name", None)
-
-            response_data.append({
-                "deposit_id": getattr(deposit, "id", None),
-                "deposit_date": deposited_at.isoformat() if deposited_at else None,
-                "box_name": box_name,
-                "song": {
-                    "title": title,
-                    "artist": artist,
-                    "img_url": img_url,
-                },
-                "reactions_summary": reactions_by_dep.get(deposit.id, []),
-            })
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
+        return Response(payload, status=status.HTTP_200_OK)
 
 # ==========================================================
 # EMOJIS & REACTIONS
@@ -1009,6 +1018,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
