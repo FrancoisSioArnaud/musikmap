@@ -528,6 +528,7 @@ class RevealSong(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
+
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
@@ -627,16 +628,16 @@ class ManageDiscoveredSongs(APIView):
         # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
         events = list(
             DiscoveredSong.objects
-            .filter(user_id=user)
+            .filter(user_id=user.id)
             .select_related(
-                'deposit_id',
-                'deposit_id__song_id',
-                'deposit_id__user',
-                'deposit_id__box_id',
+                'deposit',          # ✅ nom du champ relationnel
+                'deposit__song',
+                'deposit__user',
+                'deposit__box',
             )
             .prefetch_related(
                 Prefetch(
-                    'deposit_id__reactions',
+                    'deposit__reactions',  # ✅ via le champ relationnel "deposit"
                     queryset=Reaction.objects
                     .with_related()  # emoji + user
                     .order_by('created_at', 'id'),
@@ -659,7 +660,7 @@ class ManageDiscoveredSongs(APIView):
         # --- 2) Construction des payloads de dépôts via _build_deposits_payload
 
         # Liste des dépôts uniques utilisés dans ces events
-        deposits = [ds.deposit_id for ds in events]
+        deposits = [ds.deposit for ds in events]  # ✅ on prend l'instance, pas l'id
         unique_deposits = []
         seen_ids = set()
         for d in deposits:
@@ -671,7 +672,7 @@ class ManageDiscoveredSongs(APIView):
         deposits_payload_list = _build_deposits_payload(
             unique_deposits,
             viewer=user,       # pour marquer comme "revealed" et récupérer my_reaction
-            include_user=True, # pour que le front ait u.username / u.profile_pic_url
+            include_user=True, # pour que le front ait user.username / user.profile_pic_url
         )
 
         # Dict {deposit_id: payload}
@@ -682,7 +683,7 @@ class ManageDiscoveredSongs(APIView):
 
         # Helper pour un DiscoveredSong → payload enrichi
         def deposit_payload(ds_obj):
-            dep = ds_obj.deposit_id
+            dep = ds_obj.deposit  # ✅ instance de Deposit
             base = deposit_payload_by_id.get(dep.pk, {})
             return {
                 **base,
@@ -693,7 +694,7 @@ class ManageDiscoveredSongs(APIView):
 
         # --- 3) Construction des sessions (même logique que ton code initial)
 
-        # Indices des mains (ASC)
+        # Indices des "main" (ASC)
         main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
 
         sessions_all = []
@@ -702,7 +703,7 @@ class ManageDiscoveredSongs(APIView):
         # 3.a) Sessions pilotées par 'main'
         for idx, mi in enumerate(main_indices):
             main_ds = events[mi]
-            box = main_ds.deposit_id.box_id
+            box = main_ds.deposit.box  # ✅ via la FK deposit
             start = main_ds.discovered_at
             deadline = start + timedelta(seconds=3600)
             end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
@@ -715,7 +716,7 @@ class ManageDiscoveredSongs(APIView):
                 ds = events[j]
                 if ds.discovered_type != "revealed":
                     continue
-                if ds.deposit_id.box_id.id != box.id:
+                if ds.deposit.box_id != box.id:
                     continue
                 if ds.discovered_at <= deadline:
                     deposits_list.append(deposit_payload(ds))
@@ -744,7 +745,7 @@ class ManageDiscoveredSongs(APIView):
                 continue
 
             start_ds = events[i]
-            box = start_ds.deposit_id.box_id
+            box = start_ds.deposit.box
             start = start_ds.discovered_at
             deadline = start + timedelta(seconds=3600)
             stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
@@ -760,7 +761,7 @@ class ManageDiscoveredSongs(APIView):
                 ds2 = events[j]
                 if (
                     ds2.discovered_type == "revealed"
-                    and ds2.deposit_id.box_id.id == box.id
+                    and ds2.deposit.box_id == box.id
                     and ds2.discovered_at <= deadline
                 ):
                     deposits_list.append(deposit_payload(ds2))
@@ -798,6 +799,8 @@ class ManageDiscoveredSongs(APIView):
             "next_offset": next_offset,
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
 class AddUserPoints(APIView):
     """
     Class goal : add (or delete) points to the connected user.
@@ -1066,6 +1069,7 @@ class ReactionView(APIView):
         summary = _reactions_summary_for_deposits([deposit.id]).get(deposit.id, [])
         my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
         return Response({"my_reaction": my, "reactions_summary": summary}, status=status.HTTP_200_OK)
+
 
 
 
