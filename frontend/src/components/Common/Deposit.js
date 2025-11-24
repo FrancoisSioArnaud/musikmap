@@ -451,8 +451,7 @@ export default function Deposit({
         <Box className="deposit_infos">
           <Box className="deposit_date">
             <Typography component="h3" variant="body1">
-              {/* avant : localDep.date */}
-              {`Chanson déposée ici ${naturalDate || ""}${
+              {`Chanson déposée ${naturalDate || ""}${
                 showUser ? " par :" : ""
               }`}
             </Typography>
