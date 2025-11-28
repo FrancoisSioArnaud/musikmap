@@ -946,9 +946,8 @@ class EmojiCatalogView(APIView):
 
     def get(self, request):
         dep_public_key = request.GET.get("dep_public_key")
-        basics = list(Emoji.objects.filter(active=True, basic=True).order_by("char"))
         actives_paid = list(
-            Emoji.objects.filter(active=True, basic=False).order_by("cost", "char")
+            Emoji.objects.filter(active=True).order_by("cost", "char")
         )
 
         owned_ids = []
@@ -996,7 +995,7 @@ class PurchaseEmojiView(APIView):
         emoji = Emoji.objects.filter(id=emoji_id).first()
         if not emoji or not emoji.active:
             return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
-        if emoji.basic:
+        if emoji.cost == 0:
             return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
 
         if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
@@ -1073,8 +1072,8 @@ class ReactionView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # ✅ Pas de check de droit si basic OU cost==0
-        if not (emoji.basic or (emoji.cost or 0) == 0):
+        # ✅ Pas de check de droit si cost==0
+        if not emoji.cost == 0:
             has_right = EmojiRight.objects.filter(
                 user=request.user, emoji=emoji
             ).exists()
@@ -1101,6 +1100,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
