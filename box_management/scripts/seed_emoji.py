@@ -1,73 +1,48 @@
+# box_management/scripts/seed_emoji.py
 
-
-from django.core.management.base import BaseCommand
 from django.db import transaction
-
 from box_management.models import Emoji
 
 
-class Command(BaseCommand):
-    help = "Ajoute/Met à jour un set d'émojis par défaut dans la table Emoji."
+def run():
+    """
+    Script pour peupler la table Emoji avec :
+      - 3 emojis à coût = 0
+      - 12 emojis supplémentaires coût : 300, 350, 400, ..., 850
+    Total : 15 emojis
+    """
 
-    def handle(self, *args, **options):
-        """
-        On crée 15 émojis :
-          - 3 premiers : 🔥 🤯 👽 avec un coût = 0
-          - 12 suivants : coût à partir de 300, +50 à chaque fois
-            => 300, 350, 400, ..., 850
-        """
+    base_emojis = ["🔥", "🤯", "👽"]
+    extra_emojis = [
+        "✨", "😎", "🎉", "💥", "😱", "😍",
+        "🤘", "🎶", "😄", "🙌", "🤩", "😈"
+    ]
+    # 12 emojis → coûts 300, 350, ... 850
+    extra_costs = [300 + i * 50 for i in range(len(extra_emojis))]
 
-        # 3 émojis gratuits
-        base_emojis = [
-            {"char": "🔥", "cost": 0},
-            {"char": "🤯", "cost": 0},
-            {"char": "👽", "cost": 0},
-        ]
+    print("=== Seeding Emojis ===")
 
-        # 12 émojis payants, coûts 300, 350, 400, ..., 850
-        paid_chars = [
-            "😎",
-            "🎧",
-            "🎵",
-            "💃",
-            "🕺",
-            "🌈",
-            "🌊",
-            "⭐",
-            "🧠",
-            "💥",
-            "😈",
-            "🐙",
-        ]
-
-        paid_emojis = []
-        cost = 300
-        for ch in paid_chars:
-            paid_emojis.append({"char": ch, "cost": cost})
-            cost += 50  # +50 à chaque fois
-
-        all_emojis = base_emojis + paid_emojis
-
-        created_count = 0
-        updated_count = 0
-
-        # On fait tout dans une transaction pour rester propre
-        with transaction.atomic():
-            for data in all_emojis:
-                obj, created = Emoji.objects.update_or_create(
-                    char=data["char"],
-                    defaults={
-                        "cost": data["cost"],
-                        "active": True,
-                    },
-                )
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Seed Emoji terminé : {created_count} créés, {updated_count} mis à jour."
+    with transaction.atomic():
+        # --- 3 emojis coût = 0 ---
+        for char in base_emojis:
+            obj, created = Emoji.objects.get_or_create(
+                char=char,
+                defaults={"cost": 0, "active": True},
             )
-        )
+            if created:
+                print(f"[OK] Ajouté : {char} (cost=0)")
+            else:
+                print(f"[SKIP] Existe déjà : {char}")
+
+        # --- 12 emojis coût croissant ---
+        for char, cost in zip(extra_emojis, extra_costs):
+            obj, created = Emoji.objects.get_or_create(
+                char=char,
+                defaults={"cost": cost, "active": True},
+            )
+            if created:
+                print(f"[OK] Ajouté : {char} (cost={cost})")
+            else:
+                print(f"[SKIP] Existe déjà : {char}")
+
+    print("=== Terminé ===")
