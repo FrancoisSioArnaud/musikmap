@@ -37,7 +37,7 @@ class DiscoveredSongSerializer(serializers.ModelSerializer):
 class EmojiSerializer(serializers.ModelSerializer):
     class Meta:
         model = Emoji
-        fields = ['id', 'char', 'active', 'basic', 'cost']
+        fields = ['id', 'char', 'active', 'cost']
 
 
 class EmojiRightSerializer(serializers.ModelSerializer):
@@ -52,3 +52,4 @@ class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reaction
         fields = ['deposit', 'emoji', 'created_at', 'updated_at']
+
