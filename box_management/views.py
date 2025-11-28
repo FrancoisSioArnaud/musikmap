@@ -975,7 +975,6 @@ class EmojiCatalogView(APIView):
                     current_reaction = {"emoji": r.emoji.char, "id": r.emoji.id}
 
         data = {
-            "basic": EmojiSerializer(basics, many=True).data,
             "actives_paid": EmojiSerializer(actives_paid, many=True).data,
             "owned_ids": owned_ids,
             "current_reaction": current_reaction,
@@ -1102,6 +1101,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
