@@ -437,6 +437,8 @@ export default function Deposit({
           currentEmoji={localDep?.my_reaction?.emoji || null}
           onApplied={handleReactionApplied}
         />
+
+        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
   }
