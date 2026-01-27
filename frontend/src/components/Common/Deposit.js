@@ -401,7 +401,7 @@ export default function Deposit({
                   variant="depositInteract"
                   className="play playMain"
                   size="large"
-                  onClick={() => (isRevealed ? openPlayFor(s) : null)}
+                  onClick={() => openPlayFor(s)}
                   disabled={!isRevealed}
                   startIcon={<PlayArrowIcon />}
                 >
