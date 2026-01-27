@@ -273,7 +273,6 @@ export default function UserProfilePage() {
                     user={user}
                     variant="list"
                     fitContainer={true}
-                    showDate={false}
                     showUser={false}
                     showReact={false}
                   />
@@ -307,7 +306,6 @@ export default function UserProfilePage() {
                   user={user}
                   variant="list"
                   fitContainer={true}
-                  showDate={false}
                   showUser={false} // header déjà affiché au-dessus
                 />
               ))}
@@ -318,3 +316,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
