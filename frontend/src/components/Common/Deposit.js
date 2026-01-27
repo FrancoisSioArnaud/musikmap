@@ -402,7 +402,6 @@ export default function Deposit({
                   className="play playMain"
                   size="large"
                   onClick={() => openPlayFor(s)}
-                  disabled={!isRevealed}
                   startIcon={<PlayArrowIcon />}
                 >
                   Écouter
