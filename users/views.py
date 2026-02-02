@@ -414,26 +414,40 @@ class GetUserInfo(APIView):
     """
     GET /users/get-user-info?username=<str>
     Retourne les infos publiques + total_deposits
+
+    Payload:
+    {
+      "username": "...",
+      "profile_picture_url": "..." | null,
+      "total_deposits": <int>
+    }
     """
-    serializer_class = CustomUserSerializer
 
     def get(self, request, format=None):
-        username = request.GET.get('username')
+        username = (request.GET.get("username") or "").strip()
         if not username:
-            return Response({'errors': ['username query param is required']},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"errors": ["username query param is required"]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # 404 automatique si l'utilisateur n'existe pas
         user = get_object_or_404(CustomUser, username=username)
 
-        serializer = CustomUserSerializer(user, context={'request': request})
+        profile_picture_url = None
+        try:
+            if user.profile_picture:
+                profile_picture_url = user.profile_picture.url
+        except Exception:
+            profile_picture_url = None
+
         total_deposits = Deposit.objects.filter(user=user).count()
 
-        data = serializer.data
-        data['total_deposits'] = total_deposits
+        data = {
+            "username": user.username,
+            "profile_picture_url": profile_picture_url,
+            "total_deposits": total_deposits,
+        }
         return Response(data, status=status.HTTP_200_OK)
-
-
 
 class ChangeUsername(APIView):
     """
@@ -476,6 +490,7 @@ class ChangeUsername(APIView):
 
         return Response({'status': 'Nom d’utilisateur modifié avec succès.', 'username': new_username},
                         status=status.HTTP_200_OK)
+
 
 
 
