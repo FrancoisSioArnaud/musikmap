@@ -1,5 +1,5 @@
 // frontend/src/components/UserProfilePage.js
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
@@ -11,16 +11,18 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Skeleton from "@mui/material/Skeleton";
 
 import Library from "./UserProfile/Library";
-/** Réutilisation du composant factorisé */
 import Deposit from "./Common/Deposit";
 
+/* ===========================
+   TabPanel (UNMOUNT)
+   =========================== */
 function TabPanel({ index, value, children }) {
+  if (value !== index) return null;
   return (
-    <div role="tabpanel" hidden={value !== index} style={{ width: "100%" }}>
-      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+    <div role="tabpanel" style={{ width: "100%" }}>
+      <Box sx={{ pt: 2 }}>{children}</Box>
     </div>
   );
 }
@@ -28,157 +30,220 @@ function TabPanel({ index, value, children }) {
 /* ===========================
    API helpers
    =========================== */
+async function fetchUserInfo(username, signal) {
+  if (!username) return { ok: false, status: 400, data: null };
 
-/**
- * Récupère les dépôts d’un user à partir de son username.
- * Retourne un objet { ok, status, deposits }.
- */
-async function fetchUserDepositsByUsername(username) {
+  const url = `/users/get-user-info?username=${encodeURIComponent(username)}`;
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+    signal,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    console.error("get-user-info HTTP", res.status, data);
+    return { ok: false, status: res.status, data: null };
+  }
+  return { ok: true, status: res.status, data };
+}
+
+async function fetchUserShares(username, { limit, offset }, signal) {
   if (!username) {
-    return { ok: false, status: 400, deposits: [] };
+    return { ok: false, status: 400, items: [], has_more: false, next_offset: 0 };
   }
 
   const url = `/box-management/user-deposits?username=${encodeURIComponent(
     username
-  )}`;
+  )}&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
+    signal,
   });
 
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
     console.error("user-deposits HTTP", res.status, data);
-    return {
-      ok: false,
-      status: res.status,
-      deposits: [],
-    };
+    return { ok: false, status: res.status, items: [], has_more: false, next_offset: offset };
   }
 
+  const items = Array.isArray(data?.items) ? data.items : [];
   return {
     ok: true,
     status: res.status,
-    deposits: Array.isArray(data) ? data : [],
+    items,
+    has_more: Boolean(data?.has_more),
+    next_offset: typeof data?.next_offset === "number" ? data.next_offset : offset + items.length,
   };
 }
 
 /* ===========================
    Page
    =========================== */
-
 export default function UserProfilePage() {
   const navigate = useNavigate();
   const params = useParams(); // { username? }
   const { user } = useContext(UserContext) || {};
 
-  // --- 1) Détermination du "username cible" (targetUsername) ---
-  // - Si l'URL contient /profile/:username -> on prend celui-là (profil public)
-  // - Sinon, si un user est connecté -> on prend son username (profil privé /profile)
-  // - Sinon -> chaîne vide (pas de profil ciblé)
   const routeUsername = (params?.username || "").trim();
   const targetUsername = routeUsername || (user?.username || "").trim();
 
-  // Est-ce que le profil affiché est celui de l'utilisateur connecté ?
   const isOwner =
-    !!user && !!targetUsername && targetUsername === user.username;
+    !!user && !!targetUsername && targetUsername === (user.username || "").trim();
 
-  // --- 2) Header (avatar + username affiché) ---
+  // ---- Tabs (owner only) ----
+  // tab=0 => Découvertes (Library)
+  // tab=1 => Partages
+  const [tab, setTab] = useState(0);
+
+  // ---- Header state ----
   const [headerLoading, setHeaderLoading] = useState(true);
-  const [headerUser, setHeaderUser] = useState(null); // { username, profile_picture }
+  const [headerError, setHeaderError] = useState(null); // "not_found" | "error" | null
+  const [headerUser, setHeaderUser] = useState(null); // { username, profile_picture_url, total_deposits }
 
-  // --- 3) Dépôts (Partages) ---
-  const [deposits, setDeposits] = useState([]);
-  const [depositsLoading, setDepositsLoading] = useState(false);
+  // ---- Shares state (Partages) ----
+  const [sharesItems, setSharesItems] = useState([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [sharesError, setSharesError] = useState(null);
+  const [sharesHasMore, setSharesHasMore] = useState(false);
+  const [sharesNextOffset, setSharesNextOffset] = useState(0);
+  const [sharesLoadedOnce, setSharesLoadedOnce] = useState(false);
+  const SHARES_LIMIT = 20;
 
-  // ===========================
-  //  Chargement du profil + dépôts
-  //  ❗ Dépend SEULEMENT de targetUsername :
-  //     -> une MAJ des points dans UserContext via setUser NE relance PAS ce fetch.
-  // ===========================
+  // Reset & load header when targetUsername changes
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
-    async function loadProfileAndDeposits() {
-      // Reset UI avant de relancer un chargement
-      setHeaderLoading(true);
-      setHeaderUser(null);
-      setDeposits([]);
-      setDepositsLoading(true);
+    // reset UI
+    setHeaderLoading(true);
+    setHeaderError(null);
+    setHeaderUser(null);
 
-      // Pas de username résolu -> rien à afficher
+    setSharesItems([]);
+    setSharesLoading(false);
+    setSharesError(null);
+    setSharesHasMore(false);
+    setSharesNextOffset(0);
+    setSharesLoadedOnce(false);
+
+    // owner page opens on Library
+    if (isOwner) setTab(0);
+    else setTab(0); // public page doesn't show tabs anyway
+
+    async function loadHeader() {
       if (!targetUsername) {
         setHeaderLoading(false);
-        setDepositsLoading(false);
+        setHeaderError("error");
         return;
       }
 
-      try {
-        const { ok, status, deposits: deps } =
-          await fetchUserDepositsByUsername(targetUsername);
-        if (cancelled) return;
+      const { ok, status, data } = await fetchUserInfo(
+        targetUsername,
+        controller.signal
+      );
 
-        if (!ok) {
-          // Profil introuvable (404) ou autre erreur
-          if (status === 404) {
-            setHeaderUser(null);
-          } else {
-            console.error("Erreur lors du chargement des dépôts :", status);
-            setHeaderUser(null);
-          }
-          setHeaderLoading(false);
-          setDeposits([]);
-          setDepositsLoading(false);
-          return;
+      if (controller.signal.aborted) return;
+
+      if (!ok) {
+        if (status === 404) {
+          setHeaderError("not_found");
+        } else {
+          setHeaderError("error");
         }
-
-        // Profil existant (même si aucun dépôt)
-
-        // Header :
-        // - Si c'est le owner : on essaie de récupérer sa photo depuis le UserContext
-        // - Sinon : avatar générique ou vide (headerUser.profile_picture = null)
-        let profilePic = null;
-        if (isOwner && user) {
-          profilePic =
-            user.profile_picture ||
-            user.profilePicture ||
-            user.profile_pic_url ||
-            null;
-        }
-
-        setHeaderUser({
-          username: targetUsername,
-          profile_picture: profilePic,
-        });
-
-        setDeposits(deps);
+        setHeaderUser(null);
         setHeaderLoading(false);
-        setDepositsLoading(false);
-      } catch (e) {
-        if (!cancelled) {
-          console.error(e);
-          setHeaderUser(null);
-          setHeaderLoading(false);
-          setDeposits([]);
-          setDepositsLoading(false);
-        }
+        return;
       }
+
+      setHeaderUser({
+        username: data?.username || targetUsername,
+        profile_picture_url: data?.profile_picture_url || null,
+        total_deposits: typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+      });
+      setHeaderLoading(false);
     }
 
-    loadProfileAndDeposits();
-    return () => {
-      cancelled = true;
-    };
-  }, [targetUsername]); // 👈 plus de dépendance sur user
+    loadHeader();
 
-  // --- 4) UI : privé (tabs) vs public (pile simple) ---
-  const [tab, setTab] = useState(0);
+    return () => controller.abort();
+    // IMPORTANT: on dépend de targetUsername + isOwner pour reset tab proprement
+  }, [targetUsername, isOwner]);
+
+  // Fetch shares page (append)
+  const loadMoreShares = useCallback(async () => {
+    if (sharesLoading) return;
+    if (!targetUsername) return;
+    if (!headerUser && headerLoading) return;
+
+    const controller = new AbortController();
+    setSharesLoading(true);
+    setSharesError(null);
+
+    try {
+      const { ok, status, items, has_more, next_offset } = await fetchUserShares(
+        targetUsername,
+        { limit: SHARES_LIMIT, offset: sharesNextOffset },
+        controller.signal
+      );
+
+      if (!ok) {
+        setSharesError(status === 404 ? "not_found" : "error");
+        setSharesLoading(false);
+        setSharesLoadedOnce(true);
+        return;
+      }
+
+      setSharesItems((prev) => [...prev, ...items]);
+      setSharesHasMore(has_more);
+      setSharesNextOffset(next_offset);
+      setSharesLoadedOnce(true);
+      setSharesLoading(false);
+    } catch (e) {
+      console.error(e);
+      setSharesError("error");
+      setSharesLoading(false);
+      setSharesLoadedOnce(true);
+    }
+
+    return () => controller.abort();
+  }, [
+    sharesLoading,
+    targetUsername,
+    headerUser,
+    headerLoading,
+    sharesNextOffset,
+  ]);
+
+  // Trigger shares automatically in PUBLIC profile
+  useEffect(() => {
+    if (isOwner) return; // owner: lazy on tab=1
+    if (headerLoading) return;
+    if (headerError) return;
+    if (sharesLoadedOnce) return;
+    // public profile: load shares immediately
+    loadMoreShares();
+  }, [isOwner, headerLoading, headerError, sharesLoadedOnce, loadMoreShares]);
+
+  // Trigger shares when owner switches to tab=1
+  useEffect(() => {
+    if (!isOwner) return;
+    if (tab !== 1) return;
+    if (headerLoading) return;
+    if (headerError) return;
+    if (sharesLoadedOnce) return;
+
+    loadMoreShares();
+  }, [isOwner, tab, headerLoading, headerError, sharesLoadedOnce, loadMoreShares]);
+
+  const profileTitleUsername = headerUser?.username ?? targetUsername ?? "";
 
   return (
     <Box sx={{ pb: 8 }}>
-      {/* Bandeau actions (réglages uniquement pour owner) */}
+      {/* Actions */}
       <Box
         sx={{
           display: "flex",
@@ -198,26 +263,41 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      {/* Header user (avatar + username + total dépôts) */}
+      {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
         {headerLoading ? (
           <>
-            <Skeleton variant="circular" width={64} height={64} />
-            <Skeleton variant="text" sx={{ flex: 1 }} height={32} />
-            {isOwner && <Skeleton variant="rounded" width={160} height={36} />}
+            <Avatar sx={{ width: 64, height: 64, opacity: 0.4 }} />
+            <Typography variant="h5" sx={{ flex: 1, opacity: 0.6 }}>
+              Chargement…
+            </Typography>
           </>
-        ) : headerUser ? (
+        ) : headerError === "not_found" ? (
+          <>
+            <Avatar sx={{ width: 64, height: 64 }} />
+            <Typography variant="h5" sx={{ flex: 1 }}>
+              Profil introuvable
+            </Typography>
+          </>
+        ) : headerError ? (
+          <>
+            <Avatar sx={{ width: 64, height: 64 }} />
+            <Typography variant="h5" sx={{ flex: 1 }}>
+              Erreur de chargement du profil
+            </Typography>
+          </>
+        ) : (
           <>
             <Avatar
-              src={headerUser.profile_picture || undefined}
-              alt={headerUser.username}
+              src={headerUser?.profile_picture_url || undefined}
+              alt={headerUser?.username || ""}
               sx={{ width: 64, height: 64 }}
             />
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h5">{headerUser.username}</Typography>
+              <Typography variant="h5">{headerUser?.username}</Typography>
               <Typography variant="h5" sx={{ color: "text.secondary" }}>
-                {`${deposits.length} partage${
-                  deposits.length > 1 ? "s" : ""
+                {`${headerUser?.total_deposits ?? 0} partage${
+                  (headerUser?.total_deposits ?? 0) > 1 ? "s" : ""
                 }`}
               </Typography>
             </Box>
@@ -232,41 +312,35 @@ export default function UserProfilePage() {
               </Button>
             )}
           </>
-        ) : (
-          <>
-            <Avatar sx={{ width: 64, height: 64 }} />
-            <Typography variant="h5" sx={{ flex: 1 }}>
-              Profil introuvable
-            </Typography>
-          </>
         )}
       </Box>
 
-      {/* ===== PRIVÉ (owner) : Tabs Découvertes / Partages ===== */}
+      {/* Owner: tabs */}
       {isOwner ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-            <Tab label="Découvertes" variant="h6" />
-            <Tab label="Partages" variant="h6" />
+            <Tab label="Découvertes" />
+            <Tab label="Partages" />
           </Tabs>
 
-          {/* Onglet Découvertes */}
+          {/* Tab 0: Library (mounted only when visible) */}
           <TabPanel value={tab} index={0}>
             <Library />
           </TabPanel>
 
-          {/* Onglet Partages (mes dépôts) */}
+          {/* Tab 1: Partages */}
           <TabPanel value={tab} index={1}>
-            {depositsLoading ? (
-              <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-                <Skeleton variant="rounded" height={120} />
-                <Skeleton variant="rounded" height={120} />
-              </Box>
-            ) : !deposits.length ? (
+            {sharesError === "not_found" ? (
+              <Typography>Profil introuvable.</Typography>
+            ) : sharesError ? (
+              <Typography>Erreur lors du chargement des partages.</Typography>
+            ) : !sharesLoadedOnce && sharesLoading ? (
+              <Typography>Chargement…</Typography>
+            ) : !sharesItems.length ? (
               <Typography>Aucun partage pour l’instant.</Typography>
             ) : (
               <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-                {deposits.map((it, idx) => (
+                {sharesItems.map((it, idx) => (
                   <Deposit
                     key={idx}
                     dep={it}
@@ -279,41 +353,73 @@ export default function UserProfilePage() {
                 ))}
               </Box>
             )}
+
+            {/* Bouton Charger plus */}
+            <Box sx={{ display: "flex", justifyContent: "center", pb: 6 }}>
+              {sharesHasMore ? (
+                <Button
+                  variant="contained"
+                  onClick={loadMoreShares}
+                  disabled={sharesLoading}
+                >
+                  {sharesLoading ? "Chargement…" : "Charger plus"}
+                </Button>
+              ) : sharesLoadedOnce && sharesItems.length ? (
+                <Typography sx={{ color: "text.secondary" }}>
+                  Fin des partages
+                </Typography>
+              ) : null}
+            </Box>
           </TabPanel>
         </>
       ) : (
-        /* ===== PUBLIC (autre user) : pas de tabs, uniquement Partages ===== */
+        /* Public: shares only */
         <>
           <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
-            {`Partages de ${
-              headerUser?.username ?? targetUsername ?? ""
-            }`}
+            {`Partages de ${profileTitleUsername}`}
           </Typography>
 
-          {depositsLoading ? (
-            <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-              <Skeleton variant="rounded" height={120} />
-              <Skeleton variant="rounded" height={120} />
-            </Box>
-          ) : !deposits.length ? (
-            <Typography>Aucun partage pour l’instant.</Typography>
+          {sharesError === "not_found" ? (
+            <Typography sx={{ p: 2 }}>Profil introuvable.</Typography>
+          ) : sharesError ? (
+            <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>
+          ) : !sharesLoadedOnce && sharesLoading ? (
+            <Typography sx={{ p: 2 }}>Chargement…</Typography>
+          ) : !sharesItems.length ? (
+            <Typography sx={{ p: 2 }}>Aucun partage pour l’instant.</Typography>
           ) : (
             <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-              {deposits.map((it, idx) => (
+              {sharesItems.map((it, idx) => (
                 <Deposit
                   key={idx}
                   dep={it}
                   user={user}
                   variant="list"
                   fitContainer={true}
-                  showUser={false} // header déjà affiché au-dessus
+                  showUser={false}
                 />
               ))}
             </Box>
           )}
+
+          {/* Bouton Charger plus */}
+          <Box sx={{ display: "flex", justifyContent: "center", pb: 6 }}>
+            {sharesHasMore ? (
+              <Button
+                variant="contained"
+                onClick={loadMoreShares}
+                disabled={sharesLoading}
+              >
+                {sharesLoading ? "Chargement…" : "Charger plus"}
+              </Button>
+            ) : sharesLoadedOnce && sharesItems.length ? (
+              <Typography sx={{ color: "text.secondary" }}>
+                Fin des partages
+              </Typography>
+            ) : null}
+          </Box>
         </>
       )}
     </Box>
   );
 }
-
