@@ -869,16 +869,18 @@ class UserDepositsView(APIView):
 
     def get(self, request):
         """
-        Récupère les derniers dépôts d'un utilisateur à partir de son username.
+        GET /box-management/user-deposits?username=<str>&limit=<int>&offset=<int>
 
-        - Entrée : ?username=<str>
-        - Sortie : liste de payloads de dépôts construits avec _build_deposits_payload,
-          sans info de user (include_user=False), mais avec :
-            - deposited_at (date ISO 8601 UTC)
-            - song (hidden si viewer n'a pas découvert le dépôt)
-            - reactions + reactions_summary
+        Response:
+        {
+          "items": [ ...payload deposits... ],
+          "limit": 10,
+          "offset": 0,
+          "has_more": true,
+          "next_offset": 10
+        }
         """
-        # 1) Lecture & validation du paramètre username
+
         raw_username = (request.GET.get("username") or "").strip()
         if not raw_username:
             return Response(
@@ -886,53 +888,70 @@ class UserDepositsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 2) Vérification que l'utilisateur cible existe
-        target_user = (
-            User.objects
-            .filter(username__iexact=raw_username)
-            .first()
-        )
+        # pagination params
+        try:
+            limit = int(request.GET.get("limit", 20))
+        except Exception:
+            limit = 20
+        try:
+            offset = int(request.GET.get("offset", 0))
+        except Exception:
+            offset = 0
+
+        # hard guards
+        if limit <= 0:
+            limit = 20
+        if limit > 50:
+            limit = 50
+        if offset < 0:
+            offset = 0
+
+        target_user = User.objects.filter(username__iexact=raw_username).first()
         if not target_user:
             return Response(
                 {"errors": ["Utilisateur inexistant"]},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 3) Récupération des 500 dépôts les plus récents de cet utilisateur
-        #    avec préchargement des FK + réactions pour éviter le N+1
-        deposits_qs = (
+        base_qs = (
             Deposit.objects
             .filter(user=target_user)
             .select_related("song", "box", "user")
             .prefetch_related(
                 Prefetch(
                     "reactions",
-                    queryset=Reaction.objects
-                    .with_related()  # emoji + user
-                    .order_by("created_at", "id"),
+                    queryset=Reaction.objects.with_related().order_by("created_at", "id"),
                     to_attr="prefetched_reactions",
                 )
             )
-            .order_by("-deposited_at", "-id")[:500]
+            .order_by("-deposited_at", "-id")
         )
 
-        deposits = list(deposits_qs)
-        if not deposits:
-            return Response([], status=status.HTTP_200_OK)
+        # fetch page (+1 pour has_more)
+        page_qs = list(base_qs[offset: offset + limit + 1])
+        has_more = len(page_qs) > limit
+        deposits = page_qs[:limit]
 
-        # 4) Détermination du viewer pour le système "hidden / revealed"
-        #    - si l'utilisateur n'est pas authentifié → viewer=None → tout hidden
         viewer = request.user if getattr(request.user, "is_authenticated", False) else None
 
-        # 5) Construction du payload via les builders utilitaires
-        #    include_user=False : on n'envoie PAS la clé "user" dans chaque dépôt
-        payload = _build_deposits_payload(
+        items = _build_deposits_payload(
             deposits,
             viewer=viewer,
             include_user=False,
         )
 
-        return Response(payload, status=status.HTTP_200_OK)
+        next_offset = offset + len(deposits)
+
+        return Response(
+            {
+                "items": items,
+                "limit": limit,
+                "offset": offset,
+                "has_more": has_more,
+                "next_offset": next_offset,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 # ==========================================================
 # EMOJIS & REACTIONS
@@ -1100,6 +1119,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
