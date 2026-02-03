@@ -170,35 +170,42 @@ class DiscoveredSong(models.Model):
         ("main", "Main"),
         ("revealed", "Revealed"),
     )
-    discovered_type = models.CharField(max_length=8, choices=DISCOVERED_TYPES, default="revealed")
+    discovered_type = models.CharField(
+        max_length=8,
+        choices=DISCOVERED_TYPES,
+        default="revealed",
+    )
     discovered_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # ✅ NOUVEAU : contexte simplifié (nullable)
+    # ✅ CONTEXTE SIMPLIFIÉ
     CONTEXT_CHOICES = (
         ("box", "Box"),
         ("profile", "Profile"),
     )
     context = models.CharField(
-        max_length=7,                 # "profile" = 7
+        max_length=10,              
         choices=CONTEXT_CHOICES,
-        null=True,
-        blank=True,
+        default="box",             
+        blank=False,
+        null=False,                  
         db_index=True,
     )
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "deposit"], name="unique_discovery_per_user_and_deposit"),
+            models.UniqueConstraint(
+                fields=["user", "deposit"],
+                name="unique_discovery_per_user_and_deposit",
+            ),
         ]
         ordering = ["-discovered_at"]
         indexes = [
             models.Index(fields=["user", "deposit"]),
-            # optionnel car db_index=True, mais OK si tu veux requêter souvent
             models.Index(fields=["context"]),
         ]
 
     def __str__(self):
-        return f"{self.user_id} - {self.deposit_id}"
+        return f"{self.user_id} - {self.deposit_id} ({self.context})"
 
 
 class Emoji(models.Model):
@@ -284,6 +291,7 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
 
 
