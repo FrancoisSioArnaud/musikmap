@@ -11,6 +11,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
@@ -124,8 +125,11 @@ export default function UserProfilePage() {
   // Messages (strictly as requested)
   if (header.status === "loading") {
     return (
-      <Box sx={{ pb: 8, p: 2 }}>
-        <Typography>Chargement du profil</Typography>
+      <Box sx={{ pb: 8 }}>
+        {/* Loader centré */}
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <CircularProgress />
+        </Box>
       </Box>
     );
   }
@@ -220,3 +224,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
