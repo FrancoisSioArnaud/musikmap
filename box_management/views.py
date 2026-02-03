@@ -510,6 +510,7 @@ class RevealSong(APIView):
                 user=user,
                 deposit=deposit,
                 defaults={"discovered_type": "revealed"},
+                context=request.context,
             )
         except Exception:
             # Comme auparavant : si l'enregistrement de la découverte échoue,
@@ -1128,6 +1129,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
