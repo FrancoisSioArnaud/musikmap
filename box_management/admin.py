@@ -201,13 +201,14 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
 
 class DiscoveredSongAdmin(admin.ModelAdmin):
-    list_display = ("user_id", "deposit_id", "discovered_type", "discovered_at")
+    list_display = ("user_id", "deposit_id", "discovered_type", "discovered_at", "context")
     list_filter = ("discovered_type", "discovered_at")
     search_fields = (
         "user_id__username",
         "deposit_id__song_id__title",
         "deposit_id__song_id__artist",
         "deposit_id__box_id__name",
+        "context",
     )
 
 # Models accessible in the admin interface
@@ -248,5 +249,6 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box_id__name",
     )
     ordering = ("-created_at",)
+
 
 
