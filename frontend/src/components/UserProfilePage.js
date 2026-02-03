@@ -63,103 +63,113 @@ export default function UserProfilePage() {
   const isOwner =
     !!user && !!targetUsername && targetUsername === (user.username || "").trim();
 
-  // ---- Tabs (owner only) ----
   // tab=0 => Découvertes (Library)
   // tab=1 => Partages
   const [tab, setTab] = useState(0);
 
-  // ---- Header state ----
-  const [headerLoading, setHeaderLoading] = useState(true);
-  const [headerError, setHeaderError] = useState(null); // "not_found" | "error" | null
-  const [headerUser, setHeaderUser] = useState(null); // { username, profile_picture_url, total_deposits }
+  // Header status machine
+  // status: "loading" | "ready" | "not_found" | "error"
+  const [header, setHeader] = useState({
+    status: "loading",
+    user: null,
+  });
 
   const headerAbortRef = useRef(null);
 
-  // Reset tab when target changes
+  // Reset tab on profile change
   useEffect(() => {
     setTab(0);
   }, [targetUsername]);
 
-  // Load header when targetUsername changes
+  // Load header
   useEffect(() => {
     if (headerAbortRef.current) headerAbortRef.current.abort();
     const controller = new AbortController();
     headerAbortRef.current = controller;
 
-    setHeaderLoading(true);
-    setHeaderError(null);
-    setHeaderUser(null);
+    setHeader({ status: "loading", user: null });
 
-    async function loadHeader() {
+    async function load() {
       if (!targetUsername) {
-        setHeaderLoading(false);
-        setHeaderError("error");
+        setHeader({ status: "error", user: null });
         return;
       }
 
       const { ok, status, data } = await fetchUserInfo(targetUsername, controller.signal);
-
       if (controller.signal.aborted) return;
 
       if (!ok) {
-        setHeaderError(status === 404 ? "not_found" : "error");
-        setHeaderUser(null);
-        setHeaderLoading(false);
+        setHeader({ status: status === 404 ? "not_found" : "error", user: null });
         return;
       }
 
-      setHeaderUser({
-        username: data?.username || targetUsername,
-        profile_picture_url: data?.profile_picture_url || null,
-        total_deposits: typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+      setHeader({
+        status: "ready",
+        user: {
+          username: data?.username || targetUsername,
+          profile_picture_url: data?.profile_picture_url || null,
+          total_deposits: typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+        },
       });
-      setHeaderLoading(false);
     }
 
-    loadHeader();
-
+    load();
     return () => controller.abort();
   }, [targetUsername]);
 
+  // States derived from header
+  const headerReady = header.status === "ready";
+  const headerUser = header.user;
+
+  // Messages (strictly as requested)
+  if (header.status === "loading") {
+    return (
+      <Box sx={{ pb: 8, p: 2 }}>
+        <Typography>Chargement du profil</Typography>
+      </Box>
+    );
+  }
+
+  if (header.status === "not_found") {
+    return (
+      <Box sx={{ pb: 8, p: 2 }}>
+        <Typography>Ce profil est introuvable</Typography>
+      </Box>
+    );
+  }
+
+  if (header.status === "error") {
+    return (
+      <Box sx={{ pb: 8, p: 2 }}>
+        <Typography>Une erreur s&apos;est produite, veuillez réessayer ulterieurement</Typography>
+      </Box>
+    );
+  }
+
+  // From here: headerReady === true
   const profileTitleUsername = headerUser?.username ?? targetUsername ?? "";
 
-  function renderHeader() {
-    if (headerLoading) {
-      return (
-        <>
-          <Avatar sx={{ width: 64, height: 64, opacity: 0.6 }} />
-          <Typography variant="h5" sx={{ flex: 1, opacity: 0.8 }}>
-            Chargement du profil
-          </Typography>
-        </>
-      );
-    }
+  return (
+    <Box sx={{ pb: 8 }}>
+      {/* Actions */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          m: "0 16px",
+          pb: "12px",
+        }}
+      >
+        {isOwner && (
+          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
+            <SettingsIcon size="medium" />
+          </IconButton>
+        )}
+      </Box>
 
-    if (headerError === "not_found") {
-      return (
-        <>
-          <Avatar sx={{ width: 64, height: 64 }} />
-          <Typography variant="h5" sx={{ flex: 1 }}>
-            Ce profil est introuvable
-          </Typography>
-        </>
-      );
-    }
-
-    if (headerError) {
-      return (
-        <>
-          <Avatar sx={{ width: 64, height: 64 }} />
-          <Typography variant="h5" sx={{ flex: 1 }}>
-            Une erreur s&apos;est produite, veuillez réessayer ulterieurement
-          </Typography>
-        </>
-      );
-    }
-
-    // header OK
-    return (
-      <>
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
         <Avatar
           src={headerUser?.profile_picture_url || undefined}
           alt={headerUser?.username || ""}
@@ -179,38 +189,10 @@ export default function UserProfilePage() {
             Modifier
           </Button>
         )}
-      </>
-    );
-  }
-
-  const headerOk = !headerLoading && !headerError;
-
-  return (
-    <Box sx={{ pb: 8 }}>
-      {/* Actions */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          m: "0 16px",
-          pb: "12px",
-        }}
-      >
-        {isOwner && headerOk && (
-          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon size="medium" />
-          </IconButton>
-        )}
       </Box>
 
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, m: "0 16px" }}>
-        {renderHeader()}
-      </Box>
-
-      {/* IMPORTANT: no tabs / no content until header OK */}
-      {!headerOk ? null : isOwner ? (
+      {/* Content only when header is ready */}
+      {headerReady && isOwner ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
             <Tab label="Découvertes" />
@@ -222,16 +204,17 @@ export default function UserProfilePage() {
           </TabPanel>
 
           <TabPanel value={tab} index={1}>
-            <Shares username={targetUsername} user={user} autoLoad={true} showReact={true} />
+            {/* Lazy-load: component mounts only when tab is visible */}
+            <Shares username={targetUsername} user={user} autoLoad={true} />
           </TabPanel>
         </>
       ) : (
         <>
+          {/* Public: shares only (mounted only after header ready) */}
           <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
             {`Partages de ${profileTitleUsername}`}
           </Typography>
-
-          <Shares username={targetUsername} user={user} autoLoad={true} showReact={true} />
+          <Shares username={targetUsername} user={user} autoLoad={true} />
         </>
       )}
     </Box>
