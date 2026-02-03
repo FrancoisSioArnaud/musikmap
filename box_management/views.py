@@ -510,7 +510,6 @@ class RevealSong(APIView):
                 user=user,
                 deposit=deposit,
                 defaults={"discovered_type": "revealed"},
-                context=request.context,
             )
         except Exception:
             # Comme auparavant : si l'enregistrement de la découverte échoue,
@@ -578,13 +577,6 @@ class ManageDiscoveredSongs(APIView):
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
-        context = request.data.get("context") or "box"
-        if context not in ("box", "profile"):
-            return Response(
-                {"error": "Contexte invalide."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         try:
             deposit = (
                 Deposit.objects
@@ -597,7 +589,6 @@ class ManageDiscoveredSongs(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        
         # Vérifie si déjà découvert pour ce user / ce dépôt
         if DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
             return Response(
@@ -610,7 +601,6 @@ class ManageDiscoveredSongs(APIView):
             user=user,
             deposit=deposit,
             discovered_type=discovered_type,
-            context=context, 
         )
 
         return Response({'success': True}, status=status.HTTP_200_OK)
@@ -1129,36 +1119,6 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
