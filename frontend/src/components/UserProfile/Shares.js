@@ -142,7 +142,6 @@ export default function Shares({ username, user, autoLoad }) {
               variant="list"
               fitContainer={true}
               showUser={false}
-              context="profile"
             />
           ))}
         </Box>
