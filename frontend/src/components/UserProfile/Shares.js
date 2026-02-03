@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+
 
 import Deposit from "../Common/Deposit";
 
@@ -125,7 +127,9 @@ export default function Shares({ username, user, autoLoad }) {
       {error ? (
         <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>
       ) : !loadedOnce && loading ? (
-        <Typography sx={{ p: 2 }}>Chargement…</Typography>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <CircularProgress />
+        </Box>
       ) : !items.length ? (
         <Typography sx={{ p: 2 }}>Aucun partage pour l’instant.</Typography>
       ) : (
@@ -143,11 +147,12 @@ export default function Shares({ username, user, autoLoad }) {
         </Box>
       )}
 
+
       {/* Load more */}
       <Box sx={{ display: "flex", justifyContent: "center", pb: 6 }}>
         {hasMore ? (
           <Button variant="contained" onClick={loadMore} disabled={loading}>
-            {loading ? "Chargement…" : "Charger plus"}
+            {loading ? <CircularProgress size={22} /> : "Charger plus"}
           </Button>
         ) : loadedOnce && items.length ? (
           <Typography sx={{ color: "text.secondary" }}>Fin des partages</Typography>
