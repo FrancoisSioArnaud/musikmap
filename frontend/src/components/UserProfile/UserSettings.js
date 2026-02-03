@@ -293,7 +293,6 @@ export default function UserSettings() {
         <Card variant="outlined">
           <CardContent>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center" justifyContent="space-between">
-              <Typography variant="body1">Terminer la session sur cet appareil.</Typography>
               <Button
                 variant="contained"
                 color="error"
