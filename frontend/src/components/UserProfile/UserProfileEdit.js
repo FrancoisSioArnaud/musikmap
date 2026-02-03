@@ -111,7 +111,7 @@ export default function UserProfileEdit() {
         <Avatar src={user.profile_picture_url} alt={user.username} sx={{ width: 72, height: 72 }} />
         <label htmlFor="avatar-edit-input">
           <input id="avatar-edit-input" type="file" accept="image/*" hidden onChange={onAvatarChange} />
-          <Button variant="outlined" component="span" disabled={saving}>Changer la photo</Button>
+          <Button variant="outlined" component="span" disabled={saving}>Changer ma photo</Button>
         </label>
       </Box>
 
