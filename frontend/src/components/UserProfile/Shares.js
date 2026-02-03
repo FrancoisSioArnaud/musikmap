@@ -43,31 +43,10 @@ async function fetchUserShares(username, { limit, offset }, signal) {
 }
 
 /* ===========================
-   UI helper
+   Shares page component
    =========================== */
-function DepositList({ items, user, showReact }) {
-  return (
-    <Box sx={{ display: "grid", gap: 5, p: 4 }}>
-      {items.map((it) => (
-        <Deposit
-          key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
-          dep={it}
-          user={user}
-          variant="list"
-          fitContainer={true}
-          showUser={false}
-          showReact={showReact}
-        />
-      ))}
-    </Box>
-  );
-}
-
-/* ===========================
-   Page-like component
-   =========================== */
-export default function Shares({ username, user, autoLoad = true, showReact = true }) {
-  const SHARES_LIMIT = 20;
+export default function Shares({ username, user, autoLoad }) {
+  const LIMIT = 20;
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -87,10 +66,10 @@ export default function Shares({ username, user, autoLoad = true, showReact = tr
     setLoadedOnce(false);
   }, []);
 
-  // Reset when username changes
+  // Reset when username changes (and abort in-flight)
   useEffect(() => {
-    reset();
     if (abortRef.current) abortRef.current.abort();
+    reset();
   }, [username, reset]);
 
   const loadMore = useCallback(async () => {
@@ -107,7 +86,7 @@ export default function Shares({ username, user, autoLoad = true, showReact = tr
     try {
       const { ok, items: newItems, has_more, next_offset } = await fetchUserShares(
         username,
-        { limit: SHARES_LIMIT, offset: nextOffset },
+        { limit: LIMIT, offset: nextOffset },
         controller.signal
       );
 
@@ -141,30 +120,38 @@ export default function Shares({ username, user, autoLoad = true, showReact = tr
     loadMore();
   }, [autoLoad, loadedOnce, loadMore]);
 
-  if (error) {
-    return <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>;
-  }
-
-  if (!loadedOnce && loading) {
-    return <Typography sx={{ p: 2 }}>Chargement…</Typography>;
-  }
-
-  if (!items.length) {
-    return <Typography sx={{ p: 2 }}>Aucun partage pour l’instant.</Typography>;
-  }
-
   return (
     <>
-      <DepositList items={items} user={user} showReact={showReact} />
+      {error ? (
+        <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>
+      ) : !loadedOnce && loading ? (
+        <Typography sx={{ p: 2 }}>Chargement…</Typography>
+      ) : !items.length ? (
+        <Typography sx={{ p: 2 }}>Aucun partage pour l’instant.</Typography>
+      ) : (
+        <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+          {items.map((it) => (
+            <Deposit
+              key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
+              dep={it}
+              user={user}
+              variant="list"
+              fitContainer={true}
+              showUser={false}
+            />
+          ))}
+        </Box>
+      )}
 
+      {/* Load more */}
       <Box sx={{ display: "flex", justifyContent: "center", pb: 6 }}>
         {hasMore ? (
           <Button variant="contained" onClick={loadMore} disabled={loading}>
             {loading ? "Chargement…" : "Charger plus"}
           </Button>
-        ) : (
+        ) : loadedOnce && items.length ? (
           <Typography sx={{ color: "text.secondary" }}>Fin des partages</Typography>
-        )}
+        ) : null}
       </Box>
     </>
   );
