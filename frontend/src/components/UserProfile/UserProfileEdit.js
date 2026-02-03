@@ -104,8 +104,8 @@ export default function UserProfileEdit() {
   };
 
   return (
-    <Box sx={{ p: 2, display: "grid", gap: 2 }}>
-      <Typography variant="h6">Modifier le profil</Typography>
+    <Box sx={{ p: 2, display: "grid", gap: 4 }}>
+      <Typography variant="h4">Modifier le profil</Typography>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <Avatar src={user.profile_picture_url} alt={user.username} sx={{ width: 72, height: 72 }} />
