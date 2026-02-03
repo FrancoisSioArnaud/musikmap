@@ -7,9 +7,6 @@ from typing import Union, Optional, Iterable
 from users.models import CustomUser
 import secrets
 
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-
 class Box(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=150, blank=True)
@@ -166,19 +163,8 @@ class LocationPoint(models.Model):
 
 
 class DiscoveredSong(models.Model):
-    deposit = models.ForeignKey("Deposit", on_delete=models.CASCADE, related_name="discoveries")
+    deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE, related_name="discoveries")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="discoveries")
-
-    # ✅ Endroit (polymorphe) : Box ou profil (CustomUser)
-    place_content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="discovered_song_places",
-    )
-    place_object_id = models.PositiveIntegerField(null=True, blank=True)
-    place = GenericForeignKey("place_content_type", "place_object_id")
 
     DISCOVERED_TYPES = (
         ("main", "Main"),
@@ -187,27 +173,34 @@ class DiscoveredSong(models.Model):
     discovered_type = models.CharField(max_length=8, choices=DISCOVERED_TYPES, default="revealed")
     discovered_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    # ✅ NOUVEAU : contexte simplifié (nullable)
+    CONTEXT_CHOICES = (
+        ("box", "Box"),
+        ("profile", "Profile"),
+    )
+    context = models.CharField(
+        max_length=7,                 # "profile" = 7
+        choices=CONTEXT_CHOICES,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["user", "deposit"], name="unique_discovery_per_user_and_deposit"),
-            # ✅ soit les 2 champs place sont NULL, soit les 2 sont remplis
-            models.CheckConstraint(
-                check=(
-                    (models.Q(place_content_type__isnull=True) & models.Q(place_object_id__isnull=True)) |
-                    (models.Q(place_content_type__isnull=False) & models.Q(place_object_id__isnull=False))
-                ),
-                name="discovery_place_both_null_or_filled",
-            ),
         ]
         ordering = ["-discovered_at"]
         indexes = [
             models.Index(fields=["user", "deposit"]),
-            # ✅ utile pour filtrer par "endroit"
-            models.Index(fields=["place_content_type", "place_object_id"]),
+            # optionnel car db_index=True, mais OK si tu veux requêter souvent
+            models.Index(fields=["context"]),
         ]
 
     def __str__(self):
         return f"{self.user_id} - {self.deposit_id}"
+
+
 class Emoji(models.Model):
     """Catalogue des emojis (Unicode)"""
     char = models.CharField(max_length=8, unique=True, db_index=True)  # ex "🔥", "😂"
@@ -291,6 +284,7 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
+
 
 
 
