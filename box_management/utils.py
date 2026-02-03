@@ -133,16 +133,29 @@ def _build_deposits_payload(
     if not deps:
         return []
 
-    # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+  # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
     if viewer is None:
         revealed_ids = set()  # personne -> rien de révélé
     else:
+        viewer_id = getattr(viewer, "id", None)
+
         dep_ids = [d.pk for d in deps]
-        revealed_ids = set(
-            DiscoveredSong.objects
-            .filter(user_id=getattr(viewer, "id", None), deposit_id__in=dep_ids)
-            .values_list("deposit_id", flat=True)
-        )
+
+        # 1) Révélé implicitement si le viewer est le propriétaire du dépôt (0 requête)
+        own_dep_ids = {d.pk for d in deps if getattr(d, "user_id", None) == viewer_id}
+
+        # 2) Pour le reste seulement, on consulte DiscoveredSong (1 requête max)
+        remaining_ids = [i for i in dep_ids if i not in own_dep_ids]
+
+        discovered_ids = set()
+        if remaining_ids:
+            discovered_ids = set(
+                DiscoveredSong.objects
+                .filter(user_id=viewer_id, deposit_id__in=remaining_ids)
+                .values_list("deposit_id", flat=True)
+            )
+
+        revealed_ids = own_dep_ids | discovered_ids
 
     # ------- Construction des payloads à partir des instances -------
     out: List[Dict[str, Any]] = []
@@ -435,5 +448,6 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
