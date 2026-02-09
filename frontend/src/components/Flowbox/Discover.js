@@ -273,7 +273,7 @@ export default function Discover() {
               Découvre d’autres chansons
             </Typography>
             <Typography component="body" variant="body1">
-              "Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler."
+              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler.
             </Typography>
           </Box>
           <Box id="older_deposits_list">
