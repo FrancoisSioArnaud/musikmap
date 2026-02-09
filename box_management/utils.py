@@ -405,7 +405,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
         points_to_add += int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX)
         successes["first_user_deposit_box"] = {
             "name": "Explorateur·ice",
-            "desc": "Tu n'as jamais déposé ici",
+            "desc": "C’est ta première chanson dans cette boîte",
             "points": int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX),
             "emoji": "🔍",
         }
@@ -419,7 +419,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
         points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX)
         successes["first_song_deposit"] = {
             "name": "Far West",
-            "desc": "Cette chanson n'a jamais été déposée ici",
+            "desc": "Cette chanson n’a jamais été déposée dans cette boîte",
             "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX),
             "emoji": "🤠",
         }
@@ -448,6 +448,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
