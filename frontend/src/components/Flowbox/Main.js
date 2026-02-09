@@ -275,7 +275,7 @@ export default function Main() {
           Bonne écoute !
         </Typography>
         <Typography component="h2" variant="body1">
-          Découvre puis remplace la chanson actuellement dans la boîte
+          Écoute la chanson dans la boîte. Tu peux ensuite la remplacer.
         </Typography>
       </Box>
 
