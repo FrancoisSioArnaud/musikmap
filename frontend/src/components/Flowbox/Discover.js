@@ -244,10 +244,10 @@ export default function Discover() {
       ) : null}
   
       <Box>
-        <Typography component="h4" variant="h4" sx={{ mt: 5 }}>
+        <Typography component="h4" variant="h4">
           Ta chanson est déposée
         </Typography>
-        <Typography component="p" variant="body1" sx={{ mt: 5 }}>
+        <Typography component="p" variant="body1">
           La chanson est maintenant dans la boîte.
           La prochaine personne pourra l’écouter.
         </Typography>
