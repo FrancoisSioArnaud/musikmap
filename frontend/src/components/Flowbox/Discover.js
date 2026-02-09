@@ -243,7 +243,12 @@ export default function Discover() {
         </Box>
       ) : null}
   
-      <Box>
+      <Box sx={{ 
+        display: "grid",
+        padding: "20px",
+        marginTop: "16px",
+        textAlign: "center",
+      }}>
         <Typography component="h4" variant="h4">
           Ta chanson est déposée
         </Typography>
