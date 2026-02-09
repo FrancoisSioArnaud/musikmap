@@ -450,35 +450,37 @@ export default function Deposit({
   return (
     <>
       <Card className="deposit deposit_list">
-        <Box className="deposit_infos">
-
-          {showTime && (
-            <Box className="deposit_date">
-              <Typography component="h3" variant="body1">
-                {`Chanson déposée ${naturalDate || ""}${
-                  showUser ? " par :" : ""
-                }`}
-              </Typography>
-            </Box>
-          )}
-
-          {showUser && (
-            <Box
-              className="deposit_user"
-              sx={{ display: "flex", minWidth: 0 }}
-              onClick={() => {
-                if (u?.username) navigate("/profile/" + u.username);
-              }}
-            >
-              <Avatar
-                src={u?.profile_pic_url || undefined}
-                alt={u?.username || "Anonyme"}
-              />
-              <Typography>{u?.username || "Anonyme"}</Typography>
-              {u?.username && <ArrowForwardIosIcon fontSize="small" />}
-            </Box>
-          )}
-        </Box>
+        {(showTime || showUser) && (
+          <Box className="deposit_infos">
+  
+            {showTime && (
+              <Box className="deposit_date">
+                <Typography component="h3" variant="body1">
+                  {`Chanson déposée ${naturalDate || ""}${
+                    showUser ? " par :" : ""
+                  }`}
+                </Typography>
+              </Box>
+            )}
+  
+            {showUser && (
+              <Box
+                className="deposit_user"
+                sx={{ display: "flex", minWidth: 0 }}
+                onClick={() => {
+                  if (u?.username) navigate("/profile/" + u.username);
+                }}
+              >
+                <Avatar
+                  src={u?.profile_pic_url || undefined}
+                  alt={u?.username || "Anonyme"}
+                />
+                <Typography>{u?.username || "Anonyme"}</Typography>
+                {u?.username && <ArrowForwardIosIcon fontSize="small" />}
+              </Box>
+            )}
+          </Box>
+        )}
 
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
