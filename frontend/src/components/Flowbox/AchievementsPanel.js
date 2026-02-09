@@ -34,11 +34,8 @@ export default function AchievementsPanel({ successes = [], onPrimaryCta }) {
           <AlbumIcon />
         </Box>
 
-        <Typography component="span" variant="body1" display="block">
-          ...et plein de points gagnés !
-        </Typography>
         <Typography component="span" variant="h5" display="block" sx={{ mt: 1 }}>
-          Voici le détail de tes points
+          Détail des points
         </Typography>
       </Box>
 
