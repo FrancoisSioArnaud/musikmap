@@ -72,7 +72,7 @@ export default function PlayModal({ open, song, onClose }) {
               </Typography>
               <Button onClick={onClose} title="Fermer" sx={{fontSize: "32px"}}>×</Button>
             </Box>
-            <Typography variant="body1" sx={{ mb:3 }} noWrap>
+            <Typography variant="body1" sx={{ mb:3 }}>
                 {song?.title || "Titre"} — {song?.artist || "Artiste"}
             </Typography>
 
