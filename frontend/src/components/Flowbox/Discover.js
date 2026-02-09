@@ -1,3 +1,4 @@
+
 // frontend/src/components/Flowbox/Discover.js
 
 import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
@@ -261,10 +262,10 @@ export default function Discover() {
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
             <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
-              Pépites déposées plus tôt
+              Découvre d’autres chansons
             </Typography>
             <Typography component="body" variant="body1">
-              Utilise tes points fraichement gagnés pour les découvrir
+              "Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler."
             </Typography>
           </Box>
           <Box id="older_deposits_list">
