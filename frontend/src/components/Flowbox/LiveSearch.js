@@ -173,7 +173,7 @@ export default function LiveSearch({
           <TextField
             fullWidth
             type="search"
-            placeholder="Cherche une chanson"
+            placeholder="Chercher une chanson"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             inputProps={{ inputMode: "search" }}
