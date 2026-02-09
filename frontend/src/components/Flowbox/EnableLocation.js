@@ -44,7 +44,7 @@ export default function EnableLocation({
           </Typography>
     
           <Typography variant="body1">
-            Pour éviter les tricheurs, les boîtes ne peuvent être ouvertes qu’en étant sur place.
+            Tu dois être sur place pour ouvrir la boîte. Cela évite la triche. Autorise l’accès à ta localisation. Nous vérifions que tu es près de la boîte.
           </Typography>
         </Box>
         {error ? (
