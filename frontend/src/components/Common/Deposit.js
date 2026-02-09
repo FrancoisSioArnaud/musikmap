@@ -405,7 +405,7 @@ export default function Deposit({
                   onClick={() => openPlayFor(s)}
                   startIcon={<PlayArrowIcon />}
                 >
-                  Écouter
+                  Écouter la chanson
                 </Button>
               </Box>
             </Box>
