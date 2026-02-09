@@ -235,7 +235,7 @@ export default function Discover() {
           <Deposit
             dep={mainDep}
             user={user}
-            variant="main"
+            variant="list"
             showReact={true}
             showPlay={true}
             showUser={true}
