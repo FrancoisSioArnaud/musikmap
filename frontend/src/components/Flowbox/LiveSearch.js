@@ -218,10 +218,10 @@ export default function LiveSearch({
                     {isPosting ? (
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <CircularProgress size={16} />
-                        Choisir
+                        Déposr
                       </Box>
                     ) : (
-                      "Choisir"
+                      "Déposer"
                     )}
                   </Button>
                 }
