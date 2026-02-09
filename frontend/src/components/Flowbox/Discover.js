@@ -222,10 +222,10 @@ export default function Discover() {
     <Box>
       <Box className="intro">
         <Typography component="h1" variant="h1">
-          Découvertes
+          Bonne écoute !
         </Typography>
         <Typography component="h2" variant="body1">
-          La boîte et tes derniers dépôts
+          La chanson que tu as remplacée
         </Typography>
       </Box>
 
@@ -250,6 +250,7 @@ export default function Discover() {
             dep={myDeposit}
             user={user}
             variant="list"
+            showTime={false}
             showReact={false}
             showPlay={false}
             showUser={false}
