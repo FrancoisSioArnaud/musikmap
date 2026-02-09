@@ -243,16 +243,16 @@ export default function Discover() {
         </Box>
       ) : null}
   
-      <Box sx={{ 
+      <Box className="intro" sx={{ 
         display: "grid",
         padding: "20px",
         marginTop: "16px",
         textAlign: "center",
       }}>
-        <Typography component="h4" variant="h4">
+        <Typography component="h2" variant="h3">
           Ta chanson est déposée
         </Typography>
-        <Typography component="p" variant="body1">
+        <Typography component="body" variant="body1">
           La chanson est maintenant dans la boîte.
           La prochaine personne pourra l’écouter.
         </Typography>
