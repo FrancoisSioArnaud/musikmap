@@ -281,14 +281,6 @@ export default function Deposit({
       <Box
         className="deposit_react"
         onClick={onClick}
-        sx={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: "10px",
-          cursor: "pointer",
-          userSelect: "none",
-        }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
