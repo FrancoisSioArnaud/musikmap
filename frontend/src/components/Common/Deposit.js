@@ -298,26 +298,33 @@ export default function Deposit({
       >
 
         {/* emojis × count */}
-        {list.map((it, i) => (
-          <Box
-            key={`${it.emoji || i}-${it.count || 0}`}
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: "4px",
-              borderRadius: "8px",
-              p: "6px 12px 6px 8px",
-            }}
-          >
-            <Typography variant="h4" component="span">
-              {it.emoji}
-            </Typography>
-            <Typography variant="h5" component="span">
-              × {it.count}
-            </Typography>
-          </Box>
-        ))}
+        {list.map((it, i) => {
+          const isCurrent =
+            localDep?.my_reaction?.emoji &&
+            it.emoji === localDep.my_reaction.emoji;
+        
+          return (
+            <Box
+              key={`${it.emoji || i}-${it.count || 0}`}
+              className={isCurrent ? "current_reaction" : ""}
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "4px",
+                borderRadius: "8px",
+                p: "6px 12px 6px 8px",
+              }}
+            >
+              <Typography variant="h4" component="span">
+                {it.emoji}
+              </Typography>
+              <Typography variant="h5" component="span">
+                × {it.count}
+              </Typography>
+            </Box>
+          );
+        })}
           
         {/* "bouton" en fin de ruban (toujours visible) */}
         <Box className="icon_container" aria-label="Réagir" sx={{ display: "flex" , alignItems: "center", p: 3}}>
