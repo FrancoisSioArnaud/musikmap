@@ -236,7 +236,7 @@ export default function Discover() {
             dep={mainDep}
             user={user}
             variant="list"
-            showReact={true}
+            allowReact={true}
             showPlay={true}
             showUser={true}
           />
@@ -264,7 +264,7 @@ export default function Discover() {
               user={user}
               variant="list"
               showTime={false}
-              showReact={false}
+              allowReact={false}
               showPlay={false}
               showUser={false}
             />
@@ -290,7 +290,7 @@ export default function Discover() {
                 dep={d}
                 user={user}
                 variant="list"
-                showReact={false}
+                allowReact={true}
                 showPlay={true}
                 showUser={true}
               />
