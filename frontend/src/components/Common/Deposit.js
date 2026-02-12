@@ -15,7 +15,7 @@ import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import AlbumIcon from "@mui/icons-material/Album";
-import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
+import AddReactionIcon from "@mui/icons-material/AddReaction";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
@@ -328,7 +328,7 @@ export default function Deposit({
           aria-label="Réagir"
         >
           {/* icône "add reaction" */}
-          <EmojiEmotionsIcon />
+          <AddReactionIcon />
         </Box>
       </Box>
     );
