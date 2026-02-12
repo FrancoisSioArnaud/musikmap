@@ -221,7 +221,7 @@ export default function UserProfilePage() {
       ) : (
         <>
           {/* Public: shares only (mounted only after header ready) */}
-          <Typography variant="h4" sx={{ p: "26px 16px 6px 16px" }}>
+          <Typography variant="h6" sx={{ p: "26px 16px 6px 16px" }}>
             {`Partages de ${profileTitleUsername}`}
           </Typography>
           <Shares username={targetUsername} user={user} autoLoad={true} />
@@ -230,4 +230,5 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
