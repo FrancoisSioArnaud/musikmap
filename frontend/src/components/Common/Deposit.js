@@ -296,7 +296,9 @@ export default function Deposit({
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
-              gap: "4px",
+              gap: "6px",
+              borderRadius: "8px",
+              p: "4px 8px 4px 6px",
             }}
           >
             <Typography variant="h4" component="span">
