@@ -416,7 +416,7 @@ export default function Deposit({
                 size="large"
                 onClick={() => {
                   if (!user || !user.username) {
-                    window.alert("Connecte-toi pour ajouter une réaction à cette chanson");
+                    window.alert("Connecte-toi pour pouvoir réagir à cette chanson");
                     return;
                   }
                   if (isRevealed) openReact();
