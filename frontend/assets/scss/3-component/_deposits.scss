@@ -117,15 +117,6 @@
   align-items: center;
 }
 
-
-.deposit_react{
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: center;
-  gap: 16px;
-  justify-content: space-between;
-}
-
 .deposit_list .interact .decouvrir{
   display: flex;
   flex-direction: inherit;
@@ -139,5 +130,11 @@
 .deposit_list .interact .points_container{
  margin:0;
 }
+
+.deposit_react{
+
+}
+
+
 
 
