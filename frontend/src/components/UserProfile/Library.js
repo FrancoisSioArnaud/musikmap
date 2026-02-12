@@ -144,7 +144,7 @@ export default function Library() {
                       showDate={false}
                       showUser={true}
                       fitContainer={true}
-                      showReact={true} // ✅ on profite des réactions renvoyées par le back
+                      allowReact={true}
                     />
                   );
                 })}
