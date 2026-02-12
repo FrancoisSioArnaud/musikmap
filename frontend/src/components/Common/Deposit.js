@@ -269,8 +269,18 @@ export default function Deposit({
   };
 
   // Rendu compact d’un ruban de réactions (emoji × count)
-  const ReactionsStrip = ({ items = [], currentEmoji = null, onClick }) => {
+  const ReactionsStrip = ({ items = [], reactions = [], myReactionEmoji = null, viewerUsername = null, onClick }) => {
     const list = Array.isArray(items) ? items : [];
+    const rx = Array.isArray(reactions) ? reactions : [];
+
+    // ✅ Déduction "current emoji" au niveau du strip :
+    // 1) myReactionEmoji (si déjà fourni par le payload / après modale)
+    // 2) sinon on retrouve dans reactions[] via viewerUsername
+    const currentEmoji =
+      myReactionEmoji ??
+      (viewerUsername
+        ? rx.find((r) => r?.user?.name === viewerUsername)?.emoji ?? null
+        : null);
 
     return (
       <Box
@@ -283,7 +293,6 @@ export default function Deposit({
         }}
         sx={{ cursor: "pointer", userSelect: "none" }}
       >
-        {/* emojis × count */}
         {list.map((it, i) => {
           const isCurrent = Boolean(currentEmoji && it?.emoji === currentEmoji);
           return (
@@ -412,7 +421,9 @@ export default function Deposit({
           {/* ruban des réactions */}
           <ReactionsStrip
             items={localDep?.reactions_summary || []}
-            currentEmoji={localDep?.my_reaction?.emoji || null}
+            reactions={localDep?.reactions || []}
+            myReactionEmoji={localDep?.my_reaction?.emoji || null}
+            viewerUsername={user?.username || null}
             onClick={handleReactClick}
           />
         </Card>
@@ -538,7 +549,9 @@ export default function Deposit({
         {/* ruban des réactions */}
         <ReactionsStrip
           items={localDep?.reactions_summary || []}
-          currentEmoji={localDep?.my_reaction?.emoji || null}
+          reactions={localDep?.reactions || []}
+          myReactionEmoji={localDep?.my_reaction?.emoji || null}
+          viewerUsername={user?.username || null}
           onClick={handleReactClick}
         />
       </Card>
