@@ -132,7 +132,10 @@
 }
 
 .deposit_react{
-
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 
