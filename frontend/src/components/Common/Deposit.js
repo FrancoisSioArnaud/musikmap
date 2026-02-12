@@ -577,7 +577,7 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        {allowReact || localDep?.reactions.length > 0(
+        {allowReact || localDep?.reactions?.length > 0(
           <Box className="deposit_react">
             {isRevealed || allowReact(
               <Button
