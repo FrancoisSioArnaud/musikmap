@@ -186,7 +186,7 @@ export default function UserProfilePage() {
           sx={{ width: 64, height: 64 }}
         />
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5">{headerUser?.username}</Typography>
+          <Typography variant="h2">{headerUser?.username}</Typography>
           <Typography variant="h5" sx={{ color: "text.secondary" }}>
             {`${headerUser?.total_deposits ?? 0} partage${
               (headerUser?.total_deposits ?? 0) > 1 ? "s" : ""
@@ -230,3 +230,4 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
