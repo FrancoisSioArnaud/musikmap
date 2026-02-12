@@ -274,31 +274,65 @@ export default function Deposit({
   };
 
   // Rendu compact d’un ruban de réactions (emoji × count)
-  const ReactionsStrip = ({ items = [] }) => {
-    if (!items || items.length === 0) return null;
-    return (
-      <Box className="reactions_container">
-        {items.map((it, i) => (
-          <Box
-            key={`${it.emoji || i}-${it.count || 0}`}
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            <Typography variant="h4" component="span">
-              {it.emoji}
-            </Typography>
-            <Typography variant="h5" component="span">
-              × {it.count}
-            </Typography>
-          </Box>
-        ))}
+const ReactionsStrip = ({ items = [], onClick }) => {
+  const list = Array.isArray(items) ? items : [];
+
+  return (
+    <Box
+      className="reactions_container"
+      onClick={onClick}
+      sx={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "10px",
+        cursor: "pointer",
+        userSelect: "none",
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick?.();
+      }}
+    >
+      {/* emojis × count */}
+      {list.map((it, i) => (
+        <Box
+          key={`${it.emoji || i}-${it.count || 0}`}
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <Typography variant="h4" component="span">
+            {it.emoji}
+          </Typography>
+          <Typography variant="h5" component="span">
+            × {it.count}
+          </Typography>
+        </Box>
+      ))}
+
+      {/* "bouton" en fin de ruban (toujours visible) */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 1,
+          py: 0.5,
+          borderRadius: 2,
+        }}
+        aria-label="Réagir"
+      >
+        {/* icône "add reaction" */}
+        <EmojiEmotionsIcon />
       </Box>
-    );
-  };
+    </Box>
+  );
+};
 
   // =========================
   // RENDU VARIANT MAIN
@@ -408,29 +442,9 @@ export default function Deposit({
             </Box>
           </Box>
 
-          {/* ----- Section réactions dédiée ----- */}
-          {allowReact && (
-            <Box className="deposit_react">
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => {
-                  if (!user || !user.username) {
-                    window.alert("Connecte-toi pour pouvoir réagir à cette chanson");
-                    return;
-                  }
-                  if (isRevealed) openReact();
-                }}
-                disabled={!isRevealed}
-                startIcon={<EmojiEmotionsIcon />}
-              >
-                Réagir
-              </Button>
-          
-              {/* ruban des réactions */}
-              <ReactionsStrip items={localDep?.reactions_summary || []} />
-            </Box>
-          )}
+          {/* ruban des réactions */}
+          <ReactionsStrip items={localDep?.reactions_summary || []} />
+
         </Card>
 
         <ReactionModal
@@ -578,24 +592,9 @@ export default function Deposit({
           </Box>
         </Box>
 
-        {/* ----- Section réactions dédiée ----- */}
-        {allowReact || localDep?.reactions?.length > 0 &&(
-          <Box className="deposit_react">
-            {isRevealed || allowReact(
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={openReact}
-                startIcon={<EmojiEmotionsIcon />}
-              >
-                Réagir
-              </Button>
-            )}
+        {/* ruban des réactions */}
+        <ReactionsStrip items={localDep?.reactions_summary || []} />
 
-            {/* ruban des réactions toujours visible */}
-            <ReactionsStrip items={localDep?.reactions_summary || []} />
-          </Box>
-        )}
       </Card>
 
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
