@@ -287,6 +287,13 @@ export default function Deposit({
           if (e.key === "Enter" || e.key === " ") onClick?.();
         }}
       >
+        
+        {/* "bouton" en fin de ruban (toujours visible) */}
+        <Box className="icon_container" aria-label="Réagir" sx={{ display: "flex" , alignItems: "center"}}>
+          {/* icône "add reaction" */}
+          <AddReactionIcon color="primary" sx={{ height: "1.6em" , width : "1.6em" }} />
+        </Box>
+
         {/* emojis × count */}
         {list.map((it, i) => (
           <Box
@@ -307,11 +314,7 @@ export default function Deposit({
           </Box>
         ))}
   
-        {/* "bouton" en fin de ruban (toujours visible) */}
-        <Box className="icon_container" aria-label="Réagir" sx={{ display: "flex" , alignItems: "center"}}>
-          {/* icône "add reaction" */}
-          <AddReactionIcon color="primary" sx={{ height: "1.6em" , width : "1.6em" }} />
-        </Box>
+        
       </Box>
     );
   };
