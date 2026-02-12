@@ -78,6 +78,8 @@ def _reactions_summary_for_deposits(dep_ids):
 
 
 
+# boxmanagement/views.py
+
 class GetMain(APIView):
     """
     GET /box-management/get-main/<slug:box_url>/
@@ -86,52 +88,60 @@ class GetMain(APIView):
     - 404 si la box n'existe pas
     - [] si aucun dépôt n'est encore présent
     - utilise _build_deposits_payload (utils.py)
+
+    Spécificité : le dépôt renvoyé est toujours sérialisé avec les infos song (hidden=False),
+    sans créer de reveal en base (mais on garde la création de DiscoveredSong pour les viewers connectés).
     """
 
     def get(self, request, box_url: str, *args, **kwargs):
-            # 1) Box par URL (slug) → 404 si introuvable
-            box = get_object_or_404(Box, url=box_url)
-    
-            # 2) Dernier dépôt pour cette box (relations + réactions préchargées)
-            qs = (
-                Deposit.objects
-                .latest_for_box(box, limit=1)
-                .prefetch_related(
-                    Prefetch(
-                        "reactions",
-                        queryset=Reaction.objects
-                            .select_related("emoji", "user")
-                            .order_by("created_at", "id"),
-                        to_attr="prefetched_reactions",
-                    )
+        # 1) Box par URL (slug) → 404 si introuvable
+        box = get_object_or_404(Box, url=box_url)
+
+        # 2) Dernier dépôt pour cette box (relations + réactions préchargées)
+        qs = (
+            Deposit.objects
+            .latest_for_box(box, limit=1)
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects
+                        .select_related("emoji", "user")
+                        .order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
                 )
             )
-            deposits = list(qs)  # 0..1
-    
-            # 3) Viewer (auth facultative)
-            viewer = (
-                request.user
-                if (hasattr(request, "user")
-                    and not isinstance(request.user, AnonymousUser)
-                    and getattr(request.user, "is_authenticated", False))
-                else None
+        )
+        deposits = list(qs)  # 0..1
+
+        # 3) Viewer (auth facultative)
+        viewer = (
+            request.user
+            if (hasattr(request, "user")
+                and not isinstance(request.user, AnonymousUser)
+                and getattr(request.user, "is_authenticated", False))
+            else None
+        )
+
+        # 3.5) Marquer comme découvert (idempotent)
+        if viewer and deposits:
+            dep = deposits[0]
+            DiscoveredSong.objects.get_or_create(
+                user=viewer,
+                deposit=dep,
+                defaults={"discovered_type": "main"},
             )
-    
-            # 3.5) Marquer comme découvert (idempotent)
-            if viewer and deposits:
-                # Cas mono-dépôt (performant et très lisible)
-                dep = deposits[0]
-                DiscoveredSong.objects.get_or_create(
-                    user=viewer,
-                    deposit=dep,
-                    defaults={"discovered_type": "main"},
-                )
-    
-            # 4) Payload via utils (zéro re-get)
-            payload = _build_deposits_payload(deposits, viewer=viewer, include_user=True)
-    
-            # 5) Retourne une liste (vide ou 1 élément)
-            return Response(payload, status=status.HTTP_200_OK)
+
+        # 4) Payload via utils (song jamais hidden sur GetMain)
+        force_ids = [deposits[0].pk] if deposits else []
+        payload = _build_deposits_payload(
+            deposits,
+            viewer=viewer,
+            include_user=True,
+            force_song_infos_for=force_ids,
+        )
+
+        # 5) Retourne une liste (vide ou 1 élément)
+        return Response(payload, status=status.HTTP_200_OK)
 
 class GetBox(APIView):
     lookup_url_kwarg = "name"
@@ -1119,6 +1129,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
