@@ -41,7 +41,7 @@ export default function Deposit({
   showTime = true,
   showUser = true,
   fitContainer = true, // non utilisé mais gardé pour compat
-  showReact = true,
+  allowReact = true,
   showPlay = true,
 
 }) {
@@ -413,7 +413,7 @@ export default function Deposit({
           </Box>
 
           {/* ----- Section réactions dédiée ----- */}
-          {showReact && (
+          {allowReact && (
             <Box className="deposit_react">
               <Button
                 variant="outlined"
@@ -577,9 +577,9 @@ export default function Deposit({
         </Box>
 
         {/* ----- Section réactions dédiée ----- */}
-        {showReact && (
+        {allowReact || localDep?.reactions.length > 0(
           <Box className="deposit_react">
-            {isRevealed && (
+            {isRevealed || allowReact(
               <Button
                 variant="outlined"
                 size="large"
