@@ -285,7 +285,7 @@ export default function Main() {
             dep={mainDep}
             user={user}
             variant="main"
-            showReact={true}
+            allowReact={true}
             showPlay={true}
             showUser={true}
           />
