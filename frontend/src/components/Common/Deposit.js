@@ -310,7 +310,7 @@ export default function Deposit({
         {/* "bouton" en fin de ruban (toujours visible) */}
         <Box className="icon_container" aria-label="Réagir">
           {/* icône "add reaction" */}
-          <AddReactionIcon color="primary" sx={{ height: "1.6em" }} />
+          <AddReactionIcon color="primary" sx={{ height: "1.6em" , width : "1.6em" }} />
         </Box>
       </Box>
     );
