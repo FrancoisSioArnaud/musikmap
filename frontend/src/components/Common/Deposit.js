@@ -316,19 +316,9 @@ export default function Deposit({
         ))}
   
         {/* "bouton" en fin de ruban (toujours visible) */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            px: 1,
-            py: 0.5,
-            borderRadius: 2,
-          }}
-          aria-label="Réagir"
-        >
+        <Box className="icon_container" aria-label="Réagir">
           {/* icône "add reaction" */}
-          <AddReactionIcon />
+          <AddReactionIcon color="primary" />
         </Box>
       </Box>
     );
