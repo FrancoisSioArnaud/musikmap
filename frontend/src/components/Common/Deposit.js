@@ -242,6 +242,14 @@ export default function Deposit({
     }
   };
 
+  const handleReactClick = () => {
+    if (!user || !user.username) {
+      window.alert("Connecte-toi pour ajouter une réaction à cette chanson");
+      return;
+    }
+    openReact();
+  };
+  
   // ======= Callback quand la réaction a changé (après modale) =======
   const handleReactionApplied = (result) => {
     // result = { my_reaction, reactions_summary }
@@ -273,6 +281,7 @@ export default function Deposit({
     });
   };
 
+
   // Rendu compact d’un ruban de réactions (emoji × count)
   const ReactionsStrip = ({ items = [], onClick }) => {
     const list = Array.isArray(items) ? items : [];
@@ -280,7 +289,7 @@ export default function Deposit({
     return (
       <Box
         className="deposit_react"
-        onClick={onClick}
+        onClick={handleReactClick}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
