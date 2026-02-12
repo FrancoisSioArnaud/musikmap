@@ -144,7 +144,7 @@ export default function UserProfilePage() {
 
   if (header.status === "error") {
     return (
-      <Box sx={{ pb: 8, p: 2 }}>
+      <Box>
         <Typography>Une erreur s&apos;est produite, veuillez réessayer ulterieurement</Typography>
       </Box>
     );
@@ -157,12 +157,13 @@ export default function UserProfilePage() {
     <Box sx={{ pb: 8 }}>
       {/* Actions */}
       <Box
+        className="profileHeader"
         sx={{
           display: "flex",
+          flexDirection:"vertical",
           alignItems: "center",
-          justifyContent: "flex-end",
-          m: "0 16px",
-          pb: "12px",
+          p: "36px 16px",
+          backgroundColor:"#002300",
         }}
       >
         {isOwner && (
@@ -177,10 +178,10 @@ export default function UserProfilePage() {
         <Avatar
           src={headerUser?.profile_picture_url || undefined}
           alt={headerUser?.username || ""}
-          sx={{ width: 64, height: 64 }}
+          sx={{ width: 84, height: 84 }}
         />
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5">{headerUser?.username}</Typography>
+          <Typography variant="h2" sx={{textAlign:"center"}}>{headerUser?.username}</Typography>
           <Typography variant="h5" sx={{ color: "text.secondary" }}>
             {`${headerUser?.total_deposits ?? 0} partage${
               (headerUser?.total_deposits ?? 0) > 1 ? "s" : ""
@@ -224,4 +225,5 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
