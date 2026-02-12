@@ -314,9 +314,6 @@ export default function Deposit({
         <Box className="icon_container" aria-label="Réagir" sx={{ display: "flex" , alignItems: "center", p: 3}}>
           {/* icône "add reaction" */}
           <AddReactionIcon color="primary" sx={{ height: "1.6em" , width : "1.6em" }} />
-            <Typography variant="button" component="span">
-              Réagir
-            </Typography>
         </Box>
         
       </Box>
