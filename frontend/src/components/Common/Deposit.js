@@ -377,8 +377,6 @@ export default function Deposit({
 
             <Box className="interact">
               <Box className="texts">
-                {isRevealed && (
-                  <>
                     <Typography
                       component="span"
                       className="titre squaredesign"
@@ -393,8 +391,6 @@ export default function Deposit({
                     >
                       {s.artist}
                     </Typography>
-                  </>
-                )}
               </Box>
 
               {/* Play uniquement ici, le bouton Réagir est dans deposit_react */}
