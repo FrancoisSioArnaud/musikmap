@@ -414,13 +414,19 @@ export default function Deposit({
               <Button
                 variant="outlined"
                 size="large"
-                onClick={() => (isRevealed ? openReact() : null)}
+                onClick={() => {
+                  if (!user || !user.username) {
+                    window.alert("Connecte-toi pour ajouter une réaction à cette chanson");
+                    return;
+                  }
+                  if (isRevealed) openReact();
+                }}
                 disabled={!isRevealed}
                 startIcon={<EmojiEmotionsIcon />}
               >
                 Réagir
               </Button>
-
+          
               {/* ruban des réactions */}
               <ReactionsStrip items={localDep?.reactions_summary || []} />
             </Box>
