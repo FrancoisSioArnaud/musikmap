@@ -50,6 +50,11 @@ async function fetchUserInfo(username, signal) {
   return { ok: true, status: res.status, data };
 }
 
+function pluralizePartages(n) {
+  const nb = typeof n === "number" ? n : 0;
+  return `${nb} partage${nb > 1 ? "s" : ""}`;
+}
+
 /* ===========================
    Page
    =========================== */
@@ -96,7 +101,10 @@ export default function UserProfilePage() {
         return;
       }
 
-      const { ok, status, data } = await fetchUserInfo(targetUsername, controller.signal);
+      const { ok, status, data } = await fetchUserInfo(
+        targetUsername,
+        controller.signal
+      );
       if (controller.signal.aborted) return;
 
       if (!ok) {
@@ -109,7 +117,8 @@ export default function UserProfilePage() {
         user: {
           username: data?.username || targetUsername,
           profile_picture_url: data?.profile_picture_url || null,
-          total_deposits: typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+          total_deposits:
+            typeof data?.total_deposits === "number" ? data.total_deposits : 0,
         },
       });
     }
@@ -118,15 +127,10 @@ export default function UserProfilePage() {
     return () => controller.abort();
   }, [targetUsername]);
 
-  // States derived from header
-  const headerReady = header.status === "ready";
-  const headerUser = header.user;
-
   // Messages (strictly as requested)
   if (header.status === "loading") {
     return (
       <Box sx={{ pb: 8 }}>
-        {/* Loader centré */}
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
         </Box>
@@ -145,13 +149,16 @@ export default function UserProfilePage() {
   if (header.status === "error") {
     return (
       <Box sx={{ pb: 8, p: 2 }}>
-        <Typography>Une erreur s&apos;est produite, veuillez réessayer ulterieurement</Typography>
+        <Typography>
+          Une erreur s&apos;est produite, veuillez réessayer ulterieurement
+        </Typography>
       </Box>
     );
   }
 
-  // From here: headerReady === true
-  const profileTitleUsername = headerUser?.username ?? targetUsername ?? "";
+  // From here: header is ready
+  const headerUser = header.user;
+  const nbPartages = headerUser?.total_deposits ?? 0;
 
   return (
     <Box sx={{ pb: 8 }}>
@@ -166,20 +173,25 @@ export default function UserProfilePage() {
         }}
       >
         {isOwner && (
-          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
+          <IconButton
+            aria-label="Réglages"
+            onClick={() => navigate("/profile/settings")}
+          >
             <SettingsIcon size="medium" />
           </IconButton>
         )}
       </Box>
 
-      {/* Header */}
-      <Box sx={{
-         display: "flex",
-         flexDirection: "vertical",
-         alignItems: "center",
-         gap: 4,
-         p: "38px 16px"
-        }}>
+      {/* Header (sans nombre de partages) */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "vertical",
+          alignItems: "center",
+          gap: 4,
+          p: "38px 16px",
+        }}
+      >
         <Avatar
           src={headerUser?.profile_picture_url || undefined}
           alt={headerUser?.username || ""}
@@ -187,22 +199,21 @@ export default function UserProfilePage() {
         />
         <Box sx={{ flex: 1 }}>
           <Typography variant="h2">{headerUser?.username}</Typography>
-          <Typography variant="h5" sx={{ color: "text.secondary" }}>
-            {`${headerUser?.total_deposits ?? 0} partage${
-              (headerUser?.total_deposits ?? 0) > 1 ? "s" : ""
-            }`}
-          </Typography>
         </Box>
 
         {isOwner && (
-          <Button variant="outlined" onClick={() => navigate("/profile/edit")} size="small">
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/profile/edit")}
+            size="small"
+          >
             Modifier
           </Button>
         )}
       </Box>
 
-      {/* Content only when header is ready */}
-      {headerReady && isOwner ? (
+      {/* Owner: tabs + contenu (uniquement après header OK) */}
+      {isOwner ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
             <Tab label="Découvertes" />
@@ -210,19 +221,26 @@ export default function UserProfilePage() {
           </Tabs>
 
           <TabPanel value={tab} index={0}>
+            {/* Ici: à la place du “Partages de user” => “X partages” */}
+            <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
+              {pluralizePartages(nbPartages)}
+            </Typography>
             <Library />
           </TabPanel>
 
           <TabPanel value={tab} index={1}>
-            {/* Lazy-load: component mounts only when tab is visible */}
+            {/* Ici: à la place du “Partages de user” => “X partages” */}
+            <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
+              {pluralizePartages(nbPartages)}
+            </Typography>
             <Shares username={targetUsername} user={user} autoLoad={true} />
           </TabPanel>
         </>
       ) : (
         <>
-          {/* Public: shares only (mounted only after header ready) */}
+          {/* Public: titre = “X partages” */}
           <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
-            {`Partages de ${profileTitleUsername}`}
+            {pluralizePartages(nbPartages)}
           </Typography>
           <Shares username={targetUsername} user={user} autoLoad={true} />
         </>
@@ -230,6 +248,3 @@ export default function UserProfilePage() {
     </Box>
   );
 }
-
-
-
