@@ -133,9 +133,10 @@
 
 .deposit_react{
   display: flex;
-  flex-direction: row-reverse;
-  gap: 16px;
+  justify-content: end;
+  gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 
