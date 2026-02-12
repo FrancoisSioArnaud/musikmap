@@ -111,17 +111,22 @@ def _build_deposit_from_instance(
 
 
 
+# box_management/utils.py
+
 def _build_deposits_payload(
     deposits: Union[Deposit, Iterable[Deposit], Sequence[Deposit]],
     *,
     viewer: Optional[CustomUser] = None,
     include_user: bool = True,
+    force_song_infos_for: Optional[Iterable[int]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Construit une liste de payloads de dépôts à partir d'instances déjà chargées.
 
     - N'effectue AUCUNE requête de "get par ID".
     - Optionnellement annote "is_revealed" pour le viewer fourni (en 1 requête bulk).
+    - Permet un override ciblé (force_song_infos_for) pour renvoyer song en hidden=False
+      pour certains dépôts, sans créer de reveal en base.
     - Construit le payload final via _build_deposit_from_instance(...).
     """
     # Normalisation en liste tout en respectant l’ordre fourni
@@ -133,12 +138,13 @@ def _build_deposits_payload(
     if not deps:
         return []
 
-  # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+    force_ids = set(force_song_infos_for or [])
+
+    # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
     if viewer is None:
         revealed_ids = set()  # personne -> rien de révélé
     else:
         viewer_id = getattr(viewer, "id", None)
-
         dep_ids = [d.pk for d in deps]
 
         # 1) Révélé implicitement si le viewer est le propriétaire du dépôt (0 requête)
@@ -160,7 +166,9 @@ def _build_deposits_payload(
     # ------- Construction des payloads à partir des instances -------
     out: List[Dict[str, Any]] = []
     for dep in deps:
-        hidden = dep.pk not in revealed_ids
+        # hidden si pas révélé, sauf override ciblé
+        hidden = (dep.pk not in revealed_ids) and (dep.pk not in force_ids)
+
         payload = _build_deposit_from_instance(
             dep,
             include_user=include_user,
@@ -170,6 +178,7 @@ def _build_deposits_payload(
         out.append(payload)
 
     return out
+
 
 
 def _get_prev_head_and_older(box, limit: int = 10):
@@ -448,6 +457,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
