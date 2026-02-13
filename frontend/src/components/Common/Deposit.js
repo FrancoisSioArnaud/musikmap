@@ -351,14 +351,14 @@ export default function Deposit({
                 onClick={() => {
                   if (u?.username) navigate("/profile/" + u.username);
                 }}
-                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+                className="deposit_user"
               >
                 <Typography variant="body1" component="span">
-                  {showDate ? "par" : "Partagée par"}
+                  {showDate ? "par" : "Partagée par "}
                 </Typography>
             
                 {u?.username ? (
-                  <>
+                  <Box>
                     <Box className="avatarbox">
                       <Avatar
                         src={u?.profile_pic_url}
@@ -375,7 +375,7 @@ export default function Deposit({
                       {u.username}
                       <ArrowForwardIosIcon className="icon" />
                     </Typography>
-                  </>
+                  <Box/>
                 ) : (
                   <Typography
                     component="span"
