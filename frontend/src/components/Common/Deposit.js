@@ -340,7 +340,7 @@ export default function Deposit({
       <>
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
-            {showDate && (
+            {showTime && (
               <Box className="deposit_date">
                 <Box className="icon " />
                 <Typography variant="body1" component="span">
