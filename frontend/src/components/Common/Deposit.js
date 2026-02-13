@@ -344,7 +344,7 @@ export default function Deposit({
               <Box className="deposit_date">
                 <Box className="icon " />
                 <Typography variant="body1" component="span">
-                  {"Chanson déposée " + (naturalDate || "") + " par :"}
+                  {"Chanson partagée " + (naturalDate || "") + " par :"}
                 </Typography>
               </Box>
             )}
@@ -456,7 +456,7 @@ export default function Deposit({
             {showDate && (
               <Box className="deposit_date">
                 <Typography component="h3" variant="body1">
-                  {`Chanson déposée ${naturalDate || ""}${showUser ? " par :" : ""}`}
+                  {`Chanson partagée ${naturalDate || ""}${showUser ? " par :" : ""}`}
                 </Typography>
               </Box>
             )}
