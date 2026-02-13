@@ -342,7 +342,6 @@ export default function Deposit({
           <Box className="deposit_infos">
             {showDate && (
               <Box className="deposit_date">
-                <Box className="icon " />
                 <Typography variant="body1" component="span">
                   {"Chanson partagée " + (naturalDate || "") + " par :"}
                 </Typography>
