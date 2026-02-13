@@ -489,18 +489,19 @@ export default function Deposit({
                 </Typography>
 
                 {u?.username ? (
-                  <Box className=" avatarbox">
-                    <Avatar
-                      src={u?.profile_pic_url}
-                      alt={u?.username}
-                      className="avatar"
-                    />
-                  </Box>
-                  <Typography component="span" className="username " variant="subtitle1">
-                    {u?.username}
-                    <ArrowForwardIosIcon className="icon" />
-                  </Typography>
-
+                  <>
+                    <Box className=" avatarbox">
+                      <Avatar
+                        src={u?.profile_pic_url}
+                        alt={u?.username}
+                        className="avatar"
+                      />
+                    </Box>
+                    <Typography component="span" className="username " variant="subtitle1">
+                      {u?.username}
+                      <ArrowForwardIosIcon className="icon" />
+                    </Typography>
+                  </>
                 ) : (
                    <Typography component="span" className="username " variant="subtitle1">
                     Un utilsateur·ice anonyme
