@@ -99,7 +99,7 @@ def _build_deposit_from_instance(
     payload: Dict[str, Any] = {
         "public_key": dep.public_key,
         "song": _build_song_from_instance(dep.song, hidden),
-        if include_deposit_time
+        if include_deposit_time:
             # Date brute en UTC, au format ISO 8601
             "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat()
     }
@@ -461,6 +461,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
