@@ -355,17 +355,26 @@ export default function Deposit({
                 <Typography variant="body1" component="span">
                   {showDate ? "par" : "Partagée par"}
                 </Typography>
-                <Box className=" avatarbox">
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "Anonyme"}
-                    className="avatar"
-                  />
-                </Box>
-                <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "Anonyme"}
-                  {u?.username && <ArrowForwardIosIcon className="icon" />}
-                </Typography>
+                
+                  
+                {u?.username ? (
+                  <Box className=" avatarbox">
+                    <Avatar
+                      src={u?.profile_pic_url}
+                      alt={u?.username}
+                      className="avatar"
+                    />
+                  </Box>
+                  <Typography component="span" className="username " variant="subtitle1">
+                    {u?.username}
+                    <ArrowForwardIosIcon className="icon" />
+                  </Typography>
+
+                ) : (
+                   <Typography component="span" className="username " variant="subtitle1">
+                    Un utilsateur·ice anonyme
+                  </Typography>
+                )}
               </Box>
             )}
           </Box>
@@ -421,6 +430,7 @@ export default function Deposit({
             </Box>
           </Box>
 
+
           {/* ruban des réactions */}
           <ReactionsStrip
             items={localDep?.reactions_summary || []}
@@ -467,17 +477,25 @@ export default function Deposit({
                 <Typography variant="body1" component="span">
                   {showDate ? "par" : "Partagée par"}
                 </Typography>
-                <Box className=" avatarbox">
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "Anonyme"}
-                    className="avatar"
-                  />
-                </Box>
-                <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "Anonyme"}
-                  {u?.username && <ArrowForwardIosIcon className="icon" />}
-                </Typography>
+
+                {u?.username ? (
+                  <Box className=" avatarbox">
+                    <Avatar
+                      src={u?.profile_pic_url}
+                      alt={u?.username}
+                      className="avatar"
+                    />
+                  </Box>
+                  <Typography component="span" className="username " variant="subtitle1">
+                    {u?.username}
+                    <ArrowForwardIosIcon className="icon" />
+                  </Typography>
+
+                ) : (
+                   <Typography component="span" className="username " variant="subtitle1">
+                    Un utilsateur·ice anonyme
+                  </Typography>
+                )}
               </Box>
             )}
           </Box>
