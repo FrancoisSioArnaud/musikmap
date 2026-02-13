@@ -683,6 +683,8 @@ class ManageDiscoveredSongs(APIView):
             unique_deposits,
             viewer=user,       # pour marquer comme "revealed" et récupérer my_reaction
             include_user=True, # pour que le front ait user.username / user.profile_pic_url
+            include_deposit_time=False,
+            
         )
 
         # Dict {deposit_id: payload}
@@ -1129,6 +1131,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
