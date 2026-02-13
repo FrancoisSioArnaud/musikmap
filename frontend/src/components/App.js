@@ -46,9 +46,9 @@ function LayoutWithHeader() {
       <main
         style={{
           flex: 1,
-          Height: "calc(100vh - 56px)",
+          Height: "calc(100vh - 64px)",
           Width: "100vw",
-          mt: "56px",
+          padding: "58px 0 0 0",
         }}
       >
         <Outlet />
@@ -114,10 +114,5 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
-
-
-
-
-
 
 
