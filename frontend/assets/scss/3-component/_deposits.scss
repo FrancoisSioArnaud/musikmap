@@ -1,13 +1,11 @@
 @use '../0-init/color' as *;
 
 .deposit{
-  padding: 16px 0;
-  display:flex;
+  display: flex;
   flex-direction: column;
-  gap : 16px;
+  gap: 4px;
   border-radius: 4px;
   box-shadow: none;
-
 }
 .deposit_main{
 
@@ -31,7 +29,7 @@
   align-items: center;
   text-align: center;
   gap: 8px;
-
+  padding: 20px;
 }
 .deposit .deposit_date{
 
@@ -128,12 +126,13 @@
  margin:0;
 }
 
-.deposit_react{
+.deposit .deposit_react{
   display: flex;
   justify-content: end;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  padding: 16px;
 }
 
 .current_reaction{
