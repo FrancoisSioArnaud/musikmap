@@ -322,7 +322,7 @@ export default function Deposit({
         <Box
           className="icon_container"
           aria-label="Réagir"
-          sx={{ display: "flex", alignItems: "center", p: 3 }}
+          sx={{ display: "flex", alignItems: "center", p: "8px 12px" }}
         >
           <AddReactionIcon color="primary" sx={{ height: "1.6em", width: "1.6em" }} />
         </Box>
