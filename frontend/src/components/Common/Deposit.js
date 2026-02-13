@@ -353,7 +353,7 @@ export default function Deposit({
                 className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
               >
                 <Typography variant="body1" component="span">
-                  par
+                  {showDate ? "par" : "Partagée par"}
                 </Typography>
                 <Box className=" avatarbox">
                   <Avatar
