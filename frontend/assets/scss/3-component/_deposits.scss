@@ -18,9 +18,6 @@
   gap: 26px;
   padding: 26px;
   padding-bottom: 32px;
-  align-items: flex-start;
-  left: 16px;
-  background-color: rgb(123, 213, 40);
 }
 
 #older_deposits_list .deposit{
@@ -40,14 +37,12 @@
 }
 
 .deposit .deposit_user{
-  
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .deposit .deposit_user span{
-  display: inline-block;
-}
-
-.deposit .deposit_user div{
   display: flex;
   align-items: center;
   gap: 4px;
@@ -148,5 +143,3 @@
 .current_reaction span{
   color: white;
 }
-
-
