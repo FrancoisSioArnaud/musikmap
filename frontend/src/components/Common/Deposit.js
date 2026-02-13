@@ -367,21 +367,14 @@ export default function Deposit({
                       />
                     </Box>
             
-                    <Typography
-                      component="span"
-                      className="username"
-                      variant="subtitle1"
-                    >
+                    <Typography component="span" className="username" variant="subtitle1">
                       {u.username}
-                      <ArrowForwardIosIcon className="icon" />
                     </Typography>
+                    <ArrowForwardIosIcon className="icon" />
                   </Box>
+
                 ) : (
-                  <Typography
-                    component="span"
-                    className="username"
-                    variant="subtitle1"
-                  >
+                  <Typography component="span" className="username" variant="subtitle1">
                     Un utilisateur·ice anonyme
                   </Typography>
                 )}
