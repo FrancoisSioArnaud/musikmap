@@ -453,27 +453,35 @@ export default function Deposit({
         {(showDate || showUser) && (
           <Box className="deposit_infos">
             {showDate && (
-              <Box className="deposit_date">
-                <Typography component="h3" variant="body1">
-                  {`Chanson partagée ${naturalDate || ""}${showUser ? " par :" : ""}`}
-                </Typography>
-              </Box>
+              <Typography className="deposit_date" variant="body1" component="span">
+                {"Chanson partagée " + (naturalDate || "")}
+              </Typography>
             )}
 
             {showUser && (
+              
               <Box
-                className="deposit_user"
-                sx={{ display: "flex", minWidth: 0 }}
-                onClick={() => {
-                  if (u?.username) navigate("/profile/" + u.username);
-                }}
+                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
               >
-                <Avatar src={u?.profile_pic_url || undefined} alt={u?.username || "Anonyme"} />
-                <Typography>{u?.username || "Anonyme"}</Typography>
-                {u?.username && <ArrowForwardIosIcon fontSize="small" />}
+                <Typography variant="body1" component="span">
+                  {showDate ? "par" : "Partagée par"}
+                </Typography>
+                <Box className=" avatarbox">
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.username || "Anonyme"}
+                    className="avatar"
+                  />
+                </Box>
+                <Typography component="span" className="username " variant="subtitle1">
+                  {u?.username || "Anonyme"}
+                  {u?.username && <ArrowForwardIosIcon className="icon" />}
+                </Typography>
               </Box>
             )}
           </Box>
+
         )}
 
         {/* ----- Section chanson ----- */}
