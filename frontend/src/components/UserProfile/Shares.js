@@ -3,9 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-
 
 import Deposit from "../Common/Deposit";
 
@@ -51,37 +49,39 @@ export default function Shares({ username, user, autoLoad }) {
   const LIMIT = 20;
 
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // "error" | null
-  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
   const [loadedOnce, setLoadedOnce] = useState(false);
 
   const abortRef = useRef(null);
+  const loadingRef = useRef(false);
 
-  const reset = useCallback(() => {
-    setItems([]);
-    setLoading(false);
-    setError(null);
-    setHasMore(false);
-    setNextOffset(0);
-    setLoadedOnce(false);
-  }, []);
-
-  // Reset when username changes (and abort in-flight)
+  // Reset when username changes
   useEffect(() => {
     if (abortRef.current) abortRef.current.abort();
-    reset();
-  }, [username, reset]);
+
+    setItems([]);
+    setError(null);
+    setLoading(false);
+    setHasMore(true);
+    setNextOffset(0);
+    setLoadedOnce(false);
+
+    loadingRef.current = false;
+  }, [username]);
 
   const loadMore = useCallback(async () => {
-    if (loading) return;
+    if (!autoLoad) return; // respecte ton param
+    if (loadingRef.current || !hasMore) return;
     if (!username) return;
 
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -98,67 +98,88 @@ export default function Shares({ username, user, autoLoad }) {
         setError("error");
         setLoading(false);
         setLoadedOnce(true);
+        loadingRef.current = false;
         return;
       }
 
       setItems((prev) => [...prev, ...newItems]);
-      setHasMore(has_more);
-      setNextOffset(next_offset);
+      setHasMore(Boolean(has_more));
+      setNextOffset(typeof next_offset === "number" ? next_offset : nextOffset + newItems.length);
       setLoadedOnce(true);
-      setLoading(false);
     } catch (e) {
       if (controller.signal.aborted) return;
       console.error(e);
       setError("error");
-      setLoading(false);
       setLoadedOnce(true);
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
     }
-  }, [loading, username, nextOffset]);
+  }, [autoLoad, hasMore, username, nextOffset]);
 
-  // Auto-load first page
+  // First load
   useEffect(() => {
     if (!autoLoad) return;
     if (loadedOnce) return;
     loadMore();
   }, [autoLoad, loadedOnce, loadMore]);
 
+  // Infinite scroll (same spirit as Library)
+  useEffect(() => {
+    if (!autoLoad) return;
+
+    function onScroll() {
+      if (loadingRef.current || !hasMore) return;
+      const nearBottom =
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 200;
+      if (nearBottom) loadMore();
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [autoLoad, hasMore, loadMore]);
+
+  if (error) {
+    return <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>;
+  }
+
+  if (!loadedOnce && loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!items.length && loadedOnce && !loading) {
+    return <Typography sx={{ p: 5 }}>Aucun partage pour l’instant.</Typography>;
+  }
+
   return (
     <>
-      {error ? (
-        <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>
-      ) : !loadedOnce && loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress />
-        </Box>
-      ) : !items.length ? (
-        <Typography sx={{ p: 5 }}>Aucun partage pour l’instant.</Typography>
-      ) : (
-        <Box sx={{ display: "grid", gap: 5, p: 5, backgroundColor: "rgb(123, 213, 40)" }}>
-          {items.map((it) => (
-            <Deposit
-              key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
-              dep={it}
-              user={user}
-              variant="list"
-              fitContainer={true}
-              showUser={false}
-              allowReact={false}
-            />
-          ))}
-        </Box>
-      )}
+      <Box sx={{ display: "grid", gap: 5, p: 5, backgroundColor: "rgb(123, 213, 40)" }}>
+        {items.map((it) => (
+          <Deposit
+            key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
+            dep={it}
+            user={user}
+            variant="list"
+            fitContainer={true}
+            showUser={false}
+            allowReact={false}
+          />
+        ))}
 
-
-      {/* Load more */}
-      <Box sx={{ display: "flex", justifyContent: "center", pb: 6 }}>
-        {hasMore ? (
-          <Button variant="contained" onClick={loadMore} disabled={loading}>
-            {loading ? <CircularProgress size={22} /> : "Charger plus"}
-          </Button>
-        ) : loadedOnce && items.length ? (
-          <Typography sx={{ color: "text.secondary" }}>Fin des partages</Typography>
-        ) : null}
+        {/* Loader en bas comme Library */}
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+            <CircularProgress />
+          </Box>
+        )}
       </Box>
+
+      {/* IMPORTANT: pas de "Fin des partages" */}
     </>
   );
 }
