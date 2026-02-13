@@ -330,6 +330,8 @@ export default function Deposit({
     );
   };
 
+
+
   // =========================
   // RENDU VARIANT MAIN
   // =========================
@@ -338,12 +340,14 @@ export default function Deposit({
       <>
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
-            <Box className="deposit_date">
-              <Box className="icon squaredesign" />
-              <Typography className="squaredesign" variant="body1" component="span">
-                {"Chanson déposée " + (naturalDate || "") + " par :"}
-              </Typography>
-            </Box>
+            {showDate && (
+              <Box className="deposit_date">
+                <Box className="icon " />
+                <Typography variant="body1" component="span">
+                  {"Chanson déposée " + (naturalDate || "") + " par :"}
+                </Typography>
+              </Box>
+            )}
 
             {showUser && (
               <Box
@@ -352,14 +356,14 @@ export default function Deposit({
                 }}
                 className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
               >
-                <Box className="squaredesign avatarbox">
+                <Box className=" avatarbox">
                   <Avatar
                     src={u?.profile_pic_url || undefined}
                     alt={u?.username || "Anonyme"}
                     className="avatar"
                   />
                 </Box>
-                <Typography component="span" className="username squaredesign" variant="subtitle1">
+                <Typography component="span" className="username " variant="subtitle1">
                   {u?.username || "Anonyme"}
                   {u?.username && <ArrowForwardIosIcon className="icon" />}
                 </Typography>
@@ -376,7 +380,7 @@ export default function Deposit({
                 maxWidth: "100%",
                 overflow: "hidden",
               }}
-              className="squaredesign img_container"
+              className=" img_container"
             >
               {s?.image_url && (
                 <Box
@@ -396,10 +400,10 @@ export default function Deposit({
 
             <Box className="interact">
               <Box className="texts">
-                <Typography component="span" className="titre squaredesign" variant="h4">
+                <Typography component="span" className="titre " variant="h4">
                   {s.title}
                 </Typography>
-                <Typography component="span" className="artist squaredesign" variant="body1">
+                <Typography component="span" className="artist " variant="body1">
                   {s.artist}
                 </Typography>
               </Box>
@@ -482,7 +486,7 @@ export default function Deposit({
               maxWidth: "100%",
               overflow: "hidden",
             }}
-            className="squaredesign img_container"
+            className=" img_container"
           >
             {s?.image_url && (
               <Box
@@ -505,10 +509,10 @@ export default function Deposit({
             {isRevealed ? (
               <>
                 <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="h5">
+                  <Typography component="span" className="titre " variant="h5">
                     {s.title}
                   </Typography>
-                  <Typography component="span" className="artist squaredesign" variant="body2">
+                  <Typography component="span" className="artist " variant="body2">
                     {s.artist}
                   </Typography>
                 </Box>
@@ -528,7 +532,7 @@ export default function Deposit({
             ) : (
               <>
                 <Box className="texts">
-                  <Typography component="span" className="titre squaredesign" variant="body1">
+                  <Typography component="span" className="titre" variant="body1">
                     Utilise tes points pour révéler cette chanson
                   </Typography>
                 </Box>
