@@ -38,7 +38,7 @@ export default function Deposit({
   setDispDeposits,
   cost = 40,
   variant = "list",
-  showTime = true,
+  showDate = true,
   showUser = true,
   fitContainer = true, // non utilisé mais gardé pour compat
   allowReact = true,
@@ -340,7 +340,7 @@ export default function Deposit({
       <>
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
-            {showTime && (
+            {showDate && (
               <Box className="deposit_date">
                 <Box className="icon " />
                 <Typography variant="body1" component="span">
@@ -451,9 +451,9 @@ export default function Deposit({
   return (
     <>
       <Card className="deposit deposit_list">
-        {(showTime || showUser) && (
+        {(showDate || showUser) && (
           <Box className="deposit_infos">
-            {showTime && (
+            {showDate && (
               <Box className="deposit_date">
                 <Typography component="h3" variant="body1">
                   {`Chanson déposée ${naturalDate || ""}${showUser ? " par :" : ""}`}
