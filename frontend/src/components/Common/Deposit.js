@@ -375,7 +375,7 @@ export default function Deposit({
                       {u.username}
                       <ArrowForwardIosIcon className="icon" />
                     </Typography>
-                  <Box/>
+                  </Box>
                 ) : (
                   <Typography
                     component="span"
