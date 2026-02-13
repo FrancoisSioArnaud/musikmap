@@ -38,22 +38,24 @@
 
 }
 .deposit .deposit_date{
-  padding: 0 16px;
+
 }
 
 .deposit .deposit_user{
   display: flex;
   align-items: center;
-  padding: 8px 12px 8px 8px;
-  gap: 12px;
-  border: solid 2px rgba(0, 0, 0, 0.04);
-  border-radius: 96px;
+  gap: 6px;
 }
 
 .deposit .deposit_user span{
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.deposit .avatar {
+  width : 26px;
+  height : 26px;
 }
 
 .deposit .deposit_song{
