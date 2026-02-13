@@ -511,7 +511,7 @@ export default function Deposit({
                   <Typography component="span" className="titre " variant="h5">
                     {s.title}
                   </Typography>
-                  <Typography component="span" className="artist " variant="body2">
+                  <Typography component="span" className="artist " variant="body1">
                     {s.artist}
                   </Typography>
                 </Box>
