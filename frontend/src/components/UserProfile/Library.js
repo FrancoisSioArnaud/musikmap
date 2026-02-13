@@ -124,7 +124,7 @@ export default function Library() {
                 component="h2"
                 sx={{ textAlign: "center" }}
               >
-                À {sess?.box?.name ?? "Inconnue"}
+                à {sess?.box?.name ?? "Inconnue"}
               </Typography>
 
             </Box>
