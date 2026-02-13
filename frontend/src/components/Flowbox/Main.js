@@ -279,7 +279,7 @@ export default function Main() {
         </Typography>
       </Box>
 
-      <Box sx={{ p: 2, mb: "84px" }}>
+      <Box sx={{ p: 5, mb: "84px" }}>
         {mainDep && (
           <Deposit
             dep={mainDep}
