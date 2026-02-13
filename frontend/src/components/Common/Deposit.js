@@ -298,15 +298,7 @@ export default function Deposit({
           return (
             <Box
               key={`${it.emoji || i}-${it.count || 0}`}
-              className={isCurrent ? "current_reaction" : undefined}
-              sx={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: "4px",
-                borderRadius: "8px",
-                p: "6px 12px 6px 8px",
-              }}
+              className=reaction {isCurrent ? "current_reaction" : undefined}
             >
               <Typography variant="h4" component="span">
                 {it.emoji}
