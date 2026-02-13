@@ -14,18 +14,16 @@
 }
 #older_deposits_list{
   display: flex;
-  overflow-x: scroll;
-  gap: 20px;
-  padding: 16px;
+  flex-direction: column;
+  gap: 26px;
+  padding: 26px;
   padding-bottom: 32px;
   align-items: flex-start;
   left: 16px;
+  background-color: rgb(123, 213, 40);
 }
 
 #older_deposits_list .deposit{
-  flex: 0 0 70vw;    
-  max-width: 70vw;
-  scroll-snap-align: start;
   
 }
 
