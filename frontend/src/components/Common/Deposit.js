@@ -347,32 +347,42 @@ export default function Deposit({
             )}
 
             {showUser && (
-              
               <Box
-                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                onClick={() => {
+                  if (u?.username) navigate("/profile/" + u.username);
+                }}
                 className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
               >
                 <Typography variant="body1" component="span">
                   {showDate ? "par" : "Partagée par"}
                 </Typography>
-                
-                  
+            
                 {u?.username ? (
-                  <Box className=" avatarbox">
-                    <Avatar
-                      src={u?.profile_pic_url}
-                      alt={u?.username}
-                      className="avatar"
-                    />
-                  </Box>
-                  <Typography component="span" className="username " variant="subtitle1">
-                    {u.username}
-                    <ArrowForwardIosIcon className="icon" />
-                  </Typography>
-
+                  <>
+                    <Box className="avatarbox">
+                      <Avatar
+                        src={u?.profile_pic_url}
+                        alt={u?.username}
+                        className="avatar"
+                      />
+                    </Box>
+            
+                    <Typography
+                      component="span"
+                      className="username"
+                      variant="subtitle1"
+                    >
+                      {u.username}
+                      <ArrowForwardIosIcon className="icon" />
+                    </Typography>
+                  </>
                 ) : (
-                   <Typography component="span" className="username " variant="subtitle1">
-                    Un utilsateur·ice anonyme
+                  <Typography
+                    component="span"
+                    className="username"
+                    variant="subtitle1"
+                  >
+                    Un utilisateur·ice anonyme
                   </Typography>
                 )}
               </Box>
