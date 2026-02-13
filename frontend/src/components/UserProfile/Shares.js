@@ -131,9 +131,9 @@ export default function Shares({ username, user, autoLoad }) {
           <CircularProgress />
         </Box>
       ) : !items.length ? (
-        <Typography sx={{ p: 2 }}>Aucun partage pour l’instant.</Typography>
+        <Typography sx={{ p: 5 }}>Aucun partage pour l’instant.</Typography>
       ) : (
-        <Box sx={{ display: "grid", gap: 5, p: 4 }}>
+        <Box sx={{ display: "grid", gap: 5, p: 5, backgroundColor: "rgb(123, 213, 40)" }}>
           {items.map((it) => (
             <Deposit
               key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
