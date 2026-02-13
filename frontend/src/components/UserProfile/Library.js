@@ -102,13 +102,12 @@ export default function Library() {
     <Box sx={{pt: 4, display: "grid", gap: 4 }}>
       {sessions.map((sess) => {
         return (
-          <Box key={sess.session_id} sx={{ display: "grid", gap: 1, mb: 4 }}>
+          <Box key={sess.session_id} sx={{ display: "grid", mb: 4 }}>
             {/* Header de session */}
             <Box
               sx={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 1,
                 m: "16px",
               }}
             >
@@ -130,7 +129,7 @@ export default function Library() {
             </Box>
 
             {/* Dépôts de la session */}
-            <Box sx={{ display: "grid", gap: "16px" }}>
+            <Box sx={{ display: "grid", gap: 4 }}>
               {Array.isArray(sess?.deposits) &&
                 sess.deposits.map((d, idx) => {
                   const t = (d?.type || "").toLowerCase();
