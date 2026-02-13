@@ -141,7 +141,7 @@ export default function Library() {
                       dep={d}
                       user={user}
                       variant={isMain ? "main" : "list"}
-                      showTime={false}
+                      showDate={false}
                       showUser={true}
                       fitContainer={true}
                       allowReact={true}
