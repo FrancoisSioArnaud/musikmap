@@ -298,7 +298,7 @@ export default function Deposit({
           return (
             <Box
               key={`${it.emoji || i}-${it.count || 0}`}
-              className=reaction {isCurrent ? "current_reaction" : undefined}
+              className={isCurrent ? "current_reaction reaction" : "reaction"}
             >
               <Typography variant="h4" component="span">
                 {it.emoji}
