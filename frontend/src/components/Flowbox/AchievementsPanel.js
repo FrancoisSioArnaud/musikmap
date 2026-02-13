@@ -35,7 +35,7 @@ export default function AchievementsPanel({ successes = [], onPrimaryCta }) {
         </Box>
 
         <Typography component="span" variant="h5" display="block" sx={{ mt: 1 }}>
-          Détail des points
+          Détail de tes points
         </Typography>
       </Box>
 
