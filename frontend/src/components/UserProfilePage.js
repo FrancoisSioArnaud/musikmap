@@ -157,7 +157,7 @@ export default function UserProfilePage() {
   const profileTitleUsername = headerUser?.username ?? targetUsername ?? "";
 
   return (
-    <Box sx={{ pb: 8 }}>
+    <Box 
       {/* Actions */}
       <Box
         sx={{
@@ -230,5 +230,6 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
