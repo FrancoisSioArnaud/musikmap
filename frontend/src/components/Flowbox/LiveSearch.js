@@ -149,7 +149,7 @@ export default function LiveSearch({
           <Typography component="h2" variant="h3" sx={{mb:3}}>
             Choisis ta chanson à déposer dans la boîte
           </Typography>
-          <Typography component="p" variant="body2" sx={{mb:3}}>
+          <Typography component="p" variant="body1" sx={{mb:3}}>
             La prochaine personne l’écoutera.
           </Typography>
 
