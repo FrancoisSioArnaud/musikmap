@@ -389,26 +389,27 @@ export default function Deposit({
               )}
             </Box>
 
+            <Box className="interact">
+              <Box className="texts">
+                <Typography component="span" className="titre " variant="h4">
+                  {s.title}
+                </Typography>
+                <Typography component="span" className="artist " variant="body1">
+                  {s.artist}
+                </Typography>
+              </Box>
 
-            <Box className="texts">
-              <Typography component="span" className="titre " variant="h4">
-                {s.title}
-              </Typography>
-              <Typography component="span" className="artist " variant="body1">
-                {s.artist}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button
-                variant="depositInteract"
-                className="play playMain"
-                size="large"
-                onClick={() => openPlayFor(s)}
-                startIcon={<PlayArrowIcon />}
-              >
-                Écouter la chanson
-              </Button>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button
+                  variant="depositInteract"
+                  className="play playMain"
+                  size="large"
+                  onClick={() => openPlayFor(s)}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Écouter la chanson
+                </Button>
+              </Box>
             </Box>
           </Box>
 
@@ -503,49 +504,49 @@ export default function Deposit({
             )}
           </Box>
 
-
-          {isRevealed ? (
-            <>
-              <Box className="texts">
-                <Typography component="span" className="titre " variant="h5">
-                  {s.title}
-                </Typography>
-                <Typography component="span" className="artist " variant="body1">
-                  {s.artist}
-                </Typography>
-              </Box>
-
-              {showPlay && (
-                <Button
-                  variant="depositInteract"
-                  className="play playSecondary"
-                  size="large"
-                  onClick={() => openPlayFor(s)}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Écouter
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <Box className="texts">
-                <Typography component="span" className="titre" variant="body1">
-                  Utilise tes points pour révéler cette chanson
-                </Typography>
-              </Box>
-              <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
-                Découvrir
-                <Box className="points_container" sx={{ ml: "12px" }}>
-                  <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
-                    {cost}
+          <Box className="interact">
+            {isRevealed ? (
+              <>
+                <Box className="texts">
+                  <Typography component="span" className="titre " variant="h5">
+                    {s.title}
                   </Typography>
-                  <AlbumIcon />
+                  <Typography component="span" className="artist " variant="body1">
+                    {s.artist}
+                  </Typography>
                 </Box>
-              </Button>
-            </>
-          )}
 
+                {showPlay && (
+                  <Button
+                    variant="depositInteract"
+                    className="play playSecondary"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Écouter
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Box className="texts">
+                  <Typography component="span" className="titre" variant="body1">
+                    Utilise tes points pour révéler cette chanson
+                  </Typography>
+                </Box>
+                <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
+                  Découvrir
+                  <Box className="points_container" sx={{ ml: "12px" }}>
+                    <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                      {cost}
+                    </Typography>
+                    <AlbumIcon />
+                  </Box>
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
 
         {/* ruban des réactions */}
