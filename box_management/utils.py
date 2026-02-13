@@ -91,15 +91,17 @@ def _build_deposit_from_instance(
     dep: Deposit,
     *,
     include_user: bool,
+    include_deposit_time: bool,
     hidden: bool,
     current_user: Optional[CustomUser] = None,
 ) -> Dict[str, Any]:
     """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
     payload: Dict[str, Any] = {
         "public_key": dep.public_key,
-        # Date brute en UTC, au format ISO 8601
-        "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat(),
         "song": _build_song_from_instance(dep.song, hidden),
+        if include_deposit_time
+            # Date brute en UTC, au format ISO 8601
+            "deposited_at": dep.deposited_at.astimezone(timezone.utc).isoformat()
     }
     if include_user:
         payload["user"] = _build_user_from_instance(dep.user)
@@ -118,6 +120,7 @@ def _build_deposits_payload(
     *,
     viewer: Optional[CustomUser] = None,
     include_user: bool = True,
+    include_deposit_time: bool = True,
     force_song_infos_for: Optional[Iterable[int]] = None,
 ) -> List[Dict[str, Any]]:
     """
@@ -172,6 +175,7 @@ def _build_deposits_payload(
         payload = _build_deposit_from_instance(
             dep,
             include_user=include_user,
+            include_deposit_time=include_deposit_time,
             hidden=hidden,
             current_user=viewer,
         )
@@ -457,6 +461,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
