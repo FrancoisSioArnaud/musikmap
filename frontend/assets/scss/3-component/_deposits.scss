@@ -47,6 +47,12 @@
   display: inline-block;
 }
 
+.deposit .deposit_user div{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .deposit .avatar {
   width : 26px;
   height : 26px;
