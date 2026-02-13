@@ -135,10 +135,16 @@
   padding: 12px 16px;
 }
 
-.current_reaction{
-  background-color: #7bd528;
+.deposit .deposit_react .reaction{
+  display: flex;
+  flex-direction: row;
+  -webkit-box-align: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 6px 12px 7px 12px;
 }
 
-.current_reaction span{
-  color: white;
+.current_reaction{
+  border: solid 2px #7bd528;
 }
