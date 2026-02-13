@@ -341,20 +341,20 @@ export default function Deposit({
         <Card className="deposit deposit_main">
           <Box className="deposit_infos">
             {showDate && (
-              <Box className="deposit_date">
-                <Typography variant="body1" component="span">
-                  {"Chanson partagée " + (naturalDate || "") + " par :"}
-                </Typography>
-              </Box>
+              <Typography className="deposit_date" variant="body1" component="span">
+                {"Chanson partagée " + (naturalDate || "") + " par :"}
+              </Typography>
             )}
 
             {showUser && (
+              
               <Box
-                onClick={() => {
-                  if (u?.username) navigate("/profile/" + u.username);
-                }}
+                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
                 className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
               >
+                <Typography variant="body1" component="span">
+                  par
+                </Typography>
                 <Box className=" avatarbox">
                   <Avatar
                     src={u?.profile_pic_url || undefined}
