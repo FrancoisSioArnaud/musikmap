@@ -28,7 +28,7 @@ from utils import (
 def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
     if not user:
-        return {"profile_pic_url": default_pic}
+        return 
 
     pic = getattr(user, "profile_picture", None)
     profile_url = pic.url if pic else default_pic
@@ -468,6 +468,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
