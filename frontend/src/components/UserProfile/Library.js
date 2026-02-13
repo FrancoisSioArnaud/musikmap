@@ -117,14 +117,7 @@ export default function Library() {
                 component="h2"
                 sx={{ textAlign: "center" }}
               >
-                {sess?.box?.name ?? "Inconnue"}
-              </Typography>
-              <Typography
-                variant="h5"
-                component="h2"
-                sx={{ textAlign: "center" }}
-              >
-                {formatRelativeTime(sess?.started_at)}
+                Découverte {formatRelativeTime(sess?.started_at)} dans la boîte {sess?.box?.name ?? "Inconnue"}
               </Typography>
             </Box>
 
