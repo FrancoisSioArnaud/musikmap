@@ -1,3 +1,5 @@
+//frontend/src/components/App.js
+
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { CssBaseline } from "@mui/material";
@@ -114,6 +116,7 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
 
