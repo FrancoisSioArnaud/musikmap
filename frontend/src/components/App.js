@@ -20,7 +20,7 @@ import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
 import FlowboxLayout from "./Flowbox/FlowboxLayout";
 import Onboarding from "./Flowbox/Onboarding";
-import Main from "./Flowbox/Main";
+import LiveSearch from "./Flowbox/LiveSearch";
 import Discover from "./Flowbox/Discover";
 
 
@@ -95,7 +95,7 @@ export default function App() {
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   {/* index → /flowbox/:boxSlug */}
                   <Route index element={<Onboarding />} />
-                  <Route path="main" element={<Main />} />
+                  <Route path="search" element={<LiveSearch />} />
                   <Route path="discover" element={<Discover />} />
                   
                 </Route>
@@ -114,5 +114,6 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
 
 
