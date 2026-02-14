@@ -50,8 +50,8 @@ export default function Discover() {
     });
   }, [navigate, boxSlug]);
 
-  const redirectBackToMain = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/Main`, { replace: true });
+  const redirectBackToOnboarding = useCallback(() => {
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, { replace: true });
   }, [navigate, boxSlug]);
 
   // -------- helpers --------
@@ -364,7 +364,7 @@ export default function Discover() {
                 <Box sx={{ display: "flex", justifyContent: "center" }}>
                   <button
                     className="MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-fullWidth"
-                    onClick={redirectBackToMain}
+                    onClick={redirectBackToOnboarding}
                     style={{ padding: "8px 16px", borderRadius: 8 }}
                   >
                     Retour à la boîte
