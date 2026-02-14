@@ -1,3 +1,5 @@
+//frontend/src/components/Flowbox/EnableLocation.js
+
 // Bottom Sheet "Autoriser la localisation" (full width, fixed bottom)
 import React from "react";
 import {
