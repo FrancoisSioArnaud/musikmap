@@ -88,8 +88,8 @@ export default function Onboarding() {
     try {
       await requestLocationOnce();       // On ne vérifie pas le serveur ici
       setGeoLoading(false);
-      // Navigation immédiate vers Main
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/main`);
+      // Navigation immédiate vers Search
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
     } catch {
       // Refus / timeout / erreur → message centralisé
       handleError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
