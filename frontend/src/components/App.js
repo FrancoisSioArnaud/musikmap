@@ -1,5 +1,4 @@
 //frontend/src/components/App.js
-
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { CssBaseline } from "@mui/material";
@@ -22,7 +21,7 @@ import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu"; // <-- ton menu fixed (64px)
 import FlowboxLayout from "./Flowbox/FlowboxLayout";
 import Onboarding from "./Flowbox/Onboarding";
-import LiveSearch from "./Flowbox/LiveSearch";
+import Main from "./Flowbox/Main";
 import Discover from "./Flowbox/Discover";
 
 
@@ -97,7 +96,7 @@ export default function App() {
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   {/* index → /flowbox/:boxSlug */}
                   <Route index element={<Onboarding />} />
-                  <Route path="search" element={<LiveSearch />} />
+                  <Route path="main" element={<Main />} />
                   <Route path="discover" element={<Discover />} />
                   
                 </Route>
