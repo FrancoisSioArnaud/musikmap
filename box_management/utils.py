@@ -194,32 +194,14 @@ def _build_deposits_payload(
 
 def _get_prev_head_and_older(box, limit: int = 10):
     """
-    Retourne un snapshot de la box AVANT création d'un nouveau dépôt.
-
-    - prev_head : dernier dépôt actuel (le plus récent) pour cette box.
-    - older_deposits_qs : jusqu'à `limit` dépôts STRICTEMENT avant prev_head,
-      avec song/user préchargés et réactions préfetchées.
-
-    Si la box n'a encore aucun dépôt :
-      → (None, Deposit.objects.none()).
+    Snapshot AVANT création:
+    - récupère d'un coup les (limit+1) derniers dépôts
+    - prev_head = le plus récent
+    - older = les suivants (jusqu'à limit)
     """
-    prev_head = (
+    qs = (
         Deposit.objects
         .filter(box=box)
-        .order_by("-deposited_at", "-id")
-        .first()
-    )
-
-    if prev_head is None:
-        return None, Deposit.objects.none()
-
-    older_deposits_qs = (
-        Deposit.objects
-        .filter(box=box)
-        .filter(
-            Q(deposited_at__lt=prev_head.deposited_at) |
-            Q(deposited_at=prev_head.deposited_at, id__lt=prev_head.id)
-        )
         .select_related("song", "user")
         .prefetch_related(
             Prefetch(
@@ -230,11 +212,16 @@ def _get_prev_head_and_older(box, limit: int = 10):
                 to_attr="prefetched_reactions",
             )
         )
-        .order_by("-deposited_at", "-id")[:limit]
+        .order_by("-deposited_at", "-id")
     )
 
-    return prev_head, older_deposits_qs
+    deposits = list(qs[: limit + 1])  # head + older
+    if not deposits:
+        return None, []
 
+    prev_head = deposits[0]
+    older_deposits_qs = deposits[1:]
+    return prev_head, older_deposits_qs
 
 # ---------- Normalisation & distance ----------
 
@@ -468,6 +455,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     successes["points_total"] = {"name": "Total", "points": points_to_add}
 
     return list(successes.values()), points_to_add
+
 
 
 
