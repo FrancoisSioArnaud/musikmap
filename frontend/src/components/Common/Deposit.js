@@ -364,27 +364,12 @@ export default function Deposit({
 
           {/* ----- Section chanson ----- */}
           <Box className="deposit_song">
-            <Box
-              sx={{
-                aspectRatio: "1 / 1",
-                width: "100%",
-                maxWidth: "100%",
-                overflow: "hidden",
-              }}
-              className=" img_container"
-            >
+            <Box className=" img_container">
               {s?.image_url && (
                 <Box
                   component="img"
                   src={s.image_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    width: "100%",
-                    maxWidth: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
                 />
               )}
             </Box>
@@ -478,26 +463,13 @@ export default function Deposit({
 
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
-          <Box
-            sx={{
-              aspectRatio: "1 / 1",
-              width: "100%",
-              maxWidth: "100%",
-              overflow: "hidden",
-            }}
-            className=" img_container"
-          >
+          <Box className=" img_container">
             {s?.image_url && (
               <Box
                 component="img"
                 src={s.image_url}
                 alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                 sx={{
-                  width: "100%",
-                  maxWidth: "100%",
-                  aspectRatio: "1 / 1",
-                  objectFit: "cover",
-                  display: "block",
                   filter: isRevealed ? "none" : "blur(6px)",
                 }}
               />
