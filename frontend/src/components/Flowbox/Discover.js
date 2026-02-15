@@ -61,7 +61,7 @@ export default function Discover() {
         </Box>
 
         {mySong ? (
-          <Box className="my_deposit deposit deposit_song">
+          <Box className="my_deposit deposit deposit_list deposit_song">
             <Box className="img_container">
               {mySong?.image_url ? (
                 <Box
