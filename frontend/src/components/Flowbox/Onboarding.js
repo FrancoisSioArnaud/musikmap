@@ -1,7 +1,5 @@
-// frontend/src/components/Flowbox/Onboarding.js
-
 import React, { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -14,6 +12,7 @@ import EnableLocation from "../Flowbox/EnableLocation";
 export default function Onboarding() {
   const { boxSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [box, setBox] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,11 +27,19 @@ export default function Onboarding() {
     setPageError(msg || "Une erreur inattendue s’est produite.");
   }, []);
 
+  // ✅ Affiche l’erreur passée en navigation (LiveSearch -> Onboarding)
+  useEffect(() => {
+    const err = location.state?.error;
+    if (err) setPageError(String(err));
+    // ne pas dépendre de location.state pour éviter re-trigger inutiles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        setPageError("");
+        // ne pas effacer pageError si on vient d’une redirection d’erreur
         const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
         const res = await fetch(url, {
           credentials: "include",
@@ -43,12 +50,12 @@ export default function Onboarding() {
         if (!data || !data.name) throw new Error("Payload inattendu");
         setBox(data);
       } catch {
-        handleError("Impossible de récupérer la boîte.");
+        handleError(pageError || "Impossible de récupérer la boîte.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [boxSlug, handleError]);
+  }, [boxSlug, handleError]); // volontairement pas pageError ici
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
@@ -85,7 +92,6 @@ export default function Onboarding() {
   }, []);
 
   const openSheet = useCallback(() => {
-    setPageError("");
     setSheetOpen(true);
   }, []);
 
@@ -94,7 +100,6 @@ export default function Onboarding() {
     try {
       await requestLocationOnce();
       setGeoLoading(false);
-      // ✅ Nouveau flow: vers LiveSearch page dédiée
       navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
     } catch {
       handleError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
@@ -113,8 +118,12 @@ export default function Onboarding() {
   if (pageError) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>{pageError}</Alert>
-        <Button variant="contained" onClick={() => window.location.reload()}>Réessayer</Button>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {pageError}
+        </Alert>
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Réessayer
+        </Button>
       </Box>
     );
   }
@@ -133,10 +142,23 @@ export default function Onboarding() {
         }}
       >
         <Box sx={{ mt: "auto" }}>
-          <Box sx={{ display: "grid", position: "fixed", bottom: 20, left: 20, right: 20, gap: 0.5 }}>
+          <Box
+            sx={{
+              display: "grid",
+              position: "fixed",
+              bottom: 20,
+              left: 20,
+              right: 20,
+              gap: 0.5,
+            }}
+          >
             <Typography variant="subtitle1">{box?.deposit_count || 0} partages</Typography>
-            <Typography variant="subtitle1">Dernier partage {box?.last_deposit_date || 0}</Typography>
-            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>{box?.name}</Typography>
+            <Typography variant="subtitle1">
+              Dernier partage {box?.last_deposit_date || 0}
+            </Typography>
+            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
+              {box?.name}
+            </Typography>
             <Box sx={{ mt: 2 }}>
               <Button
                 variant="contained"
