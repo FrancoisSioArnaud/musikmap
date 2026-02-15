@@ -78,10 +78,10 @@ export default function App() {
                 <Route path="/profile/edit" element={<UserProfileEdit />} />
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/profile/:username" element={<UserProfilePage />} />
-
+                
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   <Route index element={<Onboarding />} />
-                  <Route path="search" element={<LiveSearch />} />
+                  <Route path="search" element={<LiveSearch isSpotifyAuthenticated={true} isDeezerAuthenticated={true} />}/>
                   <Route path="discover" element={<Discover />} />
                 </Route>
               </Route>
@@ -104,3 +104,4 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
+
