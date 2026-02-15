@@ -14,10 +14,6 @@
 color : $secondary-cyan;
 }
 
-.my_deposit.deposit_song{
-  background-color: $white;
-}
-
 .my_deposit .text{
   text-align: left;
 }
@@ -96,6 +92,10 @@ color : $secondary-cyan;
   gap: 16px;
   align-items:center;
   padding:16px;
+}
+
+.my_deposit{
+  background-color: $white;
 }
 
 .deposit .img_container{
