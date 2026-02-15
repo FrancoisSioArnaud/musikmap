@@ -52,7 +52,7 @@
   height : 26px;
 }
 
-.deposit .deposit_song{
+.deposit .deposit_song, .my_deposit.deposit_song {
   background-color: rgba(0, 0, 0, 0.04);
   padding: 20px;
   padding-bottom:16px;
@@ -71,7 +71,7 @@
   padding:16px;
 }
 
-.deposit .deposit_song .img_container{
+.deposit .img_container{
   border-radius: 8px;
 }
 
@@ -100,7 +100,7 @@
   justify-content: left;
 }
 
-.deposit .interact .texts{
+.deposit .texts{
   display: flex;
   flex-direction: column;
   gap: 0px;
@@ -108,12 +108,12 @@
   padding:6px 0;
 }
 
-.deposit_main .interact .texts{
+.deposit_main .texts{
   flex-direction: column;
   align-items: center;
 }
 
-.deposit_list .interact .decouvrir{
+.deposit_list .decouvrir{
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -123,7 +123,7 @@
   height: auto;
 }
 
-.deposit_list .interact .points_container{
+.deposit_list .points_container{
  margin:0;
 }
 
