@@ -48,7 +48,7 @@ export default function Discover() {
       {/* 1) MY DEPOSIT (custom, pas un Deposit) */}
       <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
-          <CheckCircleIcon fontSize="medium" sx={{width: "1.6em", height: "1.6em", color: "white"}}/>
+          <CheckCircleIcon fontSize="medium" sx={{width: "1.6em", height: "1.6em"}}/>
           <Typography component="h2" variant="h5">
             Chanson déposée avec succès
           </Typography>
