@@ -67,12 +67,6 @@ export default function AchievementsPanel({ successes = [], onPrimaryCta }) {
           </ListItem>
         ))}
       </List>
-
-      <Box className="bottom_fixed" sx={{ p: 2 }}>
-        <Button fullWidth variant="contained" onClick={onPrimaryCta}>
-          Ok !
-        </Button>
-      </Box>
     </Box>
   );
 }
