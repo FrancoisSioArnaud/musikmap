@@ -1,5 +1,17 @@
 @use '../0-init/color' as *;
 
+.my_deposit_notif{
+  display: flex;
+  flex-direction: column;
+  background-color: #7bd528;
+  border-radius: 20px;
+  margin: 20px;
+  padding: 16px 20px;
+  gap: 8px;
+}
+
+
+
 .deposit{
   display: flex;
   flex-direction: column;
