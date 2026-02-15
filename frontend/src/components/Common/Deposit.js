@@ -331,37 +331,7 @@ export default function Deposit({
     return (
       <>
         <Card className="deposit deposit_main">
-          <Box className="deposit_infos">
-            {showDate && (
-              <Typography className="deposit_date" variant="body1" component="span">
-                {"Chanson partagée " + (naturalDate || "")}
-              </Typography>
-            )}
-
-            {showUser && (
-              
-              <Box
-                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-              >
-                <Typography variant="body1" component="span">
-                  {showDate ? "par" : "Partagée par"}
-                </Typography>
-                <Box className=" avatarbox">
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "Anonyme"}
-                    className="avatar"
-                  />
-                </Box>
-                <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "Anonyme"}
-                  {u?.username && <ArrowForwardIosIcon className="icon" />}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-
+          
           {/* ----- Section chanson ----- */}
           <Box className="deposit_song">
             <Box className=" img_container">
@@ -397,37 +367,6 @@ export default function Deposit({
               </Box>
             </Box>
           </Box>
-
-          {/* ruban des réactions */}
-          <ReactionsStrip
-            items={localDep?.reactions_summary || []}
-            reactions={localDep?.reactions || []}
-            myReactionEmoji={localDep?.my_reaction?.emoji || null}
-            viewerUsername={user?.username || null}
-            onClick={handleReactClick}
-          />
-        </Card>
-
-        <ReactionModal
-          open={reactOpen}
-          onClose={closeReact}
-          depPublicKey={localDep?.public_key}
-          currentEmoji={localDep?.my_reaction?.emoji || null}
-          onApplied={handleReactionApplied}
-        />
-
-        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
-      </>
-    );
-  }
-
-  // =========================
-  // RENDU VARIANT LIST
-  // =========================
-  return (
-    <>
-      <Card className="deposit deposit_list">
-        {(showDate || showUser) && (
           <Box className="deposit_infos">
             {showDate && (
               <Typography className="deposit_date" variant="body1" component="span">
@@ -459,7 +398,35 @@ export default function Deposit({
             )}
           </Box>
 
-        )}
+          {/* ruban des réactions */}
+          <ReactionsStrip
+            items={localDep?.reactions_summary || []}
+            reactions={localDep?.reactions || []}
+            myReactionEmoji={localDep?.my_reaction?.emoji || null}
+            viewerUsername={user?.username || null}
+            onClick={handleReactClick}
+          />
+        </Card>
+
+        <ReactionModal
+          open={reactOpen}
+          onClose={closeReact}
+          depPublicKey={localDep?.public_key}
+          currentEmoji={localDep?.my_reaction?.emoji || null}
+          onApplied={handleReactionApplied}
+        />
+
+        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
+      </>
+    );
+  }
+
+  // =========================
+  // RENDU VARIANT LIST
+  // =========================
+  return (
+    <>
+      <Card className="deposit deposit_list">
 
         {/* ----- Section chanson ----- */}
         <Box className="deposit_song">
@@ -520,6 +487,40 @@ export default function Deposit({
             )}
           </Box>
         </Box>
+
+        {(showDate || showUser) && (
+          <Box className="deposit_infos">
+            {showDate && (
+              <Typography className="deposit_date" variant="body1" component="span">
+                {"Chanson partagée " + (naturalDate || "")}
+              </Typography>
+            )}
+
+            {showUser && (
+              
+              <Box
+                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+              >
+                <Typography variant="body1" component="span">
+                  {showDate ? "par" : "Partagée par"}
+                </Typography>
+                <Box className=" avatarbox">
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.username || "Anonyme"}
+                    className="avatar"
+                  />
+                </Box>
+                <Typography component="span" className="username " variant="subtitle1">
+                  {u?.username || "Anonyme"}
+                  {u?.username && <ArrowForwardIosIcon className="icon" />}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+        )}
 
         {/* ruban des réactions */}
         <ReactionsStrip
