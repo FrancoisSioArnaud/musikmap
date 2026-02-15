@@ -18,6 +18,10 @@ color : $secondary-cyan;
   background-color: $white;
 }
 
+.my_deposit .text{
+  text-align: left;
+}
+
 .deposit{
   display: flex;
   flex-direction: column;
