@@ -90,7 +90,7 @@ export default function Discover() {
       </Box>
 
       {mainDep ? (
-        <Box>
+        <Box sx={{m="0 20px"}}>
           <Deposit
             dep={mainDep}
             user={user}
