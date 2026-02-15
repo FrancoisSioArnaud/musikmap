@@ -24,8 +24,8 @@ export default function AchievementsPanel({ successes = [], onPrimaryCta }) {
 
   return (
     <Box sx={{ display: "grid", gap: 0, pb: "76px" }}>
-      <Box className="intro_small" sx={{ px: 3, pt: 3, textAlign: "center" }}>
-        <Typography variant="h1"">
+      <Box className="intro_small">
+        <Typography variant="h1">
           Détail de tes points
         </Typography>
 
