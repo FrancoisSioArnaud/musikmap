@@ -195,29 +195,30 @@ class GetBox(APIView):
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
         """
-        Étapes simplifiées :
-          1) Snapshot avant création (prev_head + older)
-          2) Upsert Song (transaction atomique)
-          3) Calcul des succès / points à partir de l'instance Song
-          4) Création du Deposit
-          5) Créditer les points via /users/add-points (best-effort)
-          6) Répondre : {"successes": [...], "older_deposits": [...], "points_balance": <int|None>}
+        POST /box-management/get-box/
+        Body: { option: {...}, boxSlug: "<slug>" }
+
+        Crée un dépôt, calcule succès/points, et renvoie un snapshot:
+        {
+          "main": <payload prev_head>,
+          "older_deposits": [...],
+          "successes": [...],
+          "points_balance": <int|None>
+        }
+
+        - main = prev_head AVANT création du nouveau dépôt
+        - older_deposits = jusqu'à 15 dépôts strictement avant prev_head
+        - DiscoveredSong(main) est créé pour prev_head uniquement si user authentifié
         """
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
         if not box_slug:
-            return Response(
-                {"detail": "boxSlug manquant"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"detail": "boxSlug manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
         box = Box.objects.filter(url=box_slug).first()
         if not box:
-            return Response(
-                {"detail": "Boîte introuvable"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
         song_name = (option.get("name") or "").strip()
         song_author = (option.get("artist") or "").strip()
@@ -229,25 +230,19 @@ class GetBox(APIView):
 
         incoming_url = option.get("url")
         if not song_name or not song_author:
-            return Response(
-                {"detail": "Titre ou artiste manquant"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"detail": "Titre ou artiste manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
 
-        # --- 1) ÉTAT AVANT CRÉATION : prev_head + 15 précédents (payload older_deposits)
+        # --- 1) Snapshot AVANT création : prev_head + older
         prev_head, older_deposits_qs = _get_prev_head_and_older(box, limit=15)
 
-        # --- 2) Upsert Song + calcul des succès + création Deposit (atomique ensemble)
+        # --- 2) Upsert Song + succès + création Deposit (atomique)
         with transaction.atomic():
             # 2.a) Upsert Song
             try:
-                song = Song.objects.get(
-                    title__iexact=song_name,
-                    artist__iexact=song_author,
-                )
+                song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
                 song.n_deposits = (song.n_deposits or 0) + 1
             except Song.DoesNotExist:
                 song = Song(
@@ -275,11 +270,7 @@ class GetBox(APIView):
                 if request_platform:
                     aggreg_url = request.build_absolute_uri(reverse("api_agg:aggreg"))
                     payload = {
-                        "song": {
-                            "title": song.title,
-                            "artist": song.artist,
-                            "duration": song.duration,
-                        },
+                        "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
                         "platform": request_platform,
                     }
                     headers = {
@@ -301,20 +292,27 @@ class GetBox(APIView):
                             elif request_platform == "spotify":
                                 song.spotify_url = other_url
             except Exception:
-                # best-effort : on ne bloque pas le dépôt si l'agrégateur plante
                 pass
 
             song.save()
 
-            # 2.b) Calcul des succès / points à partir de l'instance Song (optimisée)
-            successes, points_to_add = _build_successes(
-                box=box,
-                user=user,
-                song=song,
-            )
+            # 2.b) Succès + points
+            successes, points_to_add = _build_successes(box=box, user=user, song=song)
 
-            # 2.c) Création du Deposit APRES calcul des succès (pour ne pas biaiser les "first")
+            # 2.c) Création du dépôt
             new_deposit = Deposit.objects.create(song=song, box=box, user=user)
+
+        # --- 2.5) Créer DiscoveredSong(main) pour prev_head (uniquement connectés)
+        if user and getattr(user, "is_authenticated", False) and prev_head is not None:
+            try:
+                DiscoveredSong.objects.get_or_create(
+                    user=user,
+                    deposit=prev_head,
+                    defaults={"discovered_type": "main"},
+                )
+            except Exception:
+                # best-effort : ne casse pas le dépôt
+                pass
 
         # --- 3) Créditer les points via endpoint (best-effort) et récupérer le solde
         points_balance = None
@@ -341,23 +339,36 @@ class GetBox(APIView):
                         data = r.json()
                         points_balance = data.get("points_balance")
                     except ValueError:
-                        # JSON invalide → on laisse points_balance à None
                         points_balance = None
         except Exception:
-            # silencieux : on ne casse pas le dépôt si l'ajout de points échoue
             pass
 
-        # --- 4) Sérialisation des résultats pour le frontend ----
+        # --- 4) Sérialisation: main + older_deposits
+        # older_deposits
         older_deposits = _build_deposits_payload(
             older_deposits_qs,
             viewer=user,
             include_user=True,
         )
 
+        # main (prev_head)
+        main_payload = None
+        if prev_head is not None:
+            # Force hidden=False sur prev_head (song infos visibles),
+            # sans dépendre d'un DiscoveredSong DB pour les anonymes.
+            main_list = _build_deposits_payload(
+                [prev_head],
+                viewer=user,
+                include_user=True,
+                force_song_infos_for=[prev_head.pk],
+            )
+            main_payload = main_list[0] if main_list else None
+
         response = {
+            "main": main_payload,
+            "older_deposits": older_deposits,
             "successes": list(successes),
             "points_balance": points_balance,
-            "older_deposits": older_deposits,
         }
         return Response(response, status=status.HTTP_200_OK)
 
@@ -1131,6 +1142,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
