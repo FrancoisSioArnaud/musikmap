@@ -397,17 +397,15 @@ export default function Deposit({
                 </Typography>
               </Box>
             )}
-
+            {/* ruban des réactions */}
+            <ReactionsStrip
+              items={localDep?.reactions_summary || []}
+              reactions={localDep?.reactions || []}
+              myReactionEmoji={localDep?.my_reaction?.emoji || null}
+              viewerUsername={user?.username || null}
+              onClick={handleReactClick}
+            />
           </Box>
-          
-          {/* ruban des réactions */}
-          <ReactionsStrip
-            items={localDep?.reactions_summary || []}
-            reactions={localDep?.reactions || []}
-            myReactionEmoji={localDep?.my_reaction?.emoji || null}
-            viewerUsername={user?.username || null}
-            onClick={handleReactClick}
-          />
 
           
         </Card>
@@ -587,14 +585,15 @@ export default function Deposit({
           }
         />
       </Snackbar>
+
+      {/* Modale de réaction */}
+      <ReactionModal
+        open={reactOpen}
+        onClose={closeReact}
+        depPublicKey={localDep?.public_key}
+        currentEmoji={localDep?.my_reaction?.emoji || null}
+        onApplied={handleReactionApplied}
+      />
     </>
-    {/* Modale de réaction */}
-    <ReactionModal
-      open={reactOpen}
-      onClose={closeReact}
-      depPublicKey={localDep?.public_key}
-      currentEmoji={localDep?.my_reaction?.emoji || null}
-      onApplied={handleReactionApplied}
-    />
   );
 }
