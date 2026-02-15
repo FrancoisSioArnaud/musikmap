@@ -1,4 +1,3 @@
-
 // frontend/src/components/Flowbox/Discover.js
 
 import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
@@ -17,7 +16,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 
-const KEY_BOX_CONTENT = "mm_box_content"; // clé unique
+const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
 
 export default function Discover() {
@@ -27,22 +26,15 @@ export default function Discover() {
   const { user, setUser } = useContext(UserContext) || {};
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // drawer state (piloté par query)
   const shouldOpenAchievements = searchParams.get("drawer") === "achievements";
   const mode = searchParams.get("mode"); // "deposit"
-
-  // anti double POST (StrictMode)
   const didPostRef = useRef(false);
 
-  // État local : objet unique "boxContent"
   const [boxContent, setBoxContent] = useState(null);
-
-  // On garde aussi un état local pour l'affichage instantané des succès pendant le POST
   const [successes, setSuccesses] = useState([]);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState(null);
 
-  // -------- redirections utilitaires ----------
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
       replace: true,
@@ -50,14 +42,12 @@ export default function Discover() {
     });
   }, [navigate, boxSlug]);
 
-  const redirectBackToMain = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/Main`, { replace: true });
+  const redirectBackToSearch = useCallback(() => {
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`, { replace: true });
   }, [navigate, boxSlug]);
 
-  // -------- helpers --------
   const normalizeOptionToSong = (option) => {
     if (!option) return null;
-    // option vient du LiveSearch: { name, artist, image_url, platform_id? ... }
     return {
       title: option.name || null,
       artist: option.artist || null,
@@ -66,7 +56,6 @@ export default function Discover() {
   };
 
   const saveBoxContent = (content) => {
-    // Unification : plus de 'older', uniquement 'olderDeposits'
     const payload = {
       ...content,
       boxSlug,
@@ -77,23 +66,23 @@ export default function Discover() {
     setSuccesses(Array.isArray(payload.successes) ? payload.successes : []);
   };
 
-  // --------- reconstruct depuis localStorage -----------
+  // ✅ Maintenant on accepte Discover sans snapshot préalable.
+  // On charge quand même ce qu'on a en LS si présent.
   useEffect(() => {
     const snap = getValid(KEY_BOX_CONTENT);
-    if (snap && snap.boxSlug === boxSlug && snap.main) {
+    if (snap && snap.boxSlug === boxSlug) {
       setBoxContent(snap);
       setSuccesses(Array.isArray(snap.successes) ? snap.successes : []);
-      return;
+    } else {
+      setBoxContent({ boxSlug, timestamp: Date.now() });
     }
+  }, [boxSlug]);
 
-    // Rien d'utilisable => accès expiré
-    redirectOnboardingExpired();
-  }, [boxSlug, redirectOnboardingExpired]);
-
-  // --------- POST (création dépôt) si drawer=achievements&mode=deposit -----------
+  // --- POST dépôt si mode deposit ---
   useEffect(() => {
     const action = location.state?.action;
     const payload = location.state?.payload;
+
     if (!shouldOpenAchievements || mode !== "deposit") return;
     if (action !== "createDeposit" || !payload?.option || !payload?.boxSlug) return;
     if (didPostRef.current) return;
@@ -108,19 +97,16 @@ export default function Discover() {
         const body = { option, boxSlug: payload.boxSlug };
         const csrftoken = getCookie("csrftoken");
 
-        const res = await fetch(
-          `/box-management/get-box/?slug=${encodeURIComponent(payload.boxSlug)}`,
-          {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": csrftoken,
-              Accept: "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
+        const res = await fetch(`/box-management/get-box/`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+            Accept: "application/json",
+          },
+          body: JSON.stringify(body),
+        });
 
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
@@ -131,16 +117,15 @@ export default function Discover() {
         const {
           successes: sx = [],
           points_balance = null,
-          song = null, // (facultatif côté API)
-          older_deposits: olderApi = null, // 🔥 nouvelle clé côté API
-          main: mainMaybe = null, // (si un jour l'API renvoie le main directement)
+          older_deposits: olderApi = [],
+          main: mainApi = null,
+          song = null, // (si jamais un jour tu l’ajoutes)
         } = data;
 
-        // MAJ points
+        // Points context
         if (typeof points_balance === "number" && setUser) {
           setUser((prev) => ({ ...(prev || {}), points: points_balance }));
         } else if (Array.isArray(sx)) {
-          // anonyme: stocke total de points localement (indicatif)
           const total =
             sx.find((s) => (s.name || "").toLowerCase() === "total")?.points ??
             sx.find((s) => (s.name || "").toLowerCase() === "points_total")?.points ??
@@ -150,7 +135,6 @@ export default function Discover() {
           localStorage.setItem(key, String(cur + (Number(total) || 0)));
         }
 
-        // Normalise la chanson déposée pour le format cible
         const normalizedSong = song
           ? {
               title: song.title ?? option.name ?? null,
@@ -159,27 +143,20 @@ export default function Discover() {
             }
           : normalizeOptionToSong(option);
 
-        // On fixe la date de dépôt côté front pour myDeposit
         const isoNow = new Date().toISOString();
 
-        // Base actuelle (si existante) pour préserver "main" et "olderDeposits" lors de l’update
         const prev = getValid(KEY_BOX_CONTENT);
         const nextContent = {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
-          main: mainMaybe || prev?.main || boxContent?.main || null,
+          // ✅ main vient maintenant du backend sur le POST
+          main: mainApi ?? prev?.main ?? boxContent?.main ?? null,
           myDeposit: {
             song: normalizedSong,
-            deposited_at: isoNow, // ⬅️ ajouté : date absolue du dépôt côté front
+            deposited_at: isoNow,
           },
           successes: Array.isArray(sx) ? sx : [],
-          olderDeposits: Array.isArray(olderApi)
-            ? olderApi
-            : Array.isArray(prev?.olderDeposits)
-            ? prev.olderDeposits
-            : Array.isArray(boxContent?.olderDeposits)
-            ? boxContent.olderDeposits
-            : [],
+          olderDeposits: Array.isArray(olderApi) ? olderApi : (prev?.olderDeposits || boxContent?.olderDeposits || []),
         };
 
         saveBoxContent(nextContent);
@@ -193,11 +170,8 @@ export default function Discover() {
     run();
   }, [shouldOpenAchievements, mode, location.state, setUser, boxContent, boxSlug]);
 
-  // --------- drawer handlers ----------
-  const handleCloseDrawer = (event, reason) => {
-    // Bloque backdrop & ESC
+  const handleCloseDrawer = (_event, reason) => {
     if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-
     const next = new URLSearchParams(searchParams);
     next.delete("drawer");
     next.delete("mode");
@@ -211,12 +185,18 @@ export default function Discover() {
     setSearchParams(next, { replace: true });
   };
 
-  // --------- rendu ----------
   const mainDep = boxContent?.main || null;
   const myDeposit = boxContent?.myDeposit || null;
-  const olderDeposits = Array.isArray(boxContent?.olderDeposits)
-    ? boxContent.olderDeposits
-    : [];
+  const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
+
+  // Si on arrive sur Discover sans action dépôt et sans contenu, on expulse (garde-fou)
+  useEffect(() => {
+    const action = location.state?.action;
+    if (action === "createDeposit") return;
+    if (mainDep || myDeposit || olderDeposits.length > 0) return;
+    // pas de contexte, pas d’action => accès expiré
+    redirectOnboardingExpired();
+  }, [location.state, mainDep, myDeposit, olderDeposits.length, redirectOnboardingExpired]);
 
   return (
     <Box>
@@ -229,7 +209,7 @@ export default function Discover() {
         </Typography>
       </Box>
 
-      {/* 1) MainDeposit */}
+      {/* MainDeposit (peut être null si non renvoyé / box vide ignorée pour l’instant) */}
       {mainDep ? (
         <Box>
           <Deposit
@@ -242,21 +222,23 @@ export default function Discover() {
           />
         </Box>
       ) : null}
-  
-      <Box className="intro" sx={{ 
-        display: "grid",
-        padding: "20px",
-        marginTop: "16px",
-        textAlign: "center",
-      }}>
+
+      <Box
+        className="intro"
+        sx={{
+          display: "grid",
+          padding: "20px",
+          marginTop: "16px",
+          textAlign: "center",
+        }}
+      >
         <Typography component="h2" variant="h3">
           Ta chanson est déposée
         </Typography>
         <Typography component="body" variant="body1">
-          La chanson est maintenant dans la boîte.
-          La prochaine personne pourra l’écouter.
+          La chanson est maintenant dans la boîte. La prochaine personne pourra l’écouter.
         </Typography>
-        {/* 2) MyDeposit (avec deposited_at côté front) */}
+
         {myDeposit ? (
           <Box>
             <Deposit
@@ -272,7 +254,6 @@ export default function Discover() {
         ) : null}
       </Box>
 
-      {/* 3) OlderDeposits */}
       {olderDeposits.length > 0 ? (
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
@@ -299,7 +280,6 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* Drawer Achievements */}
       <Drawer
         anchor="right"
         open={shouldOpenAchievements}
@@ -315,7 +295,6 @@ export default function Discover() {
           },
         }}
       >
-        {/* HEADER */}
         <Box
           component="header"
           sx={{
@@ -329,28 +308,15 @@ export default function Discover() {
             flex: "0 0 auto",
           }}
         >
-          <IconButton
-            aria-label="Fermer"
-            onClick={(e) => handleCloseDrawer(e, "closeButton")}
-          >
+          <IconButton aria-label="Fermer" onClick={(e) => handleCloseDrawer(e, "closeButton")}>
             <CloseIcon />
           </IconButton>
         </Box>
 
-        {/* CONTENU */}
-        <Box
-          component="main"
-          sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}
-        >
+        <Box component="main" sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
           <Box sx={{ boxSizing: "border-box", minHeight: "100%", p: 2 }}>
             {posting && !postError ? (
-              <Box
-                sx={{
-                  display: "grid",
-                  placeItems: "center",
-                  height: "60vh",
-                }}
-              >
+              <Box sx={{ display: "grid", placeItems: "center", height: "60vh" }}>
                 <CircularProgress />
               </Box>
             ) : postError ? (
@@ -364,7 +330,7 @@ export default function Discover() {
                 <Box sx={{ display: "flex", justifyContent: "center" }}>
                   <button
                     className="MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeMedium MuiButton-containedSizeMedium MuiButton-fullWidth"
-                    onClick={redirectBackToMain}
+                    onClick={redirectBackToSearch}
                     style={{ padding: "8px 16px", borderRadius: 8 }}
                   >
                     Retour à la boîte
