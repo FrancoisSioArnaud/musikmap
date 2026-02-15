@@ -198,7 +198,7 @@ class GetBox(APIView):
         POST /box-management/get-box/
         Body: { option: {...}, boxSlug: "<slug>" }
 
-        Crée un dépôt, calcule succès/points, et renvoie un snapshot:
+        Réponse:
         {
           "main": <payload prev_head>,
           "older_deposits": [...],
@@ -206,10 +206,12 @@ class GetBox(APIView):
           "points_balance": <int|None>
         }
 
-        - main = prev_head AVANT création du nouveau dépôt
-        - older_deposits = jusqu'à 15 dépôts strictement avant prev_head
-        - DiscoveredSong(main) est créé pour prev_head uniquement si user authentifié
+        - Snapshot AVANT création: prev_head + older (limit=15)
+        - Crée DiscoveredSong(main) pour prev_head uniquement si user authentifié
+        - Sérialise main+older en un seul batch
+        - force_song_infos_for(prev_head) uniquement pour anonymes
         """
+
         # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
@@ -234,9 +236,10 @@ class GetBox(APIView):
 
         # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
+        is_authed = bool(user and getattr(user, "is_authenticated", False))
 
-        # --- 1) Snapshot AVANT création : prev_head + older
-        prev_head, older_deposits_qs = _get_prev_head_and_older(box, limit=15)
+        # --- 1) Snapshot AVANT création (1 seule requête + prefetch reactions)
+        prev_head, older_list = _get_prev_head_and_older(box, limit=15)
 
         # --- 2) Upsert Song + succès + création Deposit (atomique)
         with transaction.atomic():
@@ -253,7 +256,7 @@ class GetBox(APIView):
                     duration=option.get("duration") or 0,
                 )
 
-            # URL de la plateforme utilisée
+            # URL plateforme utilisée
             if song_platform_id == 1 and incoming_url:
                 song.spotify_url = incoming_url
             elif song_platform_id == 2 and incoming_url:
@@ -273,10 +276,7 @@ class GetBox(APIView):
                         "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
                         "platform": request_platform,
                     }
-                    headers = {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": get_token(request),
-                    }
+                    headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
                     r = requests.post(
                         aggreg_url,
                         data=json.dumps(payload),
@@ -300,10 +300,10 @@ class GetBox(APIView):
             successes, points_to_add = _build_successes(box=box, user=user, song=song)
 
             # 2.c) Création du dépôt
-            new_deposit = Deposit.objects.create(song=song, box=box, user=user)
+            Deposit.objects.create(song=song, box=box, user=user)
 
-        # --- 2.5) Créer DiscoveredSong(main) pour prev_head (uniquement connectés)
-        if user and getattr(user, "is_authenticated", False) and prev_head is not None:
+        # --- 2.5) DiscoveredSong(main) pour prev_head (connectés uniquement)
+        if is_authed and prev_head is not None:
             try:
                 DiscoveredSong.objects.get_or_create(
                     user=user,
@@ -311,13 +311,12 @@ class GetBox(APIView):
                     defaults={"discovered_type": "main"},
                 )
             except Exception:
-                # best-effort : ne casse pas le dépôt
-                pass
+                pass  # best-effort
 
-        # --- 3) Créditer les points via endpoint (best-effort) et récupérer le solde
+        # --- 3) Créditer les points (best-effort)
         points_balance = None
-        try:
-            if user and getattr(user, "is_authenticated", False):
+        if is_authed:
+            try:
                 add_points_url = request.build_absolute_uri(reverse("add-points"))
                 csrftoken_cookie = request.COOKIES.get("csrftoken")
                 csrftoken_header = csrftoken_cookie or get_token(request)
@@ -340,38 +339,41 @@ class GetBox(APIView):
                         points_balance = data.get("points_balance")
                     except ValueError:
                         points_balance = None
-        except Exception:
-            pass
+            except Exception:
+                pass
 
-        # --- 4) Sérialisation: main + older_deposits
-        # older_deposits
-        older_deposits = _build_deposits_payload(
-            older_deposits_qs,
+        # --- 4) Sérialisation en un seul batch (main + older)
+        deps_to_serialize = []
+        if prev_head is not None:
+            deps_to_serialize.append(prev_head)
+        deps_to_serialize.extend(older_list)
+
+        force_ids = []
+        # ✅ on force main uniquement pour anonymes (sinon DiscoveredSong(main) suffit)
+        if prev_head is not None and not is_authed:
+            force_ids = [prev_head.pk]
+
+        payloads = _build_deposits_payload(
+            deps_to_serialize,
             viewer=user,
             include_user=True,
+            force_song_infos_for=force_ids,
         )
 
-        # main (prev_head)
-        main_payload = None
-        if prev_head is not None:
-            # Force hidden=False sur prev_head (song infos visibles),
-            # sans dépendre d'un DiscoveredSong DB pour les anonymes.
-            main_list = _build_deposits_payload(
-                [prev_head],
-                viewer=user,
-                include_user=True,
-                force_song_infos_for=[prev_head.pk],
-            )
-            main_payload = main_list[0] if main_list else None
+        if prev_head is None:
+            main_payload = None
+            older_payloads = payloads
+        else:
+            main_payload = payloads[0] if payloads else None
+            older_payloads = payloads[1:] if len(payloads) > 1 else []
 
         response = {
             "main": main_payload,
-            "older_deposits": older_deposits,
+            "older_deposits": older_payloads,
             "successes": list(successes),
             "points_balance": points_balance,
         }
         return Response(response, status=status.HTTP_200_OK)
-
 
 
 class Location(APIView):
@@ -1142,6 +1144,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
