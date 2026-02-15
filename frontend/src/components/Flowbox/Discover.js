@@ -119,7 +119,7 @@ export default function Discover() {
           points_balance = null,
           older_deposits: olderApi = [],
           main: mainApi = null,
-          song = null, // (si jamais un jour tu l’ajoutes)
+          song = null, 
         } = data;
 
         // Points context
@@ -149,7 +149,6 @@ export default function Discover() {
         const nextContent = {
           boxSlug: payload.boxSlug,
           timestamp: Date.now(),
-          // ✅ main vient maintenant du backend sur le POST
           main: mainApi ?? prev?.main ?? boxContent?.main ?? null,
           myDeposit: {
             song: normalizedSong,
