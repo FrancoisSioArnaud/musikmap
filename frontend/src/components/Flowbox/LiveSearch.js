@@ -1,11 +1,11 @@
 // frontend/src/components/Flowbox/LiveSearch.js
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import ToggleButton from "@mui/material/ToggleButton";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import SearchIcon from "@mui/icons-material/Search";
@@ -14,59 +14,187 @@ import ListItem from "@mui/material/ListItem";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid } from "../Utils/mmStorage";
 
-const KEY_BOX_CONTENT = "mm_box_content";  // nouvelle clé unique
-const TTL_MINUTES = 20; // (conservé si besoin futur)
+const RECHECK_MS = 100000; // comme Main
 
-export default function LiveSearch({
-  isSpotifyAuthenticated,
-  isDeezerAuthenticated,
-  boxSlug,
-  user,
-  onDepositSuccess, // (compat)
-  onClose,          // (compat)
-}) {
-  const { setUser } = useContext(UserContext) || {};
+function getPositionOnce(opts = {}) {
+  return new Promise((resolve, reject) => {
+    if (!("geolocation" in navigator)) {
+      reject(new Error("Geolocation non supportée"));
+      return;
+    }
+    const base = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000, ...opts };
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      (err) => {
+        try {
+          const wid = navigator.geolocation.watchPosition(
+            (pos2) => {
+              try { navigator.geolocation.clearWatch(wid); } catch {}
+              resolve(pos2);
+            },
+            () => {
+              try { navigator.geolocation.clearWatch(wid); } catch {}
+              reject(err || new Error("Impossible d’obtenir la position."));
+            },
+            { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
+          );
+          setTimeout(() => {
+            try { navigator.geolocation.clearWatch(wid); } catch {}
+          }, 15000);
+        } catch {
+          reject(err || new Error("Impossible d’obtenir la position."));
+        }
+      },
+      base
+    );
+  });
+}
+
+async function verifyLocationWithServer(boxSlug, coords) {
+  const csrftoken = getCookie("csrftoken");
+  const payload = {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    box: { url: boxSlug },
+  };
+  const res = await fetch(`/box-management/verify-location`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrftoken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return res; // 200 ok, 403 loin, etc.
+}
+
+export default function LiveSearch() {
+  const { boxSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useContext(UserContext) || {};
+
+  const [gateLoading, setGateLoading] = useState(true);
+  const [gateError, setGateError] = useState("");
 
   const [searchValue, setSearchValue] = useState("");
   const [jsonResults, setJsonResults] = useState([]);
-  const [selectedStreamingService, setSelectedStreamingService] = useState(
-    user?.preferred_platform || "spotify"
-  );
-
   const [isSearching, setIsSearching] = useState(false);
-  const [postingId, setPostingId] = useState(null); // pour désactiver le bouton pendant la navigation
+  const [postingId, setPostingId] = useState(null);
 
-  // Préférence utilisateur
-  useEffect(() => {
-    if (user?.preferred_platform) {
-      setSelectedStreamingService(user.preferred_platform);
+  const intervalRef = useRef(null);
+
+  const goOnboardingWithError = useCallback((msg) => {
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
+      replace: true,
+      state: { error: msg || "Erreur inconnue" },
+    });
+  }, [navigate, boxSlug]);
+
+  // --- Gate initial : GPS + verify-location
+  const runGateOnce = useCallback(async () => {
+    setGateLoading(true);
+    setGateError("");
+
+    let pos;
+    try {
+      pos = await getPositionOnce();
+    } catch {
+      goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
+      return false;
     }
-  }, [user?.preferred_platform]);
 
-  // Recherche (debounce simple)
+    try {
+      const res = await verifyLocationWithServer(boxSlug, pos.coords);
+      if (res.status === 200) {
+        setGateLoading(false);
+        setGateError("");
+        return true;
+      }
+      if (res.status === 403) {
+        goOnboardingWithError("tu dois être à côté de la boîte pour pouvoir y accéder");
+        return false;
+      }
+      if (res.status === 401) {
+        goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
+        return false;
+      }
+      goOnboardingWithError("Erreur de vérification de localisation");
+      return false;
+    } catch {
+      goOnboardingWithError("Erreur de vérification de localisation");
+      return false;
+    }
+  }, [boxSlug, goOnboardingWithError]);
+
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ok = await runGateOnce();
+      if (cancelled) return;
+
+      // Lance le re-check périodique uniquement si gate OK
+      if (ok) {
+        intervalRef.current && clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(async () => {
+          try {
+            const pos = await getPositionOnce().catch(() => null);
+            if (!pos) {
+              goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
+              return;
+            }
+            const res = await verifyLocationWithServer(boxSlug, pos.coords);
+            if (res.status !== 200) {
+              if (res.status === 403) {
+                goOnboardingWithError("tu dois être à côté de la boîte pour pouvoir y accéder");
+              } else if (res.status === 401) {
+                goOnboardingWithError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
+              } else {
+                goOnboardingWithError("Erreur de vérification de localisation");
+              }
+            }
+          } catch {
+            goOnboardingWithError("Erreur de vérification de localisation");
+          }
+        }, RECHECK_MS);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [runGateOnce, boxSlug, goOnboardingWithError]);
+
+  // --- Recherche (debounce)
+  useEffect(() => {
+    if (gateLoading || gateError) return;
+
     const timer = setTimeout(() => {
       const doFetch = async () => {
         try {
           setIsSearching(true);
 
-          if (selectedStreamingService === "spotify") {
+          // NOTE: tu avais isSpotifyAuthenticated/isDeezerAuthenticated en props.
+          // Ici je garde le comportement "best-effort": si endpoints répondent, on affiche.
+          // Si tu veux remettre un vrai check auth Spotify/Deezer, on branchera sur ton state global.
+          const preferred = user?.preferred_platform || "spotify";
+          const platform = preferred === "deezer" ? "deezer" : "spotify";
+
+          if (platform === "spotify") {
             if (searchValue === "") {
-              if (isSpotifyAuthenticated) {
-                const r = await fetch("/spotify/recent-tracks");
-                const j = await r.json();
-                setJsonResults(Array.isArray(j) ? j : []);
-              } else {
-                setJsonResults([]);
-              }
+              const r = await fetch("/spotify/recent-tracks");
+              const j = await r.json();
+              setJsonResults(Array.isArray(j) ? j : []);
             } else {
               const csrftoken = getCookie("csrftoken");
               const r = await fetch("/spotify/search", {
@@ -77,17 +205,11 @@ export default function LiveSearch({
               const j = await r.json();
               setJsonResults(Array.isArray(j) ? j : []);
             }
-          }
-
-          if (selectedStreamingService === "deezer") {
+          } else {
             if (searchValue === "") {
-              if (isDeezerAuthenticated) {
-                const r = await fetch("/deezer/recent-tracks");
-                const j = await r.json();
-                setJsonResults(Array.isArray(j) ? j : []);
-              } else {
-                setJsonResults([]);
-              }
+              const r = await fetch("/deezer/recent-tracks");
+              const j = await r.json();
+              setJsonResults(Array.isArray(j) ? j : []);
             } else {
               const csrftoken = getCookie("csrftoken");
               const r = await fetch("/deezer/search", {
@@ -110,65 +232,52 @@ export default function LiveSearch({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [searchValue, selectedStreamingService, isDeezerAuthenticated, isSpotifyAuthenticated]);
+  }, [searchValue, user?.preferred_platform, gateLoading, gateError]);
 
-  const handleStreamingServiceChange = (_e, value) => {
-    if (!value) return;
-    setSelectedStreamingService(value);
-    setJsonResults([]);
-  };
-
-  // NAVIGATE immédiat vers Discover (option B)
-  // Discover fera le POST et mettra à jour mm_box_content (main, myDeposit, successes, older)
   const goCreateDepositFlow = (option) => {
     setPostingId(option?.id ?? "__posting__");
 
-    // Vérif souple: mm_box_content présent & correspond au boxSlug courant (pas bloquant)
-    const content = getValid(KEY_BOX_CONTENT);
-    if (!content || content.boxSlug !== boxSlug) {
-      // Pas bloquant : Discover gérera la redirection Onboarding si besoin
-    }
+    navigate(
+      `/flowbox/${encodeURIComponent(boxSlug)}/discover?drawer=achievements&mode=deposit`,
+      {
+        state: {
+          action: "createDeposit",
+          payload: { option, boxSlug },
+          origin: location.pathname + location.search,
+        },
+        replace: false,
+      }
+    );
 
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover?drawer=achievements&mode=deposit`, {
-      state: {
-        action: "createDeposit",
-        payload: { option, boxSlug },
-        origin: location.pathname + location.search,
-      },
-      replace: false,
-    });
-
-    // on réactive rapidement le bouton (la page va changer)
     setTimeout(() => setPostingId(null), 300);
   };
+
+  if (gateLoading) {
+    return (
+      <Box sx={{ minHeight: "calc(100vh - 64px)", display: "grid", placeItems: "center", p: 2 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (gateError) {
+    return (
+      <Box sx={{ minHeight: "calc(100vh - 64px)", display: "grid", placeItems: "center", p: 2 }}>
+        <Typography color="error">{gateError}</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" }}>
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
-          <Typography component="h2" variant="h3" sx={{mb:3}}>
+          <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis ta chanson à déposer dans la boîte
           </Typography>
-          <Typography component="p" variant="body1" sx={{mb:3}}>
+          <Typography component="p" variant="body1" sx={{ mb: 3 }}>
             La prochaine personne l’écoutera.
           </Typography>
-
-          <ToggleButtonGroup
-            color="primary"
-            exclusive
-            value={selectedStreamingService}
-            onChange={handleStreamingServiceChange}
-            aria-label="Choix du service de streaming"
-            size="small"
-            sx={{ alignSelf: "flex-start", display:"none"}}
-          >
-            <ToggleButton value="spotify" aria-pressed={selectedStreamingService === "spotify"}>
-              Spotify
-            </ToggleButton>
-            <ToggleButton value="deezer" aria-pressed={selectedStreamingService === "deezer"}>
-              Deezer
-            </ToggleButton>
-          </ToggleButtonGroup>
 
           <TextField
             fullWidth
@@ -185,7 +294,7 @@ export default function LiveSearch({
               ),
             }}
             sx={{
-              borderRadius:16,
+              borderRadius: 16,
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
@@ -218,7 +327,7 @@ export default function LiveSearch({
                     {isPosting ? (
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <CircularProgress size={16} />
-                        Déposr
+                        Déposer
                       </Box>
                     ) : (
                       "Déposer"
@@ -228,8 +337,13 @@ export default function LiveSearch({
               >
                 <Box
                   sx={{
-                    width: 64, height: 64, borderRadius: 1, overflow: "hidden",
-                    flexShrink: 0, bgcolor: "action.hover", mr: 2,
+                    width: 64,
+                    height: 64,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    bgcolor: "action.hover",
+                    mr: 2,
                   }}
                 >
                   {option?.image_url ? (
@@ -244,14 +358,19 @@ export default function LiveSearch({
 
                 <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, mr: 2, flex: 1, overflow: "hidden" }}>
                   <Typography
-                    component="h3" variant="h6" noWrap
+                    component="h3"
+                    variant="h6"
+                    noWrap
                     sx={{ fontWeight: 700, textAlign: "left", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}
                     title={option?.name || ""}
                   >
                     {option?.name || ""}
                   </Typography>
                   <Typography
-                    component="p" variant="body2" color="text.secondary" noWrap
+                    component="p"
+                    variant="body2"
+                    color="text.secondary"
+                    noWrap
                     sx={{ textAlign: "left", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}
                     title={option?.artist || ""}
                   >
