@@ -73,6 +73,18 @@
 
 .deposit .img_container{
   border-radius: 8px;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.img_container img {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
 }
 
 .deposit_main .deposit_song .img_container{
@@ -82,6 +94,7 @@
 
 .deposit_list .deposit_song .img_container{
   width : auto;
+  width : 33%;
 }
 
 
