@@ -52,15 +52,7 @@ export default function Discover() {
       </Box>
 
       {/* 1) MY DEPOSIT (custom, pas un Deposit) */}
-      <Box
-        sx={{
-          display: "grid",
-          gap: 2,
-          p: 3,
-          mt: 1,
-          textAlign: "center",
-        }}
-      >
+      <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
           <CheckCircleIcon fontSize="medium" />
           <Typography component="h2" variant="h3">
@@ -69,32 +61,8 @@ export default function Discover() {
         </Box>
 
         {mySong ? (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              p: 2,
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
-              textAlign: "left",
-              maxWidth: 560,
-              width: "100%",
-              mx: "auto",
-              overflow: "hidden",
-            }}
-          >
-            <Box
-              sx={{
-                width: 72,
-                height: 72,
-                borderRadius: 2,
-                overflow: "hidden",
-                flexShrink: 0,
-                bgcolor: "action.hover",
-              }}
-            >
+          <Box className="my_deposit deposit_song">
+            <Box className="img_container">
               {mySong?.image_url ? (
                 <Box
                   component="img"
@@ -105,11 +73,11 @@ export default function Discover() {
               ) : null}
             </Box>
 
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="h6" noWrap title={mySong?.title || ""} sx={{ fontWeight: 700 }}>
+            <Box className="texts">
+              <Typography variant="h6" title={mySong?.title || ""} className="titre" >
                 {mySong?.title || ""}
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap title={mySong?.artist || ""}>
+              <Typography variant="body2" color="text.secondary" title={mySong?.artist || ""} className="artist">
                 {mySong?.artist || ""}
               </Typography>
             </Box>
