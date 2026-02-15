@@ -493,34 +493,36 @@ export default function Deposit({
 
           <Box className="deposit_infos">
             {(showDate || showUser) && (
-              {showDate && (
-                <Typography className="deposit_date" variant="body1" component="span">
-                  {"Chanson partagée " + (naturalDate || "")}
-                </Typography>
-              )}
-  
-              {showUser && (
-                
-                <Box
-                  onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                  className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-                >
-                  <Typography variant="body1" component="span">
-                    {showDate ? "par" : "Partagée par"}
+              <>
+                {showDate && (
+                  <Typography className="deposit_date" variant="body1" component="span">
+                    {"Chanson partagée " + (naturalDate || "")}
                   </Typography>
-                  <Box className=" avatarbox">
-                    <Avatar
-                      src={u?.profile_pic_url || undefined}
-                      alt={u?.username || "Anonyme"}
-                      className="avatar"
-                    />
+                )}
+    
+                {showUser && (
+                  
+                  <Box
+                    onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                    className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+                  >
+                    <Typography variant="body1" component="span">
+                      {showDate ? "par" : "Partagée par"}
+                    </Typography>
+                    <Box className=" avatarbox">
+                      <Avatar
+                        src={u?.profile_pic_url || undefined}
+                        alt={u?.username || "Anonyme"}
+                        className="avatar"
+                      />
+                    </Box>
+                    <Typography component="span" className="username " variant="subtitle1">
+                      {u?.username || "Anonyme"}
+                      {u?.username && <ArrowForwardIosIcon className="icon" />}
+                    </Typography>
                   </Box>
-                  <Typography component="span" className="username " variant="subtitle1">
-                    {u?.username || "Anonyme"}
-                    {u?.username && <ArrowForwardIosIcon className="icon" />}
-                  </Typography>
-                </Box>
-              )}
+                )}
+              </>
             )}
             {/* ruban des réactions */}
             <ReactionsStrip
