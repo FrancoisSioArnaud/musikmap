@@ -113,10 +113,7 @@ export default function Discover() {
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
             <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
-              Découvre d’autres chansons
-            </Typography>
-            <Typography component="p" variant="body1">
-              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler.
+              Utilise tes points pour découvrir d’autres chansons dans cette boîte.
             </Typography>
           </Box>
           <Box id="older_deposits_list">
