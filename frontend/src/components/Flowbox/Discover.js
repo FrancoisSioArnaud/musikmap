@@ -49,7 +49,7 @@ export default function Discover() {
       <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
           <CheckCircleIcon fontSize="medium" sx={{width: "1.6em", height: "1.6em", color: "white"}}/>
-          <Typography component="h2" variant="h3">
+          <Typography component="h2" variant="h5">
             Chanson déposée avec succès
           </Typography>
         </Box>
@@ -68,10 +68,10 @@ export default function Discover() {
             </Box>
 
             <Box className="texts">
-              <Typography variant="h6" title={mySong?.title || ""} className="titre" >
+              <Typography variant="h5" component="span" title={mySong?.title || ""} className="titre" >
                 {mySong?.title || ""}
               </Typography>
-              <Typography variant="body2" color="text.secondary" title={mySong?.artist || ""} className="artist">
+              <Typography variant="body1" component="span" title={mySong?.artist || ""} className="artist">
                 {mySong?.artist || ""}
               </Typography>
             </Box>
