@@ -43,12 +43,6 @@ export default function Discover() {
 
   return (
     <Box>
-      <Box className="intro">
-        <Typography component="h1" variant="h1">
-          Bonne écoute !
-        </Typography>
-      </Box>
-
       {/* 1) MY DEPOSIT */}
       <Box
         className="intro"
@@ -80,36 +74,38 @@ export default function Discover() {
           </Box>
         ) : null}
       </Box>
+      
 
       {/* 2) MAIN */}
-      <Box className="intro" sx={{ mt: 2 }}>
-        <Typography component="h2" variant="body1">
-          La chanson que tu as remplacée
-        </Typography>
-      </Box>
-
-      {mainDep ? (
-        <Box>
-          <Deposit
-            dep={mainDep}
-            user={user}
-            variant="list"
-            allowReact={true}
-            showPlay={true}
-            showUser={true}
-          />
+      <Box className="main_deposit_container">
+        <Box className="intro">
+          <Typography component="h1" variant="h1">
+            Bonne écoute !
+          </Typography>
+          <Typography component="h2" variant="body1">
+            Découvre la chanson qui était dans la boîte avant la tienne.
+          </Typography>
         </Box>
-      ) : null}
+  
+        {mainDep ? (
+          <Box>
+            <Deposit
+              dep={mainDep}
+              user={user}
+              variant="list"
+              allowReact={true}
+              showPlay={true}
+              showUser={true}
+            />
+          </Box>
+        ) : null}
+      </Box> 
 
       {/* 3) SUCCESSES (inline) */}
       {successes.length > 0 ? (
-        <Box sx={{ mt: 3 }}>
           <AchievementsPanel
             successes={successes}
-            // si ton AchievementsPanel a besoin d’un CTA, tu peux passer un noop
-            onPrimaryCta={() => {}}
           />
-        </Box>
       ) : null}
 
       {/* Older deposits (inchangé) */}
