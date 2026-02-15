@@ -25,18 +25,14 @@ export default function AchievementsPanel({ successes = [], onPrimaryCta }) {
   return (
     <Box sx={{ display: "grid", gap: 0, pb: "76px" }}>
       <Box className="intro_small" sx={{ px: 3, pt: 3, textAlign: "center" }}>
-        <Typography variant="h1" color="rgb(123, 213, 40)">
-          Chanson Déposée !
+        <Typography variant="h1"">
+          Détail de tes points
         </Typography>
 
         <Box className="points_container point_container_big" style={{ margin: "12px auto", display:"inline-flex", gap:8, alignItems:"center" }}>
           <Typography component="span" variant="body1">+{totalPoints}</Typography>
           <AlbumIcon />
         </Box>
-
-        <Typography component="span" variant="h5" display="block" sx={{ mt: 1 }}>
-          Détail de tes points
-        </Typography>
       </Box>
 
       <List className="success_container">
