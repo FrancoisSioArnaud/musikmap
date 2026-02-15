@@ -179,3 +179,10 @@
 .current_reaction{
   border: solid 2px #7bd528;
 }
+.deposit_react .icon_container{
+  background-color : $primary-green;
+}
+
+.deposit_react .icon_container svg{
+  color: $black
+}
