@@ -49,8 +49,8 @@ color : $secondary-cyan;
 .deposit .deposit_infos{
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: left;
+  text-align: left;
   gap: 8px;
   padding: 20px;
 }
@@ -169,7 +169,7 @@ color : $secondary-cyan;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 12px 16px;
+  padding: 16px;
 }
 
 .deposit .deposit_react .reaction{
@@ -187,7 +187,7 @@ color : $secondary-cyan;
 }
 .deposit_react .icon_container{
   background-color : $primary-green;
-  border-radius: 1em;
+  border-radius: 1rem;
 }
 
 .deposit_react .icon_container svg{
