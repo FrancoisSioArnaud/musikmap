@@ -64,7 +64,7 @@
   gap: 8px;
 }
 
-.deposit_list .deposit_song{
+.deposit_list .deposit_song, .deposit_list.deposit_song{
   flex-direction: row;
   gap: 16px;
   align-items:center;
