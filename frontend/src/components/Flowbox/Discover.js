@@ -1,6 +1,6 @@
 // frontend/src/components/Flowbox/Discover.js
 import React, { useEffect, useState, useContext, useCallback } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -19,7 +19,6 @@ const KEY_BOX_CONTENT = "mm_box_content";
 
 export default function Discover() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
 
@@ -57,17 +56,6 @@ export default function Discover() {
   const handleOpenAchievements = () => setOpenAchievements(true);
   const handleCloseAchievements = () => setOpenAchievements(false);
 
-  // Affiche la notif uniquement si on arrive de LiveSearch (/flowbox/:boxSlug/search) ET qu'on a une chanson
-  const origin = location?.state?.origin || "";
-  const cameFromLiveSearch =
-    typeof origin === "string" && origin.includes(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
-  const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
-
-console.log("origin:", location?.state?.origin);
-console.log("boxSlug:", boxSlug);
-console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
-
-  
   return (
     <Box>
       {/* Drawer Achievements (right, fullscreen, close only via button) */}
@@ -89,22 +77,27 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
       >
         <Box sx={{ height: "100%", overflowY: "auto" }}>
           <AchievementsPanel successes={successes} />
-          <Button variant="contained" onClick={handleCloseAchievements} className="bottom_fixed">
+
+          <Button
+            variant="contained"
+            onClick={handleCloseAchievements}
+            className="bottom_fixed"
+          >
             Fermer
           </Button>
         </Box>
       </Drawer>
 
-      {/* 1) MY DEPOSIT (uniquement si vient de LiveSearch + mySong) */}
-      {showMyDepositNotif ? (
-        <Box className="my_deposit_notif">
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
-            <CheckCircleIcon fontSize="medium" sx={{ width: "1.6em", height: "1.6em" }} />
-            <Typography component="h2" variant="h5">
-              Chanson déposée avec succès
-            </Typography>
-          </Box>
+      {/* 1) MY DEPOSIT (custom, pas un Deposit) */}
+      <Box className="my_deposit_notif">
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+          <CheckCircleIcon fontSize="medium" sx={{ width: "1.6em", height: "1.6em" }} />
+          <Typography component="h2" variant="h5">
+            Chanson déposée avec succès
+          </Typography>
+        </Box>
 
+        {mySong ? (
           <Box className="my_deposit deposit deposit_list deposit_song">
             <Box className="img_container">
               {mySong?.image_url ? (
@@ -118,7 +111,12 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
             </Box>
 
             <Box className="texts">
-              <Typography variant="h5" component="span" title={mySong?.title || ""} className="titre">
+              <Typography
+                variant="h5"
+                component="span"
+                title={mySong?.title || ""}
+                className="titre"
+              >
                 {mySong?.title || ""}
               </Typography>
               <Typography
@@ -131,25 +129,26 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
               </Typography>
             </Box>
           </Box>
-
-          {/* Trigger drawer */}
-          <Box
-            className="points_container points_container_big"
-            style={{ margin: "0 auto" }}
-            onClick={handleOpenAchievements}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
-            }}
-          >
-            <Typography component="span" variant="body1">
-              +{totalPoints}
-            </Typography>
-            <AlbumIcon />
-          </Box>
+        ) : null}
+       
+        {/* Nouveau trigger drawer : exactement le même que point_container_big */}
+        <Box
+          className="points_container points_container_big"
+          style={{ margin: "0 auto"}}
+          onClick={handleOpenAchievements}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+          }}
+        >
+          <Typography component="span" variant="body1">
+            +{totalPoints}
+          </Typography>
+          <AlbumIcon />
         </Box>
-      ) : null}
+        
+      </Box>
 
       {/* 2) MAIN */}
       <Box className="intro">
@@ -174,7 +173,9 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
         </Box>
       ) : null}
 
-      {/* Older deposits */}
+      {/* 3) SUCCESSES (removed inline) */}
+
+      {/* Older deposits (inchangé) */}
       {olderDeposits.length > 0 ? (
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
@@ -182,7 +183,8 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
               Découvre d’autres chansons
             </Typography>
             <Typography component="p" variant="body1">
-              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler.
+              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les
+              révéler.
             </Typography>
           </Box>
 
