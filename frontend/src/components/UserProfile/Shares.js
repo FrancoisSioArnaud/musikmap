@@ -153,12 +153,12 @@ export default function Shares({ username, user, autoLoad }) {
   }
 
   if (!items.length && loadedOnce && !loading) {
-    return <Typography sx={{ p: 5 }}>Aucun partage pour l’instant.</Typography>;
+    return <Typography sx={{ p: 4 }}>Aucun partage pour l’instant.</Typography>;
   }
 
   return (
     <>
-      <Box sx={{ display: "grid", gap: 5, p: 5, backgroundColor: "rgb(123, 213, 40)" }}>
+      <Box sx={{ display: "grid", gap: 4, p: 4}}>
         {items.map((it) => (
           <Deposit
             key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
