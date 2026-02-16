@@ -84,6 +84,7 @@ color : $secondary-cyan;
 .deposit_main .deposit_song{
   flex-direction: column;
   gap: 8px;
+  background : $gradient-darkgreen;
 }
 
 .deposit_list .deposit_song, .deposit_list.deposit_song{
@@ -150,6 +151,13 @@ color : $secondary-cyan;
 .deposit_main .texts{
   flex-direction: column;
   align-items: center;
+}
+
+.deposit_main .titre{
+  color: $primary-green;
+}
+.deposit_main .artist{
+  color : $white;
 }
 
 .deposit_list .decouvrir{
