@@ -57,26 +57,17 @@ export default function Discover() {
   const handleOpenAchievements = () => setOpenAchievements(true);
   const handleCloseAchievements = () => setOpenAchievements(false);
 
-  // Affiche la notif uniquement si on arrive de LiveSearch (/flowbox/:boxSlug/search) ET qu'on a une chanson
-  const origin = location?.state?.origin || "";
-  const cameFromLiveSearch =
-    typeof origin === "string" && origin.includes(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
+  // Notif uniquement si on arrive depuis LiveSearch + mySong
+  const cameFromLiveSearch = location?.state?.from === "search";
   const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
 
-console.log("origin:", location?.state?.origin);
-console.log("boxSlug:", boxSlug);
-console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
-
-  
   return (
     <Box>
-      {/* Drawer Achievements (right, fullscreen, close only via button) */}
+      {/* Drawer Achievements */}
       <Drawer
         anchor="right"
         open={openAchievements}
-        onClose={() => {
-          /* ignore backdrop click */
-        }}
+        onClose={() => {}}
         ModalProps={{ disableEscapeKeyDown: true }}
         PaperProps={{
           sx: {
@@ -95,7 +86,7 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
         </Box>
       </Drawer>
 
-      {/* 1) MY DEPOSIT (uniquement si vient de LiveSearch + mySong) */}
+      {/* 1) MY DEPOSIT */}
       {showMyDepositNotif ? (
         <Box className="my_deposit_notif">
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
@@ -132,7 +123,6 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
             </Box>
           </Box>
 
-          {/* Trigger drawer */}
           <Box
             className="points_container points_container_big"
             style={{ margin: "0 auto" }}
@@ -163,14 +153,7 @@ console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
 
       {mainDep ? (
         <Box sx={{ margin: "0 20px" }}>
-          <Deposit
-            dep={mainDep}
-            user={user}
-            variant="main"
-            allowReact={true}
-            showPlay={true}
-            showUser={true}
-          />
+          <Deposit dep={mainDep} user={user} variant="main" allowReact={true} showPlay={true} showUser={true} />
         </Box>
       ) : null}
 
