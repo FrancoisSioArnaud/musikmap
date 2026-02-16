@@ -59,14 +59,15 @@ export default function Discover() {
 
   // Affiche la notif uniquement si on arrive de LiveSearch (/flowbox/:boxSlug/search) ET qu'on a une chanson
   const origin = location?.state?.origin || "";
-  
-  const expectedOriginPrefix = `/flowbox/${encodeURIComponent(boxSlug)}/search`;
   const cameFromLiveSearch =
-    typeof origin === "string" && origin.startsWith(expectedOriginPrefix);
+    typeof origin === "string" && origin.includes(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
+  const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
+
+console.log("origin:", location?.state?.origin);
+console.log("boxSlug:", boxSlug);
+console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
+
   
-  const showMyDepositNotif = Boolean(cameFromLiveSearch);
-
-
   return (
     <Box>
       {/* Drawer Achievements (right, fullscreen, close only via button) */}
