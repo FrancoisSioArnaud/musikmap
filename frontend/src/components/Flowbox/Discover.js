@@ -97,23 +97,6 @@ export default function Discover() {
           </Typography>
         </Box>
 
-        {/* Nouveau trigger drawer : exactement le même que point_container_big */}
-        <Box
-          className="points_container point_container_big"
-          style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
-          onClick={handleOpenAchievements}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
-          }}
-        >
-          <Typography component="span" variant="body1">
-            +{totalPoints}
-          </Typography>
-          <AlbumIcon />
-        </Box>
-
         {mySong ? (
           <Box className="my_deposit deposit deposit_list deposit_song">
             <Box className="img_container">
@@ -147,6 +130,24 @@ export default function Discover() {
             </Box>
           </Box>
         ) : null}
+       
+        {/* Nouveau trigger drawer : exactement le même que point_container_big */}
+        <Box
+          className="points_container point_container_big"
+          style={{ margin: "0 auto"}}
+          onClick={handleOpenAchievements}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+          }}
+        >
+          <Typography component="span" variant="body1">
+            +{totalPoints}
+          </Typography>
+          <AlbumIcon />
+        </Box>
+        
       </Box>
 
       {/* 2) MAIN */}
