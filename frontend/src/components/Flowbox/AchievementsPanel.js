@@ -25,6 +25,7 @@ export default function AchievementsPanel({ successes = [] }) {
     <Box sx={{ display: "grid", gap: 0, p: "76px 0" }}>
       <Box className="intro_small">
         <Typography variant="h1">Détail de tes points</Typography>
+        <Typography variant="body1">Tu gagnes des points selon la chanson que tu déposes</Typography>
 
         <Box
           className="points_container point_container_big"
