@@ -156,7 +156,7 @@ export default function Discover() {
           Bonne écoute !
         </Typography>
         <Typography component="span" variant="body1">
-          Découvre la chanson que tu as remplacée
+          Découvre la chanson déposée par le passant·e précédent
         </Typography>
       </Box>
 
