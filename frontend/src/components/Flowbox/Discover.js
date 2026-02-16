@@ -64,7 +64,7 @@ export default function Discover() {
   const cameFromLiveSearch =
     typeof origin === "string" && origin.startsWith(expectedOriginPrefix);
   
-  const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
+  const showMyDepositNotif = Boolean(cameFromLiveSearch);
 
 
   return (
