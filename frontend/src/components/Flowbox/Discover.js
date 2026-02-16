@@ -1,5 +1,5 @@
 // frontend/src/components/Flowbox/Discover.js
-import React, { useEffect, useState, useContext, useCallback } from "react";
+import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -25,6 +25,10 @@ export default function Discover() {
 
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
+
+  // Affichage "one-shot" (évite que ça revienne sur refresh/back/autres pages)
+  const [showMyDepositNotif, setShowMyDepositNotif] = useState(false);
+  const didCleanupRef = useRef(false);
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
@@ -57,9 +61,22 @@ export default function Discover() {
   const handleOpenAchievements = () => setOpenAchievements(true);
   const handleCloseAchievements = () => setOpenAchievements(false);
 
-  // Notif uniquement si on arrive depuis LiveSearch + mySong
-  const cameFromLiveSearch = location?.state?.from === "search";
-  const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
+  // Déclenche notif si vient de search + mySong, puis nettoie le state
+  useEffect(() => {
+    const fromSearch = location?.state?.from === "search";
+
+    if (!didCleanupRef.current && fromSearch && mySong) {
+      setShowMyDepositNotif(true);
+      didCleanupRef.current = true;
+
+      // supprime le state (from/origin/action...) pour éviter ré-affichage ultérieur
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+      return;
+    }
+
+    // si on n'est pas dans le cas "from search + mySong", on force à false
+    if (!fromSearch) setShowMyDepositNotif(false);
+  }, [location.pathname, location.search, location.state, mySong, navigate]);
 
   return (
     <Box>
@@ -86,7 +103,7 @@ export default function Discover() {
         </Box>
       </Drawer>
 
-      {/* 1) MY DEPOSIT */}
+      {/* 1) MY DEPOSIT (one-shot) */}
       {showMyDepositNotif ? (
         <Box className="my_deposit_notif">
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
@@ -112,12 +129,7 @@ export default function Discover() {
               <Typography variant="h5" component="span" title={mySong?.title || ""} className="titre">
                 {mySong?.title || ""}
               </Typography>
-              <Typography
-                variant="body1"
-                component="span"
-                title={mySong?.artist || ""}
-                className="artist"
-              >
+              <Typography variant="body1" component="span" title={mySong?.artist || ""} className="artist">
                 {mySong?.artist || ""}
               </Typography>
             </Box>
@@ -187,3 +199,4 @@ export default function Discover() {
     </Box>
   );
 }
+
