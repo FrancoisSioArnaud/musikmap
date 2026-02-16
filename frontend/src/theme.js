@@ -128,7 +128,7 @@ const theme = createTheme({
           borderRadius: 16,
           height: 56,
           backgroundColor: "#7BD528",
-          color: "#FFFFFF",
+          color: "#000",
           fontWeight: 700,
         },
 
@@ -153,7 +153,7 @@ const theme = createTheme({
             borderRadius: 16,
             height: 56,
             backgroundColor: "#7BD528",
-            color: "#FFFFFF",
+            color: "#000",
             fontWeight: 700,
           },
         },
