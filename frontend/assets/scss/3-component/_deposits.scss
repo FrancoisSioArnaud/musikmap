@@ -8,6 +8,14 @@
   margin: 20px;
   padding: 16px;
   gap: 16px;
+  transform: translateY(-120%);
+  animation: slideIn 300ms ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    transform: translateY(0);
+  }
 }
 
 .my_deposit_notif svg{
