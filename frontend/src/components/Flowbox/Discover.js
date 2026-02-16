@@ -1,5 +1,5 @@
 // frontend/src/components/Flowbox/Discover.js
-import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -25,10 +25,6 @@ export default function Discover() {
 
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
-
-  // Affichage "one-shot" (évite que ça revienne sur refresh/back/autres pages)
-  const [showMyDepositNotif, setShowMyDepositNotif] = useState(false);
-  const didCleanupRef = useRef(false);
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
@@ -61,30 +57,26 @@ export default function Discover() {
   const handleOpenAchievements = () => setOpenAchievements(true);
   const handleCloseAchievements = () => setOpenAchievements(false);
 
-  // Déclenche notif si vient de search + mySong, puis nettoie le state
-  useEffect(() => {
-    const fromSearch = location?.state?.from === "search";
+  // Affiche la notif uniquement si on arrive de LiveSearch (/flowbox/:boxSlug/search) ET qu'on a une chanson
+  const origin = location?.state?.origin || "";
+  const cameFromLiveSearch =
+    typeof origin === "string" && origin.includes(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
+  const showMyDepositNotif = Boolean(cameFromLiveSearch && mySong);
 
-    if (!didCleanupRef.current && fromSearch && mySong) {
-      setShowMyDepositNotif(true);
-      didCleanupRef.current = true;
+console.log("origin:", location?.state?.origin);
+console.log("boxSlug:", boxSlug);
+console.log("expected:", `/flowbox/${encodeURIComponent(boxSlug)}/search`);
 
-      // supprime le state (from/origin/action...) pour éviter ré-affichage ultérieur
-      navigate(location.pathname + location.search, { replace: true, state: {} });
-      return;
-    }
-
-    // si on n'est pas dans le cas "from search + mySong", on force à false
-    if (!fromSearch) setShowMyDepositNotif(false);
-  }, [location.pathname, location.search, location.state, mySong, navigate]);
-
+  
   return (
     <Box>
-      {/* Drawer Achievements */}
+      {/* Drawer Achievements (right, fullscreen, close only via button) */}
       <Drawer
         anchor="right"
         open={openAchievements}
-        onClose={() => {}}
+        onClose={() => {
+          /* ignore backdrop click */
+        }}
         ModalProps={{ disableEscapeKeyDown: true }}
         PaperProps={{
           sx: {
@@ -103,7 +95,7 @@ export default function Discover() {
         </Box>
       </Drawer>
 
-      {/* 1) MY DEPOSIT (one-shot) */}
+      {/* 1) MY DEPOSIT (uniquement si vient de LiveSearch + mySong) */}
       {showMyDepositNotif ? (
         <Box className="my_deposit_notif">
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
@@ -129,12 +121,18 @@ export default function Discover() {
               <Typography variant="h5" component="span" title={mySong?.title || ""} className="titre">
                 {mySong?.title || ""}
               </Typography>
-              <Typography variant="body1" component="span" title={mySong?.artist || ""} className="artist">
+              <Typography
+                variant="body1"
+                component="span"
+                title={mySong?.artist || ""}
+                className="artist"
+              >
                 {mySong?.artist || ""}
               </Typography>
             </Box>
           </Box>
 
+          {/* Trigger drawer */}
           <Box
             className="points_container points_container_big"
             style={{ margin: "0 auto" }}
@@ -165,7 +163,14 @@ export default function Discover() {
 
       {mainDep ? (
         <Box sx={{ margin: "0 20px" }}>
-          <Deposit dep={mainDep} user={user} variant="main" allowReact={true} showPlay={true} showUser={true} />
+          <Deposit
+            dep={mainDep}
+            user={user}
+            variant="main"
+            allowReact={true}
+            showPlay={true}
+            showUser={true}
+          />
         </Box>
       ) : null}
 
@@ -199,4 +204,3 @@ export default function Discover() {
     </Box>
   );
 }
-
