@@ -28,7 +28,7 @@ export default function AchievementsPanel({ successes = [] }) {
         <Typography variant="body1">Tu gagnes des points selon la chanson que tu déposes</Typography>
 
         <Box
-          className="points_container point_container_big"
+          className="points_container points_container_big"
           style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
         >
           <Typography component="span" variant="body1">
