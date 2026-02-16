@@ -1,10 +1,14 @@
+// frontend/src/components/Flowbox/Discover.js
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import Drawer from "@mui/material/Drawer";
+import Button from "@mui/material/Button";
 
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AlbumIcon from "@mui/icons-material/Album";
 
 import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
@@ -19,6 +23,7 @@ export default function Discover() {
   const { user } = useContext(UserContext) || {};
 
   const [boxContent, setBoxContent] = useState(null);
+  const [openAchievements, setOpenAchievements] = useState(false);
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
@@ -43,15 +48,70 @@ export default function Discover() {
   const successes = Array.isArray(boxContent?.successes) ? boxContent.successes : [];
   const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
 
+  const totalPoints =
+    successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
+    successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
+    0;
+
+  const handleOpenAchievements = () => setOpenAchievements(true);
+  const handleCloseAchievements = () => setOpenAchievements(false);
+
   return (
     <Box>
+      {/* Drawer Achievements (right, fullscreen, close only via button) */}
+      <Drawer
+        anchor="right"
+        open={openAchievements}
+        onClose={() => {
+          /* ignore backdrop click */
+        }}
+        ModalProps={{ disableEscapeKeyDown: true }}
+        PaperProps={{
+          sx: {
+            width: "100vw",
+            maxWidth: "100vw",
+            height: "100vh",
+            overflow: "hidden",
+          },
+        }}
+      >
+        <Box sx={{ height: "100%", overflowY: "auto" }}>
+          <AchievementsPanel successes={successes} />
+
+          <Button
+            variant="contained"
+            onClick={handleCloseAchievements}
+            className="bottom_fixed"
+          >
+            Fermer
+          </Button>
+        </Box>
+      </Drawer>
+
       {/* 1) MY DEPOSIT (custom, pas un Deposit) */}
       <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
-          <CheckCircleIcon fontSize="medium" sx={{width: "1.6em", height: "1.6em"}}/>
+          <CheckCircleIcon fontSize="medium" sx={{ width: "1.6em", height: "1.6em" }} />
           <Typography component="h2" variant="h5">
             Chanson déposée avec succès
           </Typography>
+        </Box>
+
+        {/* Nouveau trigger drawer : exactement le même que point_container_big */}
+        <Box
+          className="points_container point_container_big"
+          style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
+          onClick={handleOpenAchievements}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+          }}
+        >
+          <Typography component="span" variant="body1">
+            +{totalPoints}
+          </Typography>
+          <AlbumIcon />
         </Box>
 
         {mySong ? (
@@ -68,10 +128,20 @@ export default function Discover() {
             </Box>
 
             <Box className="texts">
-              <Typography variant="h5" component="span" title={mySong?.title || ""} className="titre" >
+              <Typography
+                variant="h5"
+                component="span"
+                title={mySong?.title || ""}
+                className="titre"
+              >
                 {mySong?.title || ""}
               </Typography>
-              <Typography variant="body1" component="span" title={mySong?.artist || ""} className="artist">
+              <Typography
+                variant="body1"
+                component="span"
+                title={mySong?.artist || ""}
+                className="artist"
+              >
                 {mySong?.artist || ""}
               </Typography>
             </Box>
@@ -90,7 +160,7 @@ export default function Discover() {
       </Box>
 
       {mainDep ? (
-        <Box sx={{m:"0 20px"}}>
+        <Box sx={{ margin: "0 20px" }}>
           <Deposit
             dep={mainDep}
             user={user}
@@ -102,15 +172,7 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* 3) SUCCESSES (inline) */}
-      {successes.length > 0 ? (
-        <Box sx={{ mt: 3 }}>
-          <AchievementsPanel
-            successes={successes}
-            onPrimaryCta={() => {}}
-          />
-        </Box>
-      ) : null}
+      {/* 3) SUCCESSES (removed inline) */}
 
       {/* Older deposits (inchangé) */}
       {olderDeposits.length > 0 ? (
@@ -120,7 +182,8 @@ export default function Discover() {
               Découvre d’autres chansons
             </Typography>
             <Typography component="p" variant="body1">
-              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les révéler.
+              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les
+              révéler.
             </Typography>
           </Box>
 
