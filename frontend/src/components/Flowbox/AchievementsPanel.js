@@ -22,7 +22,7 @@ export default function AchievementsPanel({ successes = [] }) {
   });
 
   return (
-    <Box sx={{ display: "grid", gap: 0, pb: "76px" }}>
+    <Box sx={{ display: "grid", gap: 0, p: "76px 0" }}>
       <Box className="intro_small">
         <Typography variant="h1">Détail de tes points</Typography>
 
