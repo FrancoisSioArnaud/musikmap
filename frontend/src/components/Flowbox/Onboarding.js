@@ -156,9 +156,14 @@ export default function Onboarding() {
             <Typography className="box_name" component="h1" variant="h5">
               {box?.name}
             </Typography>
-            <Typography variant="body1">{box?.deposit_count || 0} partages</Typography>
-            <Typography variant="body1">
-              Dernier partage {box?.last_deposit_date || 0}
+          </Box>
+
+          <Box className="intro">
+              <Typography component="h1" variant="h1">
+                Bienvenue !
+              </Typography>
+              <Typography variant="subtitle1">
+                Une chanson a été deposé ici {box?.last_deposit_date || 0}
             </Typography>
           </Box>
               
