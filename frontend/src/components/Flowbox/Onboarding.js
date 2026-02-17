@@ -136,10 +136,10 @@ export default function Onboarding() {
         sx={{
           position: "fixed",
           inset: 0,
-          backgroundImage: "url('../static/images/onboardingBgTan.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
+          //backgroundImage: "url('../static/images/onboardingBgTan.png')",
+          //backgroundSize: "cover",
+          //backgroundPosition: "center",
+          //backgroundRepeat: "no-repeat",
         }}
       >
         
