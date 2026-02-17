@@ -158,7 +158,7 @@ export default function Onboarding() {
             </Typography>
           </Box>
 
-          <Box>
+          <Box className="container">
             <Box className="intro">
                 <Typography component="h1" variant="h1">
                   Bienvenue !
