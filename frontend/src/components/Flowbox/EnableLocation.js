@@ -31,8 +31,8 @@ export default function EnableLocation({
       }}
       PaperProps={{
         sx: {
-          width: "100vw",
           backgroundColor: "unset",
+          border
         },
       }}
       
@@ -52,30 +52,31 @@ export default function EnableLocation({
           <Typography variant="body1">
             Pour éviter la triche, la boîte s’ouvre seulement si tu es sur place. 
           </Typography>
+        
+          {error ? (
+            <Typography variant="body1" color="error">
+              {error}
+            </Typography>
+          ) : null}
+    
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onAuthorize}
+            disabled={loading}
+            fullWidth
+            startIcon={<KeyIcon />}
+          >
+            {loading ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                <CircularProgress size={18} />
+                Vérification...
+              </Box>
+            ) : (
+              "Autoriser"
+            )}
+          </Button>
         </Box>
-        {error ? (
-          <Typography variant="body1" color="error">
-            {error}
-          </Typography>
-        ) : null}
-  
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={onAuthorize}
-          disabled={loading}
-          fullWidth
-          startIcon={<KeyIcon />}
-        >
-          {loading ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-              <CircularProgress size={18} />
-              Vérification...
-            </Box>
-          ) : (
-            "Autoriser"
-          )}
-        </Button>
       </Box>
     </Drawer>
   );
