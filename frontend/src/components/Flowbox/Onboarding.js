@@ -152,7 +152,7 @@ export default function Onboarding() {
             right: 20,
           }}
         >
-          <Box className="box_infos">
+          <Box className="info_box">
             <Typography className="box_name" component="h1" variant="h5">
               {box?.name}
             </Typography>
