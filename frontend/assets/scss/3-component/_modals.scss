@@ -1,11 +1,19 @@
-/**
- * @file
- * Modal Component Styling
- */
+@use '../0-init/color' as *;
 
-/* ---------------- DEFAULT -----------------*/
+.locked_box{
+  width: 40%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 0.1rem solid $neutral-lightgrey; .1rem;
+  border-radius: 2rem;
+  padding: 20px;
+  padding-bottom: 16px;
+}
 
-/* ---------------- CUSTOM  -----------------*/
-
-
-
+.locked_box svg{
+  width: 1.6em;
+  height: 1.6em;
+}
