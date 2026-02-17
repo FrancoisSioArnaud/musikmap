@@ -153,11 +153,11 @@ export default function Onboarding() {
           }}
         >
           <Box className="box_infos">
-            <Typography className="box_name" component="h1" variant="h1">
+            <Typography className="box_name" component="h1" variant="h5">
               {box?.name}
             </Typography>
-            <Typography variant="subtitle1">{box?.deposit_count || 0} partages</Typography>
-            <Typography variant="subtitle1">
+            <Typography variant="body1">{box?.deposit_count || 0} partages</Typography>
+            <Typography variant="body1">
               Dernier partage {box?.last_deposit_date || 0}
             </Typography>
           </Box>
