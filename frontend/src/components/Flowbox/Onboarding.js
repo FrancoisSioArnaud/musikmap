@@ -163,7 +163,7 @@ export default function Onboarding() {
                 <Typography component="h1" variant="h1">
                   Bienvenue !
                 </Typography>
-                <Typography variant="subtitle1">
+                <Typography variant="body1">
                   Une chanson a été deposé ici {box?.last_deposit_date || 0}
               </Typography>
             </Box>
