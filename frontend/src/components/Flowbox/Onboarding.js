@@ -152,14 +152,34 @@ export default function Onboarding() {
               gap: 0.5,
             }}
           >
+            <Typography className="box_name" component="h1" variant="h1">
+              {box?.name}
+            </Typography>
+              
             <Typography variant="subtitle1">{box?.deposit_count || 0} partages</Typography>
             <Typography variant="subtitle1">
               Dernier partage {box?.last_deposit_date || 0}
             </Typography>
-            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
-              {box?.name}
-            </Typography>
-            <Box sx={{ mt: 2 }}>
+              
+            <Box className="steps_container">
+              <Box className="step">
+                <Typography component="span" variant="body1"
+                  1
+                </Typography>
+                <Typography component="p" variant="body1"
+                  Dépose une chanson
+                </Typography>
+              </Box>
+              <Box className="step">     
+                <Typography component="span" variant="body1"
+                    2
+                  </Typography>      
+                <Typography component="p" variant="body1"
+                  Découvre la chanson précédente
+                </Typography>
+              </Box>
+            </Box>
+            <Box
               <Button
                 variant="contained"
                 size="large"
