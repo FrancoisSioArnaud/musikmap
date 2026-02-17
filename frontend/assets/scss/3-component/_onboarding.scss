@@ -10,11 +10,11 @@
 
 .onBoarding .container{
   flex-direction: column;
-  padding: 26px;
-  gap: 20px;
+  padding: 26px calc(50vw + 26px);
+  gap: 16px;
   display: flex;
-  border-radius: 36px 36px 0 0;
-  background : $gradient-darkgreen;
+  border-radius: 200vw 200vw 0 0;
+  background-color: white;
 }
 
 .onBoarding .container *:not(button,span){
