@@ -332,7 +332,7 @@ export default function Deposit({
       <>
         <Box className="deposit_container">
           {showDate && (
-            <Typography className="deposit_date" variant="body1" component="span">
+            <Typography className="deposit_date" variant="subtitle1" component="span">
               {"Chanson partagée " + (naturalDate || "")}
             </Typography>
           )}
@@ -433,7 +433,7 @@ export default function Deposit({
     <>
       <Box className="deposit_container">
         {showDate && (
-          <Typography className="deposit_date" variant="body1" component="span">
+          <Typography className="deposit_date" variant="subtitle1" component="span">
             {"Chanson partagée " + (naturalDate || "")}
           </Typography>
         )}
