@@ -434,7 +434,7 @@ export default function Deposit({
       <Box className="deposit_container">
         {showDate && (
           <Typography className="deposit_date" variant="subtitle1" component="span">
-            {"Chanson partagée " + (naturalDate || "")}
+            {/*"Chanson partagée " + */(naturalDate || "")}
           </Typography>
         )}
         <Card className="deposit deposit_list">
