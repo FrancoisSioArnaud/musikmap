@@ -117,7 +117,7 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          height: 56,
+          height: 52,
           fontSize: "20px",
           textTransform: "none",
         },
@@ -126,7 +126,7 @@ const theme = createTheme({
         contained: {
           p: "6px 26px",
           borderRadius: 16,
-          height: 56,
+          height: 52,
           backgroundColor: "#7BD528",
           color: "#000",
           fontWeight: 700,
@@ -136,7 +136,7 @@ const theme = createTheme({
         outlinedPrimary: {
           p: "6px 26px",
           borderRadius: 16,
-          height: 56,
+          height: 52,
           backgroundColor: "#FFFFFF",
           color: "#7BD528",
           fontWeight: 700,
@@ -151,7 +151,7 @@ const theme = createTheme({
           style: {
             p: "12px 26px",
             borderRadius: 16,
-            height: 56,
+            height: 52,
             backgroundColor: "#7BD528",
             color: "#000",
             fontWeight: 700,
@@ -161,7 +161,7 @@ const theme = createTheme({
           props: { variant: "menu" },
           style: {
             borderRadius: 16,
-            height: 56,
+            height: 52,
             border: "solid #7BD528 2px",
             backgroundColor: "white",
             fontSize: "16px",
