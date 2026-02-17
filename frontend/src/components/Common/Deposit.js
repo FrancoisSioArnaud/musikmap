@@ -428,100 +428,100 @@ export default function Deposit({
   // =========================
   return (
     <>
-      {showDate && (
-                    <Typography className="deposit_date" variant="body1" component="span">
-                      {"Chanson partagée " + (naturalDate || "")}
-                    </Typography>
-                  )}
+      <Box className="deposit_container">
+        {showDate && (
+          <Typography className="deposit_date" variant="body1" component="span">
+            {"Chanson partagée " + (naturalDate || "")}
+          </Typography>
+        )}
         <Card className="deposit deposit_list">
-
-        {/* ----- Section chanson ----- */}
-        <Box className="deposit_song">
-          <Box className=" img_container">
-            {s?.image_url && (
-              <Box
-                component="img"
-                src={s.image_url}
-                alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                sx={{
-                  filter: isRevealed ? "none" : "blur(6px)",
-                }}
-              />
-            )}
-          </Box>
-
-          <Box className="interact">
-            {isRevealed ? (
-              <>
-                <Box className="texts">
-                  <Typography component="span" className="titre " variant="h5">
-                    {s.title}
-                  </Typography>
-                  <Typography component="span" className="artist " variant="body1">
-                    {s.artist}
-                  </Typography>
-                </Box>
-
-                {showPlay && (
-                  <Button
-                    variant="depositInteract"
-                    className="play playSecondary"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    startIcon={<PlayArrowIcon />}
-                  >
-                    Écouter
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                <Box className="texts">
-                  <Typography component="span" className="titre" variant="body1">
-                    Utilise tes points pour révéler cette chanson
-                  </Typography>
-                </Box>
-                <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
-                  Découvrir
-                  <Box className="points_container" sx={{ ml: "12px" }}>
-                    <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
-                      {cost}
+  
+          {/* ----- Section chanson ----- */}
+          <Box className="deposit_song">
+            <Box className=" img_container">
+              {s?.image_url && (
+                <Box
+                  component="img"
+                  src={s.image_url}
+                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+                  sx={{
+                    filter: isRevealed ? "none" : "blur(6px)",
+                  }}
+                />
+              )}
+            </Box>
+  
+            <Box className="interact">
+              {isRevealed ? (
+                <>
+                  <Box className="texts">
+                    <Typography component="span" className="titre " variant="h5">
+                      {s.title}
                     </Typography>
-                    <AlbumIcon />
+                    <Typography component="span" className="artist " variant="body1">
+                      {s.artist}
+                    </Typography>
                   </Box>
-                </Button>
-              </>
-            )}
+  
+                  {showPlay && (
+                    <Button
+                      variant="depositInteract"
+                      className="play playSecondary"
+                      size="large"
+                      onClick={() => openPlayFor(s)}
+                      startIcon={<PlayArrowIcon />}
+                    >
+                      Écouter
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Box className="texts">
+                    <Typography component="span" className="titre" variant="body1">
+                      Utilise tes points pour révéler cette chanson
+                    </Typography>
+                  </Box>
+                  <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
+                    Découvrir
+                    <Box className="points_container" sx={{ ml: "12px" }}>
+                      <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                        {cost}
+                      </Typography>
+                      <AlbumIcon />
+                    </Box>
+                  </Button>
+                </>
+              )}
+            </Box>
           </Box>
-        </Box>
-
-
+  
+  
           <Box className="deposit_infos">
     
-              {showUser && (
-                
-                <Box
-                  onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                  className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-                >
-                  <Typography variant="body1" component="span">
-                    {showDate ? "par" : "Partagée par"}
-                  </Typography>
-                  <Box className=" avatarbox">
-                    <Avatar
-                      src={u?.profile_pic_url || undefined}
-                      alt={u?.username || "Anonyme"}
-                      className="avatar"
-                    />
-                  </Box>
-                  <Typography component="span" className="username " variant="subtitle1">
-                    {u?.username || "Anonyme"}
-                    {u?.username && <ArrowForwardIosIcon className="icon" />}
-                  </Typography>
+            {showUser && (
+              
+              <Box
+                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+              >
+                <Typography variant="body1" component="span">
+                  {showDate ? "par" : "Partagée par"}
+                </Typography>
+                <Box className=" avatarbox">
+                  <Avatar
+                    src={u?.profile_pic_url || undefined}
+                    alt={u?.username || "Anonyme"}
+                    className="avatar"
+                  />
                 </Box>
-              )}
-
+                <Typography component="span" className="username " variant="subtitle1">
+                  {u?.username || "Anonyme"}
+                  {u?.username && <ArrowForwardIosIcon className="icon" />}
+                </Typography>
+              </Box>
             )}
+    
             {/* ruban des réactions */}
             <ReactionsStrip
               items={localDep?.reactions_summary || []}
@@ -531,12 +531,12 @@ export default function Deposit({
               onClick={handleReactClick}
             />
           </Box>
-
+  
    
-
-
-      </Card>
-
+  
+  
+        </Card>
+      </Box>
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
       {/* Snackbar existant */}
