@@ -330,80 +330,82 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Card className="deposit deposit_main">
-          
-          {/* ----- Section chanson ----- */}
-          <Box className="deposit_song">
-            <Box className=" img_container">
-              {s?.image_url && (
-                <Box
-                  component="img"
-                  src={s.image_url}
-                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                />
-              )}
-            </Box>
-
-            <Box className="interact">
-              <Box className="texts">
-                <Typography component="span" className="titre " variant="h4">
-                  {s.title}
-                </Typography>
-                <Typography component="span" className="artist " variant="body1">
-                  {s.artist}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  variant="depositInteract"
-                  className="play playMain"
-                  size="large"
-                  onClick={() => openPlayFor(s)}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Écouter la chanson
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-                    
-          <Box className="deposit_infos">
+        <Box className="deposit_container">
+          <Card className="deposit deposit_main">
             
-            {showUser && (
-              
-              <Box
-                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-              >
-                <Typography variant="body1" component="span">
-                  {showDate ? "par" : "Partagée par"}
-                </Typography>
-                <Box className=" avatarbox">
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "Anonyme"}
-                    className="avatar"
+            {/* ----- Section chanson ----- */}
+            <Box className="deposit_song">
+              <Box className=" img_container">
+                {s?.image_url && (
+                  <Box
+                    component="img"
+                    src={s.image_url}
+                    alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                   />
-                </Box>
-                <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "Anonyme"}
-                  {u?.username && <ArrowForwardIosIcon className="icon" />}
-                </Typography>
+                )}
               </Box>
-            )}
-            {/* ruban des réactions */}
-            <ReactionsStrip
-              items={localDep?.reactions_summary || []}
-              reactions={localDep?.reactions || []}
-              myReactionEmoji={localDep?.my_reaction?.emoji || null}
-              viewerUsername={user?.username || null}
-              onClick={handleReactClick}
-            />
-          </Box>
-
-          
-        </Card>
+  
+              <Box className="interact">
+                <Box className="texts">
+                  <Typography component="span" className="titre " variant="h4">
+                    {s.title}
+                  </Typography>
+                  <Typography component="span" className="artist " variant="body1">
+                    {s.artist}
+                  </Typography>
+                </Box>
+  
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  <Button
+                    variant="depositInteract"
+                    className="play playMain"
+                    size="large"
+                    onClick={() => openPlayFor(s)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Écouter la chanson
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+                      
+            <Box className="deposit_infos">
+              
+              {showUser && (
+                
+                <Box
+                  onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
+                  className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
+                >
+                  <Typography variant="body1" component="span">
+                    {showDate ? "par" : "Partagée par"}
+                  </Typography>
+                  <Box className=" avatarbox">
+                    <Avatar
+                      src={u?.profile_pic_url || undefined}
+                      alt={u?.username || "Anonyme"}
+                      className="avatar"
+                    />
+                  </Box>
+                  <Typography component="span" className="username " variant="subtitle1">
+                    {u?.username || "Anonyme"}
+                    {u?.username && <ArrowForwardIosIcon className="icon" />}
+                  </Typography>
+                </Box>
+              )}
+              {/* ruban des réactions */}
+              <ReactionsStrip
+                items={localDep?.reactions_summary || []}
+                reactions={localDep?.reactions || []}
+                myReactionEmoji={localDep?.my_reaction?.emoji || null}
+                viewerUsername={user?.username || null}
+                onClick={handleReactClick}
+              />
+            </Box>
+  
+            
+          </Card>
+        </Box>
         {showDate && (
           <Typography className="deposit_date" variant="body1" component="span">
             {"Chanson partagée " + (naturalDate || "")}
