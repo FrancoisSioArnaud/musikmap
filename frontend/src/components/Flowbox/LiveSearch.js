@@ -245,7 +245,7 @@ export default function LiveSearch({
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-            Choisis une chanson à déposer
+            Choisis une chanson à partager
           </Typography>
 
           {/* tu l’avais caché; je le laisse inchangé */}
