@@ -37,7 +37,7 @@ export default function EnableLocation({
       
     >
       <Box className="modal modal_loc" sx={{padding: "20px", display: "grid", gap: "20px"}}>
-        <Box className="box_info">  
+        <Box className="info_box">  
           <LockIcon />
           <Typography variant="subtitle1" component="span">
             {boxTitle}
