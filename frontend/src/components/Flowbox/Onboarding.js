@@ -163,18 +163,18 @@ export default function Onboarding() {
               
             <Box className="steps_container">
               <Box className="step">
-                <Typography component="span" variant="body1"
+                <Typography component="span" variant="body1">
                   1
                 </Typography>
-                <Typography component="p" variant="body1"
+                <Typography component="p" variant="body1">
                   Dépose une chanson
                 </Typography>
               </Box>
               <Box className="step">     
-                <Typography component="span" variant="body1"
+                <Typography component="span" variant="body1">
                     2
                   </Typography>      
-                <Typography component="p" variant="body1"
+                <Typography component="p" variant="body1">
                   Découvre la chanson précédente
                 </Typography>
               </Box>
