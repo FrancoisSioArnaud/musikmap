@@ -87,8 +87,6 @@ color : $secondary-cyan;
 
 .deposit .deposit_song{
   background-color: $neutral-lightgrey;
-  padding: 20px;
-  padding-bottom:16px;
   display: flex;
 }
 
@@ -96,6 +94,8 @@ color : $secondary-cyan;
   flex-direction: column;
   gap: 8px;
   background : $gradient-darkgreen;
+  padding: 30px;
+  padding-bottom: 26px;
 }
 
 .deposit_list .deposit_song, .deposit_list.deposit_song{
