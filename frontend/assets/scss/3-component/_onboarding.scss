@@ -17,7 +17,7 @@
   background : $gradient-darkgreen;
 }
 
-.onBoarding .container *:not(button){
+.onBoarding .container *:not(button,span){
   color:white;
 }
 
