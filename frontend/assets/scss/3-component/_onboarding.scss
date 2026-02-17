@@ -1,6 +1,10 @@
 @use '../0-init/color' as *;
 
 
+.onboarding{
+  background : $gradient-darkgreen;
+}
+
 
 .onBoarding .box_infos{
   box-shadow: none;
