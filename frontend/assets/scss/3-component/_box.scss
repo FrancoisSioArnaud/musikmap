@@ -1,10 +1,10 @@
 @use '../0-init/color' as *;
 
 
-.box_infos{
+.info_box{
   box-shadow: none;
-  border: .1rem solid #e6f0ea;
-  border-radius: 3.2rem;
+  border: 0.1rem solid $neutral-lightgrey;
+  border-radius: 2rem;
   padding: 16px;
   margin: 0 auto;
   display: flex;
@@ -14,3 +14,9 @@
   width: 43%;
   gap: 12px;
 }
+
+.info_box svg{
+  width: 1.6em;
+  height: 1.6em;
+}
+
