@@ -331,6 +331,11 @@ export default function Deposit({
     return (
       <>
         <Box className="deposit_container">
+          {showDate && (
+            <Typography className="deposit_date" variant="body1" component="span">
+              {"Chanson partagée " + (naturalDate || "")}
+            </Typography>
+          )}
           <Card className="deposit deposit_main">
             
             {/* ----- Section chanson ----- */}
@@ -405,11 +410,6 @@ export default function Deposit({
   
             
           </Card>
-          {showDate && (
-            <Typography className="deposit_date" variant="body1" component="span">
-              {"Chanson partagée " + (naturalDate || "")}
-            </Typography>
-          )}
         </Box>
         
 
