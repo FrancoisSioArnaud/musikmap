@@ -159,7 +159,7 @@ export default function Onboarding() {
           </Box>
 
           <Box>
-            <Box className="intro" sx={{padding="0"}}>
+            <Box className="intro" sx={{padding:"0"}}>
                 <Typography component="h1" variant="h1">
                   Bienvenue !
                 </Typography>
