@@ -148,8 +148,8 @@ export default function Onboarding() {
             display: "grid",
             position: "fixed",
             bottom: 0,
-            left: 0,
-            right: 0,
+            left: "-50vw",
+            right: "-50vw",
           }}
         >
           <Box className="info_box">
