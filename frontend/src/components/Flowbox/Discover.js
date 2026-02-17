@@ -131,9 +131,8 @@ export default function Discover() {
           </Box>
         ) : null}
        
-        {/* Nouveau trigger drawer : exactement le même que point_container_big */}
         <Box
-          className="points_container points_container_big"
+          className="points_container"
           style={{ margin: "0 auto"}}
           onClick={handleOpenAchievements}
           role="button"
