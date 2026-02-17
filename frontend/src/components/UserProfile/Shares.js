@@ -158,7 +158,7 @@ export default function Shares({ username, user, autoLoad }) {
 
   return (
     <>
-      <Box sx={{ display: "grid", gap: 4, p: 4}}>
+      <Box sx={{ display: "grid", gap: 6, p: 6}}>
         {items.map((it) => (
           <Deposit
             key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
