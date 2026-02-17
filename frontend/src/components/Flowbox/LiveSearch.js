@@ -245,10 +245,7 @@ export default function LiveSearch({
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-            Choisis ta chanson à déposer dans la boîte
-          </Typography>
-          <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-            La prochaine personne l’écoutera.
+            Choisis une chanson à déposer
           </Typography>
 
           {/* tu l’avais caché; je le laisse inchangé */}
