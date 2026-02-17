@@ -36,14 +36,14 @@ export default function EnableLocation({
       }}
       
     >
-      <Box className="modal modal_loc" sx={{padding: "16px", display: "grid", gap: "12px"}}>
+      <Box className="modal modal_loc" sx={{padding: "20px", display: "grid", gap: "20px"}}>
         <Box className="locked_box">  
           <LockIcon />
           <Typography className="intro_small" variant="subtitle1" component="span">
             {boxTitle}
           </Typography>
         </Box>
-        <Box sx={{display:"grid", gap:"4px"}}>
+        <Box sx={{display:"grid", gap:"8px"}}>
           <Typography variant="h3" component="h1">
             Ouvre la boîte grâce à ta localisation
           </Typography>
