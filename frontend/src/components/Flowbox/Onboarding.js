@@ -179,17 +179,15 @@ export default function Onboarding() {
                 </Typography>
               </Box>
             </Box>
-            <Box
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                startIcon={<PlayArrowIcon />}
-                onClick={openSheet}
-              >
-                Ouvrir la boîte
-              </Button>
-            </Box>
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              startIcon={<PlayArrowIcon />}
+              onClick={openSheet}
+            >
+              Ouvrir la boîte
+            </Button>
           </Box>
         </Box>
       </Paper>
