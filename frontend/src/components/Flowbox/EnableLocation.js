@@ -44,7 +44,7 @@ export default function EnableLocation({
         </Typography>
       </Box>
       <Box className="modal modal_loc" sx={{padding: "20px", display: "grid", gap: "20px", backgroundColor:"white"}}>
-        <Box sx={{display:"grid", gap:"8px"}}>
+        <Box sx={{display:"grid", gap:"16px", textAlign:"center"}}>
           <Typography variant="h3" component="h1">
             Ouvre la boîte grâce à ta localisation
           </Typography>
