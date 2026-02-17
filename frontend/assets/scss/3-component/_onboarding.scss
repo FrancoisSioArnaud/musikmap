@@ -18,14 +18,22 @@
 
 
 .onBoarding .step{
-  display :flex;
-  align-items :top;
-  
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
 
 .onBoarding .step span{
-  
+  aspect-ratio: 1 / 1;
+  height: 36px;
+  border-radius: 100px;
+  background-color: #e6f0ea;
+  display: inline-block;
+  flex-direction: row;
+  align-items: center;
+  text-align: center;
+  line-height: 36px;
 }
 
 
