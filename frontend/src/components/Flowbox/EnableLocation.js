@@ -11,6 +11,7 @@ import {
   Drawer,
 } from "@mui/material";
 import KeyIcon from '@mui/icons-material/Key';
+import LockIcon from '@mui/icons-material/Lock';
 
 export default function EnableLocation({
   open,
@@ -36,8 +37,8 @@ export default function EnableLocation({
       
     >
       <Box className="modal modal_loc" sx={{padding: "16px", display: "grid", gap: "12px"}}>
-        
-          <Typography className="intro_small squaredesign" variant="subtitle1" component="span">
+          <lockIcon />
+          <Typography className="intro_small" variant="subtitle1" component="span">
             {boxTitle}
           </Typography>
         <Box sx={{display:"grid", gap:"4px"}}>
