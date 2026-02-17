@@ -17,6 +17,10 @@
   background : $gradient-darkgreen;
 }
 
+.onBoarding .container *:not(button){
+  color:white;
+}
+
 .onBoarding .intro{
   padding:0;
 }
