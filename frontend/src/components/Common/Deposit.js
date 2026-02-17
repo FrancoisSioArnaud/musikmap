@@ -405,12 +405,13 @@ export default function Deposit({
   
             
           </Card>
+          {showDate && (
+            <Typography className="deposit_date" variant="body1" component="span">
+              {"Chanson partagée " + (naturalDate || "")}
+            </Typography>
+          )}
         </Box>
-        {showDate && (
-          <Typography className="deposit_date" variant="body1" component="span">
-            {"Chanson partagée " + (naturalDate || "")}
-          </Typography>
-        )}
+        
 
         <ReactionModal
           open={reactOpen}
