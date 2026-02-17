@@ -8,6 +8,15 @@
   border-radius: 3.2rem;
 }
 
+.onBoarding .container{
+  flex-direction: column;
+  padding: 26px;
+  gap: 20px;
+  display: flex;
+  border-radius: 36px 36px 0 0;
+  background : $gradient-darkgreen;
+}
+
 .onBoarding .intro{
   padding:0;
 }
