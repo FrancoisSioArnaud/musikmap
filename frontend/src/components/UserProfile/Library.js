@@ -99,10 +99,10 @@ export default function Library() {
   }
 
   return (
-    <Box sx={{display: "grid", gap: 4, p: 4}}>
+    <Box sx={{display: "grid", gap: 4, p: "26px"}}>
       {sessions.map((sess) => {
         return (
-          <Box key={sess.session_id} sx={{ display: "grid", mb: 4 }}>
+          <Box key={sess.session_id} sx={{ display: "grid"}}>
             {/* Header de session */}
             <Box
               sx={{
