@@ -32,7 +32,7 @@ export default function EnableLocation({
       PaperProps={{
         sx: {
           width: "100vw",
-          backgroundColor: unset;
+          backgroundColor: "unset",
         },
       }}
       
