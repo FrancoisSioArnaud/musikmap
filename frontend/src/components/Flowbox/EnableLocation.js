@@ -42,11 +42,11 @@ export default function EnableLocation({
           </Typography>
         <Box sx={{display:"grid", gap:"4px"}}>
           <Typography variant="h3" component="h1">
-            Localisation
+            Ouvre la boîte grâce à ta localisation
           </Typography>
     
           <Typography variant="body1">
-            Tu dois être sur place pour ouvrir la boîte. Cela évite la triche. Autorise l’accès à ta localisation. Nous vérifions que tu es près de la boîte.
+            Pour éviter la triche, la boîte s’ouvre seulement si tu es sur place. 
           </Typography>
         </Box>
         {error ? (
