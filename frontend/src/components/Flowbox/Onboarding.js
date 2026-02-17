@@ -147,9 +147,9 @@ export default function Onboarding() {
           sx={{
             display: "grid",
             position: "fixed",
-            bottom: 20,
-            left: 20,
-            right: 20,
+            bottom: 0,
+            left: 0,
+            right: 0,
           }}
         >
           <Box className="info_box">
@@ -159,7 +159,7 @@ export default function Onboarding() {
           </Box>
 
           <Box>
-            <Box className="intro">
+            <Box className="intro" sx={{padding="0"}}>
                 <Typography component="h1" variant="h1">
                   Bienvenue !
                 </Typography>
