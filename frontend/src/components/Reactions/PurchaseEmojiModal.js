@@ -42,15 +42,14 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
       <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: 480 }}>
         <Card sx={{ borderRadius: "16px" }} className="modal">
           <CardContent sx={{display: "grid", gap: "12px"}}>
-            <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
-              Débloquer l’emoji {emoji?.char || ""}
-            </Typography>
-
-
-
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              Débloque cet emoji et utilise-le pour réagir à des chansons.
-            </Typography>
+            <Box className="intro_small">
+              <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
+                Débloquer l’emoji {emoji?.char || ""}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                Débloque cet emoji et utilise-le pour réagir à des chansons.
+              </Typography>
+            </Box>
 
             <Box sx={{ display: "flex", gap: "16px", flexDirection: "column-reverse" }}>
               <Button variant="outlined" fullWidth disabled={loading} onClick={onCancel}>Annuler</Button>
