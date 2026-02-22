@@ -67,11 +67,9 @@ export default function PlayModal({ open, song, onClose }) {
           <CardContent sx={{ pb: 1 ,}}>
             {/* En-tête */}
             <Box className="intro">
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                 <Typography variant="h1">
+              <Typography variant="h1">
                   Écouter
-                </Typography>
-              </Box>
+              </Typography>
               <Typography variant="body1" sx={{ mb:3 }}>
                   {song?.title || "Titre"} — {song?.artist || "Artiste"}
               </Typography>
