@@ -147,21 +147,16 @@ class GetBox(APIView):
     lookup_url_kwarg = "name"
     serializer_class = BoxSerializer
 
-    # --------- GET ---------
-    """
-    GET /box-management/get-box/?name=<slug>
-    → Retourne les infos principales d'une box (nom, nombre de dépôts, date du dernier dépôt).
-    """
-
     def get(self, request, format=None):
-        slug = request.GET.get("name")  # ✅ param GET "name"
+        slug = request.GET.get("name")
+
         if not slug:
             return Response(
                 {"detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # On enrichit avec le nombre de dépôts et la date du dernier
+        # 1️⃣ Récupération de la box avec stats
         box = (
             Box.objects
             .filter(url=slug)
@@ -179,18 +174,34 @@ class GetBox(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # 2️⃣ Récupération du dernier dépôt
+        last_deposit = (
+            box.deposits
+            .select_related("song")
+            .order_by("-deposited_at")
+            .first()
+        )
+
         last_deposit_date = (
             naturaltime(localtime(box.last_deposit_at))
             if box.last_deposit_at else None
+        )
+
+        # 3️⃣ Image URL si disponible
+        last_deposit_song_image_url = (
+            last_deposit.song.image_url
+            if last_deposit and last_deposit.song
+            else None
         )
 
         data = {
             "name": box.name,
             "deposit_count": box.deposit_count,
             "last_deposit_date": last_deposit_date,
+            "last_deposit_song_image_url": last_deposit_song_image_url,
         }
-        return Response(data, status=status.HTTP_200_OK)
 
+        return Response(data, status=status.HTTP_200_OK)
     
     # --------- POST (création d’un dépôt) ---------
     def post(self, request, format=None):
@@ -1144,6 +1155,7 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
+
 
 
 
