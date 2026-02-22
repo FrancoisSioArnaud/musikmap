@@ -227,7 +227,12 @@ export default function Deposit({
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
-
+      
+      setTimeout(() => {
+        const el = document.activeElement;
+        if (el && typeof el.blur === "function") el.blur();
+      }, 0);
+      
       showRevealSnackbar();
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
