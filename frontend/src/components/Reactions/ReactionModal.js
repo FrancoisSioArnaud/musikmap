@@ -5,7 +5,6 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import AlbumIcon from "@mui/icons-material/Album";
 
 import { getCookie } from "../Security/TokensUtils";
@@ -51,11 +50,14 @@ export default function ReactionModal({
         });
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
+
         setCatalog({
           actives_paid: data?.actives_paid || [],
           owned_ids: data?.owned_ids || [],
           current_reaction: data?.current_reaction || null,
         });
+
+        // sélection initiale = réaction courante serveur (ou null)
         setSelected(data?.current_reaction?.emoji || null);
       } finally {
         if (mounted) setLoading(false);
@@ -74,7 +76,10 @@ export default function ReactionModal({
     emoji.cost === 0 || (catalog.owned_ids || []).includes(emoji.id);
 
   const onClickEmoji = (emoji) => {
-    if (!emoji) {
+    if (!emoji) return;
+
+    // ✅ toggle: si on reclique sur l’emoji déjà sélectionné → react none
+    if (selected === emoji.char) {
       setSelected(null);
       return;
     }
@@ -114,12 +119,13 @@ export default function ReactionModal({
     }
 
     const csrftoken = getCookie("csrftoken");
+
+    // ✅ si selected === null → on envoie null => backend supprime la réaction
     const emojiId =
       selected === null
         ? null
-        : [...(catalog.actives_paid || [])].find(
-            (e) => e.char === selected
-          )?.id ?? null;
+        : [...(catalog.actives_paid || [])].find((e) => e.char === selected)?.id ??
+          null;
 
     const res = await fetch("/box-management/reactions", {
       method: "POST",
@@ -187,24 +193,15 @@ export default function ReactionModal({
               <>
                 {/* Liste des réactions */}
                 <Box className="react_list">
-                  {/* Bouton Aucune réaction */}
-                  <Button
-                    onClick={() => setSelected(null)}
-                    aria-label="Aucune réaction"
-                    className={`react_item react_none ${
-                      selected === null ? "selected" : ""
-                    }`}
-                  >
-                    <HighlightOffIcon />
-                  </Button>
-
-                  {/* Boucle sur les emojis */}
                   {catalog.actives_paid.map((emoji) => {
                     const owned = isOwned(emoji);
                     const isSelected = selected === emoji.char;
+
                     const buttonClass = `react_item ${
                       isSelected ? "selected" : ""
-                    } ${!owned ? "react_notOwned" : ""}`;
+                    } ${!owned ? "react_notOwned" : ""} ${
+                      emoji.cost === 0 ? "react_free" : ""
+                    }`;
 
                     return (
                       <Button
@@ -214,6 +211,7 @@ export default function ReactionModal({
                         className={buttonClass}
                       >
                         <span className="react_emoji">{emoji.char}</span>
+
                         {!owned && emoji.cost > 0 && (
                           <Box className="points_container">
                             <Typography variant="body2" component="span">
