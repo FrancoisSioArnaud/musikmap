@@ -81,7 +81,7 @@ export default function PlayModal({ open, song, onClose }) {
               <Button fullWidth variant="outlined" sx={{borderColor:"#1ED760", color:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)} endIcon={<OpenInNewIcon />} >
                 Spotify
               </Button>
-              <Button fullWidth variant="outlined" sx={{borderColor:"#A238FF", color:#A238FF}} onClick={() => openOrAlert(song?.deezer_url)} endIcon={<OpenInNewIcon />} >
+              <Button fullWidth variant="outlined" sx={{borderColor:"#A238FF", color:"#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)} endIcon={<OpenInNewIcon />} >
                 Deezer
               </Button>
               <Button fullWidth variant="outlined" sx={{borderColor:"#F70F19", color:"#F70F19"}} onClick={openYouTubeSearch} endIcon={<OpenInNewIcon />} >
