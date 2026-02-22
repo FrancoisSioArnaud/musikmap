@@ -142,7 +142,22 @@ export default function Onboarding() {
           //backgroundRepeat: "no-repeat",
         }}
       >
-        
+          {box?.last_deposit_song_image_url ? (
+            <Box
+              component="img"
+              src={box.last_deposit_song_image_url}
+              alt=""
+              className="lastSongImg"
+              sx={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "blur(18px)",
+                transform: "scale(1.1)",
+                opacity: 0.55,
+              }}
+            />
+          ) : null}
         <Box
           sx={{
             display: "grid",
