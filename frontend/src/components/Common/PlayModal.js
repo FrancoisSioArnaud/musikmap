@@ -77,7 +77,7 @@ export default function PlayModal({ open, song, onClose }) {
             </Typography>
 
             {/* 3 colonnes égales */}
-            <Box sx={{display:"grid", gap:"12px"}}>
+            <Box sx={{display:"grid", gridTemplateColumns: "1fr 1fr", gap:"12px"}}>
               <Button fullWidth variant="outlined" sx={{borderColor:"#1ED760", color:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)} endIcon={<OpenInNewIcon />} >
                 Spotify
               </Button>
