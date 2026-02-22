@@ -174,7 +174,7 @@ export default function LiveSearch({
 
   const goOnboardingWithError = useCallback(
     (msg) => {
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
         replace: true,
         state: { error: msg || "Erreur pendant le dépôt" },
       });
