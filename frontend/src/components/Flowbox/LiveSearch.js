@@ -277,6 +277,7 @@ export default function LiveSearch({
             type="search"
             placeholder="Chercher une chanson"
             value={searchValue}
+            className="searchfield"
             onChange={(e) => setSearchValue(e.target.value)}
             inputProps={{ inputMode: "search" }}
             InputProps={{
