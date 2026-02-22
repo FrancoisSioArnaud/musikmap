@@ -26,7 +26,7 @@ export default function Discover() {
   const [openAchievements, setOpenAchievements] = useState(false);
 
   const redirectOnboardingExpired = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}`, {
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
       replace: true,
       state: { error: "Erreur pendant le dépôt" },
     });
