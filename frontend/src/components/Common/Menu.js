@@ -29,7 +29,7 @@ export default function MenuAppBar() {
             variant="h5"
             component="div"
           >
-            MusikMap
+            Boîte à Chanson
           </Typography>
         </Box>
 
@@ -87,6 +87,7 @@ export default function MenuAppBar() {
     </AppBar>
   );
 }
+
 
 
 
