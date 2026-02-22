@@ -178,13 +178,14 @@ export default function ReactionModal({
       >
         <Card sx={{ borderRadius: 4 }} className="modal">
           <CardContent>
-            <Typography component="h1" variant="h1">
-              Réagir
-            </Typography>
-            <Typography variant="body1">
-              Choisis un emoji pour dire ce que tu as pensé de la chanson.
-            </Typography>
-
+            <Box className="intro_small">
+              <Typography component="h1" variant="h1">
+                Réagir
+              </Typography>
+              <Typography variant="body1">
+                Choisis un emoji pour dire ce que tu as pensé de la chanson.
+              </Typography>
+            </Box>
             {loading ? (
               <Box>
                 <CircularProgress />
