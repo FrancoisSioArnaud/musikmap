@@ -142,42 +142,22 @@ export default function Onboarding() {
           //backgroundRepeat: "no-repeat",
         }}
       >
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 0,
-              overflow: "hidden",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            {box?.last_deposit_song_image_url ? (
-              <Box
-                component="img"
-                src={box.last_deposit_song_image_url}
-                alt=""
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  filter: "blur(18px)",
-                  transform: "scale(1.1)",
-                  opacity: 0.55,
-                }}
-              />
-            ) : null}
-          
-            {/* overlay pour garder la lisibilité */}
+          {box?.last_deposit_song_image_url ? (
             <Box
+              component="img"
+              src={box.last_deposit_song_image_url}
+              alt=""
+              className="lastSongImg"
               sx={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.65))",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "blur(18px)",
+                transform: "scale(1.1)",
+                opacity: 0.55,
               }}
             />
-          </Box>
+          ) : null}
         <Box
           sx={{
             display: "grid",
