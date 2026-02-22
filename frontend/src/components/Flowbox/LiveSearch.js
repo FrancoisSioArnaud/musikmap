@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -62,8 +68,18 @@ export default function LiveSearch({
   const [isSearching, setIsSearching] = useState(false);
 
   // dépôt (POST)
-  const [posting, setPosting] = useState(false);     // disable tous les boutons
-  const [postingId, setPostingId] = useState(null);  // loader sur le bouton cliqué
+  const [posting, setPosting] = useState(false); // disable tous les boutons
+  const [postingId, setPostingId] = useState(null); // loader sur le bouton cliqué
+
+  // ✅ focus search field on mount
+  const searchInputRef = useRef(null);
+  useEffect(() => {
+    // petit délai pour laisser MUI/Drawer finir l'anim si besoin
+    const t = setTimeout(() => {
+      searchInputRef.current?.focus?.();
+    }, 50);
+    return () => clearTimeout(t);
+  }, []);
 
   // Préférence utilisateur (quand UserContext se met à jour)
   useEffect(() => {
@@ -273,6 +289,7 @@ export default function LiveSearch({
           </ToggleButtonGroup>
 
           <TextField
+            inputRef={searchInputRef}
             fullWidth
             type="search"
             placeholder="Chercher une chanson"
@@ -321,7 +338,13 @@ export default function LiveSearch({
                     sx={{ minWidth: 0 }}
                   >
                     {isThisPosting ? (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
                         <CircularProgress size={16} />
                         Déposer
                       </Box>
