@@ -1,9 +1,5 @@
 @use '../0-init/color' as *;
 
-/**
- * @file
- * Search Form Styling
- */
-
-/* ---------------- DEFAULT -----------------*/
-
+.searchfield > div {
+  border-radius:100px;
+}
