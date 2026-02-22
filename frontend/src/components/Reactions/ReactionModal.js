@@ -164,7 +164,7 @@ export default function ReactionModal({
       sx={{
         position: "fixed",
         inset: 0,
-        bgcolor: "rgba(0,0,0,0.35)",
+        bgcolor: "rgba(0,0,0,0.45)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
