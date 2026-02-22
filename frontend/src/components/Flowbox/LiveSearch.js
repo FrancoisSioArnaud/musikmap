@@ -26,7 +26,7 @@ import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
 
 const KEY_BOX_CONTENT = "mm_box_content";
-const TTL_MINUTES = 20;
+const TTL_MINUTES = 120;
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
