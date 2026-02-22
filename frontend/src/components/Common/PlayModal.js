@@ -92,7 +92,7 @@ export default function PlayModal({ open, song, onClose }) {
                 Copier le nom de la chanson
               </Button>
             </Box>
-            <Button onClick={onClose} title="Fermer" sx={{marginTop: 4,}}>Fermer</Button>
+            <Button onClick={onClose} variant="contained" title="Fermer" sx={{marginTop: 4,}}>Fermer</Button>
           </CardContent>
         </Card>
       </Box>
