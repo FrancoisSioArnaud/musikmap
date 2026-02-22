@@ -89,7 +89,7 @@ export default function PlayModal({ open, song, onClose }) {
                 YouTube
               </Button>
               <Button fullWidth variant="contained" onClick={copySongText}>
-                Copier le nom de la chanson
+                Copier
               </Button>
             </Box>
             <Button fullWidth onClick={onClose} variant="contained" title="Fermer" sx={{marginTop: "20px"}}>Fermer</Button>
