@@ -120,6 +120,11 @@ const theme = createTheme({
           height: 48,
           fontSize: "20px",
           textTransform: "none",
+          "&:hover": {
+            backgroundColor: "inherit",
+            boxShadow: "none",
+            border:"inherit",
+          },
         },
 
         // Bouton plein (primary)
@@ -130,6 +135,11 @@ const theme = createTheme({
           backgroundColor: "#7BD528",
           color: "#000",
           fontWeight: 700,
+          "&:hover": {
+            backgroundColor: "inherit",
+            boxShadow: "none",
+            border:"inherit",
+          },
         },
 
         // Bouton outlined (primary)
@@ -142,6 +152,11 @@ const theme = createTheme({
           fontWeight: 700,
           border: "solid inset 2px #7BD528",
           borderWidth: 2,
+          "&:hover": {
+            backgroundColor: "inherit",
+            boxShadow: "none",
+            border:"inherit",
+          },
         },
       },
       
@@ -155,6 +170,11 @@ const theme = createTheme({
             backgroundColor: "#7BD528",
             color: "#000",
             fontWeight: 700,
+            "&:hover": {
+              backgroundColor: "inherit",
+              boxShadow: "none",
+              border:"inherit",
+          },
           },
         },
         {
@@ -167,6 +187,11 @@ const theme = createTheme({
             fontSize: "16px",
             fontWeight: 600,
             color: "#000000",
+            "&:hover": {
+              backgroundColor: "inherit",
+              boxShadow: "none",
+              border:"inherit",
+          },
           },
         },
       ],
