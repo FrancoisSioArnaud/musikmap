@@ -168,7 +168,7 @@ export default function ReactionModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        p: 4,
+        p: 5,
         zIndex: 1300,
       }}
     >
