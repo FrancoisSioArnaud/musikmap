@@ -318,7 +318,7 @@ export default function LiveSearch({
         </Box>
       )}
 
-      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: scroll; }}>
+      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll"; }}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const id = option?.id ?? "__posting__";
