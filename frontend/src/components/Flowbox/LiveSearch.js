@@ -258,13 +258,12 @@ export default function LiveSearch({
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%" ,height: "calc(100vh - 58px)"}} >
-      <Paper variant="outlined" sx={{ p: 4 }}>
+      <Paper variant="outlined" sx={{ p: 4, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis une chanson à partager
           </Typography>
 
-          {/* tu l’avais caché; je le laisse inchangé */}
           <ToggleButtonGroup
             color="primary"
             exclusive
