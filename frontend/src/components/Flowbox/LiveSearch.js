@@ -257,7 +257,7 @@ export default function LiveSearch({
   );
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: "100%" }}>
+    <Stack spacing={2} sx={{ maxWidth: "100%" ,height: "calc(100vh - 58px)"}} >
       <Paper variant="outlined" sx={{ p: 4 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
@@ -318,7 +318,7 @@ export default function LiveSearch({
         </Box>
       )}
 
-      <Paper variant="outlined" sx={{ overflowX: "hidden" }}>
+      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: scroll; }}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const id = option?.id ?? "__posting__";
