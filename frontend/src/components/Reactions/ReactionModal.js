@@ -176,7 +176,7 @@ export default function ReactionModal({
         onClick={(e) => e.stopPropagation()}
         sx={{ width: "100%", maxWidth: 560 }}
       >
-        <Card sx={{ borderRadius: 4 }}>
+        <Card sx={{ borderRadius: 4 }} className="modal">
           <CardContent>
             <Typography component="h1" variant="h1">
               Réagir
