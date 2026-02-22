@@ -288,7 +288,7 @@ export default function LiveSearch({
               ),
             }}
             sx={{
-              borderRadius: 16,
+              borderRadius: "100px",
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
