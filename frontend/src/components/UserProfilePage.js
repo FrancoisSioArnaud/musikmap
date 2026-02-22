@@ -23,7 +23,7 @@ function TabPanel({ index, value, children }) {
   if (value !== index) return null;
   return (
     <div role="tabpanel" style={{ width: "100%" }}>
-      <Box><Typography variant="h5">{children}</Typography></Box>
+      <Box>{children}</Box>
     </div>
   );
 }
@@ -230,5 +230,6 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
