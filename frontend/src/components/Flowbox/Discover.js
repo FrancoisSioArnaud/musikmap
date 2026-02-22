@@ -145,6 +145,9 @@ export default function Discover() {
             +{totalPoints}
           </Typography>
           <AlbumIcon />
+          <Typography component="span" variant="body1">
+            Voir le détail
+          </Typography>
         </Box>
         
       </Box>
