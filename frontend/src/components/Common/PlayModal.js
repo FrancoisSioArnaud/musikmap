@@ -66,15 +66,16 @@ export default function PlayModal({ open, song, onClose }) {
         <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 4 }}>
           <CardContent sx={{ pb: 1 ,}}>
             {/* En-tête */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-               <Typography variant="h1">
-                Écouter
+            <Box className="intro">
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                 <Typography variant="h1">
+                  Écouter
+                </Typography>
+              </Box>
+              <Typography variant="body1" sx={{ mb:3 }}>
+                  {song?.title || "Titre"} — {song?.artist || "Artiste"}
               </Typography>
-              <Button onClick={onClose} title="Fermer" sx={{fontSize: "32px"}}>×</Button>
             </Box>
-            <Typography variant="body1" sx={{ mb:3 }}>
-                {song?.title || "Titre"} — {song?.artist || "Artiste"}
-            </Typography>
 
             {/* 3 colonnes égales */}
             <Box sx={{display:"grid", gridTemplateColumns: "1fr 1fr", gap:"12px"}}>
@@ -91,6 +92,7 @@ export default function PlayModal({ open, song, onClose }) {
                 Copier le nom de la chanson
               </Button>
             </Box>
+            <Button onClick={onClose} title="Fermer" sx={{marginTop: 4,}}>Fermer</Button>
           </CardContent>
         </Card>
       </Box>
