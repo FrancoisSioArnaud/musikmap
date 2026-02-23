@@ -170,7 +170,7 @@ export default function UserProfilePage() {
       >
         {isOwner && (
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon size="medium" />
+            <SettingsIcon size="large" />
           </IconButton>
         )}
       </Box>
@@ -230,6 +230,7 @@ export default function UserProfilePage() {
     </Box>
   );
 }
+
 
 
 
