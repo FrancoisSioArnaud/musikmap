@@ -1,18 +1,70 @@
-# box_management/models.py
-
 from django.db import models
 from django.utils import timezone
 from django.db.models import Count
+from django.dispatch import receiver
 from typing import Union, Optional, Iterable
 from users.models import CustomUser
+from utils import generate_unique_filename
 import secrets
+
+
+class Client(models.Model):
+    def background_picture_path(instance, filename):
+        filename = generate_unique_filename(instance, filename)
+        return f"clients/backgrounds/{filename}"
+
+    name = models.CharField(max_length=100, unique=True, db_index=True)
+    background_picture = models.ImageField(
+        upload_to=background_picture_path,
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["name"]),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+@receiver(models.signals.pre_delete, sender=Client)
+def delete_client_background_picture(sender, instance, **kwargs):
+    if instance.background_picture:
+        instance.background_picture.delete(False)
+
+
+@receiver(models.signals.pre_save, sender=Client)
+def delete_old_client_background_picture(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+
+    existing_client = Client.objects.filter(pk=instance.pk).first()
+    if not existing_client:
+        return
+
+    if existing_client.background_picture != instance.background_picture:
+        if existing_client.background_picture:
+            existing_client.background_picture.delete(False)
+
 
 class Box(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=150, blank=True)
     url = models.SlugField(blank=True, unique=True)
     image_url = models.URLField(max_length=200, blank=True)
-    client_name = models.CharField(max_length=50, blank=True)
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.PROTECT,
+        related_name="boxes",
+        null=True,
+        blank=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,6 +101,7 @@ class Song(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.artist}"
+
 
 class DepositQuerySet(models.QuerySet):
     def with_related(self):
@@ -143,7 +196,6 @@ class Deposit(models.Model):
         return key
 
 
-
 class LocationPoint(models.Model):
     box = models.ForeignKey(Box, on_delete=models.CASCADE, related_name="locations")
 
@@ -183,11 +235,11 @@ class DiscoveredSong(models.Model):
         ("profile", "Profile"),
     )
     context = models.CharField(
-        max_length=10,              
+        max_length=10,
         choices=CONTEXT_CHOICES,
-        default="box",             
+        default="box",
         blank=False,
-        null=False,                  
+        null=False,
         db_index=True,
     )
 
@@ -238,64 +290,28 @@ class EmojiRight(models.Model):
             models.Index(fields=["user"]),
         ]
 
-    def __str__(self):
-        return f"{self.user} → {self.emoji}"
-
-class ReactionQuerySet(models.QuerySet):
-    def with_related(self):
-        # FK simples → JOIN en 1 requête pour emoji et user
-        return self.select_related("emoji", "user")
-
-    def recent(self):
-        return self.order_by("-created_at")
-
-    def for_deposit(self, dep_or_id: Union[int, "Deposit"]):
-        dep_id = getattr(dep_or_id, "pk", dep_or_id)
-        return self.filter(deposit_id=dep_id)
-
-    def for_deposits(self, dep_ids: Iterable[int]):
-        return self.filter(deposit_id__in=list(dep_ids))
-
-    def summary_by_emoji(self):
-        """
-        Compte par emoji pour un set courant (ex: un dépôt)
-        Renvoie : [{'emoji': '🔥', 'count': 3}, ...]
-        """
-        return (
-            self.values("emoji__char")
-            .annotate(count=Count("id"))
-            .order_by("-count", "emoji__char")
-        )
-
 
 class Reaction(models.Model):
-    deposit = models.ForeignKey("Deposit", on_delete=models.CASCADE, related_name="reactions")
+    """
+    Une réaction = un user + un dépôt + un emoji.
+    Upsert côté API : si déjà présent => update updated_at (pas de doublon).
+    """
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reactions")
-    emoji = models.ForeignKey("Emoji", on_delete=models.PROTECT, related_name="reactions")
+    deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE, related_name="reactions")
+    emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE, related_name="reactions")
 
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    # branchement du QuerySet custom
-    objects = ReactionQuerySet.as_manager()
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "deposit"], name="unique_reaction_per_user_and_deposit"),
+            models.UniqueConstraint(fields=["user", "deposit", "emoji"], name="uniq_user_deposit_emoji"),
         ]
         indexes = [
             models.Index(fields=["deposit", "emoji"]),
             models.Index(fields=["user", "deposit"]),
         ]
-        ordering = ["created_at"]
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.deposit_id} {self.user_id} {self.emoji_id}"
-
-
-
-
-
-
-
-
+        return f"{self.user_id} -> {self.deposit_id} {self.emoji.char}"
