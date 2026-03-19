@@ -8,11 +8,20 @@ from .models import *
 from users.models import CustomUser
 
 
+@admin.register(Client)
+class ClientAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    list_display = ("name", "background_picture", "created_at", "updated_at")
+    search_fields = ("name",)
+    ordering = ("name",)
+
+
 class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     """
     Class goal: This class represents a Music Box used in the admin interface to import/export data.
     """
-    list_display = ('name', 'description', 'url', 'image_url', 'client_name')
+    list_display = ("name", "description", "url", "image_url", "client")
+    list_filter = ("client",)
+    search_fields = ("name", "description", "url", "client__name")
 
 
 class LocationPointAdmin(ImportExportModelAdmin, admin.ModelAdmin):
@@ -211,6 +220,7 @@ class DiscoveredSongAdmin(admin.ModelAdmin):
         "context",
     )
 
+
 # Models accessible in the admin interface
 admin.site.site_header = "Administration de la Boîte à Son"
 admin.site.register(Box, BoxAdmin)
@@ -249,6 +259,3 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box_id__name",
     )
     ordering = ("-created_at",)
-
-
-
