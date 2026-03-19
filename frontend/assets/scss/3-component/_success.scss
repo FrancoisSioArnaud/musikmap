@@ -14,7 +14,7 @@
   flex-direction: column;
   align-items: baseline;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 16px 16px;
   box-shadow: none;
   border: 0.1rem solid $neutral-lightgrey;
   border-radius: 3.2rem;
@@ -35,12 +35,11 @@
 }
 
 .success .success_title{
-  margin-top: 16px;
-  margin-bottom: 4px;
+
 }
 
 .success .success_desc{
-  margin-bottom:16px;
+
 }
 
 .success .success_emoji{
