@@ -14,6 +14,13 @@ class Client(models.Model):
         return f"clients/backgrounds/{filename}"
 
     name = models.CharField(max_length=100, unique=True, db_index=True)
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
     background_picture = models.ImageField(
         upload_to=background_picture_path,
         blank=True,
@@ -27,11 +34,12 @@ class Client(models.Model):
         ordering = ["name"]
         indexes = [
             models.Index(fields=["name"]),
+            models.Index(fields=["slug"]),
         ]
 
     def __str__(self):
         return self.name
-
+        
 
 @receiver(models.signals.pre_delete, sender=Client)
 def delete_client_background_picture(sender, instance, **kwargs):
