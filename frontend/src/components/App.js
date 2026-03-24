@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { CssBaseline } from "@mui/material";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
-import theme from "../theme";
+import { buildMuiTheme } from "../theme";
+import {
+  getStoredCurrentClient,
+  CURRENT_CLIENT_STORAGE_KEY,
+} from "../clientThemes";
+import { applyActiveClientTheme } from "../applyActiveClientTheme";
 import HomePage from "./HomePage";
 import RegisterPage from "./RegisterPage";
 import LoginPage from "./LoginPage";
@@ -49,6 +53,7 @@ export default function App() {
   const [user, setUser] = useState({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentBoxName, setCurrentBoxName] = useState("");
+  const [currentClient, setCurrentClient] = useState(() => getStoredCurrentClient());
 
   const providerValue = useMemo(
     () => ({
@@ -58,17 +63,44 @@ export default function App() {
       setIsAuthenticated,
       currentBoxName,
       setCurrentBoxName,
+      currentClient,
+      setCurrentClient,
     }),
-    [user, isAuthenticated, currentBoxName]
+    [user, isAuthenticated, currentBoxName, currentClient]
   );
+
+  const activeClientTheme = useMemo(() => {
+    return applyActiveClientTheme(currentClient);
+  }, [currentClient]);
+
+  const muiTheme = useMemo(() => {
+    return buildMuiTheme(activeClientTheme);
+  }, [activeClientTheme]);
 
   useEffect(() => {
     checkUserStatus(setUser, setIsAuthenticated);
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(CURRENT_CLIENT_STORAGE_KEY, currentClient);
+    } catch (error) {}
+  }, [currentClient]);
+
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key === CURRENT_CLIENT_STORAGE_KEY) {
+        setCurrentClient(event.newValue || "default");
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   return (
     <StyledEngineProvider injectFirst>
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={muiTheme}>
         <Router>
           <UserContext.Provider value={providerValue}>
             <Routes>
@@ -78,10 +110,13 @@ export default function App() {
                 <Route path="/profile/edit" element={<UserProfileEdit />} />
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/profile/:username" element={<UserProfilePage />} />
-                
+
                 <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
                   <Route index element={<Onboarding />} />
-                  <Route path="search" element={<LiveSearch isSpotifyAuthenticated={true} isDeezerAuthenticated={true} />}/>
+                  <Route
+                    path="search"
+                    element={<LiveSearch isSpotifyAuthenticated={true} isDeezerAuthenticated={true} />}
+                  />
                   <Route path="discover" element={<Discover />} />
                 </Route>
               </Route>
@@ -104,4 +139,3 @@ export default function App() {
 
 const appDiv = document.getElementById("app");
 createRoot(appDiv).render(<App />);
-
