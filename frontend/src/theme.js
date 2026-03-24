@@ -1,202 +1,200 @@
-// src/theme.js
+// frontend/src/theme.js
+
 import { createTheme } from "@mui/material/styles";
 
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    // Couleurs principales
-    primary: { main: "#7BD528", contrastText: "#000000" },
-    background: { default: "#FFFFFF", paper: "#FFFFFF" },
-    text: { primary: "#000103", secondary: "#0D2A0E" },
-    error: { main: "#FB0000" },
-    success: { main: "#0FCC0A" }, // (= validation)
-    divider: "rgba(255,255,255,0.12)",
-  },
-
-  spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64], 
-  
-  typography: {
-    fontFamily: 'Manrope, open-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-
-    // h1 : 40px black (attention : en dark, #000 est invisible ; laisse la couleur au composant si fond clair)
-    h1: {
-      fontSize: "40px",
-      fontWeight: 900,
-      color: "#000000",
+export function buildMuiTheme(clientTheme) {
+  return createTheme({
+    palette: {
+      mode: "light",
+      primary: {
+        main: clientTheme.colors.primaryMain,
+        contrastText: clientTheme.colors.primaryContrastText,
+      },
+      background: {
+        default: clientTheme.colors.appBg,
+        paper: clientTheme.colors.surface,
+      },
+      text: {
+        primary: clientTheme.colors.textPrimary,
+        secondary: clientTheme.colors.textSecondary,
+      },
+      error: { main: clientTheme.colors.error },
+      success: { main: clientTheme.colors.success },
+      divider: clientTheme.colors.divider,
     },
 
-    // h3 : 32 bold
-    h3: {
-      fontSize: "32px",
-      fontWeight: 700,
-      color: "#000000",
-    },
-    
-    // h4 : 16 semi-bold
-    h4: {
-      fontSize: "26px",
-      fontWeight: 600,
-      color: "#000000",
-    },
-    
-    // h5 : 16 semi-bold
-    h5: {
-      fontSize: "16px",
-      fontWeight: 600,
-      color: "#000000",
-    },
+    spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64],
 
-    // Thicktext : 16 bold → map sur subtitle1
-    subtitle1: {
-      fontSize: "16px",
-      fontWeight: 700,
-      color: "#000000",
-    },
+    typography: {
+      fontFamily: clientTheme.fonts.body,
 
-    // p : 16 regular
-    body1: {
-      fontSize: "16px",
-      fontWeight: 400,
-      color: "#000000",
-    },
+      h1: {
+        fontSize: "40px",
+        fontWeight: 900,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.heading,
+      },
 
-    // small text : 12 light
-    body2: {
-      fontSize: "12px",
-      fontWeight: 300,
-      color: "#000000",
-    },
-  },
+      h3: {
+        fontSize: "32px",
+        fontWeight: 700,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.heading,
+      },
 
-  components: {
-    // Global : fond noir + texte blanc
-    MuiCssBaseline: {
-      styleOverrides: {
-        "html, body, #root": {
-          minHeight: "100%",
-          backgroundColor: "#FFFFFF",
-          color: "#000103", // ← tous les textes par défaut en noir TAN
-        },
-        body: {
+      h4: {
+        fontSize: "26px",
+        fontWeight: 600,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.heading,
+      },
 
-        },
-        // Optionnel : liens en blanc par défaut (sinon ils héritent déjà du body)
-        a: {
-          
-        },
+      h5: {
+        fontSize: "16px",
+        fontWeight: 600,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.heading,
+      },
+
+      subtitle1: {
+        fontSize: "16px",
+        fontWeight: 700,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.body,
+      },
+
+      body1: {
+        fontSize: "16px",
+        fontWeight: 400,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.body,
+      },
+
+      body2: {
+        fontSize: "12px",
+        fontWeight: 300,
+        color: clientTheme.colors.black,
+        fontFamily: clientTheme.fonts.body,
       },
     },
 
-    // AppBar (menuAppBar)
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#FFFFFF", // black 30%
-          borderBottom: "1px solid rgba(255,255,255,0.12)", // white 12%
-          boxShadow: "none",
-          height: "56px",
-        },
-      },
-    },
-
-    // Avatar
-    MuiAvatar: {
-      styleOverrides: {
-        root: {
-          border: "2px solid rgba(0,0,0,0.04)",
-          height:32,
-          width:32,
-        },
-      },
-    },
-
-    // Boutons
-    MuiButton: {
-      defaultProps: {
-        disableElevation: true, // on gère l’ombre et autres effets à la main
-      },
-      styleOverrides: {
-        root: {
-          height: 48,
-          fontSize: "20px",
-          textTransform: "none",
-          "&:hover": {
-            backgroundColor: "inherit",
-            boxShadow: "none",
-            border:"inherit",
+    components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          "html, body, #root": {
+            minHeight: "100%",
+            backgroundColor: clientTheme.colors.appBg,
+            color: clientTheme.colors.textPrimary,
           },
+          body: {},
+          a: {},
         },
+      },
 
-        // Bouton plein (primary)
-        contained: {
-          p: "6px 26px",
-          borderRadius: 16,
-          height: 48,
-          backgroundColor: "#7BD528",
-          color: "#000",
-          fontWeight: 700,
-          "&:hover": {
-            backgroundColor: "inherit",
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: clientTheme.colors.appBarBg,
+            borderBottom: clientTheme.colors.appBarBorder,
             boxShadow: "none",
-            border:"inherit",
-          },
-        },
-
-        // Bouton outlined (primary)
-        outlinedPrimary: {
-          p: "6px 26px",
-          borderRadius: 16,
-          height: 48,
-          backgroundColor: "#FFFFFF",
-          color: "#7BD528",
-          fontWeight: 700,
-          border: "solid inset 2px #7BD528",
-          borderWidth: 2,
-          "&:hover": {
-            backgroundColor: "inherit",
-            boxShadow: "none",
-            border:"inherit",
+            height: "56px",
           },
         },
       },
-      
-      variants: [
-        {
-          props: { variant: "depositInteract" }, // <Button variant="gradient">
-          style: {
-            p: "12px 26px",
-            borderRadius: 16,
+
+      MuiAvatar: {
+        styleOverrides: {
+          root: {
+            border: clientTheme.colors.avatarBorder,
+            height: 32,
+            width: 32,
+          },
+        },
+      },
+
+      MuiButton: {
+        defaultProps: {
+          disableElevation: true,
+        },
+        styleOverrides: {
+          root: {
             height: 48,
-            backgroundColor: "#7BD528",
-            color: "#000",
+            fontSize: "20px",
+            textTransform: "none",
+            "&:hover": {
+              backgroundColor: "inherit",
+              boxShadow: "none",
+              border: "inherit",
+            },
+          },
+
+          contained: {
+            p: "6px 26px",
+            borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
+            height: 48,
+            backgroundColor: clientTheme.colors.primaryMain,
+            color: clientTheme.colors.primaryContrastText,
             fontWeight: 700,
             "&:hover": {
               backgroundColor: "inherit",
               boxShadow: "none",
-              border:"inherit",
+              border: "inherit",
+            },
           },
-          },
-        },
-        {
-          props: { variant: "menu" },
-          style: {
-            borderRadius: 16,
+
+          outlinedPrimary: {
+            p: "6px 26px",
+            borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
             height: 48,
-            border: "solid #7BD528 2px",
-            backgroundColor: "white",
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "#000000",
+            backgroundColor: clientTheme.colors.white,
+            color: clientTheme.colors.primaryMain,
+            fontWeight: 700,
+            border: `solid inset 2px ${clientTheme.colors.primaryMain}`,
+            borderWidth: 2,
             "&:hover": {
               backgroundColor: "inherit",
               boxShadow: "none",
-              border:"inherit",
-          },
+              border: "inherit",
+            },
           },
         },
-      ],
-    },
-  },
-});
 
-export default theme;
+        variants: [
+          {
+            props: { variant: "depositInteract" },
+            style: {
+              p: "12px 26px",
+              borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
+              height: 48,
+              backgroundColor: clientTheme.colors.primaryMain,
+              color: clientTheme.colors.primaryContrastText,
+              fontWeight: 700,
+              "&:hover": {
+                backgroundColor: "inherit",
+                boxShadow: "none",
+                border: "inherit",
+              },
+            },
+          },
+          {
+            props: { variant: "menu" },
+            style: {
+              borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
+              height: 48,
+              border: `solid ${clientTheme.colors.primaryMain} 2px`,
+              backgroundColor: clientTheme.colors.white,
+              fontSize: "16px",
+              fontWeight: 600,
+              color: clientTheme.colors.black,
+              "&:hover": {
+                backgroundColor: "inherit",
+                boxShadow: "none",
+                border: "inherit",
+              },
+            },
+          },
+        ],
+      },
+    },
+  });
+}
