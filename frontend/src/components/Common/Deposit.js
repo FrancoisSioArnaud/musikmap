@@ -389,12 +389,12 @@ export default function Deposit({
                   <Box className=" avatarbox">
                     <Avatar
                       src={u?.profile_pic_url || undefined}
-                      alt={u?.username || "Anonyme"}
+                      alt={u?.username || "anonyme"}
                       className="avatar"
                     />
                   </Box>
                   <Typography component="span" className="username " variant="subtitle1">
-                    {u?.username || "Anonyme"}
+                    {u?.username || "anonyme"}
                     {u?.username && <ArrowForwardIosIcon className="icon" />}
                   </Typography>
                 </Box>
@@ -515,12 +515,12 @@ export default function Deposit({
                 <Box className=" avatarbox">
                   <Avatar
                     src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "Anonyme"}
+                    alt={u?.username || "anonyme"}
                     className="avatar"
                   />
                 </Box>
                 <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "Anonyme"}
+                  {u?.username || "anonyme"}
                   {u?.username && <ArrowForwardIosIcon className="icon" />}
                 </Typography>
               </Box>
