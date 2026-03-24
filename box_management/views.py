@@ -149,31 +149,32 @@ class GetBox(APIView):
 
     def get(self, request, format=None):
         slug = request.GET.get("name")
-
+    
         if not slug:
             return Response(
                 {"detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+    
         # 1️⃣ Récupération de la box avec stats
         box = (
             Box.objects
+            .select_related("client")
             .filter(url=slug)
             .annotate(
                 deposit_count=Count("deposits"),
                 last_deposit_at=Max("deposits__deposited_at"),
             )
-            .only("name")
+            .only("name", "client__slug")
             .first()
         )
-
+    
         if not box:
             return Response(
                 {"detail": "Désolé. Cette boîte n'existe pas."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
+    
         # 2️⃣ Récupération du dernier dépôt
         last_deposit = (
             box.deposits
@@ -181,26 +182,27 @@ class GetBox(APIView):
             .order_by("-deposited_at")
             .first()
         )
-
+    
         last_deposit_date = (
             naturaltime(localtime(box.last_deposit_at))
             if box.last_deposit_at else None
         )
-
+    
         # 3️⃣ Image URL si disponible
         last_deposit_song_image_url = (
             last_deposit.song.image_url
             if last_deposit and last_deposit.song
             else None
         )
-
+    
         data = {
             "name": box.name,
+            "client_slug": box.client.slug if box.client else None,
             "deposit_count": box.deposit_count,
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
         }
-
+    
         return Response(data, status=status.HTTP_200_OK)
     
     # --------- POST (création d’un dépôt) ---------
