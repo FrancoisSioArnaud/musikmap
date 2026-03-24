@@ -673,7 +673,7 @@ class ManageDiscoveredSongs(APIView):
                 Prefetch(
                     'deposit__reactions',  # ✅ via le champ relationnel "deposit"
                     queryset=Reaction.objects
-                    .with_related()  # emoji + user
+                    .select_related("emoji", "user", "deposit")
                     .order_by('created_at', 'id'),
                     to_attr='prefetched_reactions',
                 )
@@ -956,7 +956,7 @@ class UserDepositsView(APIView):
             .prefetch_related(
                 Prefetch(
                     "reactions",
-                    queryset=Reaction.objects.with_related().order_by("created_at", "id"),
+                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
                     to_attr="prefetched_reactions",
                 )
             )
