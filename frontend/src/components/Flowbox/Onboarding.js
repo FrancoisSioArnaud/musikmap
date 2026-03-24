@@ -48,6 +48,13 @@ export default function Onboarding() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
+  
+        try {
+          if (data.client_slug) {
+            localStorage.setItem("mm_current_client", data.client_slug);
+          }
+        } catch {}
+  
         setBox(data);
       } catch {
         handleError(pageError || "Impossible de récupérer la boîte.");
@@ -55,7 +62,7 @@ export default function Onboarding() {
         setLoading(false);
       }
     })();
-  }, [boxSlug, handleError]); // volontairement pas pageError ici
+  }, [boxSlug, handleError]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
