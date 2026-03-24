@@ -5,8 +5,8 @@ from .models import Box, Client, Song, Deposit, LocationPoint, DiscoveredSong, E
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ["id", "name", "background_picture", "created_at", "updated_at"]
-
+        fields = ["id", "name", "slug", "background_picture", "created_at", "updated_at"]
+        
 
 class BoxSerializer(serializers.ModelSerializer):
     client_detail = ClientSerializer(source="client", read_only=True)
