@@ -71,14 +71,27 @@ export default function LiveSearch({
   const [posting, setPosting] = useState(false); // disable tous les boutons
   const [postingId, setPostingId] = useState(null); // loader sur le bouton cliqué
 
-  // ✅ focus search field on mount
-  const searchInputRef = useRef(null);
   useEffect(() => {
-    // petit délai pour laisser MUI/Drawer finir l'anim si besoin
-    const t = setTimeout(() => {
-      searchInputRef.current?.focus?.();
-    }, 50);
-    return () => clearTimeout(t);
+    const focusSearch = () => {
+      const input = searchInputRef.current;
+      if (!input) return;
+  
+      input.focus();
+  
+      // optionnel mais utile : place le curseur à la fin
+      const value = input.value || "";
+      try {
+        input.setSelectionRange(value.length, value.length);
+      } catch (error) {}
+    };
+  
+    const t1 = setTimeout(focusSearch, 50);
+    const t2 = setTimeout(focusSearch, 250);
+  
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   // Préférence utilisateur (quand UserContext se met à jour)
