@@ -20,7 +20,7 @@ export const CLIENT_THEMES = {
       text: "#000103",
       primaryContrastText: "#FFFFFF",
 
-      primary: "linear-gradient(80deg,#FF9900 35%,#FF3D00)",
+      primary: "FF5B00",
       primaryLight: "#fff7f1",
       primaryDark: "#923e00",
      
