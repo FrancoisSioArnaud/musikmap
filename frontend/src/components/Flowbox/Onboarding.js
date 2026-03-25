@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -8,11 +8,13 @@ import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EnableLocation from "../Flowbox/EnableLocation";
+import { UserContext } from "../UserContext";
 
 export default function Onboarding() {
   const { boxSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentClient, setCurrentClient } = useContext(UserContext);
 
   const [box, setBox] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,11 +29,9 @@ export default function Onboarding() {
     setPageError(msg || "Une erreur inattendue s’est produite.");
   }, []);
 
-  // ✅ Affiche l’erreur passée en navigation (LiveSearch -> Onboarding)
   useEffect(() => {
     const err = location.state?.error;
     if (err) setPageError(String(err));
-    // ne pas dépendre de location.state pour éviter re-trigger inutiles
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
@@ -39,22 +39,31 @@ export default function Onboarding() {
     (async () => {
       try {
         setLoading(true);
-        // ne pas effacer pageError si on vient d’une redirection d’erreur
+
         const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
         const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
-  
+
         try {
-          if (data.client_slug) {
-            localStorage.setItem("mm_current_client", data.client_slug);
+          const nextClient = data.client_slug || "default";
+          const storedClient = localStorage.getItem("mm_current_client") || "default";
+
+          if (storedClient !== nextClient) {
+            localStorage.setItem("mm_current_client", nextClient);
           }
-        } catch {}
-  
+
+          if (currentClient !== nextClient) {
+            setCurrentClient(nextClient);
+          }
+        } catch (error) {}
+
         setBox(data);
       } catch {
         handleError(pageError || "Impossible de récupérer la boîte.");
@@ -62,7 +71,7 @@ export default function Onboarding() {
         setLoading(false);
       }
     })();
-  }, [boxSlug, handleError]);
+  }, [boxSlug, handleError, pageError, currentClient, setCurrentClient]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
@@ -77,17 +86,23 @@ export default function Onboarding() {
           try {
             const wid = navigator.geolocation.watchPosition(
               (pos2) => {
-                try { navigator.geolocation.clearWatch(wid); } catch {}
+                try {
+                  navigator.geolocation.clearWatch(wid);
+                } catch {}
                 resolve(pos2);
               },
               (err2) => {
-                try { navigator.geolocation.clearWatch(wid); } catch {}
+                try {
+                  navigator.geolocation.clearWatch(wid);
+                } catch {}
                 reject(err2);
               },
               { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
             );
             setTimeout(() => {
-              try { navigator.geolocation.clearWatch(wid); } catch {}
+              try {
+                navigator.geolocation.clearWatch(wid);
+              } catch {}
             }, 15000);
           } catch {
             reject(err || new Error("Impossible d’obtenir la position."));
@@ -143,28 +158,25 @@ export default function Onboarding() {
         sx={{
           position: "fixed",
           inset: 0,
-          //backgroundImage: "url('../static/images/onboardingBgTan.png')",
-          //backgroundSize: "cover",
-          //backgroundPosition: "center",
-          //backgroundRepeat: "no-repeat",
         }}
       >
-          {box?.last_deposit_song_image_url ? (
-            <Box
-              component="img"
-              src={box.last_deposit_song_image_url}
-              alt=""
-              className="lastSongImg"
-              sx={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                filter: "blur(18px)",
-                transform: "scale(1.1)",
-                opacity: 0.55,
-              }}
-            />
-          ) : null}
+        {box?.last_deposit_song_image_url ? (
+          <Box
+            component="img"
+            src={box.last_deposit_song_image_url}
+            alt=""
+            className="lastSongImg"
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "blur(18px)",
+              transform: "scale(1.1)",
+              opacity: 0.55,
+            }}
+          />
+        ) : null}
+
         <Box
           sx={{
             display: "grid",
@@ -182,14 +194,14 @@ export default function Onboarding() {
 
           <Box className="container">
             <Box className="intro">
-                <Typography component="h1" variant="h1">
-                  Bienvenue !
-                </Typography>
-                <Typography variant="body1">
-                  Une chanson a été deposé ici {box?.last_deposit_date || 0}
+              <Typography component="h1" variant="h1">
+                Bienvenue !
+              </Typography>
+              <Typography variant="body1">
+                Une chanson a été deposé ici {box?.last_deposit_date || 0}
               </Typography>
             </Box>
-                
+
             <Box className="steps_container">
               <Box className="step">
                 <Typography component="span" variant="body1">
@@ -199,15 +211,16 @@ export default function Onboarding() {
                   Dépose une chanson
                 </Typography>
               </Box>
-              <Box className="step">     
+              <Box className="step">
                 <Typography component="span" variant="body1">
-                    2
-                  </Typography>      
+                  2
+                </Typography>
                 <Typography component="p" variant="body1">
                   Découvre la chanson précédente
                 </Typography>
               </Box>
             </Box>
+
             <Button
               variant="contained"
               size="large"
@@ -225,7 +238,7 @@ export default function Onboarding() {
         open={sheetOpen}
         boxTitle={box?.name || "Boîte"}
         loading={geoLoading}
-        error={""}
+        error=""
         onAuthorize={handleAuthorize}
         onClose={() => setSheetOpen(false)}
       />
