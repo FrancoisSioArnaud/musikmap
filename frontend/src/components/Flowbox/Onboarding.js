@@ -225,7 +225,6 @@ export default function Onboarding() {
               variant="contained"
               size="large"
               fullWidth
-              startIcon={<PlayArrowIcon />}
               onClick={openSheet}
             >
               Ouvrir la boîte
