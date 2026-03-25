@@ -113,7 +113,7 @@ color : var(--mm-color-secondary);
 }
 
 .my_deposit{
-  background-color: $white;
+  background-color: var(--mm-color-surface);
 }
 
 .deposit .img_container{
