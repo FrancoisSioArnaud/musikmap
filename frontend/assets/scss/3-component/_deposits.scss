@@ -216,7 +216,7 @@ color : var(--mm-color-secondary);
 }
 
 .current_reaction{
-  border: solid 2px #7bd528;
+  border: solid 2px var(--mm-color-primary);
 }
 .deposit_react .icon_container{
   background-color : var(--mm-color-primary);
