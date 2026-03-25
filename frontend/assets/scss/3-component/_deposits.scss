@@ -41,7 +41,7 @@ color : var(--mm-color-secondary);
   flex-direction: column;
   gap: 4px;
   box-shadow: none;
-  border: 0.1rem solid var(--mm-color-primary-light);
+  border: var(--mm-border-default);
   border-radius: 3.2rem;
 }
 .deposit_main{
