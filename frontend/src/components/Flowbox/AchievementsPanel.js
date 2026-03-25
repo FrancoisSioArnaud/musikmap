@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import Typography from "@mui/material/Typography";
-import AlbumIcon from "@mui/icons-material/Album";
+import MusicNote from "@mui/icons-material/MusicNote";
 
 /**
  * Composant partagé — utilisé par Main et Discover.
@@ -34,7 +34,7 @@ export default function AchievementsPanel({ successes = [] }) {
           <Typography component="span" variant="body1">
             +{totalPoints}
           </Typography>
-          <AlbumIcon />
+          <MusicNote />
         </Box>
       </Box>
 
@@ -60,7 +60,7 @@ export default function AchievementsPanel({ successes = [] }) {
                   <Typography component="span" variant="body1">
                     +{ach.points}
                   </Typography>
-                  <AlbumIcon />
+                  <MusicNote />
                 </Box>
               </Box>
             )}
