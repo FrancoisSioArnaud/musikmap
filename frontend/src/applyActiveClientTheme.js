@@ -22,19 +22,18 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-radius-button", theme.radius.button);
   root.style.setProperty("--mm-radius-round", theme.radius.round);
 
-  // colors réellement gardées
+  // colors
   root.style.setProperty("--mm-color-black", theme.colors.black);
   root.style.setProperty("--mm-color-white", theme.colors.white);
 
-  root.style.setProperty("--mm-color-bg-blue", theme.colors.bgBlue);
-  root.style.setProperty("--mm-color-neutral-lightgrey", theme.colors.neutralLightGrey);
+  root.style.setProperty("--mm-color-primary", theme.colors.primary);
+  root.style.setProperty("--mm-color-primary-light", theme.colors.primaryLight;
+  root.style.setProperty("--mm-color-primary-dark", theme.colors.primaryDark);
+ 
+  root.style.setProperty("--mm-color-secondary", theme.colors.secondary);
+  root.style.setProperty("--mm-color-secondary-light", theme.colors.secondaryLight);
 
-  root.style.setProperty("--mm-color-primary-green", theme.colors.primaryGreen);
-  root.style.setProperty("--mm-color-secondary-cyan", theme.colors.secondaryCyan);
-  root.style.setProperty("--mm-color-pastel-green", theme.colors.pastelGreen);
-
-  root.style.setProperty("--mm-color-gradient-darkgreen", theme.colors.gradientDarkGreen);
-  root.style.setProperty("--mm-color-gradient-extralightgrey", theme.colors.gradientExtraLightGrey);
+  root.style.setProperty("--mm-color-bg-gradient", theme.colors.bgGradient);
 
   root.style.setProperty("--mm-color-service-red", theme.colors.serviceRed);
   root.style.setProperty("--mm-color-service-orange", theme.colors.serviceOrange);
@@ -56,5 +55,6 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-color-appbar-border", theme.colors.appBarBorder);
   root.style.setProperty("--mm-color-avatar-border", theme.colors.avatarBorder);
 
+  root.style.setProperty("--mm-border-default", theme.border.default);
   return theme;
 }
