@@ -22,8 +22,8 @@
 }
 
 .react_item.selected{
-  border: dotted 3px $primary-green;
-  background-color: $pastel-green;//rgba(0, 0, 0, 0.04);
+  border: dotted 3px var(--mm-color-primary);
+  background-color: var(--mm-color-primary-light);
 } 
 
 .react_item .points_container{
