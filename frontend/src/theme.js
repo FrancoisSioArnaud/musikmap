@@ -7,7 +7,7 @@ export function buildMuiTheme(clientTheme) {
     palette: {
       mode: "light",
       primary: {
-        main: clientTheme.colors.primaryMain,
+        main: clientTheme.colors.primary,
         contrastText: clientTheme.colors.primaryContrastText,
       },
       background: {
@@ -15,8 +15,8 @@ export function buildMuiTheme(clientTheme) {
         paper: clientTheme.colors.surface,
       },
       text: {
-        primary: clientTheme.colors.textPrimary,
-        secondary: clientTheme.colors.textSecondary,
+        primary: clientTheme.colors.text,
+        secondary: clientTheme.colors.primaryDark,
       },
       error: { main: clientTheme.colors.error },
       success: { main: clientTheme.colors.success },
@@ -31,49 +31,49 @@ export function buildMuiTheme(clientTheme) {
       h1: {
         fontSize: "40px",
         fontWeight: 900,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.heading,
       },
 
       h3: {
         fontSize: "32px",
         fontWeight: 700,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.heading,
       },
 
       h4: {
         fontSize: "26px",
         fontWeight: 600,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.heading,
       },
 
       h5: {
         fontSize: "16px",
         fontWeight: 600,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.heading,
       },
 
       subtitle1: {
         fontSize: "16px",
         fontWeight: 700,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.body,
       },
 
       body1: {
         fontSize: "16px",
         fontWeight: 400,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.body,
       },
 
       body2: {
         fontSize: "12px",
         fontWeight: 300,
-        color: clientTheme.colors.black,
+        color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.body,
       },
     },
@@ -84,7 +84,7 @@ export function buildMuiTheme(clientTheme) {
           "html, body, #root": {
             minHeight: "100%",
             backgroundColor: clientTheme.colors.appBg,
-            color: clientTheme.colors.textPrimary,
+            color: clientTheme.colors.text,
           },
           body: {},
           a: {},
@@ -132,7 +132,7 @@ export function buildMuiTheme(clientTheme) {
             p: "6px 26px",
             borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
             height: 48,
-            backgroundColor: clientTheme.colors.primaryMain,
+            backgroundColor: clientTheme.colors.primary,
             color: clientTheme.colors.primaryContrastText,
             fontWeight: 700,
             "&:hover": {
@@ -147,9 +147,9 @@ export function buildMuiTheme(clientTheme) {
             borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
             height: 48,
             backgroundColor: clientTheme.colors.white,
-            color: clientTheme.colors.primaryMain,
+            color: clientTheme.colors.primary,
             fontWeight: 700,
-            border: `solid inset 2px ${clientTheme.colors.primaryMain}`,
+            border: `solid inset 2px ${clientTheme.colors.primary}`,
             borderWidth: 2,
             "&:hover": {
               backgroundColor: "inherit",
@@ -166,7 +166,7 @@ export function buildMuiTheme(clientTheme) {
               p: "12px 26px",
               borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
               height: 48,
-              backgroundColor: clientTheme.colors.primaryMain,
+              backgroundColor: clientTheme.colors.primary,
               color: clientTheme.colors.primaryContrastText,
               fontWeight: 700,
               "&:hover": {
@@ -181,11 +181,11 @@ export function buildMuiTheme(clientTheme) {
             style: {
               borderRadius: parseInt(clientTheme.radius.button, 10) || 16,
               height: 48,
-              border: `solid ${clientTheme.colors.primaryMain} 2px`,
+              border: `solid ${clientTheme.colors.primary} 2px`,
               backgroundColor: clientTheme.colors.white,
               fontSize: "16px",
               fontWeight: 600,
-              color: clientTheme.colors.black,
+              color: clientTheme.colors.text,
               "&:hover": {
                 backgroundColor: "inherit",
                 boxShadow: "none",
