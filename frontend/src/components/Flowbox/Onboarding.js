@@ -198,7 +198,7 @@ export default function Onboarding() {
                 Bienvenue !
               </Typography>
               <Typography variant="body1">
-                Une chanson a été deposé ici {box?.last_deposit_date || 0}
+                Chanson deposée ici {box?.last_deposit_date || 0}
               </Typography>
             </Box>
 
