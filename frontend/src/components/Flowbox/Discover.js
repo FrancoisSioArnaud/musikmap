@@ -8,7 +8,7 @@ import Drawer from "@mui/material/Drawer";
 import Button from "@mui/material/Button";
 
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import AlbumIcon from "@mui/icons-material/Album";
+import MusicNote from "@mui/icons-material/MusicNote";
 
 import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
@@ -144,7 +144,7 @@ export default function Discover() {
           <Typography component="span" variant="body1">
             +{totalPoints}
           </Typography>
-          <AlbumIcon />
+          <MusicNote />
           <Typography component="span" variant="body1" sx={{paddingRight: "6px"}}>
             Voir le détail
           </Typography>
