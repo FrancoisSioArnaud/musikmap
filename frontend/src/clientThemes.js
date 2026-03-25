@@ -6,13 +6,13 @@ export const CLIENT_THEMES = {
   default: {
     slug: "default",
     fonts: {
-      h1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      h3: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      h4: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      h5: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      subtitle1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      body1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      body2: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h1: 'Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h3: 'Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h4: 'Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h5: 'Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      subtitle1: 'open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body1: 'open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body2: 'open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     },
     colors: {
       black: "#000000",
@@ -62,6 +62,13 @@ export const CLIENT_THEMES = {
   semitan: {
     slug: "semitan",
     fonts: {
+      h1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h3: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h4: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h5: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      subtitle1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body2: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     
     },
     colors: {
