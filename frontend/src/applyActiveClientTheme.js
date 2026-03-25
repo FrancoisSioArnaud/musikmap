@@ -11,8 +11,13 @@ export function applyActiveClientTheme(clientSlug) {
   root.setAttribute("data-client-theme", theme.slug);
 
   // fonts
-  root.style.setProperty("--mm-font-body", theme.fonts.body);
-  root.style.setProperty("--mm-font-heading", theme.fonts.heading);
+  root.style.setProperty("--mm-font-body", theme.fonts.h1);
+  root.style.setProperty("--mm-font-body", theme.fonts.h3);
+  root.style.setProperty("--mm-font-body", theme.fonts.h4);
+  root.style.setProperty("--mm-font-body", theme.fonts.h5);
+  root.style.setProperty("--mm-font-body", theme.fonts.subtitle1);
+  root.style.setProperty("--mm-font-body", theme.fonts.body1);
+  root.style.setProperty("--mm-font-body", theme.fonts.body2);
 
   // radius
   root.style.setProperty("--mm-radius-sm", theme.radius.sm);
