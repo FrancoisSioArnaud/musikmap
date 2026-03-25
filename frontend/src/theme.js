@@ -32,49 +32,49 @@ export function buildMuiTheme(clientTheme) {
         fontSize: "40px",
         fontWeight: 900,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.heading,
+        fontFamily: clientTheme.fonts.h1,
       },
 
       h3: {
         fontSize: "32px",
         fontWeight: 700,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.heading,
+        fontFamily: clientTheme.fonts.h3,
       },
 
       h4: {
         fontSize: "26px",
         fontWeight: 600,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.heading,
+        fontFamily: clientTheme.fonts.h4,
       },
 
       h5: {
         fontSize: "16px",
         fontWeight: 600,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.heading,
+        fontFamily: clientTheme.fonts.h5,
       },
 
       subtitle1: {
         fontSize: "16px",
         fontWeight: 700,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.body,
+        fontFamily: clientTheme.fonts.subtitle1,
       },
 
       body1: {
         fontSize: "16px",
         fontWeight: 400,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.body,
+        fontFamily: clientTheme.fonts.body1,
       },
 
       body2: {
         fontSize: "12px",
         fontWeight: 300,
         color: clientTheme.colors.text,
-        fontFamily: clientTheme.fonts.body,
+        fontFamily: clientTheme.fonts.body2,
       },
     },
 
