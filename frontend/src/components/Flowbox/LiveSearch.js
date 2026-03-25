@@ -71,29 +71,14 @@ export default function LiveSearch({
   const [posting, setPosting] = useState(false); // disable tous les boutons
   const [postingId, setPostingId] = useState(null); // loader sur le bouton cliqué
 
-  // focus search field on mount
+  // ✅ focus search field on mount
   const searchInputRef = useRef(null);
-
   useEffect(() => {
-    const focusSearch = () => {
-      const input = searchInputRef.current;
-      if (!input) return;
-
-      input.focus();
-
-      const value = input.value || "";
-      try {
-        input.setSelectionRange(value.length, value.length);
-      } catch (error) {}
-    };
-
-    const t1 = setTimeout(focusSearch, 50);
-    const t2 = setTimeout(focusSearch, 250);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    // petit délai pour laisser MUI/Drawer finir l'anim si besoin
+    const t = setTimeout(() => {
+      searchInputRef.current?.focus?.();
+    }, 50);
+    return () => clearTimeout(t);
   }, []);
 
   // Préférence utilisateur (quand UserContext se met à jour)
@@ -272,7 +257,7 @@ export default function LiveSearch({
   );
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
+    <Stack spacing={2} sx={{ maxWidth: "100%" ,height: "calc(100vh - 58px)"}} >
       <Paper variant="outlined" sx={{ p: 4, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
@@ -303,7 +288,6 @@ export default function LiveSearch({
           </ToggleButtonGroup>
 
           <TextField
-            autoFocus
             inputRef={searchInputRef}
             fullWidth
             type="search"
@@ -333,7 +317,7 @@ export default function LiveSearch({
         </Box>
       )}
 
-      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll" }}>
+      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll"}}>
         <List disablePadding>
           {jsonResults.map((option) => {
             const id = option?.id ?? "__posting__";
@@ -348,7 +332,7 @@ export default function LiveSearch({
                   <Button
                     variant="contained"
                     size="small"
-                    disabled={posting}
+                    disabled={posting} // ✅ disable tous les boutons
                     onClick={() => handleDeposit(option)}
                     sx={{ minWidth: 0 }}
                   >
