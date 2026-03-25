@@ -3,7 +3,7 @@
 .my_deposit_notif{
   display: flex;
   flex-direction: column;
-  background-color: $bg-blue;
+  background-color: var(--mm-color-secondary-light);
   border-radius: 20px;
   margin: 20px;
   padding: 16px;
@@ -22,7 +22,7 @@
 }
 
 .my_deposit_notif svg{
-color : $secondary-cyan;
+color : var(--mm-color-secondary);
 }
 
 .my_deposit .text{
@@ -41,7 +41,7 @@ color : $secondary-cyan;
   flex-direction: column;
   gap: 4px;
   box-shadow: none;
-  border: 0.1rem solid $neutral-lightgrey;
+  border: 0.1rem solid var(--mm-color-primary-light);
   border-radius: 3.2rem;
 }
 .deposit_main{
@@ -55,7 +55,7 @@ color : $secondary-cyan;
   gap: 26px;
   padding: 26px;
   padding-bottom: 32px;
-  background-color:  $gradient-extralightgrey;
+  background-color:  var(--mm-color-bg-gradient) ;
   
 }
 
@@ -93,14 +93,14 @@ color : $secondary-cyan;
 }
 
 .deposit .deposit_song{
-  background-color: $neutral-lightgrey;
+  background-color: var(--mm-color-primary-light);
   display: flex;
 }
 
 .deposit_main .deposit_song{
   flex-direction: column;
   gap: 12px;
-  background : $gradient-darkgreen;
+  background : var(--mm-color-primary-dark);
   padding: 30px;
   padding-bottom: 26px;
 }
@@ -173,10 +173,10 @@ color : $secondary-cyan;
 }
 
 .deposit_main .titre{
-  color: $primary-green;
+  color: var(--mm-color-primary);
 }
 .deposit_main .artist{
-  color : $white;
+  color : var(--mm-color-white);
 }
 
 .deposit_list .texts{
@@ -219,10 +219,10 @@ color : $secondary-cyan;
   border: solid 2px #7bd528;
 }
 .deposit_react .icon_container{
-  background-color : $primary-green;
+  background-color : var(--mm-color-primary);
   border-radius: 1rem;
 }
 
 .deposit_react .icon_container svg{
-  color: $black
+  color: var(--mm-color-black)
 }
