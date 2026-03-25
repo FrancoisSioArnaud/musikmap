@@ -10,7 +10,7 @@ import IconButton from "@mui/material/IconButton";
 import Avatar from "@mui/material/Avatar";
 import PersonIcon from "@mui/icons-material/Person";
 import Button from "@mui/material/Button";
-import AlbumIcon from "@mui/icons-material/Album";
+import MusicNote from "@mui/icons-material/MusicNote";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 
 
@@ -47,7 +47,7 @@ export default function MenuAppBar() {
               >
                 {user.points}
               </Typography>
-              <AlbumIcon/>
+              <MusicNote/>
             </Box>
 
                 
