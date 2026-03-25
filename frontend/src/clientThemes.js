@@ -12,6 +12,8 @@ export const CLIENT_THEMES = {
     colors: {
       black: "#000000",
       white: "#FFFFFF",
+      text: "#000103",
+      primaryContrastText: "#000103",
 
       primary: "#78d700",
       primaryLight: "#e6f0ea",
@@ -23,22 +25,18 @@ export const CLIENT_THEMES = {
       bgGradient:
         "linear-gradient(48.71deg, rgb(255,255,255) 100%, rgb(253,252,253) 100%)",
 
-      serviceRed: "#a4280d",
-      serviceOrange: "#d38003",
-      serviceYellow: "#d7c200",
       spotify: "#1ED760",
       deezer: "#9C42F3",
 
       // tokens UI pratiques
       appBg: "#FFFFFF",
       surface: "#FFFFFF",
-      textPrimary: "#000103",
-      textSecondary: "#0D2A0E",
-      divider: "rgba(255,255,255,0.12)",
-      error: "#FB0000",
+      
+      
       success: "#0FCC0A",
-      primaryMain: "#7BD528",
-      primaryContrastText: "#000000",
+      error: "#FB0000",
+      divider: "rgba(255,255,255,0.12)",
+      
       appBarBg: "#FFFFFF",
       appBarBorder: "1px solid rgba(255,255,255,0.12)",
       avatarBorder: "2px solid rgba(0,0,0,0.04)",
