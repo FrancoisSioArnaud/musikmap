@@ -6,6 +6,7 @@ import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import { buildMuiTheme } from "../theme";
 import {
   getStoredCurrentClient,
+  getClientTheme,
   CURRENT_CLIENT_STORAGE_KEY,
 } from "../clientThemes";
 import { applyActiveClientTheme } from "../applyActiveClientTheme";
@@ -70,12 +71,16 @@ export default function App() {
   );
 
   const activeClientTheme = useMemo(() => {
-    return applyActiveClientTheme(currentClient);
+    return getClientTheme(currentClient);
   }, [currentClient]);
 
   const muiTheme = useMemo(() => {
     return buildMuiTheme(activeClientTheme);
   }, [activeClientTheme]);
+
+  useEffect(() => {
+    applyActiveClientTheme(currentClient);
+  }, [currentClient]);
 
   useEffect(() => {
     checkUserStatus(setUser, setIsAuthenticated);
