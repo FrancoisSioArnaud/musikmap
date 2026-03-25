@@ -20,12 +20,12 @@ export const CLIENT_THEMES = {
       text: "#000103",
       primaryContrastText: "#000103",
 
-      primary: "#78d700",
-      primaryLight: "#e6f0ea",
-      primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
+      primary: "#FF6B01",
+      primaryLight: "#FF9900",
+      primaryDark: "linear-gradient(80deg,#FF9900 35%,#FF3D00)",
      
       secondary: "#73beff",
-      secondaryLight: "#e3f2ff",
+      secondaryLight: "rgba(12,0,92,0.04)",
       
       bgGradient:
         "linear-gradient(48.71deg, rgb(255,255,255) 100%, rgb(253,252,253) 100%)",
@@ -72,7 +72,12 @@ export const CLIENT_THEMES = {
     
     },
     colors: {
+      primary: "#78d700",
+      primaryLight: "#e6f0ea",
+      primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
       
+      secondary: "#73beff",
+      secondaryLight: "#e3f2ff",
     },
     radius: {
       
