@@ -16,7 +16,7 @@
   gap: 8px;
   padding: 16px 16px;
   box-shadow: none;
-  border: 0.1rem solid $neutral-lightgrey;
+  border: var(--mm-border-default);
   border-radius: 3.2rem;
 }
 
