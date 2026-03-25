@@ -27,7 +27,7 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-color-white", theme.colors.white);
 
   root.style.setProperty("--mm-color-primary", theme.colors.primary);
-  root.style.setProperty("--mm-color-primary-light", theme.colors.primaryLight;
+  root.style.setProperty("--mm-color-primary-light", theme.colors.primaryLight);
   root.style.setProperty("--mm-color-primary-dark", theme.colors.primaryDark);
  
   root.style.setProperty("--mm-color-secondary", theme.colors.secondary);
