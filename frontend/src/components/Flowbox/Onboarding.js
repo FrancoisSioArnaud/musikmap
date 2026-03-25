@@ -225,7 +225,7 @@ export default function Onboarding() {
                 fullWidth
                 onClick={openSheet}
               >
-                Ouvrir la boîte
+                Commencer
               </Button>
             </Box>
 
