@@ -13,15 +13,14 @@ export const CLIENT_THEMES = {
       black: "#000000",
       white: "#FFFFFF",
 
-      bgBlue: "#e3f2ff",
-      neutralLightGrey: "#e6f0ea",
-
-      primaryGreen: "#78d700",
-      secondaryCyan: "#73beff",
-      pastelGreen: "#f0ffe6",
-
-      gradientDarkGreen: "linear-gradient(80deg,#002300 35%,#034003)",
-      gradientExtraLightGrey:
+      primary: "#78d700",
+      primaryLight: "#e6f0ea",
+      primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
+     
+      secondary: "#73beff",
+      secondaryLight: "#e3f2ff",
+      
+      bgGradient:
         "linear-gradient(48.71deg, rgb(255,255,255) 100%, rgb(253,252,253) 100%)",
 
       serviceRed: "#a4280d",
@@ -52,50 +51,21 @@ export const CLIENT_THEMES = {
       button: "16px",
       round: "999px",
     },
+    border:{
+      default: "0.1rem solid #e6f0ea",
+    }
   },
 
   semitan: {
     slug: "semitan",
     fonts: {
-      body: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      heading: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    
     },
     colors: {
-      black: "#000000",
-      white: "#FFFFFF",
-
-      bgBlue: "#e3f2ff",
-      neutralLightGrey: "#e6f0ea",
-
-      primaryGreen: "#78d700",
-      secondaryCyan: "#73beff",
-      pastelGreen: "#f0ffe6",
-
-      gradientDarkGreen: "linear-gradient(80deg,#002300 35%,#034003)",
-      gradientExtraLightGrey:
-        "linear-gradient(48.71deg, rgb(255,255,255) 100%, rgb(253,252,253) 100%)",
-
-      // tokens UI pratiques
-      appBg: "#FFFFFF",
-      surface: "#FFFFFF",
-      textPrimary: "#000103",
-      textSecondary: "#0D2A0E",
-      divider: "rgba(255,255,255,0.12)",
-      error: "#FB0000",
-      success: "#0FCC0A",
-      primaryMain: "#7BD528",
-      primaryContrastText: "#000000",
-      appBarBg: "#FFFFFF",
-      appBarBorder: "1px solid rgba(255,255,255,0.12)",
-      avatarBorder: "2px solid rgba(0,0,0,0.04)",
+      
     },
     radius: {
-      sm: "8px",
-      md: "16px",
-      lg: "24px",
-      xl: "32px",
-      button: "16px",
-      round: "999px",
+      
     },
   },
 };
