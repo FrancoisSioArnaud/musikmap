@@ -2,13 +2,13 @@
 
 
 .onBoarding{
-  background : $gradient-darkgreen;
+  background : var(--mm-color-primary-dark);
 }
 
 
 .onBoarding .box_infos{
   box-shadow: none;
-  border: 0.1rem solid $neutral-lightgrey;
+  border: 0.1rem solid var(--mm-color-primary-light);
   border-radius: 3.2rem;
 }
 
