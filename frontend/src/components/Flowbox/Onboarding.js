@@ -219,16 +219,17 @@ export default function Onboarding() {
                   Découvre la chanson précédente
                 </Typography>
               </Box>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                onClick={openSheet}
+              >
+                Ouvrir la boîte
+              </Button>
             </Box>
 
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={openSheet}
-            >
-              Ouvrir la boîte
-            </Button>
+
           </Box>
         </Box>
       </Paper>
