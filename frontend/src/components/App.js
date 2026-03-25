@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
-import { buildMuiTheme } from "../theme";
+import { buildMuiTheme } from "../muiThemeBuilder";
 import {
   getStoredCurrentClient,
   getClientTheme,
