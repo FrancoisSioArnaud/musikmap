@@ -21,7 +21,7 @@ export const CLIENT_THEMES = {
       primaryContrastText: "#FFFFFF",
 
       primary: "#FF5B00",
-      primaryLight: "#fff7f1",
+      primaryLight: "#ffefe7",
       primaryDark: "#923e00",
      
       secondary: "#73beff",
