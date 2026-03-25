@@ -35,22 +35,20 @@ export function applyActiveClientTheme(clientSlug) {
 
   root.style.setProperty("--mm-color-bg-gradient", theme.colors.bgGradient);
 
-  root.style.setProperty("--mm-color-service-red", theme.colors.serviceRed);
-  root.style.setProperty("--mm-color-service-orange", theme.colors.serviceOrange);
-  root.style.setProperty("--mm-color-service-yellow", theme.colors.serviceYellow);
   root.style.setProperty("--mm-color-spotify", theme.colors.spotify);
   root.style.setProperty("--mm-color-deezer", theme.colors.deezer);
 
   // tokens UI pratiques
   root.style.setProperty("--mm-color-app-bg", theme.colors.appBg);
   root.style.setProperty("--mm-color-surface", theme.colors.surface);
-  root.style.setProperty("--mm-color-text-primary", theme.colors.textPrimary);
-  root.style.setProperty("--mm-color-text-secondary", theme.colors.textSecondary);
-  root.style.setProperty("--mm-color-divider", theme.colors.divider);
-  root.style.setProperty("--mm-color-error", theme.colors.error);
-  root.style.setProperty("--mm-color-success", theme.colors.success);
-  root.style.setProperty("--mm-color-primary-main", theme.colors.primaryMain);
+  
+  root.style.setProperty("--mm-color-text", theme.colors.text);
   root.style.setProperty("--mm-color-primary-contrast-text", theme.colors.primaryContrastText);
+  
+  root.style.setProperty("--mm-color-success", theme.colors.success);
+  root.style.setProperty("--mm-color-error", theme.colors.error);
+  root.style.setProperty("--mm-color-divider", theme.colors.divider);
+ 
   root.style.setProperty("--mm-color-appbar-bg", theme.colors.appBarBg);
   root.style.setProperty("--mm-color-appbar-border", theme.colors.appBarBorder);
   root.style.setProperty("--mm-color-avatar-border", theme.colors.avatarBorder);
