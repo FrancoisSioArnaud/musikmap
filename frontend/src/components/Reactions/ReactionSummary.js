@@ -193,60 +193,60 @@ export default function ReactionSummary({
     };
 
     return (
-      <Box key={`${reaction?.emoji || "emoji"}-${rawName || index}`}>
-        <Box
-          onClick={handleClick}
-          role={isMine || canNavigate ? "button" : undefined}
-          tabIndex={isMine || canNavigate ? 0 : -1}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleClick();
-            }
-          }}
-          className={
-            normalized?.username ? "hasUsername deposit_user" : "deposit_user"
+      
+      <Box
+        onClick={handleClick}
+        role={isMine || canNavigate ? "button" : undefined}
+        tabIndex={isMine || canNavigate ? 0 : -1}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick();
           }
-          sx={{
-            py: 1.25,
-            alignItems: "center",
-            display: "flex",
-            flexDirection: "row",
-            gap: 2,
-          }}
+        }}
+        className={
+          normalized?.username ? "hasUsername deposit_user" : "deposit_user"
+        }
+        sx={{
+          py: 1.25,
+          alignItems: "center",
+          display: "flex",
+          flexDirection: "row",
+          gap: 2,
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="span"
+          className="emoji"
         >
-          <Typography
-            variant="h4"
-            component="span"
-            className="emoji"
-          >
-            {reaction?.emoji}
+          {reaction?.emoji}
+        </Typography>
+
+        <Box className="avatarbox">
+          <Avatar
+            src={normalized?.profile_picture_url || undefined}
+            alt={normalized?.displayName || "anonyme"}
+            className="avatar"
+          />
+        </Box>
+
+        <Box
+          className="texts"
+        >
+          <Typography component="span" className="username" variant="subtitle1">
+            {normalized?.displayName || "anonyme"}
+            {!normalized?.isAnonymous && <ArrowForwardIosIcon className="icon" />}
           </Typography>
 
-          <Box className="avatarbox">
-            <Avatar
-              src={normalized?.profile_picture_url || undefined}
-              alt={normalized?.displayName || "anonyme"}
-              className="avatar"
-            />
-          </Box>
-
-          <Box
-            className="texts"
-          >
-            <Typography component="span" className="username" variant="subtitle1">
-              {normalized?.displayName || "anonyme"}
-              {!normalized?.isAnonymous && <ArrowForwardIosIcon className="icon" />}
+          {isMine && (
+            <Typography variant="body2" className="click_delete">
+              Cliquer pour supprimer la réaction
             </Typography>
-
-            {isMine && (
-              <Typography variant="body2" className="click_delete">
-                Cliquer pour supprimer la réaction
-              </Typography>
-            )}
-          </Box>
+          )}
         </Box>
       </Box>
+      
     );
   };
 
