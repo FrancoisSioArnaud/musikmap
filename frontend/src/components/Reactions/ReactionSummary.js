@@ -292,13 +292,7 @@ export default function ReactionSummary({
           </IconButton>
         </Box>
 
-        <Box
-          sx={{
-            overflowY: "auto",
-            pr: 0.5,
-            pb: 1,
-          }}
-        >
+        <Box className="reactions_list">
           {loadingProfiles && orderedReactions.length > 0 && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
               <CircularProgress size={22} />
