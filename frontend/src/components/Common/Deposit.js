@@ -351,9 +351,16 @@ export default function Deposit({
 
     const hasMyReaction = Boolean(currentEmoji);
 
+    const orderedList = hasMyReaction
+      ? [
+          ...list.filter((it) => it?.emoji !== currentEmoji),
+          ...list.filter((it) => it?.emoji === currentEmoji),
+        ]
+      : list;
+
     return (
       <Box className="deposit_react" sx={{ userSelect: "none" }}>
-        {list.map((it, i) => {
+        {orderedList.map((it, i) => {
           const isCurrent = Boolean(currentEmoji && it?.emoji === currentEmoji);
 
           const handleClick = (e) => {
