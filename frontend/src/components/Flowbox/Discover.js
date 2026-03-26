@@ -175,9 +175,8 @@ export default function Discover() {
         </Box>
       ) : null}
 
-      {/* 3) SUCCESSES (removed inline) */}
 
-      {/* Older deposits (inchangé) */}
+      {/* Older deposits */}
       {olderDeposits.length > 0 ? (
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
@@ -202,6 +201,9 @@ export default function Discover() {
                 showUser={true}
               />
             ))}
+            <Typography component="p" variant="body1">
+              Reviens bientôt nous voir, de nouvelles chansons auront été partagées
+            </Typography>    
           </Box>
         </Box>
       ) : null}
