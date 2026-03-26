@@ -240,7 +240,7 @@ export default function ReactionSummary({
             </Typography>
 
             {isMine && (
-              <Typography variant="body2" className"click_delete">
+              <Typography variant="body2" className="click_delete">
                 Cliquer pour supprimer la réaction
               </Typography>
             )}
