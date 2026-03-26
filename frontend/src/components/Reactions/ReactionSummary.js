@@ -193,8 +193,8 @@ export default function ReactionSummary({
     };
 
     return (
-      
       <Box
+        key={`${reaction?.emoji || "emoji"}-${rawName || index}`}
         onClick={handleClick}
         role={isMine || canNavigate ? "button" : undefined}
         tabIndex={isMine || canNavigate ? 0 : -1}
@@ -231,12 +231,12 @@ export default function ReactionSummary({
           />
         </Box>
 
-        <Box
-          className="texts"
-        >
+        <Box className="texts">
           <Typography component="span" className="username" variant="subtitle1">
             {normalized?.displayName || "anonyme"}
-            {!normalized?.isAnonymous && <ArrowForwardIosIcon className="icon" />}
+            {!isMine && !normalized?.isAnonymous && (
+              <ArrowForwardIosIcon className="icon" />
+            )}
           </Typography>
 
           {isMine && (
@@ -246,7 +246,6 @@ export default function ReactionSummary({
           )}
         </Box>
       </Box>
-      
     );
   };
 
@@ -262,7 +261,7 @@ export default function ReactionSummary({
           borderTopRightRadius: 20,
           maxHeight: "80vh",
           overflow: "hidden",
-          padding: "16px",
+          padding: "20px",
         },
       }}
     >
