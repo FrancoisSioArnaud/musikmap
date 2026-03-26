@@ -272,7 +272,6 @@ export default function ReactionSummary({
           mx: "auto",
           display: "flex",
           flexDirection: "column",
-          minHeight: 180,
         }}
       >
         <Box
@@ -280,7 +279,7 @@ export default function ReactionSummary({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            mb: 1,
+            mb: 3,
           }}
         >
           <Typography variant="h2">Réactions</Typography>
