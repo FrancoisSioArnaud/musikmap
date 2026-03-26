@@ -260,11 +260,9 @@ export default function ReactionSummary({
         sx: {
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          px: 2,
-          pt: 1,
-          pb: 3,
           maxHeight: "80vh",
           overflow: "hidden",
+          padding: "16px",
         },
       }}
     >
@@ -306,8 +304,6 @@ export default function ReactionSummary({
           ) : (
             orderedReactions.map((reaction, index) => renderReactionRow(reaction, index))
           )}
-
-          {!!orderedReactions.length && <Divider sx={{ mt: 1 }} />}
         </Box>
       </Box>
     </Drawer>
