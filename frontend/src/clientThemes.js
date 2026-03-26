@@ -22,7 +22,7 @@ export const CLIENT_THEMES = {
 
       primary: "#FF5B00",
       primaryLight: "#ffefe7",
-      primaryDark: "#923e00",
+      primaryDark: "#922a00",
      
       secondary: "#73beff",
       secondaryLight: "rgba(12,0,92,0.04)",
