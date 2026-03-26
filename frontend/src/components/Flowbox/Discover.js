@@ -202,7 +202,7 @@ export default function Discover() {
               />
             ))}
             <Typography component="p" variant="body1" sx={{textAlign:"center"}}>
-              Reviens bientôt nous voir, de nouvelles chansons auront été partagées
+              Reviens nous voir bientôt, de nouvelles chansons auront été partagées
             </Typography>    
           </Box>
         </Box>
