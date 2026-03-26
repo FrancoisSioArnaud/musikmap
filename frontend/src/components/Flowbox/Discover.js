@@ -201,7 +201,7 @@ export default function Discover() {
                 showUser={true}
               />
             ))}
-            <Typography component="p" variant="body1">
+            <Typography component="p" variant="body1" sw={{textAlign:"center"}}>
               Reviens bientôt nous voir, de nouvelles chansons auront été partagées
             </Typography>    
           </Box>
