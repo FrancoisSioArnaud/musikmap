@@ -205,7 +205,7 @@ export default function ReactionSummary({
           }
         }}
         className={
-          normalized?.username ? "hasUsername deposit_user" : "deposit_user"
+          normalized?.username ? "hasUsername reaction" : "reaction"
         }
         sx={{
           py: 1.25,
