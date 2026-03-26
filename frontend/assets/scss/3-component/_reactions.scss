@@ -45,3 +45,38 @@
 }
 
 
+.reaction_summary_modal{
+  
+}
+
+.reaction_summary_modal .reaction_list{
+  gap: 12px;
+  display: grid;
+}
+
+.reaction_summary_modal .reaction{
+  
+}
+
+.reaction_summary_modal .reaction .emoji{
+  font-size: 32px;
+  padding: 0 8px;
+}
+
+
+.reaction_summary_modal .reaction .text{
+  
+}
+
+.reaction_summary_modal .reaction .username{
+  display: flex;
+  align-items: center;
+}
+.reaction_summary_modal .reaction .click_delete{
+  opacity: 0.7;
+}
+
+
+
+
+
