@@ -21,16 +21,54 @@ import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import ReactionModal from "../Reactions/ReactionModal";
+import ReactionSummary from "../Reactions/ReactionSummary";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
-import { formatRelativeTime } from "../Utils/time"; // ⬅️ nouveau
+import { formatRelativeTime } from "../Utils/time";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
 
-// Même clé / TTL que dans Discover.js
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
+
+function normalizeReactionUser(rawUser = {}) {
+  const username = rawUser?.username || rawUser?.name || "";
+  return {
+    username: username || "",
+    name: username || "anonyme",
+    profile_picture_url:
+      rawUser?.profile_picture_url || rawUser?.profile_pic_url || null,
+    isAnonymous: !username || String(username).toLowerCase() === "anonyme",
+  };
+}
+
+function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
+  const list = Array.isArray(reactions) ? [...reactions] : [];
+  const viewerUsername = (viewer?.username || "").trim();
+
+  if (!viewerUsername) return list;
+
+  const withoutMine = list.filter(
+    (r) => (r?.user?.name || "").trim() !== viewerUsername
+  );
+
+  if (!nextEmoji) {
+    return withoutMine;
+  }
+
+  const myReaction = {
+    emoji: nextEmoji,
+    user: {
+      name: viewerUsername,
+      username: viewerUsername,
+      profile_picture_url: viewer?.profile_picture_url || null,
+      profile_pic_url: viewer?.profile_picture_url || null,
+    },
+  };
+
+  return [myReaction, ...withoutMine];
+}
 
 export default function Deposit({
   dep,
@@ -40,14 +78,13 @@ export default function Deposit({
   variant = "list",
   showDate = true,
   showUser = true,
-  fitContainer = true, // non utilisé mais gardé pour compat
+  fitContainer = true,
   allowReact = true,
   showPlay = true,
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
 
-  /** ---------- ÉTAT LOCAL SYNCHRO AVEC LA PROP ---------- */
   const [localDep, setLocalDep] = useState(dep || {});
   useEffect(() => {
     setLocalDep(dep || {});
@@ -60,14 +97,12 @@ export default function Deposit({
     [s?.title, s?.artist]
   );
 
-  // Date de dépôt → "il y a X ..."
   const depositedAt = localDep?.deposited_at || null;
   const naturalDate = useMemo(
     () => (depositedAt ? formatRelativeTime(depositedAt) : ""),
     [depositedAt]
   );
 
-  // ======= Play modal =======
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
   const openPlayFor = (song) => {
@@ -79,12 +114,14 @@ export default function Deposit({
     setPlaySong(null);
   };
 
-  // ======= Reaction modal =======
   const [reactOpen, setReactOpen] = useState(false);
   const openReact = () => setReactOpen(true);
   const closeReact = () => setReactOpen(false);
 
-  // Snackbar (pour Reveal existant)
+  const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
+  const openReactionSummary = () => setReactionSummaryOpen(true);
+  const closeReactionSummary = () => setReactionSummaryOpen(false);
+
   const [snackOpen, setSnackOpen] = useState(false);
   const showRevealSnackbar = () => {
     if (snackOpen) {
@@ -95,10 +132,15 @@ export default function Deposit({
     }
   };
 
-  /**
-   * Met à jour le snapshot mm_box_content dans localStorage
-   * pour refléter la révélation de ce dépôt (si présent dans olderDeposits).
-   */
+  const viewerUsername = (user?.username || "").trim();
+  const myReactionEmoji = localDep?.my_reaction?.emoji || null;
+  const reactionsDetail = Array.isArray(localDep?.reactions)
+    ? localDep.reactions
+    : [];
+  const reactionsSummary = Array.isArray(localDep?.reactions_summary)
+    ? localDep.reactions_summary
+    : [];
+
   const updateLocalStorageSnapshot = (revealedSong) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
@@ -108,16 +150,13 @@ export default function Deposit({
       const next = { ...snap };
       const isoNow = new Date().toISOString();
 
-      // Update dans olderDeposits si on trouve le même dépôt
       if (Array.isArray(snap.olderDeposits)) {
         next.olderDeposits = snap.olderDeposits.map((d) => {
-          // On se base sur la clé publique, qui est présente dans le LS
           if (!d || d.public_key !== localDep.public_key) return d;
 
           changed = true;
           return {
             ...d,
-            // Date absolue au moment de la découverte
             discovered_at: isoNow,
             song: {
               ...(d.song || {}),
@@ -135,12 +174,9 @@ export default function Deposit({
 
       next.timestamp = Date.now();
       setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
-    } catch (e) {
-      // on ignore silencieusement les erreurs de LS
-    }
+    } catch (e) {}
   };
 
-  // ---- Reveal d’un dépôt
   const revealDeposit = async () => {
     try {
       if (!user || !user.username) {
@@ -185,7 +221,6 @@ export default function Deposit({
       const revealed = payload?.song || {};
       const isoNow = new Date().toISOString();
 
-      // MAJ locale immédiate
       setLocalDep((prev) => ({
         ...(prev || {}),
         discovered_at: isoNow,
@@ -199,7 +234,6 @@ export default function Deposit({
         },
       }));
 
-      // MAJ dans la liste parente si fournie (state React parent)
       setDispDeposits?.((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
         const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
@@ -220,22 +254,19 @@ export default function Deposit({
         return arr;
       });
 
-      // MAJ du snapshot localStorage (mm_box_content → olderDeposits)
       updateLocalStorageSnapshot(revealed);
 
-      // MAJ des points dans le UserContext
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
       }
-      
-      
+
       showRevealSnackbar();
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
     }
   };
 
-  const handleReactClick = () => {
+  const handleOpenReactModal = () => {
     if (!user || !user.username) {
       window.alert("Connecte-toi pour ajouter une réaction à cette chanson");
       return;
@@ -243,14 +274,20 @@ export default function Deposit({
     openReact();
   };
 
-  // ======= Callback quand la réaction a changé (après modale) =======
   const handleReactionApplied = (result) => {
+    const nextReactions = upsertViewerReactionInList(
+      localDep?.reactions || [],
+      result?.my_reaction?.emoji || null,
+      user
+    );
+
     setLocalDep((prev) => ({
       ...(prev || {}),
       my_reaction: result?.my_reaction || null,
       reactions_summary: Array.isArray(result?.reactions_summary)
         ? result.reactions_summary
         : [],
+      reactions: nextReactions,
     }));
 
     setDispDeposits?.((prev) => {
@@ -263,71 +300,132 @@ export default function Deposit({
           reactions_summary: Array.isArray(result?.reactions_summary)
             ? result.reactions_summary
             : [],
+          reactions: nextReactions,
         };
       }
       return arr;
     });
   };
 
-  // Rendu compact d’un ruban de réactions (emoji × count)
-  const ReactionsStrip = ({ items = [], reactions = [], myReactionEmoji = null, viewerUsername = null, onClick }) => {
+  const renderDepositUser = (userObj) => (
+    <Box
+      onClick={() => {
+        if (userObj?.username) navigate("/profile/" + userObj.username);
+      }}
+      className={userObj?.username ? "hasUsername deposit_user" : "deposit_user"}
+    >
+      <Typography variant="body1" component="span">
+        Partagée par
+      </Typography>
+      <Box className=" avatarbox">
+        <Avatar
+          src={userObj?.profile_pic_url || undefined}
+          alt={userObj?.username || "anonyme"}
+          className="avatar"
+        />
+      </Box>
+      <Typography component="span" className="username " variant="subtitle1">
+        {userObj?.username || "anonyme"}
+        {userObj?.username && <ArrowForwardIosIcon className="icon" />}
+      </Typography>
+    </Box>
+  );
+
+  const ReactionsStrip = ({
+    items = [],
+    reactions = [],
+    myReactionEmoji = null,
+    viewerUsername = null,
+    onOpenReact,
+    onOpenSummary,
+  }) => {
     const list = Array.isArray(items) ? items : [];
     const rx = Array.isArray(reactions) ? reactions : [];
 
-    // ✅ Déduction "current emoji" au niveau du strip :
-    // 1) myReactionEmoji (si déjà fourni par le payload / après modale)
-    // 2) sinon on retrouve dans reactions[] via viewerUsername
     const currentEmoji =
       myReactionEmoji ??
       (viewerUsername
-        ? rx.find((r) => r?.user?.name === viewerUsername)?.emoji ?? null
+        ? rx.find((r) => (r?.user?.name || "").trim() === viewerUsername)?.emoji ??
+          null
         : null);
 
+    const hasMyReaction = Boolean(currentEmoji);
+
     return (
-      <Box
-        className="deposit_react"
-        onClick={onClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onClick?.();
-        }}
-        sx={{ cursor: "pointer", userSelect: "none" }}
-      >
+      <Box className="deposit_react" sx={{ userSelect: "none" }}>
         {list.map((it, i) => {
           const isCurrent = Boolean(currentEmoji && it?.emoji === currentEmoji);
+
+          const handleClick = (e) => {
+            e.stopPropagation();
+            if (isCurrent) {
+              onOpenReact?.();
+            } else {
+              onOpenSummary?.();
+            }
+          };
+
+          const handleKeyDown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleClick(e);
+            }
+          };
+
           return (
             <Box
-              key={`${it.emoji || i}-${it.count || 0}`}
+              key={`${it?.emoji || i}-${it?.count || 0}`}
               className={isCurrent ? "current_reaction reaction" : "reaction"}
+              role="button"
+              tabIndex={0}
+              onClick={handleClick}
+              onKeyDown={handleKeyDown}
+              sx={{ cursor: "pointer" }}
             >
               <Typography variant="h4" component="span">
-                {it.emoji}
+                {it?.emoji}
               </Typography>
               <Typography variant="h5" component="span">
-                × {it.count}
+                × {it?.count}
               </Typography>
             </Box>
           );
         })}
 
-        {/* "bouton" en fin de ruban (toujours visible) */}
-        <Box
-          className="icon_container"
-          aria-label="Réagir"
-          sx={{ display: "flex", alignItems: "center", p: "8px 12px" }}
-        >
-          <AddReactionIcon color="primary" sx={{ height: "1.6em", width: "1.6em" }} />
-        </Box>
+        {!hasMyReaction && (
+          <Box
+            className="icon_container"
+            aria-label="Réagir"
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenReact?.();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenReact?.();
+              }
+            }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              p: "8px 12px",
+              cursor: "pointer",
+            }}
+          >
+            <AddReactionIcon
+              color="primary"
+              sx={{ height: "1.6em", width: "1.6em" }}
+            />
+          </Box>
+        )}
       </Box>
     );
   };
 
-
-
-  // =========================
-  // RENDU VARIANT MAIN
-  // =========================
   if (variant === "main") {
     return (
       <>
@@ -338,8 +436,6 @@ export default function Deposit({
             </Typography>
           )}
           <Card className="deposit deposit_main">
-            
-            {/* ----- Section chanson ----- */}
             <Box className="deposit_song">
               <Box className=" img_container">
                 {s?.image_url && (
@@ -350,7 +446,7 @@ export default function Deposit({
                   />
                 )}
               </Box>
-  
+
               <Box className="interact">
                 <Box className="texts">
                   <Typography component="span" className="titre " variant="h4">
@@ -360,7 +456,7 @@ export default function Deposit({
                     {s.artist}
                   </Typography>
                 </Box>
-  
+
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   <Button
                     variant="depositInteract"
@@ -374,51 +470,36 @@ export default function Deposit({
                 </Box>
               </Box>
             </Box>
-                      
+
             <Box className="deposit_infos">
-              
-              {showUser && (
-                
-                <Box
-                  onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                  className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-                >
-                  <Typography variant="body1" component="span">
-                    Partagée par
-                  </Typography>
-                  <Box className=" avatarbox">
-                    <Avatar
-                      src={u?.profile_pic_url || undefined}
-                      alt={u?.username || "anonyme"}
-                      className="avatar"
-                    />
-                  </Box>
-                  <Typography component="span" className="username " variant="subtitle1">
-                    {u?.username || "anonyme"}
-                    {u?.username && <ArrowForwardIosIcon className="icon" />}
-                  </Typography>
-                </Box>
-              )}
-              {/* ruban des réactions */}
+              {showUser && renderDepositUser(u)}
+
               <ReactionsStrip
-                items={localDep?.reactions_summary || []}
-                reactions={localDep?.reactions || []}
-                myReactionEmoji={localDep?.my_reaction?.emoji || null}
-                viewerUsername={user?.username || null}
-                onClick={handleReactClick}
+                items={reactionsSummary}
+                reactions={reactionsDetail}
+                myReactionEmoji={myReactionEmoji}
+                viewerUsername={viewerUsername}
+                onOpenReact={handleOpenReactModal}
+                onOpenSummary={openReactionSummary}
               />
             </Box>
-  
-            
           </Card>
         </Box>
-        
 
         <ReactionModal
           open={reactOpen}
           onClose={closeReact}
           depPublicKey={localDep?.public_key}
-          currentEmoji={localDep?.my_reaction?.emoji || null}
+          currentEmoji={myReactionEmoji}
+          onApplied={handleReactionApplied}
+        />
+
+        <ReactionSummary
+          open={reactionSummaryOpen}
+          onClose={closeReactionSummary}
+          depPublicKey={localDep?.public_key}
+          reactions={reactionsDetail}
+          viewer={user}
           onApplied={handleReactionApplied}
         />
 
@@ -427,20 +508,15 @@ export default function Deposit({
     );
   }
 
-  // =========================
-  // RENDU VARIANT LIST
-  // =========================
   return (
     <>
       <Box className="deposit_container">
         {showDate && (
           <Typography className="deposit_date" variant="subtitle1" component="span">
-            {/*"Chanson partagée " + */(naturalDate || "")}
+            {naturalDate || ""}
           </Typography>
         )}
         <Card className="deposit deposit_list">
-  
-          {/* ----- Section chanson ----- */}
           <Box className="deposit_song">
             <Box className=" img_container">
               {s?.image_url && (
@@ -454,7 +530,7 @@ export default function Deposit({
                 />
               )}
             </Box>
-  
+
             <Box className="interact">
               {isRevealed ? (
                 <>
@@ -466,7 +542,7 @@ export default function Deposit({
                       {s.artist}
                     </Typography>
                   </Box>
-  
+
                   {showPlay && (
                     <Button
                       variant="depositInteract"
@@ -499,51 +575,24 @@ export default function Deposit({
               )}
             </Box>
           </Box>
-  
-  
+
           <Box className="deposit_infos">
-    
-            {showUser && (
-              
-              <Box
-                onClick={() => { if (u?.username) navigate("/profile/" + u.username); }}
-                className={u?.username ? "hasUsername deposit_user" : "deposit_user"}
-              >
-                <Typography variant="body1" component="span">
-                  Partagée par
-                </Typography>
-                <Box className=" avatarbox">
-                  <Avatar
-                    src={u?.profile_pic_url || undefined}
-                    alt={u?.username || "anonyme"}
-                    className="avatar"
-                  />
-                </Box>
-                <Typography component="span" className="username " variant="subtitle1">
-                  {u?.username || "anonyme"}
-                  {u?.username && <ArrowForwardIosIcon className="icon" />}
-                </Typography>
-              </Box>
-            )}
-    
-            {/* ruban des réactions */}
+            {showUser && renderDepositUser(u)}
+
             <ReactionsStrip
-              items={localDep?.reactions_summary || []}
-              reactions={localDep?.reactions || []}
-              myReactionEmoji={localDep?.my_reaction?.emoji || null}
-              viewerUsername={user?.username || null}
-              onClick={handleReactClick}
+              items={reactionsSummary}
+              reactions={reactionsDetail}
+              myReactionEmoji={myReactionEmoji}
+              viewerUsername={viewerUsername}
+              onOpenReact={handleOpenReactModal}
+              onOpenSummary={openReactionSummary}
             />
           </Box>
-  
-   
-  
-  
         </Card>
       </Box>
+
       <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
-      {/* Snackbar existant */}
       <Snackbar
         open={snackOpen}
         onClose={() => setSnackOpen(false)}
@@ -588,12 +637,20 @@ export default function Deposit({
         />
       </Snackbar>
 
-      {/* Modale de réaction */}
       <ReactionModal
         open={reactOpen}
         onClose={closeReact}
         depPublicKey={localDep?.public_key}
-        currentEmoji={localDep?.my_reaction?.emoji || null}
+        currentEmoji={myReactionEmoji}
+        onApplied={handleReactionApplied}
+      />
+
+      <ReactionSummary
+        open={reactionSummaryOpen}
+        onClose={closeReactionSummary}
+        depPublicKey={localDep?.public_key}
+        reactions={reactionsDetail}
+        viewer={user}
         onApplied={handleReactionApplied}
       />
     </>
