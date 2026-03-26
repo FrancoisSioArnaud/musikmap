@@ -209,24 +209,21 @@ export default function ReactionSummary({
           }
           sx={{
             py: 1.25,
-            cursor: isMine || canNavigate ? "pointer" : "default",
             alignItems: "center",
+            display: "flex",
+            flexDirection: "row",
+            gap: 2,
           }}
         >
           <Typography
             variant="h4"
             component="span"
-            sx={{
-              minWidth: "1.6em",
-              display: "inline-flex",
-              justifyContent: "center",
-              mr: 0.5,
-            }}
+            className="emoji"
           >
             {reaction?.emoji}
           </Typography>
 
-          <Box className=" avatarbox">
+          <Box className="avatarbox">
             <Avatar
               src={normalized?.profile_picture_url || undefined}
               alt={normalized?.displayName || "anonyme"}
@@ -235,20 +232,15 @@ export default function ReactionSummary({
           </Box>
 
           <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              minWidth: 0,
-              flex: 1,
-            }}
+            className="texts"
           >
-            <Typography component="span" className="username " variant="subtitle1">
+            <Typography component="span" className="username" variant="subtitle1">
               {normalized?.displayName || "anonyme"}
               {!normalized?.isAnonymous && <ArrowForwardIosIcon className="icon" />}
             </Typography>
 
             {isMine && (
-              <Typography variant="body2" sx={{ opacity: 0.72 }}>
+              <Typography variant="body2" className"click_delete">
                 Cliquer pour supprimer la réaction
               </Typography>
             )}
@@ -263,6 +255,7 @@ export default function ReactionSummary({
       anchor="bottom"
       open={open}
       onClose={onClose}
+      className="reaction_summary_modal"
       PaperProps={{
         sx: {
           borderTopLeftRadius: 20,
@@ -285,18 +278,6 @@ export default function ReactionSummary({
           minHeight: 180,
         }}
       >
-        <Box
-          sx={{
-            width: 42,
-            height: 5,
-            borderRadius: 999,
-            bgcolor: "text.disabled",
-            opacity: 0.5,
-            mx: "auto",
-            mb: 1,
-          }}
-        />
-
         <Box
           sx={{
             display: "flex",
