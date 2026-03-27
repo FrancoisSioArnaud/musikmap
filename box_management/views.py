@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 from api_aggregation.views import ApiAggregation
 from users.models import CustomUser
 from .models import (
+    Article,
     Box,
     Deposit,
     DiscoveredSong,
@@ -33,8 +34,19 @@ from .models import (
     Reaction,
     Song,
 )
-from .serializers import BoxSerializer, SongSerializer, EmojiSerializer
-from .utils import _calculate_distance, _build_successes, _build_deposits_payload, _build_song_from_instance, _get_prev_head_and_older
+from .serializers import (
+    BoxSerializer,
+    SongSerializer,
+    EmojiSerializer,
+    ClientAdminArticleSerializer,
+)
+from .utils import (
+    _calculate_distance,
+    _build_successes,
+    _build_deposits_payload,
+    _build_song_from_instance,
+    _get_prev_head_and_older,
+)
 
 # Barèmes & coûts (importés depuis ton module utils global)
 from utils import (
@@ -42,7 +54,6 @@ from utils import (
 )
 
 User = get_user_model()
-
 
 
 # --- Helper pour réactions ---
@@ -55,30 +66,54 @@ def _reactions_summary_for_deposits(dep_ids):
     qs = (
         Reaction.objects
         .filter(deposit_id__in=dep_ids)
-        .values('deposit_id', 'emoji__char')
-        .annotate(count=Count('id'))
+        .values("deposit_id", "emoji__char")
+        .annotate(count=Count("id"))
     )
     for row in qs:
-        did = row['deposit_id']           # int (colonne _id)
-        emoji_char = row['emoji__char']
-        cnt = row['count']
+        did = row["deposit_id"]
+        emoji_char = row["emoji__char"]
+        cnt = row["count"]
         summary.setdefault(did, []).append({"emoji": emoji_char, "count": cnt})
 
-    # Tri par count desc
     for did in summary:
         summary[did].sort(key=lambda x: x["count"], reverse=True)
     return summary
+
+
+def _get_active_client_user_or_response(request):
+    user = request.user
+
+    if not user or not user.is_authenticated:
+        return None, Response(
+            {"detail": "Authentification requise."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if not getattr(user, "client_id", None):
+        return None, Response(
+            {"detail": "Ce compte n'est rattaché à aucun client."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if getattr(user, "portal_status", None) != "active":
+        return None, Response(
+            {"detail": "Ce compte n'a pas accès au portail client."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if getattr(user, "client_role", "") not in {"client_owner", "client_editor"}:
+        return None, Response(
+            {"detail": "Ce compte n'a pas les droits nécessaires."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return user, None
 
 
 # -----------------------
 # Vues
 # -----------------------
 
-
-
-
-
-# boxmanagement/views.py
 
 class GetMain(APIView):
     """
@@ -94,10 +129,8 @@ class GetMain(APIView):
     """
 
     def get(self, request, box_url: str, *args, **kwargs):
-        # 1) Box par URL (slug) → 404 si introuvable
         box = get_object_or_404(Box, url=box_url)
 
-        # 2) Dernier dépôt pour cette box (relations + réactions préchargées)
         qs = (
             Deposit.objects
             .latest_for_box(box, limit=1)
@@ -111,18 +144,18 @@ class GetMain(APIView):
                 )
             )
         )
-        deposits = list(qs)  # 0..1
+        deposits = list(qs)
 
-        # 3) Viewer (auth facultative)
         viewer = (
             request.user
-            if (hasattr(request, "user")
+            if (
+                hasattr(request, "user")
                 and not isinstance(request.user, AnonymousUser)
-                and getattr(request.user, "is_authenticated", False))
+                and getattr(request.user, "is_authenticated", False)
+            )
             else None
         )
 
-        # 3.5) Marquer comme découvert (idempotent)
         if viewer and deposits:
             dep = deposits[0]
             DiscoveredSong.objects.get_or_create(
@@ -131,7 +164,6 @@ class GetMain(APIView):
                 defaults={"discovered_type": "main"},
             )
 
-        # 4) Payload via utils (song jamais hidden sur GetMain)
         force_ids = [deposits[0].pk] if deposits else []
         payload = _build_deposits_payload(
             deposits,
@@ -140,8 +172,8 @@ class GetMain(APIView):
             force_song_infos_for=force_ids,
         )
 
-        # 5) Retourne une liste (vide ou 1 élément)
         return Response(payload, status=status.HTTP_200_OK)
+
 
 class GetBox(APIView):
     lookup_url_kwarg = "name"
@@ -149,14 +181,13 @@ class GetBox(APIView):
 
     def get(self, request, format=None):
         slug = request.GET.get("name")
-    
+
         if not slug:
             return Response(
                 {"detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-    
-        # 1️⃣ Récupération de la box avec stats
+
         box = (
             Box.objects
             .select_related("client")
@@ -168,33 +199,31 @@ class GetBox(APIView):
             .only("name", "client__slug")
             .first()
         )
-    
+
         if not box:
             return Response(
                 {"detail": "Désolé. Cette boîte n'existe pas."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-    
-        # 2️⃣ Récupération du dernier dépôt
+
         last_deposit = (
             box.deposits
             .select_related("song")
             .order_by("-deposited_at")
             .first()
         )
-    
+
         last_deposit_date = (
             naturaltime(localtime(box.last_deposit_at))
             if box.last_deposit_at else None
         )
-    
-        # 3️⃣ Image URL si disponible
+
         last_deposit_song_image_url = (
             last_deposit.song.image_url
             if last_deposit and last_deposit.song
             else None
         )
-    
+
         data = {
             "name": box.name,
             "client_slug": box.client.slug if box.client else None,
@@ -202,10 +231,9 @@ class GetBox(APIView):
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
         }
-    
+
         return Response(data, status=status.HTTP_200_OK)
-    
-    # --------- POST (création d’un dépôt) ---------
+
     def post(self, request, format=None):
         """
         POST /box-management/get-box/
@@ -225,7 +253,6 @@ class GetBox(APIView):
         - force_song_infos_for(prev_head) uniquement pour anonymes
         """
 
-        # --- 0) Lecture & validations minimales
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
         if not box_slug:
@@ -247,16 +274,12 @@ class GetBox(APIView):
         if not song_name or not song_author:
             return Response({"detail": "Titre ou artiste manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # User courant (peut être anonyme)
         user = request.user if not isinstance(request.user, AnonymousUser) else None
         is_authed = bool(user and getattr(user, "is_authenticated", False))
 
-        # --- 1) Snapshot AVANT création (1 seule requête + prefetch reactions)
         prev_head, older_list = _get_prev_head_and_older(box, limit=15)
 
-        # --- 2) Upsert Song + succès + création Deposit (atomique)
         with transaction.atomic():
-            # 2.a) Upsert Song
             try:
                 song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
                 song.n_deposits = (song.n_deposits or 0) + 1
@@ -269,13 +292,11 @@ class GetBox(APIView):
                     duration=option.get("duration") or 0,
                 )
 
-            # URL plateforme utilisée
             if song_platform_id == 1 and incoming_url:
                 song.spotify_url = incoming_url
             elif song_platform_id == 2 and incoming_url:
                 song.deezer_url = incoming_url
 
-            # Compléter l'autre URL via agrégateur (best-effort)
             try:
                 request_platform = None
                 if song_platform_id == 1 and not song.deezer_url:
@@ -309,13 +330,10 @@ class GetBox(APIView):
 
             song.save()
 
-            # 2.b) Succès + points
             successes, points_to_add = _build_successes(box=box, user=user, song=song)
 
-            # 2.c) Création du dépôt
             Deposit.objects.create(song=song, box=box, user=user)
 
-        # --- 2.5) DiscoveredSong(main) pour prev_head (connectés uniquement)
         if is_authed and prev_head is not None:
             try:
                 DiscoveredSong.objects.get_or_create(
@@ -324,9 +342,8 @@ class GetBox(APIView):
                     defaults={"discovered_type": "main"},
                 )
             except Exception:
-                pass  # best-effort
+                pass
 
-        # --- 3) Créditer les points (best-effort)
         points_balance = None
         if is_authed:
             try:
@@ -355,14 +372,12 @@ class GetBox(APIView):
             except Exception:
                 pass
 
-        # --- 4) Sérialisation en un seul batch (main + older)
         deps_to_serialize = []
         if prev_head is not None:
             deps_to_serialize.append(prev_head)
         deps_to_serialize.extend(older_list)
 
         force_ids = []
-        # ✅ on force main uniquement pour anonymes (sinon DiscoveredSong(main) suffit)
         if prev_head is not None and not is_authed:
             force_ids = [prev_head.pk]
 
@@ -419,44 +434,31 @@ class Location(APIView):
         if not box_url:
             return Response({"error": "Missing box.url"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Box via son slug/url
         box = get_object_or_404(Box, url=box_url)
 
-        # Points de localisation liés à la box
         points = LocationPoint.objects.filter(box=box)
         if not points.exists():
             return Response({"error": "No location points for this box"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Vérification de la distance pour chaque point
         for point in points:
-            max_dist = point.dist_location  # rayon admissible (en mètres)
+            max_dist = point.dist_location
             target_lat = point.latitude
             target_lng = point.longitude
             dist = _calculate_distance(latitude, longitude, target_lat, target_lng)
             if dist <= max_dist:
-                # ✅ Localisation OK → HTTP 200 sans payload obligatoire
                 return Response(status=status.HTTP_200_OK)
 
-        # ❌ Trop loin → HTTP 403
         return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
+
 
 class RevealSong(APIView):
     """
     POST /box-management/revealSong
     Body: { "dep_public_key": <str> }
     200: { "song": {...}, "points_balance": <int|None> }
-
-    Logique :
-      1) Vérifier auth + présence de la clé publique
-      2) Récupérer le Deposit + Song
-      3) Débiter les points via /users/add-points
-         - si status != 200 → on renvoie la réponse d'AddUserPoints telle quelle
-      4) Enregistrer la découverte (DiscoveredSong)
-      5) Renvoyer le song (via _build_song_from_instance(hidden=False)) + points_balance
     """
 
     def post(self, request, format=None):
-        # 1) Auth requise
         user = request.user
         if not user.is_authenticated:
             return Response(
@@ -464,7 +466,6 @@ class RevealSong(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # 2) Paramètres
         public_key = request.data.get("dep_public_key")
         if not public_key:
             return Response(
@@ -472,7 +473,6 @@ class RevealSong(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3) Récupérer le dépôt + chanson
         try:
             deposit = (
                 Deposit.objects
@@ -492,10 +492,8 @@ class RevealSong(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 4) Coût de la révélation
         cost = int(COST_REVEAL_BOX)
 
-        # 5) Débit des points via AddUserPoints (HTTP interne)
         csrf_token = get_token(request)
         origin = request.build_absolute_uri("/")
 
@@ -523,9 +521,6 @@ class RevealSong(APIView):
             except ValueError:
                 points_payload = {}
 
-            # 👉 Nouveau comportement :
-            # - si status != 200 → on renvoie tel quel la réponse d'AddUserPoints
-            # - si status == 200 → on continue
             if r.status_code != 200:
                 return Response(points_payload, status=r.status_code)
 
@@ -535,27 +530,20 @@ class RevealSong(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # Ici, AddUserPoints a renvoyé 200 → débit OK
         points_balance = points_payload.get("points_balance")
 
-        # 6) Enregistrer la découverte directement (sans requête HTTP)
         try:
-            # On garde une sémantique proche de ManageDiscoveredSongs,
-            # mais en travaillant directement avec l'objet Deposit.
             DiscoveredSong.objects.get_or_create(
                 user=user,
                 deposit=deposit,
                 defaults={"discovered_type": "revealed"},
             )
         except Exception:
-            # Comme auparavant : si l'enregistrement de la découverte échoue,
-            # on renvoie une erreur 502.
             return Response(
                 {"detail": "Erreur lors de l’enregistrement de la découverte."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # 7) Réponse finale au frontend
         song_payload = _build_song_from_instance(song, hidden=False)
 
         data = {
@@ -568,88 +556,62 @@ class RevealSong(APIView):
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
-    GET : renvoie des **sessions** de découvertes, groupées par connexion à une boîte.
-
-    Format d'une session retournée :
-    {
-        "session_id": str,
-        "box": {"id": ..., "name": ..., "url": ...},
-        "started_at": "<ISO datetime>",
-        "deposits": [
-            {
-                # payload standard de _build_deposit_from_instance/_build_deposits_payload
-                "public_key": "...",
-                "deposited_at": "<ISO UTC>",
-                "song": { ... },
-                "user": { "username": "...", "profile_pic_url": "..." },
-                "reactions": [...],
-                "reactions_summary": [...],
-                # + champs spécifiques à la Library :
-                "type": "main" | "revealed",
-                "discovered_at": "<ISO datetime>",
-                "deposit_id": <int>,
-            },
-            ...
-        ]
-    }
+    GET : renvoie des sessions de découvertes, groupées par connexion à une boîte.
     """
 
     def post(self, request, format=None):
         user = request.user
         if not user.is_authenticated:
             return Response(
-                {'error': 'Vous devez être connecté pour effectuer cette action.'},
-                status=status.HTTP_401_UNAUTHORIZED
+                {"error": "Vous devez être connecté pour effectuer cette action."},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        deposit_id = request.data.get('deposit_id')
+        deposit_id = request.data.get("deposit_id")
         if not deposit_id:
             return Response(
-                {'error': 'Identifiant de dépôt manquant.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Identifiant de dépôt manquant."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        discovered_type = request.data.get('discovered_type') or "revealed"
+        discovered_type = request.data.get("discovered_type") or "revealed"
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
         try:
             deposit = (
                 Deposit.objects
-                .select_related('song', 'box', 'user')
+                .select_related("song", "box", "user")
                 .get(pk=deposit_id)
             )
         except Deposit.DoesNotExist:
             return Response(
-                {'error': "Dépôt introuvable."},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Dépôt introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Vérifie si déjà découvert pour ce user / ce dépôt
         if DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
             return Response(
-                {'error': 'Ce dépôt est déjà découvert.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Ce dépôt est déjà découvert."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Crée la découverte
         DiscoveredSong.objects.create(
             user=user,
             deposit=deposit,
             discovered_type=discovered_type,
         )
 
-        return Response({'success': True}, status=status.HTTP_200_OK)
+        return Response({"success": True}, status=status.HTTP_200_OK)
 
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
             return Response(
-                {'error': 'Vous devez être connecté pour effectuer cette action.'},
-                status=status.HTTP_401_UNAUTHORIZED
+                {"error": "Vous devez être connecté pour effectuer cette action."},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # --- Params pagination (par sessions)
         try:
             limit = int(request.GET.get("limit", 10))
         except Exception:
@@ -661,26 +623,25 @@ class ManageDiscoveredSongs(APIView):
         limit = 10 if limit <= 0 else limit
         offset = 0 if offset < 0 else offset
 
-        # --- 1) Flux complet trié par discovered_at ASC (chronologie réelle)
         events = list(
             DiscoveredSong.objects
             .filter(user_id=user.id)
             .select_related(
-                'deposit',          # ✅ nom du champ relationnel
-                'deposit__song',
-                'deposit__user',
-                'deposit__box',
+                "deposit",
+                "deposit__song",
+                "deposit__user",
+                "deposit__box",
             )
             .prefetch_related(
                 Prefetch(
-                    'deposit__reactions',  # ✅ via le champ relationnel "deposit"
+                    "deposit__reactions",
                     queryset=Reaction.objects
                     .select_related("emoji", "user", "deposit")
-                    .order_by('created_at', 'id'),
-                    to_attr='prefetched_reactions',
+                    .order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
                 )
             )
-            .order_by('discovered_at', 'id')  # ASC, puis tie-break sur id
+            .order_by("discovered_at", "id")
         )
 
         if not events:
@@ -693,10 +654,7 @@ class ManageDiscoveredSongs(APIView):
             }
             return Response(payload, status=status.HTTP_200_OK)
 
-        # --- 2) Construction des payloads de dépôts via _build_deposits_payload
-
-        # Liste des dépôts uniques utilisés dans ces events
-        deposits = [ds.deposit for ds in events]  # ✅ on prend l'instance, pas l'id
+        deposits = [ds.deposit for ds in events]
         unique_deposits = []
         seen_ids = set()
         for d in deposits:
@@ -704,24 +662,20 @@ class ManageDiscoveredSongs(APIView):
                 seen_ids.add(d.pk)
                 unique_deposits.append(d)
 
-        # Payloads complets pour ces dépôts, vus par ce user
         deposits_payload_list = _build_deposits_payload(
             unique_deposits,
-            viewer=user,       # pour marquer comme "revealed" et récupérer my_reaction
-            include_user=True, # pour que le front ait user.username / user.profile_pic_url
+            viewer=user,
+            include_user=True,
             include_deposit_time=False,
-            
         )
 
-        # Dict {deposit_id: payload}
         deposit_payload_by_id = {
             dep.pk: payload
             for dep, payload in zip(unique_deposits, deposits_payload_list)
         }
 
-        # Helper pour un DiscoveredSong → payload enrichi
         def deposit_payload(ds_obj):
-            dep = ds_obj.deposit  # ✅ instance de Deposit
+            dep = ds_obj.deposit
             base = deposit_payload_by_id.get(dep.pk, {})
             return {
                 **base,
@@ -730,18 +684,14 @@ class ManageDiscoveredSongs(APIView):
                 "deposit_id": dep.pk,
             }
 
-        # --- 3) Construction des sessions (même logique que ton code initial)
-
-        # Indices des "main" (ASC)
         main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
 
         sessions_all = []
         consumed = [False] * len(events)
 
-        # 3.a) Sessions pilotées par 'main'
         for idx, mi in enumerate(main_indices):
             main_ds = events[mi]
-            box = main_ds.deposit.box  # ✅ via la FK deposit
+            box = main_ds.deposit.box
             start = main_ds.discovered_at
             deadline = start + timedelta(seconds=3600)
             end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
@@ -749,7 +699,6 @@ class ManageDiscoveredSongs(APIView):
             deposits_list = [deposit_payload(main_ds)]
             consumed[mi] = True
 
-            # revealed après le main, même box, <= +1h, avant le prochain main
             for j in range(mi + 1, end):
                 ds = events[j]
                 if ds.discovered_type != "revealed":
@@ -767,7 +716,6 @@ class ManageDiscoveredSongs(APIView):
                 "deposits": deposits_list,
             })
 
-        # 3.b) Sessions orphelines (revealed sans main associé)
         next_main_pos_from = [None] * len(events)
         next_idx = None
         for i in range(len(events) - 1, -1, -1):
@@ -819,7 +767,6 @@ class ManageDiscoveredSongs(APIView):
             orph_counter += 1
             i = j if j is not None else (i + 1)
 
-        # --- 4) Tri global et pagination
         sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
 
         total_sessions = len(sessions_all)
@@ -844,7 +791,6 @@ class AddUserPoints(APIView):
     Class goal : add (or delete) points to the connected user.
     """
     def post(self, request, format=None):
-        # 1) Auth requise
         if not request.user.is_authenticated:
             return Response(
                 {"errors": "Utilisateur non connecté."},
@@ -854,7 +800,6 @@ class AddUserPoints(APIView):
         user = request.user
         points = request.data.get("points")
 
-        # 2) Validation basique
         if points is None:
             return Response(
                 {"errors": "Nombre de points invalide."},
@@ -869,7 +814,6 @@ class AddUserPoints(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3) Récupération du solde actuel
         try:
             user.refresh_from_db(fields=["points"])
         except Exception:
@@ -878,18 +822,16 @@ class AddUserPoints(APIView):
         current = getattr(user, "points", 0)
         new_balance = current + points
 
-        # 4) Interdiction des soldes négatifs
         if new_balance < 0:
             return Response(
                 {
                     "error": "insufficient_funds",
                     "message": "Pas assez de points pour effectuer cette action.",
-                    "points_balance": current,  # On renvoie aussi le solde actuel
+                    "points_balance": current,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 5) Mise à jour autorisée
         user.points = new_balance
         user.save(update_fields=["points"])
 
@@ -903,20 +845,11 @@ class AddUserPoints(APIView):
 
 
 class UserDepositsView(APIView):
-    permission_classes = []  # public
+    permission_classes = []
 
     def get(self, request):
         """
         GET /box-management/user-deposits?username=<str>&limit=<int>&offset=<int>
-
-        Response:
-        {
-          "items": [ ...payload deposits... ],
-          "limit": 10,
-          "offset": 0,
-          "has_more": true,
-          "next_offset": 10
-        }
         """
 
         raw_username = (request.GET.get("username") or "").strip()
@@ -926,7 +859,6 @@ class UserDepositsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # pagination params
         try:
             limit = int(request.GET.get("limit", 20))
         except Exception:
@@ -936,7 +868,6 @@ class UserDepositsView(APIView):
         except Exception:
             offset = 0
 
-        # hard guards
         if limit <= 0:
             limit = 20
         if limit > 50:
@@ -965,7 +896,6 @@ class UserDepositsView(APIView):
             .order_by("-deposited_at", "-id")
         )
 
-        # fetch page (+1 pour has_more)
         page_qs = list(base_qs[offset: offset + limit + 1])
         has_more = len(page_qs) > limit
         deposits = page_qs[:limit]
@@ -991,6 +921,112 @@ class UserDepositsView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+class ClientAdminArticleListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        search = (request.GET.get("search") or "").strip()
+        status_filter = (request.GET.get("status") or "").strip()
+
+        articles_qs = (
+            Article.objects
+            .visible_for_client_user(user)
+            .with_related()
+            .search(search)
+            .with_status(status_filter)
+            .ordered_for_admin()
+        )
+
+        serializer = ClientAdminArticleSerializer(articles_qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        serializer = ClientAdminArticleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        article = serializer.save(
+            client_id=user.client_id,
+            author=user,
+        )
+
+        output = ClientAdminArticleSerializer(article)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+class ClientAdminArticleDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, article_id):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return None, error_response
+
+        article = (
+            Article.objects
+            .visible_for_client_user(user)
+            .with_related()
+            .filter(id=article_id)
+            .first()
+        )
+
+        if not article:
+            return None, Response(
+                {"detail": "Article introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return article, None
+
+    def get(self, request, article_id):
+        article, error_response = self.get_object(request, article_id)
+        if error_response:
+            return error_response
+
+        serializer = ClientAdminArticleSerializer(article)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, article_id):
+        article, error_response = self.get_object(request, article_id)
+        if error_response:
+            return error_response
+
+        payload = dict(request.data)
+        payload.pop("client", None)
+        payload.pop("client_id", None)
+        payload.pop("author", None)
+        payload.pop("author_id", None)
+
+        serializer = ClientAdminArticleSerializer(
+            article,
+            data=payload,
+            partial=True,
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        article = serializer.save()
+        output = ClientAdminArticleSerializer(article)
+        return Response(output.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, article_id):
+        article, error_response = self.get_object(request, article_id)
+        if error_response:
+            return error_response
+
+        article.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # ==========================================================
 # EMOJIS & REACTIONS
 # ==========================================================
@@ -1011,13 +1047,11 @@ class EmojiCatalogView(APIView):
         current_reaction = None
 
         if request.user.is_authenticated:
-            # Emojis déjà possédés
             owned_ids = list(
                 EmojiRight.objects.filter(user=request.user, emoji__active=True)
                 .values_list("emoji_id", flat=True)
             )
 
-            # Emoji actuellement sélectionné sur ce dépôt (via public_key)
             if dep_public_key:
                 r = (
                     Reaction.objects.filter(
@@ -1036,6 +1070,7 @@ class EmojiCatalogView(APIView):
             "current_reaction": current_reaction,
         }
         return Response(data, status=status.HTTP_200_OK)
+
 
 class PurchaseEmojiView(APIView):
     """
@@ -1061,9 +1096,11 @@ class PurchaseEmojiView(APIView):
         cost = int(emoji.cost or 0)
         request.user.refresh_from_db(fields=["points"])
         if getattr(request.user, "points", 0) < cost:
-            return Response({"error": "insufficient_funds", "message": "Crédits insuffisants"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "insufficient_funds", "message": "Crédits insuffisants"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Débiter points
         csrf_token = get_token(request)
         origin = request.build_absolute_uri("/")
         headers_bg = {
@@ -1073,7 +1110,7 @@ class PurchaseEmojiView(APIView):
             "Origin": origin.rstrip("/"),
         }
         r = requests.post(
-            request.build_absolute_uri(reverse('add-points')),
+            request.build_absolute_uri(reverse("add-points")),
             cookies=request.COOKIES,
             headers=headers_bg,
             data=json.dumps({"points": -cost}),
@@ -1084,13 +1121,16 @@ class PurchaseEmojiView(APIView):
 
         EmojiRight.objects.create(user=request.user, emoji=emoji)
         request.user.refresh_from_db(fields=["points"])
-        return Response({"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)}, status=status.HTTP_200_OK)
+        return Response(
+            {"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ReactionView(APIView):
     """
     POST /box-management/reactions
-    Body: { "dep_public_key": "<str>", "emoji_id": <int|null|\"none\"> }
+    Body: { "dep_public_key": "<str>", "emoji_id": <int|null|"none"> }
     """
     permission_classes = [IsAuthenticated]
 
@@ -1111,7 +1151,6 @@ class ReactionView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # suppression ("none")
         if emoji_id in (None, "", 0, "none"):
             Reaction.objects.filter(user=request.user, deposit=deposit).delete()
             summary = _reactions_summary_for_deposits([deposit.id]).get(
@@ -1129,7 +1168,6 @@ class ReactionView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # ✅ Pas de check de droit si cost==0
         if not emoji.cost == 0:
             has_right = EmojiRight.objects.filter(
                 user=request.user, emoji=emoji
@@ -1157,11 +1195,3 @@ class ReactionView(APIView):
             {"my_reaction": my, "reactions_summary": summary},
             status=status.HTTP_200_OK,
         )
-
-
-
-
-
-
-
-
