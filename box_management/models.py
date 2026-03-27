@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.db.models import Count
 from django.dispatch import receiver
+from django.core.exceptions import ValidationError
 from typing import Union, Optional, Iterable
 from users.models import CustomUser
 from utils import generate_unique_filename
@@ -87,6 +88,40 @@ class Box(models.Model):
         return self.name
 
 
+class ArticleQuerySet(models.QuerySet):
+    def with_related(self):
+        return self.select_related("client", "author")
+
+    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+        return getattr(obj_or_id, "pk", obj_or_id)
+
+    def for_client(self, client_or_id: Union[int, "Client"]):
+        client_id = self._coerce_id(client_or_id)
+        return self.filter(client_id=client_id)
+
+    def visible_for_client_user(self, user: CustomUser):
+        if not user or not getattr(user, "client_id", None):
+            return self.none()
+        return self.for_client(user.client_id)
+
+    def search(self, term: Optional[str]):
+        if not term:
+            return self
+        return self.filter(
+            models.Q(title__icontains=term)
+            | models.Q(short_text__icontains=term)
+            | models.Q(link__icontains=term)
+        )
+
+    def with_status(self, status_value: Optional[str]):
+        if not status_value or status_value == "all":
+            return self
+        return self.filter(status=status_value)
+
+    def ordered_for_admin(self):
+        return self.order_by("-updated_at", "-created_at")
+
+
 class Article(models.Model):
     STATUS_CHOICES = [
         ("draft", "Draft"),
@@ -135,6 +170,8 @@ class Article(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
+    objects = ArticleQuerySet.as_manager()
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
@@ -146,7 +183,32 @@ class Article(models.Model):
             models.Index(fields=["title"]),
         ]
 
+    def clean(self):
+        if self.author_id and self.client_id and self.author.client_id != self.client_id:
+            raise ValidationError(
+                {"author": "L'auteur doit appartenir au même client que l'article."}
+            )
+
+        if self.short_text and len(self.short_text) > 300:
+            raise ValidationError(
+                {"short_text": "Le texte court ne peut pas dépasser 300 caractères."}
+            )
+
+    @property
+    def is_published(self):
+        return self.status == "published"
+
+    @property
+    def is_draft(self):
+        return self.status == "draft"
+
+    @property
+    def is_archived(self):
+        return self.status == "archived"
+
     def save(self, *args, **kwargs):
+        self.full_clean()
+
         if self.status == "published" and self.published_at is None:
             self.published_at = timezone.now()
         elif self.status != "published":
@@ -227,9 +289,14 @@ class Deposit(models.Model):
 
     song = models.ForeignKey("Song", on_delete=models.CASCADE, related_name="deposits")
     box = models.ForeignKey("Box", on_delete=models.CASCADE, related_name="deposits")
-    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="deposits")
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deposits",
+    )
 
-    # 🚨 La nouvelle clé publique (exposée au front)
     public_key = models.CharField(
         max_length=16,
         unique=True,
@@ -245,30 +312,23 @@ class Deposit(models.Model):
             models.Index(fields=["box", "deposited_at"]),
             models.Index(fields=["song", "deposited_at"]),
             models.Index(fields=["user", "deposited_at"]),
-            # ⚡ index supplémentaire pour rechercher rapidement
             models.Index(fields=["public_key"]),
         ]
 
     def __str__(self):
         return f"Deposit {self.public_key} (song={self.song_id}, box={self.box_id})"
 
-    # --------------------------------------------
-    # 🔑 Génération automatique d'une clé unique
-    # --------------------------------------------
     def save(self, *args, **kwargs):
         if not self.public_key:
-            # on génère une clé unique de 16 chars
             self.public_key = self._generate_unique_key()
         super().save(*args, **kwargs)
 
     @staticmethod
     def _generate_key():
-        # 16 caractères safe (A-Za-z0-9)
         return secrets.token_urlsafe(12)[:16]
 
     @classmethod
     def _generate_unique_key(cls):
-        """Génère une clé qui n'existe pas déjà en base."""
         key = cls._generate_key()
         while cls.objects.filter(public_key=key).exists():
             key = cls._generate_key()
@@ -289,7 +349,6 @@ class LocationPoint(models.Model):
         ]
 
     def __str__(self):
-        # ✅ Pas de requête supplémentaire : on utilise la FK déjà chargée
         return f"{self.box.name} - {self.latitude} - {self.longitude}"
 
 
@@ -308,7 +367,6 @@ class DiscoveredSong(models.Model):
     )
     discovered_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # ✅ CONTEXTE SIMPLIFIÉ
     CONTEXT_CHOICES = (
         ("box", "Box"),
         ("profile", "Profile"),
@@ -341,9 +399,9 @@ class DiscoveredSong(models.Model):
 
 class Emoji(models.Model):
     """Catalogue des emojis (Unicode)"""
-    char = models.CharField(max_length=8, unique=True, db_index=True)  # ex "🔥", "😂"
+    char = models.CharField(max_length=8, unique=True, db_index=True)
     active = models.BooleanField(default=True)
-    cost = models.PositiveIntegerField(default=0)  # coût en points
+    cost = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["char"]
