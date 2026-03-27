@@ -39,7 +39,7 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
-        
+
 
 @receiver(models.signals.pre_delete, sender=Client)
 def delete_client_background_picture(sender, instance, **kwargs):
@@ -87,12 +87,83 @@ class Box(models.Model):
         return self.name
 
 
+class Article(models.Model):
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("published", "Published"),
+        ("archived", "Archived"),
+    ]
+
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.CASCADE,
+        related_name="articles",
+        db_index=True,
+    )
+
+    author = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="articles_authored",
+    )
+
+    title = models.CharField(max_length=200, db_index=True)
+    link = models.URLField(max_length=2048)
+
+    short_text = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Short preview text, maximum 300 characters.",
+    )
+
+    cover_image = models.URLField(
+        max_length=2048,
+        blank=True,
+        help_text="Remote URL of the cover image.",
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="draft",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["client", "status"]),
+            models.Index(fields=["client", "created_at"]),
+            models.Index(fields=["client", "published_at"]),
+            models.Index(fields=["author"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["title"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.status == "published" and self.published_at is None:
+            self.published_at = timezone.now()
+        elif self.status != "published":
+            self.published_at = None
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} ({self.client.name})"
+
+
 class Song(models.Model):
     song_id = models.CharField(max_length=15, unique=True, db_index=True)
 
     title = models.CharField(max_length=50, db_index=True)
     artist = models.CharField(max_length=50, db_index=True)
-    
+
     spotify_url = models.URLField(max_length=255, blank=True)
     deezer_url = models.URLField(max_length=255, blank=True)
 
