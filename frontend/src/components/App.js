@@ -1,5 +1,3 @@
-// frontend/src/components/App.js
-
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
@@ -23,6 +21,11 @@ import FlowboxLayout from "./Flowbox/FlowboxLayout";
 import Onboarding from "./Flowbox/Onboarding";
 import LiveSearch from "./Flowbox/LiveSearch";
 import Discover from "./Flowbox/Discover";
+import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
+import ClientAdminLayout from "./ClientAdmin/ClientAdminLayout";
+import ClientDashboard from "./ClientAdmin/Dashboard";
+import ClientArticlesList from "./ClientAdmin/ArticlesList";
+import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
 
 import {
   BrowserRouter as Router,
@@ -47,6 +50,14 @@ function LayoutWithHeader() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function ClientAdminRouteWrapper() {
+  return (
+    <ClientAdminGuard>
+      <ClientAdminLayout />
+    </ClientAdminGuard>
   );
 }
 
@@ -124,6 +135,13 @@ export default function App() {
                   />
                   <Route path="discover" element={<Discover />} />
                 </Route>
+              </Route>
+
+              <Route path="/client" element={<ClientAdminRouteWrapper />}>
+                <Route index element={<ClientDashboard />} />
+                <Route path="articles" element={<ClientArticlesList />} />
+                <Route path="articles/new" element={<ClientArticleEdit />} />
+                <Route path="articles/:articleId" element={<ClientArticleEdit />} />
               </Route>
 
               <Route
