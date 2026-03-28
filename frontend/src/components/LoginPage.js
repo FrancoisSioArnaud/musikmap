@@ -15,7 +15,7 @@ import { checkUserStatus } from "./UsersUtils";
 import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
 import { getCookie } from "./Security/TokensUtils";
-import { navigateToCurrentBox } from "./MusicBox/BoxUtils";
+import { navigateToCurrentBox } from "./Utils/navigation/BoxNavigation";
 
 
 export default function LoginPage() {
