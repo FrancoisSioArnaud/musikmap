@@ -112,6 +112,8 @@ def _get_active_client_user_or_response(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    return user, None
+
 class _ArticleImportHTMLParser(HTMLParser):
     def __init__(self):
         super().__init__()
