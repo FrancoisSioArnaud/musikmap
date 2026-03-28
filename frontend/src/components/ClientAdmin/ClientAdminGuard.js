@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import LockOutlineIcon from "@mui/icons-material/LockOutline";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { UserContext } from "../UserContext";
 
 function hasClientPortalAccess(user) {
@@ -52,7 +52,7 @@ export default function ClientAdminGuard({ children }) {
             textAlign: "center",
           }}
         >
-          <LockOutlineIcon sx={{ fontSize: 44, color: "primary.main", mb: 2 }} />
+          <LockOutlinedIcon sx={{ fontSize: 44, color: "primary.main", mb: 2 }} />
           <Typography variant="h4" gutterBottom>
             Accès refusé
           </Typography>
