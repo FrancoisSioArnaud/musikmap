@@ -11,6 +11,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
@@ -73,6 +78,12 @@ function extractErrorMessage(data, fallbackMessage) {
   return fallbackMessage;
 }
 
+function getStatusLabel(status) {
+  if (status === "published") return "Publié";
+  if (status === "archived") return "Archivé";
+  return "Brouillon";
+}
+
 export default function ArticleEdit() {
   const { articleId } = useParams();
   const navigate = useNavigate();
@@ -90,6 +101,7 @@ export default function ArticleEdit() {
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
   const [imageChoices, setImageChoices] = useState([]);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [meta, setMeta] = useState({
     status: "draft",
     created_at: null,
@@ -133,6 +145,7 @@ export default function ArticleEdit() {
         published_at: null,
       });
       setImageChoices([]);
+      setPublishDialogOpen(false);
     }
   }, [isCreateMode]);
 
@@ -387,11 +400,11 @@ export default function ArticleEdit() {
 
       if (isCreateMode && normalized.id) {
         navigate(`/client/articles/${normalized.id}`, { replace: true });
-        return;
       }
 
       if (nextStatus === "published") {
-        setPageSuccess("Article publié.");
+        setPublishDialogOpen(true);
+        setPageSuccess("");
       } else if (nextStatus === "archived") {
         setPageSuccess("Article archivé.");
       } else {
@@ -413,284 +426,20 @@ export default function ArticleEdit() {
   }
 
   return (
-    <Stack spacing={3}>
-      <Box>
-        <Button
-          onClick={handleBackToArticles}
-          startIcon={<ArrowBackRoundedIcon />}
-        >
-          Retour à mes articles
-        </Button>
-      </Box>
-
-      {pageError ? <Alert severity="error">{pageError}</Alert> : null}
-      {pageSuccess ? <Alert severity="success">{pageSuccess}</Alert> : null}
-
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2.5, sm: 3 },
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          spacing={2}
-          sx={{ mb: 3 }}
-        >
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              {isCreateMode ? "Nouvel article" : "Modifier l’article"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Article rédigé à la main ou importé depuis une page externe.
-            </Typography>
-          </Box>
-
-          {!isCreateMode && formValues.link ? (
-            <Button
-              component="a"
-              href={formValues.link}
-              target="_blank"
-              rel="noreferrer"
-              variant="outlined"
-              startIcon={<LaunchRoundedIcon />}
-            >
-              Ouvrir le lien
-            </Button>
-          ) : null}
-        </Stack>
-
-        <Box component="form" onSubmit={(event) => event.preventDefault()}>
-          <Stack spacing={2.5}>
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1.5}
-              alignItems={{ xs: "stretch", md: "flex-start" }}
-            >
-              <TextField
-                label="Lien externe"
-                value={formValues.link}
-                onChange={handleChange("link")}
-                fullWidth
-                placeholder="https://..."
-              />
-
-              <Button
-                variant="outlined"
-                onClick={handleImportPage}
-                disabled={importing}
-                startIcon={
-                  importing ? (
-                    <CircularProgress size={18} color="inherit" />
-                  ) : (
-                    <DownloadForOfflineRoundedIcon />
-                  )
-                }
-                sx={{ minWidth: { xs: "100%", md: 180 }, whiteSpace: "nowrap" }}
-              >
-                Importer la page
-              </Button>
-            </Stack>
-
-            <TextField
-              label="Titre"
-              value={formValues.title}
-              onChange={handleChange("title")}
-              fullWidth
-            />
-
-            <TextField
-              label="Texte court"
-              value={formValues.short_text}
-              onChange={handleChange("short_text")}
-              fullWidth
-              multiline
-              minRows={3}
-              helperText={`${formValues.short_text.length}/300 caractères`}
-              error={remainingCharacters < 0}
-            />
-
-            <TextField
-              label="URL cover image"
-              value={formValues.cover_image}
-              onChange={handleChange("cover_image")}
-              fullWidth
-              placeholder="https://..."
-            />
-
-            {imageChoices.length > 1 ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  border: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Stack spacing={1.5}>
-                  <Typography variant="subtitle1">
-                    Choisir l’image de cover
-                  </Typography>
-                  <Stack
-                    direction={{ xs: "column", md: "row" }}
-                    spacing={1.5}
-                    useFlexGap
-                    flexWrap="wrap"
-                  >
-                    {imageChoices.map((imageUrl) => {
-                      const isSelected = imageUrl === formValues.cover_image;
-                      return (
-                        <Paper
-                          key={imageUrl}
-                          elevation={0}
-                          sx={{
-                            p: 1,
-                            width: { xs: "100%", md: 220 },
-                            borderRadius: 2,
-                            border: "1px solid",
-                            borderColor: isSelected ? "primary.main" : "divider",
-                          }}
-                        >
-                          <Stack spacing={1}>
-                            <Box
-                              component="img"
-                              src={imageUrl}
-                              alt="cover candidate"
-                              sx={{
-                                width: "100%",
-                                height: 120,
-                                objectFit: "cover",
-                                borderRadius: 1.5,
-                                bgcolor: "grey.100",
-                              }}
-                              onError={(event) => {
-                                event.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <Button
-                              size="small"
-                              variant={isSelected ? "contained" : "outlined"}
-                              onClick={() => handleSelectCover(imageUrl)}
-                            >
-                              {isSelected ? "Image sélectionnée" : "Utiliser cette image"}
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      );
-                    })}
-                  </Stack>
-                </Stack>
-              </Paper>
-            ) : null}
-
-            {formValues.cover_image ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  border: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Stack spacing={1.5}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle1">Aperçu image</Typography>
-                    {formValues.cover_image && imageChoices.length > 1 ? (
-                      <Chip size="small" label="modifiable" />
-                    ) : null}
-                  </Stack>
-                  <Box
-                    component="img"
-                    src={formValues.cover_image}
-                    alt={formValues.title || "cover preview"}
-                    sx={{
-                      width: "100%",
-                      maxWidth: 520,
-                      height: "auto",
-                      borderRadius: 2,
-                      display: "block",
-                      bgcolor: "grey.100",
-                    }}
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                </Stack>
-              </Paper>
-            ) : null}
-
-            <Divider />
-
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.5}
-              justifyContent="space-between"
-              alignItems={{ xs: "stretch", sm: "center" }}
-            >
-              <Stack spacing={0.5}>
-                <Typography variant="body2" color="text.secondary">
-                  Statut : {meta.status || "draft"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Créé le : {formatDate(meta.created_at)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Modifié le : {formatDate(meta.updated_at)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Publié le : {formatDate(meta.published_at)}
-                </Typography>
-              </Stack>
-
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                <Button onClick={handleBackToArticles}>
-                  Annuler
-                </Button>
-
-                {!isCreateMode ? (
-                  <Button
-                    variant="outlined"
-                    color="warning"
-                    startIcon={<ArchiveRoundedIcon />}
-                    onClick={() => handleSave("archived")}
-                    disabled={Boolean(savingStatus)}
-                  >
-                    {savingStatus === "archived" ? "Archivage..." : "Archiver"}
-                  </Button>
-                ) : null}
-
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveRoundedIcon />}
-                  onClick={() => handleSave("draft")}
-                  disabled={Boolean(savingStatus)}
-                >
-                  {savingStatus === "draft"
-                    ? "Enregistrement..."
-                    : "Enregistrer comme brouillon"}
-                </Button>
-
-                <Button
-                  variant="contained"
-                  startIcon={<PublishRoundedIcon />}
-                  onClick={() => handleSave("published")}
-                  disabled={Boolean(savingStatus)}
-                >
-                  {savingStatus === "published" ? "Publication..." : "Publier"}
-                </Button>
-              </Stack>
-            </Stack>
-          </Stack>
+    <>
+      <Stack spacing={3}>
+        <Box>
+          <Button
+            onClick={handleBackToArticles}
+            startIcon={<ArrowBackRoundedIcon />}
+          >
+            Retour à mes articles
+          </Button>
         </Box>
-      </Paper>
 
-      {!isCreateMode && formValues.link ? (
+        {pageError ? <Alert severity="error">{pageError}</Alert> : null}
+        {pageSuccess ? <Alert severity="success">{pageSuccess}</Alert> : null}
+
         <Paper
           elevation={0}
           sx={{
@@ -700,14 +449,308 @@ export default function ArticleEdit() {
             borderColor: "divider",
           }}
         >
-          <Typography variant="h6" gutterBottom>
-            Lien cible
-          </Typography>
-          <Link href={formValues.link} target="_blank" rel="noreferrer" underline="hover">
-            {formValues.link}
-          </Link>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            spacing={2}
+            sx={{ mb: 3 }}
+          >
+            <Box>
+              <Typography variant="h4" gutterBottom>
+                {isCreateMode ? "Nouvel article" : "Modifier l’article"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Article rédigé à la main ou importé depuis une page externe.
+              </Typography>
+            </Box>
+
+            {!isCreateMode && formValues.link ? (
+              <Button
+                component="a"
+                href={formValues.link}
+                target="_blank"
+                rel="noreferrer"
+                variant="outlined"
+                startIcon={<LaunchRoundedIcon />}
+              >
+                Ouvrir le lien
+              </Button>
+            ) : null}
+          </Stack>
+
+          <Box component="form" onSubmit={(event) => event.preventDefault()}>
+            <Stack spacing={2.5}>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={1.5}
+                alignItems={{ xs: "stretch", md: "flex-start" }}
+              >
+                <TextField
+                  label="Lien externe"
+                  value={formValues.link}
+                  onChange={handleChange("link")}
+                  fullWidth
+                  placeholder="https://..."
+                />
+
+                <Button
+                  variant="outlined"
+                  onClick={handleImportPage}
+                  disabled={importing}
+                  startIcon={
+                    importing ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <DownloadForOfflineRoundedIcon />
+                    )
+                  }
+                  sx={{ minWidth: { xs: "100%", md: 180 }, whiteSpace: "nowrap" }}
+                >
+                  Importer la page
+                </Button>
+              </Stack>
+
+              <TextField
+                label="Titre"
+                value={formValues.title}
+                onChange={handleChange("title")}
+                fullWidth
+              />
+
+              <TextField
+                label="Texte court"
+                value={formValues.short_text}
+                onChange={handleChange("short_text")}
+                fullWidth
+                multiline
+                minRows={3}
+                helperText={`${formValues.short_text.length}/300 caractères`}
+                error={remainingCharacters < 0}
+              />
+
+              <TextField
+                label="URL cover image"
+                value={formValues.cover_image}
+                onChange={handleChange("cover_image")}
+                fullWidth
+                placeholder="https://..."
+              />
+
+              {imageChoices.length > 1 ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle1">
+                      Choisir l’image de cover
+                    </Typography>
+                    <Stack
+                      direction={{ xs: "column", md: "row" }}
+                      spacing={1.5}
+                      useFlexGap
+                      flexWrap="wrap"
+                    >
+                      {imageChoices.map((imageUrl) => {
+                        const isSelected = imageUrl === formValues.cover_image;
+                        return (
+                          <Paper
+                            key={imageUrl}
+                            elevation={0}
+                            sx={{
+                              p: 1,
+                              width: { xs: "100%", md: 220 },
+                              borderRadius: 2,
+                              border: "1px solid",
+                              borderColor: isSelected ? "primary.main" : "divider",
+                            }}
+                          >
+                            <Stack spacing={1}>
+                              <Box
+                                component="img"
+                                src={imageUrl}
+                                alt="cover candidate"
+                                sx={{
+                                  width: "100%",
+                                  height: 120,
+                                  objectFit: "cover",
+                                  borderRadius: 1.5,
+                                  bgcolor: "grey.100",
+                                }}
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                              />
+                              <Button
+                                size="small"
+                                variant={isSelected ? "contained" : "outlined"}
+                                onClick={() => handleSelectCover(imageUrl)}
+                              >
+                                {isSelected ? "Image sélectionnée" : "Utiliser cette image"}
+                              </Button>
+                            </Stack>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ) : null}
+
+              {formValues.cover_image ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="subtitle1">Aperçu image</Typography>
+                      {formValues.cover_image && imageChoices.length > 1 ? (
+                        <Chip size="small" label="modifiable" />
+                      ) : null}
+                    </Stack>
+                    <Box
+                      component="img"
+                      src={formValues.cover_image}
+                      alt={formValues.title || "cover preview"}
+                      sx={{
+                        width: "100%",
+                        maxWidth: 520,
+                        height: "auto",
+                        borderRadius: 2,
+                        display: "block",
+                        bgcolor: "grey.100",
+                      }}
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </Stack>
+                </Paper>
+              ) : null}
+
+              <Divider />
+
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
+                <Stack spacing={0.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Statut : {getStatusLabel(meta.status || "draft")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Créé le : {formatDate(meta.created_at)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Modifié le : {formatDate(meta.updated_at)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Publié le : {formatDate(meta.published_at)}
+                  </Typography>
+                </Stack>
+
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                  <Button onClick={handleBackToArticles}>
+                    Annuler
+                  </Button>
+
+                  {!isCreateMode ? (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      startIcon={<ArchiveRoundedIcon />}
+                      onClick={() => handleSave("archived")}
+                      disabled={Boolean(savingStatus)}
+                    >
+                      {savingStatus === "archived" ? "Archivage..." : "Archiver"}
+                    </Button>
+                  ) : null}
+
+                  <Button
+                    variant="outlined"
+                    startIcon={<SaveRoundedIcon />}
+                    onClick={() => handleSave("draft")}
+                    disabled={Boolean(savingStatus)}
+                  >
+                    {savingStatus === "draft"
+                      ? "Enregistrement..."
+                      : "Enregistrer comme brouillon"}
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    startIcon={<PublishRoundedIcon />}
+                    onClick={() => handleSave("published")}
+                    disabled={Boolean(savingStatus)}
+                  >
+                    {savingStatus === "published" ? "Publication..." : "Publier"}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Box>
         </Paper>
-      ) : null}
-    </Stack>
+
+        {!isCreateMode && formValues.link ? (
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, sm: 3 },
+              borderRadius: 3,
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="h6" gutterBottom>
+              Lien cible
+            </Typography>
+            <Link href={formValues.link} target="_blank" rel="noreferrer" underline="hover">
+              {formValues.link}
+            </Link>
+          </Paper>
+        ) : null}
+      </Stack>
+
+      <Dialog
+        open={publishDialogOpen}
+        onClose={() => setPublishDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Article publié !</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Ton article a bien été publié.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPublishDialogOpen(false)}>
+            Modifier
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setPublishDialogOpen(false);
+              navigate("/client/articles");
+            }}
+          >
+            Retour à mes articles
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
