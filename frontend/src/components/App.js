@@ -123,16 +123,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const pathname = window.location.pathname || "";
+  
+    if (pathname.startsWith("/flowbox/")) {
+      return;
+    }
+  
     if (isAuthenticated && user?.client_slug) {
       setCurrentClient(user.client_slug);
       return;
     }
-
+  
     if (isAuthenticated && user?.client?.slug) {
       setCurrentClient(user.client.slug);
       return;
     }
-
+  
     if (authChecked && !isAuthenticated) {
       setCurrentClient("default");
     }
