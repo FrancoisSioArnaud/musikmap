@@ -5,8 +5,6 @@ export const UserContext = createContext({
   setUser: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
-  currentBoxName: "",
-  setCurrentBoxName: () => {},
   currentClient: "default",
   setCurrentClient: () => {},
 });
