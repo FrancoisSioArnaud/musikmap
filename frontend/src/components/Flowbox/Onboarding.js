@@ -35,24 +35,24 @@ export default function Onboarding() {
 
   useEffect(() => {
     let isCancelled = false;
-  
+
     (async () => {
       try {
         setLoading(true);
-  
+
         const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
         const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
-  
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  
+
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
-  
+
         if (isCancelled) return;
-  
+
         setBox(data);
         setPageError("");
       } catch {
@@ -64,7 +64,7 @@ export default function Onboarding() {
         }
       }
     })();
-  
+
     return () => {
       isCancelled = true;
     };
@@ -136,109 +136,76 @@ export default function Onboarding() {
 
   if (pageError) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {pageError}
-        </Alert>
-        <Button variant="contained" onClick={() => window.location.reload()}>
-          Réessayer
-        </Button>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          px: 2,
+          display: "grid",
+          placeItems: "center",
+        }}
+      >
+        <Paper sx={{ p: 2, width: "100%", maxWidth: 520 }}>
+          <Alert severity="error">{pageError}</Alert>
+          <Button
+            sx={{ mt: 2 }}
+            variant="contained"
+            onClick={() => window.location.reload()}
+          >
+            Réessayer
+          </Button>
+        </Paper>
       </Box>
     );
   }
 
   return (
-    <>
-      <Paper
-        elevation={3}
-        className="onBoarding"
-        sx={{
-          position: "fixed",
-          inset: 0,
-        }}
-      >
-        {box?.last_deposit_song_image_url ? (
-          <Box
-            component="img"
-            src={box.last_deposit_song_image_url}
-            alt=""
-            className="lastSongImg"
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: "blur(18px)",
-              transform: "scale(1.1)",
-              opacity: 0.55,
-            }}
-          />
-        ) : null}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        px: 2,
+        py: 3,
+        display: "grid",
+        placeItems: "center",
+      }}
+    >
+      <Paper sx={{ p: 3, width: "100%", maxWidth: 560 }}>
+        <Typography variant="h4" gutterBottom>
+          {box?.name || "Boîte"}
+        </Typography>
 
-        <Box
-          sx={{
-            display: "grid",
-            position: "fixed",
-            bottom: 0,
-            left: "-50vw",
-            right: "-50vw",
-          }}
+        <Typography sx={{ mb: 2 }}>
+          Active ta localisation pour accéder à la recherche de sons.
+        </Typography>
+
+        {!!box?.deposit_count && (
+          <Typography sx={{ mb: 1 }}>
+            Dépôts : {box.deposit_count}
+          </Typography>
+        )}
+
+        {!!box?.last_deposit_date && (
+          <Typography sx={{ mb: 2 }}>
+            Dernier dépôt : {box.last_deposit_date}
+          </Typography>
+        )}
+
+        <Button
+          variant="contained"
+          startIcon={<PlayArrowIcon />}
+          onClick={openSheet}
         >
-          <Box className="info_box">
-            <Typography className="box_name" component="h1" variant="h5">
-              {box?.name}
-            </Typography>
-          </Box>
-
-          <Box className="container">
-            <Box className="intro">
-              <Typography component="h1" variant="h1">
-                Bienvenue !
-              </Typography>
-              <Typography variant="body1">
-                Chanson deposée ici {box?.last_deposit_date || 0}
-              </Typography>
-            </Box>
-
-            <Box className="steps_container">
-              <Box className="step">
-                <Typography component="span" variant="body1">
-                  1
-                </Typography>
-                <Typography component="p" variant="body1">
-                  Dépose une chanson
-                </Typography>
-              </Box>
-              <Box className="step">
-                <Typography component="span" variant="body1">
-                  2
-                </Typography>
-                <Typography component="p" variant="body1">
-                  Découvre la chanson précédente
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                onClick={openSheet}
-              >
-                Commencer
-              </Button>
-            </Box>
-
-
-          </Box>
-        </Box>
+          Autoriser la localisation
+        </Button>
       </Paper>
 
       <EnableLocation
         open={sheetOpen}
-        boxTitle={box?.name || "Boîte"}
         loading={geoLoading}
-        error=""
+        onClose={() => {
+          if (!geoLoading) setSheetOpen(false);
+        }}
         onAuthorize={handleAuthorize}
-        onClose={() => setSheetOpen(false)}
       />
-    </>
+    </Box>
   );
 }
