@@ -14,9 +14,27 @@ from .models import (
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    background_picture_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Client
-        fields = ["id", "name", "slug", "background_picture", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "background_picture",
+            "background_picture_url",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_background_picture_url(self, obj):
+        if not obj.background_picture:
+            return None
+        try:
+            return obj.background_picture.url
+        except Exception:
+            return None
 
 
 class BoxSerializer(serializers.ModelSerializer):
@@ -44,9 +62,21 @@ class SongSerializer(serializers.ModelSerializer):
 
 
 class DepositSerializer(serializers.ModelSerializer):
+    song_detail = SongSerializer(source="song", read_only=True)
+    box_detail = BoxSerializer(source="box", read_only=True)
+
     class Meta:
         model = Deposit
-        fields = "__all__"
+        fields = [
+            "id",
+            "public_key",
+            "deposited_at",
+            "song",
+            "song_detail",
+            "box",
+            "box_detail",
+            "user",
+        ]
 
 
 class LocationPointSerializer(serializers.ModelSerializer):
@@ -56,9 +86,59 @@ class LocationPointSerializer(serializers.ModelSerializer):
 
 
 class DiscoveredSongSerializer(serializers.ModelSerializer):
+    deposit_detail = DepositSerializer(source="deposit", read_only=True)
+
     class Meta:
         model = DiscoveredSong
-        fields = "__all__"
+        fields = [
+            "id",
+            "deposit",
+            "deposit_detail",
+            "user",
+            "discovered_type",
+            "discovered_at",
+            "context",
+        ]
+
+
+class EmojiSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Emoji
+        fields = [
+            "id",
+            "char",
+            "active",
+            "cost",
+        ]
+
+
+class EmojiRightSerializer(serializers.ModelSerializer):
+    emoji_detail = EmojiSerializer(source="emoji", read_only=True)
+
+    class Meta:
+        model = EmojiRight
+        fields = [
+            "id",
+            "user",
+            "emoji",
+            "emoji_detail",
+        ]
+
+
+class ReactionSerializer(serializers.ModelSerializer):
+    emoji_detail = EmojiSerializer(source="emoji", read_only=True)
+
+    class Meta:
+        model = Reaction
+        fields = [
+            "id",
+            "user",
+            "deposit",
+            "emoji",
+            "emoji_detail",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class ClientAdminArticleSerializer(serializers.ModelSerializer):
