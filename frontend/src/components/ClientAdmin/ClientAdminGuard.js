@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { UserContext } from "../UserContext";
 
@@ -21,8 +22,25 @@ function hasClientPortalAccess(user) {
 }
 
 export default function ClientAdminGuard({ children }) {
-  const { user, isAuthenticated } = useContext(UserContext);
+  const { user, isAuthenticated, authChecked } = useContext(UserContext);
   const location = useLocation();
+
+  if (!authChecked) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "background.default",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
