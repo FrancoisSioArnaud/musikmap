@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useContext } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -8,13 +8,11 @@ import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EnableLocation from "../Flowbox/EnableLocation";
-import { UserContext } from "../UserContext";
 
 export default function Onboarding() {
   const { boxSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentClient, setCurrentClient } = useContext(UserContext);
 
   const [box, setBox] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,12 +53,6 @@ export default function Onboarding() {
   
         if (isCancelled) return;
   
-        const nextClient = data.client_slug || "default";
-  
-        if (currentClient !== nextClient) {
-          setCurrentClient(nextClient);
-        }
-  
         setBox(data);
         setPageError("");
       } catch {
@@ -76,7 +68,7 @@ export default function Onboarding() {
     return () => {
       isCancelled = true;
     };
-  }, [boxSlug, handleError, currentClient, setCurrentClient]);
+  }, [boxSlug, handleError]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
