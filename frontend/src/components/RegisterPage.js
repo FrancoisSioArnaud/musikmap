@@ -35,7 +35,7 @@ export default function RegisterPage() {
   const [profilePicture, setProfilePicture] = useState(null);
   const [errorMessages, setErrorMessages] = useState([]);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  const { setUser, setIsAuthenticated, currentBoxName } =
+  const { setUser, setIsAuthenticated } =
     useContext(UserContext);
   const navigate = useNavigate();
 
