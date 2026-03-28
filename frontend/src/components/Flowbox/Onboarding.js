@@ -36,42 +36,47 @@ export default function Onboarding() {
   }, [location.key]);
 
   useEffect(() => {
+    let isCancelled = false;
+  
     (async () => {
       try {
         setLoading(true);
-
+  
         const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
         const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
-
+  
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+  
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
-
-        try {
-          const nextClient = data.client_slug || "default";
-          const storedClient = localStorage.getItem("mm_current_client") || "default";
-
-          if (storedClient !== nextClient) {
-            localStorage.setItem("mm_current_client", nextClient);
-          }
-
-          if (currentClient !== nextClient) {
-            setCurrentClient(nextClient);
-          }
-        } catch (error) {}
-
+  
+        if (isCancelled) return;
+  
+        const nextClient = data.client_slug || "default";
+  
+        if (currentClient !== nextClient) {
+          setCurrentClient(nextClient);
+        }
+  
         setBox(data);
+        setPageError("");
       } catch {
-        handleError(pageError || "Impossible de récupérer la boîte.");
+        if (isCancelled) return;
+        handleError("Impossible de récupérer la boîte.");
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     })();
-  }, [boxSlug, handleError, pageError, currentClient, setCurrentClient]);
+  
+    return () => {
+      isCancelled = true;
+    };
+  }, [boxSlug, handleError, currentClient, setCurrentClient]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
