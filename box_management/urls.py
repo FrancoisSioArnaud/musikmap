@@ -9,6 +9,7 @@ from .views import (
     EmojiCatalogView,
     PurchaseEmojiView,
     ReactionView,
+    ClientAdminArticleImportPageView,
     ClientAdminArticleListCreateView,
     ClientAdminArticleDetailView,
 )
@@ -25,6 +26,11 @@ urlpatterns = [
     path("reactions", ReactionView.as_view(), name="reactions"),
 
     # Client admin - articles
+    path(
+        "client-admin/articles/import-page/",
+        ClientAdminArticleImportPageView.as_view(),
+        name="client-admin-articles-import-page",
+    ),
     path(
         "client-admin/articles/",
         ClientAdminArticleListCreateView.as_view(),

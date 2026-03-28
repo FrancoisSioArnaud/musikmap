@@ -1,7 +1,12 @@
 # ===== Standard library =====
+import html
 import json
-import requests
+import re
 from datetime import date, timedelta
+from html.parser import HTMLParser
+from urllib.parse import urljoin
+
+import requests
 
 # ===== Django =====
 from django.contrib.auth import get_user_model
@@ -15,7 +20,7 @@ from django.urls import reverse
 from django.utils.timezone import localtime
 
 # ===== Django REST Framework =====
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -107,7 +112,179 @@ def _get_active_client_user_or_response(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    return user, None
+class _ArticleImportHTMLParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.meta = {}
+        self.title_chunks = []
+        self.body_chunks = []
+        self.image_sources = []
+        self._in_title = False
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        attrs_dict = {key.lower(): value for key, value in attrs if key}
+        tag = (tag or "").lower()
+
+        if tag in {"script", "style", "noscript"}:
+            self._skip_depth += 1
+            return
+
+        if tag == "title":
+            self._in_title = True
+            return
+
+        if tag == "meta":
+            meta_key = (
+                attrs_dict.get("property")
+                or attrs_dict.get("name")
+                or attrs_dict.get("itemprop")
+                or ""
+            ).strip().lower()
+            content = (attrs_dict.get("content") or "").strip()
+            if meta_key and content and meta_key not in self.meta:
+                self.meta[meta_key] = content
+            return
+
+        if tag == "img":
+            for key in ("src", "data-src", "data-original", "srcset"):
+                candidate = (attrs_dict.get(key) or "").strip()
+                if candidate:
+                    if key == "srcset":
+                        candidate = candidate.split(",")[0].strip().split(" ")[0].strip()
+                    self.image_sources.append(candidate)
+                    break
+
+    def handle_endtag(self, tag):
+        tag = (tag or "").lower()
+        if tag == "title":
+            self._in_title = False
+        elif tag in {"script", "style", "noscript"} and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if not data:
+            return
+
+        if self._in_title:
+            self.title_chunks.append(data)
+            return
+
+        if self._skip_depth > 0:
+            return
+
+        self.body_chunks.append(data)
+
+    @property
+    def title_text(self):
+        return " ".join(chunk.strip() for chunk in self.title_chunks if chunk and chunk.strip()).strip()
+
+    @property
+    def body_text(self):
+        return " ".join(chunk.strip() for chunk in self.body_chunks if chunk and chunk.strip()).strip()
+
+
+def _collapse_article_text(value):
+    value = html.unescape(value or "")
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def _truncate_article_text(value, limit=300):
+    value = _collapse_article_text(value)
+    if len(value) <= limit:
+        return value
+
+    truncated = value[:limit].rstrip()
+    last_space = truncated.rfind(" ")
+    if last_space >= 120:
+        truncated = truncated[:last_space].rstrip()
+    return truncated
+
+
+def _absolute_remote_url(base_url, candidate):
+    candidate = (candidate or "").strip()
+    if not candidate:
+        return ""
+    if candidate.startswith("//"):
+        candidate = f"https:{candidate}"
+    absolute = urljoin(base_url, candidate)
+    if not absolute.startswith(("http://", "https://")):
+        return ""
+    return absolute
+
+
+def _dedupe_keep_order(values, limit=None):
+    output = []
+    seen = set()
+    for value in values:
+        normalized = (value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        output.append(normalized)
+        if limit and len(output) >= limit:
+            break
+    return output
+
+
+def _extract_import_preview_from_url(link):
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr,en;q=0.8",
+    }
+
+    response = requests.get(link, headers=headers, timeout=8, allow_redirects=True)
+    response.raise_for_status()
+
+    final_url = response.url or link
+    parser = _ArticleImportHTMLParser()
+    parser.feed(response.text or "")
+    parser.close()
+
+    meta = parser.meta
+
+    title = _collapse_article_text(
+        meta.get("twitter:title")
+        or meta.get("og:title")
+        or parser.title_text
+    )
+
+    description = _collapse_article_text(
+        meta.get("description")
+        or meta.get("og:description")
+        or meta.get("twitter:description")
+    )
+
+    body_text = _collapse_article_text(parser.body_text)
+    short_text = _truncate_article_text(description or body_text, limit=300)
+
+    image_candidates = []
+    for key in (
+        "og:image",
+        "og:image:url",
+        "twitter:image",
+        "twitter:image:src",
+    ):
+        image_candidates.append(_absolute_remote_url(final_url, meta.get(key)))
+
+    for img_src in parser.image_sources:
+        image_candidates.append(_absolute_remote_url(final_url, img_src))
+
+    image_candidates = _dedupe_keep_order(image_candidates, limit=3)
+
+    return {
+        "title": title,
+        "short_text": short_text,
+        "cover_image": image_candidates[0] if image_candidates else "",
+        "cover_images": image_candidates,
+        "resolved_link": final_url,
+    }
 
 
 # -----------------------
@@ -920,6 +1097,57 @@ class UserDepositsView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ClientAdminArticleImportPageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        link = (request.data.get("link") or "").strip()
+        if not link:
+            return Response(
+                {"link": ["Le lien externe est obligatoire pour importer une page."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        url_field = serializers.URLField()
+        try:
+            link = url_field.run_validation(link)
+        except serializers.ValidationError as exc:
+            return Response(
+                {"link": exc.detail},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            preview = _extract_import_preview_from_url(link)
+        except requests.Timeout:
+            return Response(
+                {"detail": "Le site a mis trop de temps à répondre."},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except requests.HTTPError as exc:
+            status_code = exc.response.status_code if exc.response is not None else 502
+            return Response(
+                {"detail": f"La page n'est pas accessible (HTTP {status_code})."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except requests.RequestException:
+            return Response(
+                {"detail": "Impossible de récupérer cette page pour le moment."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception:
+            return Response(
+                {"detail": "Impossible d'analyser cette page."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(preview, status=status.HTTP_200_OK)
 
 
 class ClientAdminArticleListCreateView(APIView):

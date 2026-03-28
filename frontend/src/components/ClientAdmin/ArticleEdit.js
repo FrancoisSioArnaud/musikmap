@@ -8,15 +8,15 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
+import Chip from "@mui/material/Chip";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import PublishRoundedIcon from "@mui/icons-material/PublishRounded";
+import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
+import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
 import { getCookie } from "../Security/TokensUtils";
 
 const EMPTY_FORM = {
@@ -24,7 +24,6 @@ const EMPTY_FORM = {
   link: "",
   short_text: "",
   cover_image: "",
-  status: "draft",
 };
 
 function normalizeArticle(data) {
@@ -49,6 +48,31 @@ function formatDate(value) {
   return date.toLocaleString("fr-FR");
 }
 
+function extractErrorMessage(data, fallbackMessage) {
+  if (!data) return fallbackMessage;
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail.trim();
+  }
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
+  }
+
+  const firstFieldKey = Object.keys(data)[0];
+  if (!firstFieldKey) return fallbackMessage;
+
+  const firstFieldValue = data[firstFieldKey];
+  if (Array.isArray(firstFieldValue) && firstFieldValue.length > 0) {
+    return String(firstFieldValue[0]);
+  }
+  if (typeof firstFieldValue === "string" && firstFieldValue.trim()) {
+    return firstFieldValue.trim();
+  }
+
+  return fallbackMessage;
+}
+
 export default function ArticleEdit() {
   const { articleId } = useParams();
   const navigate = useNavigate();
@@ -56,12 +80,18 @@ export default function ArticleEdit() {
   const isCreateMode = !articleId;
 
   const [formValues, setFormValues] = useState(EMPTY_FORM);
-  const [initialValues, setInitialValues] = useState(EMPTY_FORM);
+  const [initialValues, setInitialValues] = useState({
+    ...EMPTY_FORM,
+    status: "draft",
+  });
   const [loading, setLoading] = useState(!isCreateMode);
-  const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState("");
+  const [importing, setImporting] = useState(false);
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
+  const [imageChoices, setImageChoices] = useState([]);
   const [meta, setMeta] = useState({
+    status: "draft",
     created_at: null,
     updated_at: null,
     published_at: null,
@@ -72,8 +102,10 @@ export default function ArticleEdit() {
   }, [formValues.short_text]);
 
   const hasUnsavedChanges = useMemo(() => {
-    return JSON.stringify(formValues) !== JSON.stringify(initialValues);
-  }, [formValues, initialValues]);
+    const current = JSON.stringify({ ...formValues, status: meta.status });
+    const initial = JSON.stringify(initialValues);
+    return current !== initial;
+  }, [formValues, initialValues, meta.status]);
 
   useEffect(() => {
     const onBeforeUnload = (event) => {
@@ -90,12 +122,17 @@ export default function ArticleEdit() {
     if (isCreateMode) {
       setLoading(false);
       setFormValues(EMPTY_FORM);
-      setInitialValues(EMPTY_FORM);
+      setInitialValues({
+        ...EMPTY_FORM,
+        status: "draft",
+      });
       setMeta({
+        status: "draft",
         created_at: null,
         updated_at: null,
         published_at: null,
       });
+      setImageChoices([]);
     }
   }, [isCreateMode]);
 
@@ -116,7 +153,7 @@ export default function ArticleEdit() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data?.detail || "Impossible de charger l’article.");
+        throw new Error(extractErrorMessage(data, "Impossible de charger l’article."));
       }
 
       const normalized = normalizeArticle(data);
@@ -129,16 +166,20 @@ export default function ArticleEdit() {
         link: normalized.link,
         short_text: normalized.short_text,
         cover_image: normalized.cover_image,
-        status: normalized.status,
       };
 
       setFormValues(values);
-      setInitialValues(values);
+      setInitialValues({
+        ...values,
+        status: normalized.status,
+      });
       setMeta({
+        status: normalized.status,
         created_at: normalized.created_at,
         updated_at: normalized.updated_at,
         published_at: normalized.published_at,
       });
+      setImageChoices(normalized.cover_image ? [normalized.cover_image] : []);
     } catch (error) {
       setPageError(error.message || "Impossible de charger l’article.");
     } finally {
@@ -158,26 +199,111 @@ export default function ArticleEdit() {
     }));
   };
 
-  const validateForm = () => {
-    if (!formValues.title.trim()) return "Le titre est obligatoire.";
-    if (!formValues.link.trim()) return "Le lien est obligatoire.";
+  const handleSelectCover = (imageUrl) => {
+    setFormValues((prev) => ({
+      ...prev,
+      cover_image: imageUrl || "",
+    }));
+  };
+
+  const validateForm = (targetStatus) => {
     if (formValues.short_text.length > 300) {
       return "Le texte court ne peut pas dépasser 300 caractères.";
     }
+
+    if (targetStatus === "published") {
+      if (!formValues.title.trim()) {
+        return "Le titre est obligatoire pour publier un article.";
+      }
+      if (!formValues.link.trim() && !formValues.short_text.trim()) {
+        return "Pour publier un article, renseigne au moins un lien externe ou un texte court.";
+      }
+    }
+
     return "";
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleImportPage = async () => {
+    const trimmedLink = formValues.link.trim();
+    if (!trimmedLink) {
+      setPageError("Renseigne un lien externe avant d’importer la page.");
+      setPageSuccess("");
+      return;
+    }
 
-    const validationError = validateForm();
+    const wouldOverwrite =
+      Boolean(formValues.title.trim()) ||
+      Boolean(formValues.short_text.trim()) ||
+      Boolean(formValues.cover_image.trim());
+
+    if (wouldOverwrite) {
+      const shouldContinue = window.confirm(
+        "L’import va remplacer le titre, le texte court et l’image de cover actuels. Continuer ?"
+      );
+      if (!shouldContinue) return;
+    }
+
+    setImporting(true);
+    setPageError("");
+    setPageSuccess("");
+
+    try {
+      const csrftoken = getCookie("csrftoken");
+      const response = await fetch(
+        "/box-management/client-admin/articles/import-page/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({ link: trimmedLink }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(extractErrorMessage(data, "Import impossible."));
+      }
+
+      const nextImages = Array.isArray(data.cover_images)
+        ? data.cover_images.filter(Boolean).slice(0, 3)
+        : [];
+
+      setImageChoices(nextImages);
+      setFormValues((prev) => ({
+        ...prev,
+        link: data.resolved_link || trimmedLink,
+        title: data.title || "",
+        short_text: data.short_text || "",
+        cover_image: data.cover_image || "",
+      }));
+
+      if (!data.title && !data.short_text && nextImages.length === 0) {
+        setPageSuccess("Import terminé, mais la page ne contient pas de métadonnées exploitables.");
+      } else if (nextImages.length > 1) {
+        setPageSuccess("Import terminé. Choisis l’image à conserver parmi les propositions.");
+      } else {
+        setPageSuccess("Import terminé.");
+      }
+    } catch (error) {
+      setPageError(error.message || "Import impossible.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleSave = async (targetStatus) => {
+    const validationError = validateForm(targetStatus);
     if (validationError) {
       setPageError(validationError);
       setPageSuccess("");
       return;
     }
 
-    setSaving(true);
+    setSavingStatus(targetStatus);
     setPageError("");
     setPageSuccess("");
 
@@ -202,7 +328,7 @@ export default function ArticleEdit() {
           link: formValues.link.trim(),
           short_text: formValues.short_text.trim(),
           cover_image: formValues.cover_image.trim(),
-          status: formValues.status,
+          status: targetStatus,
         }),
       });
 
@@ -210,12 +336,13 @@ export default function ArticleEdit() {
 
       if (!response.ok) {
         throw new Error(
-          data?.detail || data?.message || "Enregistrement impossible."
+          extractErrorMessage(data, "Enregistrement impossible.")
         );
       }
 
       const normalized = normalizeArticle(data) || {
         ...formValues,
+        status: targetStatus,
         id: data?.id,
         created_at: data?.created_at || null,
         updated_at: data?.updated_at || null,
@@ -223,31 +350,43 @@ export default function ArticleEdit() {
       };
 
       const nextValues = {
-        title: normalized.title || formValues.title,
-        link: normalized.link || formValues.link,
-        short_text: normalized.short_text || formValues.short_text,
-        cover_image: normalized.cover_image || formValues.cover_image,
-        status: normalized.status || formValues.status,
+        title: normalized.title || "",
+        link: normalized.link || "",
+        short_text: normalized.short_text || "",
+        cover_image: normalized.cover_image || "",
       };
 
+      const nextStatus = normalized.status || targetStatus;
+
       setFormValues(nextValues);
-      setInitialValues(nextValues);
+      setInitialValues({
+        ...nextValues,
+        status: nextStatus,
+      });
       setMeta({
+        status: nextStatus,
         created_at: normalized.created_at || meta.created_at,
         updated_at: normalized.updated_at || meta.updated_at,
         published_at: normalized.published_at || meta.published_at,
       });
+      setImageChoices(normalized.cover_image ? [normalized.cover_image, ...imageChoices].filter(Boolean).slice(0, 3) : imageChoices);
 
       if (isCreateMode && normalized.id) {
         navigate(`/client/articles/${normalized.id}`, { replace: true });
         return;
       }
 
-      setPageSuccess("Article enregistré.");
+      if (nextStatus === "published") {
+        setPageSuccess("Article publié.");
+      } else if (nextStatus === "archived") {
+        setPageSuccess("Article archivé.");
+      } else {
+        setPageSuccess("Brouillon enregistré.");
+      }
     } catch (error) {
       setPageError(error.message || "Enregistrement impossible.");
     } finally {
-      setSaving(false);
+      setSavingStatus("");
     }
   };
 
@@ -294,7 +433,7 @@ export default function ArticleEdit() {
               {isCreateMode ? "Nouvel article" : "Modifier l’article"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Préview d’article externe rattachée au client connecté.
+              Article rédigé à la main ou importé depuis une page externe.
             </Typography>
           </Box>
 
@@ -312,23 +451,43 @@ export default function ArticleEdit() {
           ) : null}
         </Stack>
 
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={(event) => event.preventDefault()}>
           <Stack spacing={2.5}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", md: "flex-start" }}
+            >
+              <TextField
+                label="Lien externe"
+                value={formValues.link}
+                onChange={handleChange("link")}
+                fullWidth
+                placeholder="https://..."
+              />
+
+              <Button
+                variant="outlined"
+                onClick={handleImportPage}
+                disabled={importing}
+                startIcon={
+                  importing ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <DownloadForOfflineRoundedIcon />
+                  )
+                }
+                sx={{ minWidth: { xs: "100%", md: 180 }, whiteSpace: "nowrap" }}
+              >
+                {importing ? "Importer la page" : "Importer la page"}
+              </Button>
+            </Stack>
+
             <TextField
               label="Titre"
               value={formValues.title}
               onChange={handleChange("title")}
               fullWidth
-              required
-            />
-
-            <TextField
-              label="Lien externe"
-              value={formValues.link}
-              onChange={handleChange("link")}
-              fullWidth
-              required
-              placeholder="https://..."
             />
 
             <TextField
@@ -350,19 +509,66 @@ export default function ArticleEdit() {
               placeholder="https://..."
             />
 
-            <FormControl fullWidth>
-              <InputLabel id="article-status-label">Statut</InputLabel>
-              <Select
-                labelId="article-status-label"
-                label="Statut"
-                value={formValues.status}
-                onChange={handleChange("status")}
+            {imageChoices.length > 1 ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
               >
-                <MenuItem value="draft">draft</MenuItem>
-                <MenuItem value="published">published</MenuItem>
-                <MenuItem value="archived">archived</MenuItem>
-              </Select>
-            </FormControl>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1">
+                    Choisir l’image de cover
+                  </Typography>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} useFlexGap flexWrap="wrap">
+                    {imageChoices.map((imageUrl) => {
+                      const isSelected = imageUrl === formValues.cover_image;
+                      return (
+                        <Paper
+                          key={imageUrl}
+                          elevation={0}
+                          sx={{
+                            p: 1,
+                            width: { xs: "100%", md: 220 },
+                            borderRadius: 2,
+                            border: "1px solid",
+                            borderColor: isSelected ? "primary.main" : "divider",
+                          }}
+                        >
+                          <Stack spacing={1}>
+                            <Box
+                              component="img"
+                              src={imageUrl}
+                              alt="cover candidate"
+                              sx={{
+                                width: "100%",
+                                height: 120,
+                                objectFit: "cover",
+                                borderRadius: 1.5,
+                                bgcolor: "grey.100",
+                              }}
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <Button
+                              size="small"
+                              variant={isSelected ? "contained" : "outlined"}
+                              onClick={() => handleSelectCover(imageUrl)}
+                            >
+                              {isSelected ? "Image sélectionnée" : "Utiliser cette image"}
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+              </Paper>
+            ) : null}
 
             {formValues.cover_image ? (
               <Paper
@@ -374,25 +580,30 @@ export default function ArticleEdit() {
                   borderColor: "divider",
                 }}
               >
-                <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-                  Aperçu image
-                </Typography>
-                <Box
-                  component="img"
-                  src={formValues.cover_image}
-                  alt={formValues.title || "cover preview"}
-                  sx={{
-                    width: "100%",
-                    maxWidth: 520,
-                    height: "auto",
-                    borderRadius: 2,
-                    display: "block",
-                    bgcolor: "grey.100",
-                  }}
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle1">Aperçu image</Typography>
+                    {formValues.cover_image && imageChoices.length > 1 ? (
+                      <Chip size="small" label="modifiable" />
+                    ) : null}
+                  </Stack>
+                  <Box
+                    component="img"
+                    src={formValues.cover_image}
+                    alt={formValues.title || "cover preview"}
+                    sx={{
+                      width: "100%",
+                      maxWidth: 520,
+                      height: "auto",
+                      borderRadius: 2,
+                      display: "block",
+                      bgcolor: "grey.100",
+                    }}
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                </Stack>
               </Paper>
             ) : null}
 
@@ -405,6 +616,9 @@ export default function ArticleEdit() {
               alignItems={{ xs: "stretch", sm: "center" }}
             >
               <Stack spacing={0.5}>
+                <Typography variant="body2" color="text.secondary">
+                  Statut : {meta.status || "draft"}
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Créé le : {formatDate(meta.created_at)}
                 </Typography>
@@ -420,13 +634,37 @@ export default function ArticleEdit() {
                 <Button component={RouterLink} to="/client/articles">
                   Annuler
                 </Button>
+
+                {!isCreateMode ? (
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    startIcon={<ArchiveRoundedIcon />}
+                    onClick={() => handleSave("archived")}
+                    disabled={Boolean(savingStatus)}
+                  >
+                    {savingStatus === "archived" ? "Archivage..." : "Archiver"}
+                  </Button>
+                ) : null}
+
                 <Button
-                  type="submit"
-                  variant="contained"
+                  variant="outlined"
                   startIcon={<SaveRoundedIcon />}
-                  disabled={saving}
+                  onClick={() => handleSave("draft")}
+                  disabled={Boolean(savingStatus)}
                 >
-                  {saving ? "Enregistrement..." : "Enregistrer"}
+                  {savingStatus === "draft"
+                    ? "Enregistrement..."
+                    : "Enregistrer comme brouillon"}
+                </Button>
+
+                <Button
+                  variant="contained"
+                  startIcon={<PublishRoundedIcon />}
+                  onClick={() => handleSave("published")}
+                  disabled={Boolean(savingStatus)}
+                >
+                  {savingStatus === "published" ? "Publication..." : "Publier"}
                 </Button>
               </Stack>
             </Stack>

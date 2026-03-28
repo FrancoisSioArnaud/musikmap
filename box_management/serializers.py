@@ -178,6 +178,13 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             "updated_at",
             "published_at",
         ]
+        extra_kwargs = {
+            "title": {"required": False, "allow_blank": True},
+            "link": {"required": False, "allow_blank": True},
+            "short_text": {"required": False, "allow_blank": True},
+            "cover_image": {"required": False, "allow_blank": True},
+            "status": {"required": False},
+        }
 
     def get_author_name(self, obj):
         if not obj.author:
@@ -195,16 +202,10 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
         return obj.client.slug if obj.client else None
 
     def validate_title(self, value):
-        value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("Le titre est obligatoire.")
-        return value
+        return (value or "").strip()
 
     def validate_link(self, value):
-        value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("Le lien est obligatoire.")
-        return value
+        return (value or "").strip()
 
     def validate_short_text(self, value):
         value = (value or "").strip()
@@ -216,3 +217,51 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
 
     def validate_cover_image(self, value):
         return (value or "").strip()
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+
+        status_value = attrs.get("status")
+        if status_value is None:
+            status_value = getattr(instance, "status", "draft") or "draft"
+
+        title = attrs.get("title")
+        if title is None:
+            title = getattr(instance, "title", "") if instance else ""
+        title = (title or "").strip()
+
+        link = attrs.get("link")
+        if link is None:
+            link = getattr(instance, "link", "") if instance else ""
+        link = (link or "").strip()
+
+        short_text = attrs.get("short_text")
+        if short_text is None:
+            short_text = getattr(instance, "short_text", "") if instance else ""
+        short_text = (short_text or "").strip()
+
+        cover_image = attrs.get("cover_image")
+        if cover_image is None:
+            cover_image = getattr(instance, "cover_image", "") if instance else ""
+        cover_image = (cover_image or "").strip()
+
+        attrs["title"] = title
+        attrs["link"] = link
+        attrs["short_text"] = short_text
+        attrs["cover_image"] = cover_image
+
+        if status_value == "published":
+            if not title:
+                raise serializers.ValidationError(
+                    {"title": "Le titre est obligatoire pour publier un article."}
+                )
+            if not link and not short_text:
+                raise serializers.ValidationError(
+                    {
+                        "non_field_errors": [
+                            "Pour publier un article, renseigne au moins un lien externe ou un texte court."
+                        ]
+                    }
+                )
+
+        return attrs

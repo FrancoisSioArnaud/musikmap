@@ -144,8 +144,8 @@ class Article(models.Model):
         related_name="articles_authored",
     )
 
-    title = models.CharField(max_length=200, db_index=True)
-    link = models.URLField(max_length=2048)
+    title = models.CharField(max_length=200, db_index=True, blank=True)
+    link = models.URLField(max_length=2048, blank=True)
 
     short_text = models.CharField(
         max_length=300,
@@ -189,10 +189,26 @@ class Article(models.Model):
                 {"author": "L'auteur doit appartenir au même client que l'article."}
             )
 
+        self.title = (self.title or "").strip()
+        self.link = (self.link or "").strip()
+        self.short_text = (self.short_text or "").strip()
+        self.cover_image = (self.cover_image or "").strip()
+
         if self.short_text and len(self.short_text) > 300:
             raise ValidationError(
                 {"short_text": "Le texte court ne peut pas dépasser 300 caractères."}
             )
+
+        if self.status == "published":
+            errors = {}
+            if not self.title:
+                errors["title"] = "Le titre est obligatoire pour publier un article."
+            if not self.link and not self.short_text:
+                errors["non_field_errors"] = (
+                    "Pour publier un article, renseigne au moins un lien externe ou un texte court."
+                )
+            if errors:
+                raise ValidationError(errors)
 
     @property
     def is_published(self):
@@ -211,13 +227,11 @@ class Article(models.Model):
 
         if self.status == "published" and self.published_at is None:
             self.published_at = timezone.now()
-        elif self.status != "published":
-            self.published_at = None
 
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.title} ({self.client.name})"
+        return f"{self.title or "Sans titre"} ({self.client.name})"
 
 
 class Song(models.Model):
