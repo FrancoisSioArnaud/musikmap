@@ -114,21 +114,86 @@ def _get_active_client_user_or_response(request):
 
     return user, None
 
+
 class _ArticleImportHTMLParser(HTMLParser):
+    BLOCK_TAGS = {
+        "p",
+        "article",
+        "main",
+        "section",
+        "div",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "blockquote",
+    }
+
+    SKIP_TAGS = {
+        "script",
+        "style",
+        "noscript",
+        "svg",
+        "path",
+        "iframe",
+        "canvas",
+    }
+
+    SKIP_ATTR_KEYWORDS = {
+        "nav",
+        "menu",
+        "header",
+        "footer",
+        "breadcrumb",
+        "cookie",
+        "consent",
+        "banner",
+        "sidebar",
+        "toolbar",
+        "newsletter",
+        "social",
+        "share",
+        "search",
+        "ads",
+        "advert",
+        "pagination",
+    }
+
     def __init__(self):
         super().__init__()
         self.meta = {}
         self.title_chunks = []
+
         self.body_chunks = []
+        self.paragraph_chunks = []
         self.image_sources = []
+
         self._in_title = False
         self._skip_depth = 0
 
-    def handle_starttag(self, tag, attrs):
-        attrs_dict = {key.lower(): value for key, value in attrs if key}
-        tag = (tag or "").lower()
+        self._paragraph_stack = []
+        self._current_paragraph_parts = []
 
-        if tag in {"script", "style", "noscript"}:
+    def _attrs_to_dict(self, attrs):
+        return {key.lower(): value for key, value in attrs if key}
+
+    def _should_skip_by_attrs(self, attrs_dict):
+        haystack = " ".join(
+            [
+                attrs_dict.get("id") or "",
+                attrs_dict.get("class") or "",
+                attrs_dict.get("role") or "",
+                attrs_dict.get("aria-label") or "",
+            ]
+        ).lower()
+
+        return any(keyword in haystack for keyword in self.SKIP_ATTR_KEYWORDS)
+
+    def handle_starttag(self, tag, attrs):
+        tag = (tag or "").lower()
+        attrs_dict = self._attrs_to_dict(attrs)
+
+        if tag in self.SKIP_TAGS or self._should_skip_by_attrs(attrs_dict):
             self._skip_depth += 1
             return
 
@@ -156,13 +221,36 @@ class _ArticleImportHTMLParser(HTMLParser):
                         candidate = candidate.split(",")[0].strip().split(" ")[0].strip()
                     self.image_sources.append(candidate)
                     break
+            return
+
+        if self._skip_depth > 0:
+            return
+
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            self._paragraph_stack.append(tag)
+            self._current_paragraph_parts.append([])
 
     def handle_endtag(self, tag):
         tag = (tag or "").lower()
+
         if tag == "title":
             self._in_title = False
-        elif tag in {"script", "style", "noscript"} and self._skip_depth > 0:
-            self._skip_depth -= 1
+            return
+
+        if self._skip_depth > 0:
+            if tag in self.SKIP_TAGS or tag in {
+                "nav", "header", "footer", "aside"
+            }:
+                self._skip_depth -= 1
+            return
+
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            if self._paragraph_stack and self._current_paragraph_parts:
+                self._paragraph_stack.pop()
+                parts = self._current_paragraph_parts.pop()
+                text = _collapse_article_text(" ".join(parts))
+                if text:
+                    self.paragraph_chunks.append(text)
 
     def handle_data(self, data):
         if not data:
@@ -175,15 +263,22 @@ class _ArticleImportHTMLParser(HTMLParser):
         if self._skip_depth > 0:
             return
 
-        self.body_chunks.append(data)
+        cleaned = _collapse_article_text(data)
+        if not cleaned:
+            return
+
+        self.body_chunks.append(cleaned)
+
+        if self._current_paragraph_parts:
+            self._current_paragraph_parts[-1].append(cleaned)
 
     @property
     def title_text(self):
-        return " ".join(chunk.strip() for chunk in self.title_chunks if chunk and chunk.strip()).strip()
+        return _collapse_article_text(" ".join(self.title_chunks))
 
     @property
     def body_text(self):
-        return " ".join(chunk.strip() for chunk in self.body_chunks if chunk and chunk.strip()).strip()
+        return _collapse_article_text(" ".join(self.body_chunks))
 
 
 def _collapse_article_text(value):
@@ -199,7 +294,7 @@ def _truncate_article_text(value, limit=300):
 
     truncated = value[:limit].rstrip()
     last_space = truncated.rfind(" ")
-    if last_space >= 120:
+    if last_space >= max(80, limit // 2):
         truncated = truncated[:last_space].rstrip()
     return truncated
 
@@ -208,26 +303,121 @@ def _absolute_remote_url(base_url, candidate):
     candidate = (candidate or "").strip()
     if not candidate:
         return ""
+
     if candidate.startswith("//"):
         candidate = f"https:{candidate}"
+
     absolute = urljoin(base_url, candidate)
     if not absolute.startswith(("http://", "https://")):
         return ""
+
     return absolute
 
 
 def _dedupe_keep_order(values, limit=None):
     output = []
     seen = set()
+
     for value in values:
         normalized = (value or "").strip()
         if not normalized or normalized in seen:
             continue
         seen.add(normalized)
         output.append(normalized)
+
         if limit and len(output) >= limit:
             break
+
     return output
+
+
+def _clean_import_title(title):
+    title = _collapse_article_text(title)
+    if not title:
+        return ""
+
+    title = re.split(r"\s[\-|–|—|•|·|:]\s", title, maxsplit=1)[0].strip()
+    title = re.split(r"\s\|\s", title, maxsplit=1)[0].strip()
+    return title
+
+
+def _looks_like_noise_text(text):
+    text = _collapse_article_text(text)
+    if not text:
+        return True
+
+    lowered = text.lower()
+
+    noise_markers = [
+        "cookie",
+        "consent",
+        "accepter",
+        "refuser",
+        "menu",
+        "newsletter",
+        "suivez-nous",
+        "se connecter",
+        "connexion",
+        "inscription",
+        "publicité",
+        "advertisement",
+    ]
+
+    if any(marker in lowered for marker in noise_markers):
+        return True
+
+    if len(text) < 40:
+        return True
+
+    word_count = len(text.split())
+    if word_count < 8:
+        return True
+
+    return False
+
+
+def _pick_best_short_text(meta, parser):
+    description = _collapse_article_text(
+        meta.get("description")
+        or meta.get("og:description")
+        or meta.get("twitter:description")
+    )
+
+    if description and not _looks_like_noise_text(description):
+        return _truncate_article_text(description, limit=300)
+
+    paragraph_candidates = []
+    for chunk in parser.paragraph_chunks:
+        text = _collapse_article_text(chunk)
+        if _looks_like_noise_text(text):
+            continue
+        paragraph_candidates.append(text)
+
+    paragraph_candidates = _dedupe_keep_order(paragraph_candidates)
+
+    combined = ""
+    for text in paragraph_candidates:
+        if not combined:
+            combined = text
+        else:
+            combined = f"{combined} {text}"
+
+        if len(combined) >= 220:
+            break
+
+    combined = _truncate_article_text(combined, limit=300)
+    if combined:
+        return combined
+
+    body_candidates = []
+    for piece in parser.body_chunks:
+        text = _collapse_article_text(piece)
+        if _looks_like_noise_text(text):
+            continue
+        body_candidates.append(text)
+
+    merged_body = _truncate_article_text(" ".join(body_candidates), limit=300)
+    return merged_body
 
 
 def _extract_import_preview_from_url(link):
@@ -237,39 +427,50 @@ def _extract_import_preview_from_url(link):
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/123.0.0.0 Safari/537.36"
         ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "fr,en;q=0.8",
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;"
+            "q=0.9,image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
     }
 
-    response = requests.get(link, headers=headers, timeout=8, allow_redirects=True)
+    response = requests.get(
+        link,
+        headers=headers,
+        timeout=10,
+        allow_redirects=True,
+    )
     response.raise_for_status()
 
     final_url = response.url or link
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
+        raise ValueError("Le lien ne renvoie pas une page HTML.")
+
     parser = _ArticleImportHTMLParser()
     parser.feed(response.text or "")
     parser.close()
 
     meta = parser.meta
 
-    title = _collapse_article_text(
-        meta.get("twitter:title")
-        or meta.get("og:title")
+    raw_title = (
+        meta.get("og:title")
+        or meta.get("twitter:title")
         or parser.title_text
     )
+    title = _clean_import_title(raw_title)
 
-    description = _collapse_article_text(
-        meta.get("description")
-        or meta.get("og:description")
-        or meta.get("twitter:description")
-    )
-
-    body_text = _collapse_article_text(parser.body_text)
-    short_text = _truncate_article_text(description or body_text, limit=300)
+    short_text = _pick_best_short_text(meta, parser)
 
     image_candidates = []
     for key in (
         "og:image",
         "og:image:url",
+        "og:image:secure_url",
         "twitter:image",
         "twitter:image:src",
     ):
@@ -278,6 +479,10 @@ def _extract_import_preview_from_url(link):
     for img_src in parser.image_sources:
         image_candidates.append(_absolute_remote_url(final_url, img_src))
 
+    image_candidates = [
+        img for img in image_candidates
+        if img and not img.lower().endswith(".svg")
+    ]
     image_candidates = _dedupe_keep_order(image_candidates, limit=3)
 
     return {
@@ -1134,9 +1339,21 @@ class ClientAdminArticleImportPageView(APIView):
             )
         except requests.HTTPError as exc:
             status_code = exc.response.status_code if exc.response is not None else 502
+
+            detail = f"La page n'est pas accessible (HTTP {status_code})."
+            if status_code in {401, 402, 403}:
+                detail = (
+                    f"Le site refuse l'import automatique de cette page (HTTP {status_code})."
+                )
+
             return Response(
-                {"detail": f"La page n'est pas accessible (HTTP {status_code})."},
+                {"detail": detail},
                 status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         except requests.RequestException:
             return Response(
@@ -1150,7 +1367,6 @@ class ClientAdminArticleImportPageView(APIView):
             )
 
         return Response(preview, status=status.HTTP_200_OK)
-
 
 class ClientAdminArticleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
