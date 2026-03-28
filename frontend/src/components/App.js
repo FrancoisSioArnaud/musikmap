@@ -68,14 +68,12 @@ function ClientAdminRouteWrapper() {
 export default function App() {
   const [user, setUser] = useState({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [currentBoxName, setCurrentBoxName] = useState("");
   const [currentClient, setCurrentClient] = useState(() => getStoredCurrentClient());
 
   const applyUserClientTheme = useCallback((userData) => {
-    const nextClientSlug =
-      userData?.client_slug ||
-      userData?.client?.slug ||
-      "default";
+    const nextClientSlug = userData?.client_slug || userData?.client?.slug || "default";
     setCurrentClient(nextClientSlug);
   }, []);
 
@@ -85,6 +83,8 @@ export default function App() {
       setUser,
       isAuthenticated,
       setIsAuthenticated,
+      authChecked,
+      setAuthChecked,
       currentBoxName,
       setCurrentBoxName,
       currentClient,
@@ -94,6 +94,7 @@ export default function App() {
     [
       user,
       isAuthenticated,
+      authChecked,
       currentBoxName,
       currentClient,
       applyUserClientTheme,
@@ -116,7 +117,8 @@ export default function App() {
     checkUserStatus(
       setUser,
       setIsAuthenticated,
-      setCurrentClient
+      setCurrentClient,
+      setAuthChecked
     );
   }, []);
 
@@ -131,10 +133,10 @@ export default function App() {
       return;
     }
 
-    if (!isAuthenticated) {
+    if (authChecked && !isAuthenticated) {
       setCurrentClient("default");
     }
-  }, [isAuthenticated, user]);
+  }, [authChecked, isAuthenticated, user]);
 
   useEffect(() => {
     try {
@@ -190,11 +192,19 @@ export default function App() {
 
               <Route
                 path="/register"
-                element={isAuthenticated ? <Navigate to="/profile" replace /> : <RegisterPage />}
+                element={
+                  authChecked
+                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <RegisterPage />)
+                    : null
+                }
               />
               <Route
                 path="/login"
-                element={isAuthenticated ? <Navigate to="/profile" replace /> : <LoginPage />}
+                element={
+                  authChecked
+                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <LoginPage />)
+                    : null
+                }
               />
             </Routes>
           </UserContext.Provider>
