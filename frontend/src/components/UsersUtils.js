@@ -10,9 +10,6 @@ export const logoutUser = async (
     if (response.ok) {
       setIsAuthenticated(false);
       setUser(null);
-      if (setCurrentClient) {
-        setCurrentClient("default");
-      }
     } else {
       console.error("Can't disconnect because not connected");
     }
@@ -34,27 +31,14 @@ export const checkUserStatus = async (
     if (response.ok) {
       setUser(data);
       setIsAuthenticated(true);
-
-      if (setCurrentClient) {
-        const nextClientSlug = data?.client_slug || data?.client?.slug || "default";
-        setCurrentClient(nextClientSlug);
-      }
     } else {
       setIsAuthenticated(false);
       setUser(null);
-
-      if (setCurrentClient) {
-        setCurrentClient("default");
-      }
     }
   } catch (error) {
     console.error(error);
     setIsAuthenticated(false);
     setUser(null);
-
-    if (setCurrentClient) {
-      setCurrentClient("default");
-    }
   } finally {
     if (setAuthChecked) {
       setAuthChecked(true);
