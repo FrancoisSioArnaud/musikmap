@@ -1,32 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
-import { buildMuiTheme } from "../muiThemeBuilder";
-import {
-  getStoredCurrentClient,
-  getClientTheme,
-  CURRENT_CLIENT_STORAGE_KEY,
-} from "../clientThemes";
-import { applyActiveClientTheme } from "../applyActiveClientTheme";
-import HomePage from "./HomePage";
-import RegisterPage from "./RegisterPage";
-import LoginPage from "./LoginPage";
-import UserProfilePage from "./UserProfilePage";
-import { UserContext } from "./UserContext";
-import { checkUserStatus } from "./UsersUtils";
-import UserSettings from "./UserProfile/UserSettings";
-import UserProfileEdit from "./UserProfile/UserProfileEdit";
-import MenuAppBar from "./Common/Menu";
-import FlowboxLayout from "./Flowbox/FlowboxLayout";
-import Onboarding from "./Flowbox/Onboarding";
-import LiveSearch from "./Flowbox/LiveSearch";
-import Discover from "./Flowbox/Discover";
-import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
-import ClientAdminLayout from "./ClientAdmin/ClientAdminLayout";
-import ClientDashboard from "./ClientAdmin/Dashboard";
-import ClientArticlesList from "./ClientAdmin/ArticlesList";
-import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
-
 import {
   BrowserRouter as Router,
   Routes,
@@ -35,6 +9,36 @@ import {
   Outlet,
 } from "react-router-dom";
 
+import { buildMuiTheme } from "../muiThemeBuilder";
+import {
+  getStoredCurrentClient,
+  getClientTheme,
+  CURRENT_CLIENT_STORAGE_KEY,
+} from "../clientThemes";
+import { applyActiveClientTheme } from "../applyActiveClientTheme";
+
+import HomePage from "./HomePage";
+import RegisterPage from "./RegisterPage";
+import LoginPage from "./LoginPage";
+import UserProfilePage from "./UserProfilePage";
+import UserSettings from "./UserProfile/UserSettings";
+import UserProfileEdit from "./UserProfile/UserProfileEdit";
+import MenuAppBar from "./Common/Menu";
+
+import FlowboxLayout from "./Flowbox/FlowboxLayout";
+import Onboarding from "./Flowbox/Onboarding";
+import LiveSearch from "./Flowbox/LiveSearch";
+import Discover from "./Flowbox/Discover";
+
+import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
+import ClientAdminLayout from "./ClientAdmin/ClientAdminLayout";
+import ClientDashboard from "./ClientAdmin/Dashboard";
+import ClientArticlesList from "./ClientAdmin/ArticlesList";
+import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
+
+import { UserContext } from "./UserContext";
+import { checkUserStatus } from "./UsersUtils";
+
 function LayoutWithHeader() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -42,8 +46,8 @@ function LayoutWithHeader() {
       <main
         style={{
           flex: 1,
-          Height: "calc(100vh - 64px)",
-          Width: "100vw",
+          minHeight: "calc(100vh - 64px)",
+          width: "100vw",
           padding: "58px 0 0 0",
         }}
       >
@@ -67,6 +71,14 @@ export default function App() {
   const [currentBoxName, setCurrentBoxName] = useState("");
   const [currentClient, setCurrentClient] = useState(() => getStoredCurrentClient());
 
+  const applyUserClientTheme = useCallback((userData) => {
+    const nextClientSlug =
+      userData?.client_slug ||
+      userData?.client?.slug ||
+      "default";
+    setCurrentClient(nextClientSlug);
+  }, []);
+
   const providerValue = useMemo(
     () => ({
       user,
@@ -77,8 +89,15 @@ export default function App() {
       setCurrentBoxName,
       currentClient,
       setCurrentClient,
+      applyUserClientTheme,
     }),
-    [user, isAuthenticated, currentBoxName, currentClient]
+    [
+      user,
+      isAuthenticated,
+      currentBoxName,
+      currentClient,
+      applyUserClientTheme,
+    ]
   );
 
   const activeClientTheme = useMemo(() => {
@@ -94,12 +113,32 @@ export default function App() {
   }, [currentClient]);
 
   useEffect(() => {
-    checkUserStatus(setUser, setIsAuthenticated);
+    checkUserStatus(
+      setUser,
+      setIsAuthenticated,
+      setCurrentClient
+    );
   }, []);
 
   useEffect(() => {
+    if (isAuthenticated && user?.client_slug) {
+      setCurrentClient(user.client_slug);
+      return;
+    }
+
+    if (isAuthenticated && user?.client?.slug) {
+      setCurrentClient(user.client.slug);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setCurrentClient("default");
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
     try {
-      localStorage.setItem(CURRENT_CLIENT_STORAGE_KEY, currentClient);
+      localStorage.setItem(CURRENT_CLIENT_STORAGE_KEY, currentClient || "default");
     } catch (error) {}
   }, [currentClient]);
 
@@ -131,7 +170,12 @@ export default function App() {
                   <Route index element={<Onboarding />} />
                   <Route
                     path="search"
-                    element={<LiveSearch isSpotifyAuthenticated={true} isDeezerAuthenticated={true} />}
+                    element={
+                      <LiveSearch
+                        isSpotifyAuthenticated={true}
+                        isDeezerAuthenticated={true}
+                      />
+                    }
                   />
                   <Route path="discover" element={<Discover />} />
                 </Route>
@@ -146,11 +190,11 @@ export default function App() {
 
               <Route
                 path="/register"
-                element={isAuthenticated ? <Navigate to="/profile" /> : <RegisterPage />}
+                element={isAuthenticated ? <Navigate to="/profile" replace /> : <RegisterPage />}
               />
               <Route
                 path="/login"
-                element={isAuthenticated ? <Navigate to="/profile" /> : <LoginPage />}
+                element={isAuthenticated ? <Navigate to="/profile" replace /> : <LoginPage />}
               />
             </Routes>
           </UserContext.Provider>
