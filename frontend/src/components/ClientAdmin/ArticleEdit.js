@@ -53,7 +53,7 @@ export default function ArticleEdit() {
   const { articleId } = useParams();
   const navigate = useNavigate();
 
-  const isCreateMode = articleId === "new";
+  const isCreateMode = !articleId;
 
   const [formValues, setFormValues] = useState(EMPTY_FORM);
   const [initialValues, setInitialValues] = useState(EMPTY_FORM);
@@ -86,8 +86,21 @@ export default function ArticleEdit() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  useEffect(() => {
+    if (isCreateMode) {
+      setLoading(false);
+      setFormValues(EMPTY_FORM);
+      setInitialValues(EMPTY_FORM);
+      setMeta({
+        created_at: null,
+        updated_at: null,
+        published_at: null,
+      });
+    }
+  }, [isCreateMode]);
+
   const fetchArticle = useCallback(async () => {
-    if (isCreateMode) return;
+    if (isCreateMode || !articleId) return;
 
     setLoading(true);
     setPageError("");
@@ -171,26 +184,27 @@ export default function ArticleEdit() {
     try {
       const csrftoken = getCookie("csrftoken");
 
-      const response = await fetch(
-        isCreateMode
-          ? "/box-management/client-admin/articles/"
-          : `/box-management/client-admin/articles/${articleId}/`,
-        {
-          method: isCreateMode ? "POST" : "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrftoken,
-          },
-          credentials: "same-origin",
-          body: JSON.stringify({
-            title: formValues.title.trim(),
-            link: formValues.link.trim(),
-            short_text: formValues.short_text.trim(),
-            cover_image: formValues.cover_image.trim(),
-            status: formValues.status,
-          }),
-        }
-      );
+      const requestUrl = isCreateMode
+        ? "/box-management/client-admin/articles/"
+        : `/box-management/client-admin/articles/${articleId}/`;
+
+      const requestMethod = isCreateMode ? "POST" : "PATCH";
+
+      const response = await fetch(requestUrl, {
+        method: requestMethod,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          title: formValues.title.trim(),
+          link: formValues.link.trim(),
+          short_text: formValues.short_text.trim(),
+          cover_image: formValues.cover_image.trim(),
+          status: formValues.status,
+        }),
+      });
 
       const data = await response.json().catch(() => ({}));
 
