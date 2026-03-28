@@ -6,7 +6,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EnableLocation from "../Flowbox/EnableLocation";
 
 export default function Onboarding() {
@@ -34,8 +33,6 @@ export default function Onboarding() {
   }, [location.key]);
 
   useEffect(() => {
-    let isCancelled = false;
-
     (async () => {
       try {
         setLoading(true);
@@ -51,24 +48,14 @@ export default function Onboarding() {
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
 
-        if (isCancelled) return;
-
         setBox(data);
-        setPageError("");
       } catch {
-        if (isCancelled) return;
-        handleError("Impossible de récupérer la boîte.");
+        handleError(pageError || "Impossible de récupérer la boîte.");
       } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     })();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [boxSlug, handleError]);
+  }, [boxSlug, handleError, pageError]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
@@ -136,76 +123,107 @@ export default function Onboarding() {
 
   if (pageError) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          px: 2,
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        <Paper sx={{ p: 2, width: "100%", maxWidth: 520 }}>
-          <Alert severity="error">{pageError}</Alert>
-          <Button
-            sx={{ mt: 2 }}
-            variant="contained"
-            onClick={() => window.location.reload()}
-          >
-            Réessayer
-          </Button>
-        </Paper>
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {pageError}
+        </Alert>
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Réessayer
+        </Button>
       </Box>
     );
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        px: 2,
-        py: 3,
-        display: "grid",
-        placeItems: "center",
-      }}
-    >
-      <Paper sx={{ p: 3, width: "100%", maxWidth: 560 }}>
-        <Typography variant="h4" gutterBottom>
-          {box?.name || "Boîte"}
-        </Typography>
+    <>
+      <Paper
+        elevation={3}
+        className="onBoarding"
+        sx={{
+          position: "fixed",
+          inset: 0,
+        }}
+      >
+        {box?.last_deposit_song_image_url ? (
+          <Box
+            component="img"
+            src={box.last_deposit_song_image_url}
+            alt=""
+            className="lastSongImg"
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "blur(18px)",
+              transform: "scale(1.1)",
+              opacity: 0.55,
+            }}
+          />
+        ) : null}
 
-        <Typography sx={{ mb: 2 }}>
-          Active ta localisation pour accéder à la recherche de sons.
-        </Typography>
-
-        {!!box?.deposit_count && (
-          <Typography sx={{ mb: 1 }}>
-            Dépôts : {box.deposit_count}
-          </Typography>
-        )}
-
-        {!!box?.last_deposit_date && (
-          <Typography sx={{ mb: 2 }}>
-            Dernier dépôt : {box.last_deposit_date}
-          </Typography>
-        )}
-
-        <Button
-          variant="contained"
-          startIcon={<PlayArrowIcon />}
-          onClick={openSheet}
+        <Box
+          sx={{
+            display: "grid",
+            position: "fixed",
+            bottom: 0,
+            left: "-50vw",
+            right: "-50vw",
+          }}
         >
-          Autoriser la localisation
-        </Button>
+          <Box className="info_box">
+            <Typography className="box_name" component="h1" variant="h5">
+              {box?.name}
+            </Typography>
+          </Box>
+
+          <Box className="container">
+            <Box className="intro">
+              <Typography component="h1" variant="h1">
+                Bienvenue !
+              </Typography>
+              <Typography variant="body1">
+                Chanson deposée ici {box?.last_deposit_date || 0}
+              </Typography>
+            </Box>
+
+            <Box className="steps_container">
+              <Box className="step">
+                <Typography component="span" variant="body1">
+                  1
+                </Typography>
+                <Typography component="p" variant="body1">
+                  Dépose une chanson
+                </Typography>
+              </Box>
+              <Box className="step">
+                <Typography component="span" variant="body1">
+                  2
+                </Typography>
+                <Typography component="p" variant="body1">
+                  Découvre la chanson précédente
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                onClick={openSheet}
+              >
+                Commencer
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       </Paper>
 
       <EnableLocation
         open={sheetOpen}
+        boxTitle={box?.name || "Boîte"}
         loading={geoLoading}
-        onClose={() => {
-          if (!geoLoading) setSheetOpen(false);
-        }}
+        error=""
         onAuthorize={handleAuthorize}
+        onClose={() => setSheetOpen(false)}
       />
-    </Box>
+    </>
   );
 }
