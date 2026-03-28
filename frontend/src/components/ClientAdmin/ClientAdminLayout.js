@@ -33,17 +33,18 @@ function getClientName(user) {
 export default function ClientAdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const { user, setCurrentClient } = useContext(UserContext);
+  const { user, currentClient, setCurrentClient } = useContext(UserContext);
 
   const pageTitle = useMemo(() => getPageTitle(location.pathname), [location.pathname]);
   const clientSlug = useMemo(() => getClientSlug(user), [user]);
   const clientName = useMemo(() => getClientName(user), [user]);
 
   useEffect(() => {
-    if (clientSlug && setCurrentClient) {
+    if (!clientSlug || !setCurrentClient) return;
+    if (currentClient !== clientSlug) {
       setCurrentClient(clientSlug);
     }
-  }, [clientSlug, setCurrentClient]);
+  }, [clientSlug, currentClient, setCurrentClient]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
