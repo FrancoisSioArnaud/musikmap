@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import {
@@ -72,11 +72,6 @@ export default function App() {
   const [currentBoxName, setCurrentBoxName] = useState("");
   const [currentClient, setCurrentClient] = useState(() => getStoredCurrentClient());
 
-  const applyUserClientTheme = useCallback((userData) => {
-    const nextClientSlug = userData?.client_slug || userData?.client?.slug || "default";
-    setCurrentClient(nextClientSlug);
-  }, []);
-
   const providerValue = useMemo(
     () => ({
       user,
@@ -89,7 +84,6 @@ export default function App() {
       setCurrentBoxName,
       currentClient,
       setCurrentClient,
-      applyUserClientTheme,
     }),
     [
       user,
@@ -97,7 +91,6 @@ export default function App() {
       authChecked,
       currentBoxName,
       currentClient,
-      applyUserClientTheme,
     ]
   );
 
@@ -117,32 +110,10 @@ export default function App() {
     checkUserStatus(
       setUser,
       setIsAuthenticated,
-      setCurrentClient,
+      null,
       setAuthChecked
     );
   }, []);
-
-  useEffect(() => {
-    const pathname = window.location.pathname || "";
-  
-    if (pathname.startsWith("/flowbox/")) {
-      return;
-    }
-  
-    if (isAuthenticated && user?.client_slug) {
-      setCurrentClient(user.client_slug);
-      return;
-    }
-  
-    if (isAuthenticated && user?.client?.slug) {
-      setCurrentClient(user.client.slug);
-      return;
-    }
-  
-    if (authChecked && !isAuthenticated) {
-      setCurrentClient("default");
-    }
-  }, [authChecked, isAuthenticated, user]);
 
   useEffect(() => {
     try {
