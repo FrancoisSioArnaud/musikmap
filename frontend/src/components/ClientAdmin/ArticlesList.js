@@ -30,7 +30,7 @@ import TableCell from "@mui/material/TableCell";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import { getCookie } from "../Security/TokensUtils";
 
@@ -64,8 +64,8 @@ export default function ArticlesList() {
   const [pageError, setPageError] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [articleToDelete, setArticleToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [articleToArchive, setArticleToArchive] = useState(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
@@ -108,34 +108,47 @@ export default function ArticlesList() {
     return `${count} article${count > 1 ? "s" : ""}`;
   }, [articles]);
 
-  const handleDeleteConfirm = async () => {
-    if (!articleToDelete) return;
+  const handleArchiveConfirm = async () => {
+    if (!articleToArchive) return;
 
-    setDeleteLoading(true);
+    setArchiveLoading(true);
+    setPageError("");
+
     try {
       const csrftoken = getCookie("csrftoken");
       const response = await fetch(
-        `/box-management/client-admin/articles/${articleToDelete.id}/`,
+        `/box-management/client-admin/articles/${articleToArchive.id}/`,
         {
-          method: "DELETE",
+          method: "PATCH",
           headers: {
+            "Content-Type": "application/json",
             "X-CSRFToken": csrftoken,
           },
           credentials: "same-origin",
+          body: JSON.stringify({
+            status: "archived",
+          }),
         }
       );
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.detail || "Suppression impossible.");
+        throw new Error(data?.detail || "Archivage impossible.");
       }
 
-      setArticles((prev) => prev.filter((item) => item.id !== articleToDelete.id));
-      setArticleToDelete(null);
+      setArticles((prev) =>
+        prev.map((item) =>
+          item.id === articleToArchive.id
+            ? { ...item, ...data, status: "archived" }
+            : item
+        )
+      );
+      setArticleToArchive(null);
     } catch (error) {
-      setPageError(error.message || "Suppression impossible.");
+      setPageError(error.message || "Archivage impossible.");
     } finally {
-      setDeleteLoading(false);
+      setArchiveLoading(false);
     }
   };
 
@@ -356,13 +369,13 @@ export default function ArticlesList() {
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="Supprimer">
+                        <Tooltip title="Archiver">
                           <IconButton
                             size="small"
-                            color="error"
-                            onClick={() => setArticleToDelete(article)}
+                            color="warning"
+                            onClick={() => setArticleToArchive(article)}
                           >
-                            <DeleteOutlineRoundedIcon fontSize="small" />
+                            <ArchiveRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </Stack>
@@ -376,32 +389,33 @@ export default function ArticlesList() {
       </Paper>
 
       <Dialog
-        open={Boolean(articleToDelete)}
-        onClose={() => (deleteLoading ? null : setArticleToDelete(null))}
+        open={Boolean(articleToArchive)}
+        onClose={() => (archiveLoading ? null : setArticleToArchive(null))}
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Supprimer l’article</DialogTitle>
+        <DialogTitle>Archiver l’article</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Cette action supprimera définitivement l’article
-            {articleToDelete?.title ? ` “${articleToDelete.title}”` : ""}.
+            Cette action archivera l’article
+            {articleToArchive?.title ? ` “${articleToArchive.title}”` : ""}.
+            Il ne sera pas supprimé définitivement.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => setArticleToDelete(null)}
-            disabled={deleteLoading}
+            onClick={() => setArticleToArchive(null)}
+            disabled={archiveLoading}
           >
             Annuler
           </Button>
           <Button
-            onClick={handleDeleteConfirm}
-            color="error"
+            onClick={handleArchiveConfirm}
+            color="warning"
             variant="contained"
-            disabled={deleteLoading}
+            disabled={archiveLoading}
           >
-            {deleteLoading ? "Suppression..." : "Supprimer"}
+            {archiveLoading ? "Archivage..." : "Archiver"}
           </Button>
         </DialogActions>
       </Dialog>
