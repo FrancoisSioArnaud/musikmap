@@ -1,8 +1,5 @@
 import { getCookie } from "./Security/TokensUtils";
 
-/**
- * Logs out the current user by sending a request to the "/users/logout_user" endpoint.
- */
 export const logoutUser = async (
   setUser,
   setIsAuthenticated,
@@ -24,14 +21,11 @@ export const logoutUser = async (
   }
 };
 
-/**
- * Checks the status of the user's authentication by sending a request to
- * the "/users/check-authentication" endpoint.
- */
 export const checkUserStatus = async (
   setUser,
   setIsAuthenticated,
-  setCurrentClient = null
+  setCurrentClient = null,
+  setAuthChecked = null
 ) => {
   try {
     const response = await fetch("/users/check-authentication");
@@ -42,10 +36,7 @@ export const checkUserStatus = async (
       setIsAuthenticated(true);
 
       if (setCurrentClient) {
-        const nextClientSlug =
-          data?.client_slug ||
-          data?.client?.slug ||
-          "default";
+        const nextClientSlug = data?.client_slug || data?.client?.slug || "default";
         setCurrentClient(nextClientSlug);
       }
     } else {
@@ -64,12 +55,13 @@ export const checkUserStatus = async (
     if (setCurrentClient) {
       setCurrentClient("default");
     }
+  } finally {
+    if (setAuthChecked) {
+      setAuthChecked(true);
+    }
   }
 };
 
-/**
- * Sets the preferred platform for a user on the server.
- */
 export const setPreferredPlatform = async (new_preferred_platform) => {
   const csrftoken = getCookie("csrftoken");
   const form = JSON.stringify({
@@ -103,9 +95,6 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
   }
 };
 
-/**
- * Retrieves user details from the server using the provided userID.
- */
 export const getUserDetails = async (userID) => {
   try {
     const response = await fetch("/users/get-user-info?userID=" + userID);
