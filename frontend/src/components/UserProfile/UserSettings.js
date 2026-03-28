@@ -22,12 +22,12 @@ import {
   checkDeezerAuthentication,
   authenticateDeezerUser,
   disconnectDeezerUser,
-} from "../MusicBox/DeezerUtils";
+} from "../Utils/streaming/DeezerUtils";
 import {
   checkSpotifyAuthentication,
   authenticateSpotifyUser,
   disconnectSpotifyUser,
-} from "../MusicBox/SpotifyUtils";
+} from "../Utils/streaming/SpotifyUtils";
 
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
