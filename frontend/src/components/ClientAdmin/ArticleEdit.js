@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -206,6 +206,18 @@ export default function ArticleEdit() {
     }));
   };
 
+  const confirmLeaveIfNeeded = useCallback(() => {
+    if (!hasUnsavedChanges) return true;
+    return window.confirm(
+      "Tu as des modifications non enregistrées. Quitter cette page ?"
+    );
+  }, [hasUnsavedChanges]);
+
+  const handleBackToArticles = useCallback(() => {
+    if (!confirmLeaveIfNeeded()) return;
+    navigate("/client/articles");
+  }, [confirmLeaveIfNeeded, navigate]);
+
   const validateForm = (targetStatus) => {
     if (formValues.short_text.length > 300) {
       return "Le texte court ne peut pas dépasser 300 caractères.";
@@ -335,9 +347,7 @@ export default function ArticleEdit() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(
-          extractErrorMessage(data, "Enregistrement impossible.")
-        );
+        throw new Error(extractErrorMessage(data, "Enregistrement impossible."));
       }
 
       const normalized = normalizeArticle(data) || {
@@ -369,7 +379,11 @@ export default function ArticleEdit() {
         updated_at: normalized.updated_at || meta.updated_at,
         published_at: normalized.published_at || meta.published_at,
       });
-      setImageChoices(normalized.cover_image ? [normalized.cover_image, ...imageChoices].filter(Boolean).slice(0, 3) : imageChoices);
+      setImageChoices(
+        normalized.cover_image
+          ? [normalized.cover_image, ...imageChoices].filter(Boolean).slice(0, 3)
+          : imageChoices
+      );
 
       if (isCreateMode && normalized.id) {
         navigate(`/client/articles/${normalized.id}`, { replace: true });
@@ -402,8 +416,7 @@ export default function ArticleEdit() {
     <Stack spacing={3}>
       <Box>
         <Button
-          component={RouterLink}
-          to="/client/articles"
+          onClick={handleBackToArticles}
           startIcon={<ArrowBackRoundedIcon />}
         >
           Retour à mes articles
@@ -479,7 +492,7 @@ export default function ArticleEdit() {
                 }
                 sx={{ minWidth: { xs: "100%", md: 180 }, whiteSpace: "nowrap" }}
               >
-                {importing ? "Importer la page" : "Importer la page"}
+                Importer la page
               </Button>
             </Stack>
 
@@ -523,7 +536,12 @@ export default function ArticleEdit() {
                   <Typography variant="subtitle1">
                     Choisir l’image de cover
                   </Typography>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} useFlexGap flexWrap="wrap">
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={1.5}
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
                     {imageChoices.map((imageUrl) => {
                       const isSelected = imageUrl === formValues.cover_image;
                       return (
@@ -631,7 +649,7 @@ export default function ArticleEdit() {
               </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                <Button component={RouterLink} to="/client/articles">
+                <Button onClick={handleBackToArticles}>
                   Annuler
                 </Button>
 
