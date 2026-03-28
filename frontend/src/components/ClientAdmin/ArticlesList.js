@@ -30,7 +30,7 @@ import TableCell from "@mui/material/TableCell";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import { getCookie } from "../Security/TokensUtils";
 
@@ -47,6 +47,12 @@ function getStatusChipColor(status) {
   if (status === "published") return "success";
   if (status === "archived") return "default";
   return "warning";
+}
+
+function getStatusLabel(status) {
+  if (status === "published") return "Publié";
+  if (status === "archived") return "Archivé";
+  return "Brouillon";
 }
 
 function normalizeArticles(payload) {
@@ -228,7 +234,7 @@ export default function ArticlesList() {
             >
               {STATUS_OPTIONS.map((status) => (
                 <MenuItem key={status} value={status}>
-                  {status === "all" ? "Tous" : status}
+                  {status === "all" ? "Tous" : getStatusLabel(status)}
                 </MenuItem>
               ))}
             </Select>
@@ -320,7 +326,7 @@ export default function ArticlesList() {
 
                     <TableCell>
                       <Chip
-                        label={article.status || "draft"}
+                        label={getStatusLabel(article.status)}
                         size="small"
                         color={getStatusChipColor(article.status)}
                         variant={article.status === "published" ? "filled" : "outlined"}
@@ -369,13 +375,13 @@ export default function ArticlesList() {
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="Archiver">
+                        <Tooltip title="Supprimer">
                           <IconButton
                             size="small"
-                            color="warning"
+                            color="error"
                             onClick={() => setArticleToArchive(article)}
                           >
-                            <ArchiveRoundedIcon fontSize="small" />
+                            <DeleteOutlineRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </Stack>
@@ -394,7 +400,7 @@ export default function ArticlesList() {
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Archiver l’article</DialogTitle>
+        <DialogTitle>Supprimer l’article</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Cette action archivera l’article
@@ -411,11 +417,11 @@ export default function ArticlesList() {
           </Button>
           <Button
             onClick={handleArchiveConfirm}
-            color="warning"
+            color="error"
             variant="contained"
             disabled={archiveLoading}
           >
-            {archiveLoading ? "Archivage..." : "Archiver"}
+            {archiveLoading ? "Suppression..." : "Supprimer"}
           </Button>
         </DialogActions>
       </Dialog>
