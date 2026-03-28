@@ -22,7 +22,7 @@ export default function LoginPage() {
   // States & Variables
   const [authenticationSuccess, setAuthenticationSuccess] = useState(false);
   const [errorMessages, setErrorMessages] = useState("");
-  const { user, setUser, isAuthenticated, setIsAuthenticated, currentBoxName } =
+  const { user, setUser, isAuthenticated, setIsAuthenticated } =
     useContext(UserContext);
   const navigate = useNavigate();
 
