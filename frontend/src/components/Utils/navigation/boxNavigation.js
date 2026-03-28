@@ -1,4 +1,4 @@
-import { getCookie } from "../Security/TokensUtils";
+import { getCookie } from "../../Security/TokensUtils";
 
 /**
  * Retrieves the details of a Music Box.
