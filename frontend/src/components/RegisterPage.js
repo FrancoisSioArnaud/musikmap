@@ -15,7 +15,7 @@ import { checkUserStatus } from "./UsersUtils";
 import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
 import { getCookie } from "./Security/TokensUtils";
-import { navigateToCurrentBox } from ".Utils/navigation/boxNavigation";
+import { navigateToCurrentBox } from "./Utils/navigation/boxNavigation";
 
 const styles = {
   button: {
