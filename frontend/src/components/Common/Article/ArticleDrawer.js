@@ -14,38 +14,36 @@ export default function ArticleDrawer({ article, open, onClose }) {
       PaperProps={{ className: "drawer_paper" }}
       className="drawer"
     >
-      <Box className="drawer_content">
-        {article?.cover_image ? (
-          <Box className="img_container">
-            <Box
-            component="img"
-            src={article.cover_image}
-            alt={article?.title || "Illustration article"}
-            className="image"
-            />
-          </Box>
+
+      {article?.cover_image ? (
+          <Box
+          component="img"
+          src={article.cover_image}
+          alt={article?.title || "Illustration article"}
+          className="image"
+          />
+      ) : null}
+
+      <Box className="text">
+        {article?.title ? (
+          <Typography component="h1" variant="h2" className="title">
+            {article.title}
+          </Typography>
         ) : null}
 
-        <Box className="text">
-          {article?.title ? (
-            <Typography component="h1" variant="h2" className="title">
-              {article.title}
-            </Typography>
-          ) : null}
-  
-          {article?.short_text ? (
-            <Typography component="div" variant="body1" className="text">
-              {article.short_text}
-            </Typography>
-          ) : null}
-        </Box>
-
-
-        <Button variant="contained" onClick={onClose} className="bottom_fixed">
-          Fermer
-        </Button>
-
+        {article?.short_text ? (
+          <Typography component="div" variant="body1" className="text">
+            {article.short_text}
+          </Typography>
+        ) : null}
       </Box>
+
+
+      <Button variant="contained" onClick={onClose} className="bottom_fixed">
+        Fermer
+      </Button>
+
+
     </Drawer>
   );
 }
