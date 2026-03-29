@@ -38,12 +38,14 @@ export default function ArticleCard({ article, onOpenDrawer }) {
   return (
     <Box className="card article" onClick={handleClick}>
       {article?.cover_image ? (
-        <Box
-          component="img"
-          src={article.cover_image}
-          alt={article?.title || "Illustration article"}
-          className="image"
-        />
+        <Box className="img_container">
+          <Box
+            component="img"
+            src={article.cover_image}
+            alt={article?.title || "Illustration article"}
+            className="image"
+          />
+        </Box>
       ) : null}
 
       <Box className="content">  
