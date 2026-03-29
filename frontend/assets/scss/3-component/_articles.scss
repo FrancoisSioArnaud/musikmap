@@ -3,9 +3,12 @@
   flex-direction: row;
   gap: 32px;
   padding: 0 26px;
-  padding-bottom: 32px;
   width: 100vw;
-  overflow: scroll;
+  overflow-x: scroll;
+  scrollbar-width: none;
+}
+.container::-webkit-scrollbar {
+  display: none;
 }
 
 .article{
