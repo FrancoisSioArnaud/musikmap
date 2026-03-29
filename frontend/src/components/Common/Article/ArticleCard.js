@@ -37,15 +37,6 @@ export default function ArticleCard({ article, onOpenDrawer }) {
 
   return (
     <Box className="card article" onClick={handleClick}>
-      {domainLabel ? (
-        <Box className="linkline">
-          <Typography component="span" variant="body2" className="domain">
-            {domainLabel}
-          </Typography>
-          <OpenInNewIcon className="external_icon" fontSize="inherit" />
-        </Box>
-      ) : null}
-
       {article?.cover_image ? (
         <Box
           component="img"
@@ -55,15 +46,28 @@ export default function ArticleCard({ article, onOpenDrawer }) {
         />
       ) : null}
 
-      <Typography component="h3" variant="h3" className="title">
-        {article?.title || ""}
-      </Typography>
-
-      {previewText ? (
-        <Typography variant="body1" className="text">
-          {previewText}
+      <Box className="content">  
+        {domainLabel ? (
+          <Box className="linkline">
+            <Typography component="span" variant="body2" className="domain">
+              {domainLabel}
+            </Typography>
+            <OpenInNewIcon className="external_icon" fontSize="inherit" />
+          </Box>
+        ) : null}
+  
+  
+  
+        <Typography component="h3" variant="h3" className="title">
+          {article?.title || ""}
         </Typography>
-      ) : null}
+  
+        {previewText ? (
+          <Typography variant="body1" className="text">
+            {previewText}
+          </Typography>
+        ) : null}
+      </Box>
     </Box>
   );
 }
