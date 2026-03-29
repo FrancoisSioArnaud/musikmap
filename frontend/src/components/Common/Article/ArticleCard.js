@@ -36,7 +36,7 @@ export default function ArticleCard({ article, onOpenDrawer }) {
   };
 
   return (
-    <Box className="card" onClick={handleClick}>
+    <Box className="card article" onClick={handleClick}>
       {domainLabel ? (
         <Box className="linkline">
           <Typography component="span" variant="body2" className="domain">
