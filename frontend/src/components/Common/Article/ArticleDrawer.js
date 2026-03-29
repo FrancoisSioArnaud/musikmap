@@ -33,7 +33,7 @@ export default function ArticleDrawer({ article, open, onClose }) {
           ) : null}
   
           {article?.short_text ? (
-            <Typography component="div" variant="body1" className="text">
+            <Typography component="div" variant="body1" className="body">
               {article.short_text}
             </Typography>
           ) : null}
