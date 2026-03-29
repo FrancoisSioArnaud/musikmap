@@ -14,8 +14,11 @@ import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { UserContext } from "../UserContext";
 import { getValid } from "../Utils/mmStorage";
+import ArticleCard from "../common/article/ArticleCard";
+import ArticleDrawer from "../common/article/ArticleDrawer";
 
 const KEY_BOX_CONTENT = "mm_box_content";
+const MAX_VISIBLE_ARTICLES = 5;
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -24,6 +27,8 @@ export default function Discover() {
 
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
@@ -41,6 +46,40 @@ export default function Discover() {
     setBoxContent(snap);
   }, [boxSlug, redirectOnboardingExpired]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const url = `/box-management/articles/visible/?boxSlug=${encodeURIComponent(
+          boxSlug
+        )}&limit=${MAX_VISIBLE_ARTICLES}`;
+
+        const res = await fetch(url, {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!res.ok) {
+          throw new Error("Impossible de charger les articles.");
+        }
+
+        const data = await res.json().catch(() => []);
+        if (cancelled) return;
+
+        setArticles(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) {
+          setArticles([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boxSlug]);
+
   const myDeposit = boxContent?.myDeposit || null;
   const mySong = myDeposit?.song || null;
 
@@ -55,10 +94,11 @@ export default function Discover() {
 
   const handleOpenAchievements = () => setOpenAchievements(true);
   const handleCloseAchievements = () => setOpenAchievements(false);
+  const handleOpenArticleDrawer = (article) => setSelectedArticle(article || null);
+  const handleCloseArticleDrawer = () => setSelectedArticle(null);
 
   return (
     <Box>
-      {/* Drawer Achievements (right, fullscreen, close only via button) */}
       <Drawer
         anchor="right"
         open={openAchievements}
@@ -88,7 +128,12 @@ export default function Discover() {
         </Box>
       </Drawer>
 
-      {/* 1) MY DEPOSIT (custom, pas un Deposit) */}
+      <ArticleDrawer
+        article={selectedArticle}
+        open={!!selectedArticle}
+        onClose={handleCloseArticleDrawer}
+      />
+
       <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
           <CheckCircleIcon fontSize="medium" sx={{ width: "1.6em", height: "1.6em" }} />
@@ -130,10 +175,10 @@ export default function Discover() {
             </Box>
           </Box>
         ) : null}
-       
+
         <Box
           className="points_container"
-          style={{ margin: "0 auto"}}
+          style={{ margin: "0 auto" }}
           onClick={handleOpenAchievements}
           role="button"
           tabIndex={0}
@@ -145,14 +190,12 @@ export default function Discover() {
             +{totalPoints}
           </Typography>
           <MusicNote />
-          <Typography component="span" variant="body1" sx={{paddingRight: "6px"}}>
+          <Typography component="span" variant="body1" sx={{ paddingRight: "6px" }}>
             Voir le détail
           </Typography>
         </Box>
-        
       </Box>
 
-      {/* 2) MAIN */}
       <Box className="intro">
         <Typography component="h2" variant="h1">
           Bonne écoute !
@@ -175,8 +218,26 @@ export default function Discover() {
         </Box>
       ) : null}
 
+      {articles.length > 0 ? (
+        <Box className="articles_section">
+          <Box className="intro articles_intro">
+            <Typography component="h2" variant="h3">
+              À lire
+            </Typography>
+          </Box>
 
-      {/* Older deposits */}
+          <Box className="articles_list">
+            {articles.map((article, idx) => (
+              <ArticleCard
+                key={`${article?.link || article?.title || "article"}-${idx}`}
+                article={article}
+                onOpenDrawer={handleOpenArticleDrawer}
+              />
+            ))}
+          </Box>
+        </Box>
+      ) : null}
+
       {olderDeposits.length > 0 ? (
         <Box id="older_deposits">
           <Box className="intro" sx={{ p: 4 }}>
@@ -201,9 +262,9 @@ export default function Discover() {
                 showUser={true}
               />
             ))}
-            <Typography component="p" variant="body1" sx={{textAlign:"center"}}>
+            <Typography component="p" variant="body1" sx={{ textAlign: "center" }}>
               Reviens nous voir bientôt, de nouvelles chansons auront été partagées
-            </Typography>    
+            </Typography>
           </Box>
         </Box>
       ) : null}
