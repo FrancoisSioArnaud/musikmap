@@ -1,9 +1,11 @@
 .articles_list{
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 32px;
-  padding: 26px;
+  padding: 0 26px;
   padding-bottom: 32px;
+  width: 100vw;
+  overflow: scroll;
 }
 
 .article{
@@ -13,6 +15,9 @@
   border: var(--mm-border-default);
   border-radius: 3.2rem;
   overflow: clip;
+  flex: 0 0 75vw;
+  min-width: 75vw;
+  scroll-snap-align: start;
 }
 
 .article .content{
