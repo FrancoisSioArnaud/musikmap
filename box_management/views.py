@@ -44,6 +44,7 @@ from .serializers import (
     SongSerializer,
     EmojiSerializer,
     ClientAdminArticleSerializer,
+    PublicVisibleArticleSerializer,
 )
 from .utils import (
     _calculate_distance,
@@ -1304,6 +1305,38 @@ class UserDepositsView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class PublicVisibleArticlesView(APIView):
+    def get(self, request, format=None):
+        box_slug = (request.query_params.get("boxSlug") or request.query_params.get("box_slug") or "").strip()
+        if not box_slug:
+            return Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            limit = int(request.query_params.get("limit", 5))
+        except (TypeError, ValueError):
+            limit = 5
+
+        limit = max(1, min(limit, 20))
+
+        box = Box.objects.select_related("client").filter(url=box_slug).first()
+        if not box:
+            return Response([], status=status.HTTP_200_OK)
+
+        if not box.client_id:
+            return Response([], status=status.HTTP_200_OK)
+
+        articles_qs = (
+            Article.objects
+            .with_related()
+            .for_client(box.client_id)
+            .currently_visible()
+            .order_by("-published_at", "-created_at")[:limit]
+        )
+
+        serializer = PublicVisibleArticleSerializer(articles_qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ClientAdminArticleImportPageView(APIView):
