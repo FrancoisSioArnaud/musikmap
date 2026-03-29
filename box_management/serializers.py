@@ -141,6 +141,19 @@ class ReactionSerializer(serializers.ModelSerializer):
         ]
 
 
+class PublicVisibleArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Article
+        fields = [
+            "title",
+            "link",
+            "short_text",
+            "cover_image",
+            "published_at",
+        ]
+        read_only_fields = fields
+
+
 class ClientAdminArticleSerializer(serializers.ModelSerializer):
     display_start_date = serializers.DateField(required=False, allow_null=True)
     display_end_date = serializers.DateField(required=False, allow_null=True)
