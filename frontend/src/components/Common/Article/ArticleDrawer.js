@@ -27,7 +27,7 @@ export default function ArticleDrawer({ article, open, onClose }) {
   
         <Box className="text">
           {article?.title ? (
-            <Typography component="h1" variant="h2" className="title">
+            <Typography component="h1" variant="h1" className="title">
               {article.title}
             </Typography>
           ) : null}
