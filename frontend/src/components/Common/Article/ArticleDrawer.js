@@ -16,12 +16,13 @@ export default function ArticleDrawer({ article, open, onClose }) {
     >
 
       {article?.cover_image ? (
-          <Box
-          component="img"
-          src={article.cover_image}
-          alt={article?.title || "Illustration article"}
-          className="image"
-          />
+        <Box
+        component="img"
+        src={article.cover_image}
+        alt={article?.title || "Illustration article"}
+        className="image"
+        sx={{width:"100%"}}
+        />
       ) : null}
 
       <Box className="text">
