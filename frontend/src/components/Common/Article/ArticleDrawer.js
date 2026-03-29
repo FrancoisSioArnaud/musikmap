@@ -16,31 +16,35 @@ export default function ArticleDrawer({ article, open, onClose }) {
     >
       <Box className="drawer_content">
         {article?.cover_image ? (
-          <Box
+          <Box className="img_container">
+            <Box
             component="img"
             src={article.cover_image}
             alt={article?.title || "Illustration article"}
             className="image"
-          />
+            />
+          </Box>
         ) : null}
 
-        {article?.title ? (
-          <Typography component="h2" variant="h2" className="title">
-            {article.title}
-          </Typography>
-        ) : null}
-
-        {article?.short_text ? (
-          <Typography component="div" variant="body1" className="text">
-            {article.short_text}
-          </Typography>
-        ) : null}
-
-        <Box className="actions">
-          <Button variant="contained" onClick={onClose} className="bottom_fixed">
-            Fermer
-          </Button>
+        <Box className="text">
+          {article?.title ? (
+            <Typography component="h1" variant="h2" className="title">
+              {article.title}
+            </Typography>
+          ) : null}
+  
+          {article?.short_text ? (
+            <Typography component="div" variant="body1" className="text">
+              {article.short_text}
+            </Typography>
+          ) : null}
         </Box>
+
+
+        <Button variant="contained" onClick={onClose} className="bottom_fixed">
+          Fermer
+        </Button>
+
       </Box>
     </Drawer>
   );
