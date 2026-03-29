@@ -14,8 +14,8 @@ import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { UserContext } from "../UserContext";
 import { getValid } from "../Utils/mmStorage";
-import ArticleCard from "../common/article/ArticleCard";
-import ArticleDrawer from "../common/article/ArticleDrawer";
+import ArticleCard from "../Common/Article/ArticleCard";
+import ArticleDrawer from "../Common/Article/ArticleDrawer";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const MAX_VISIBLE_ARTICLES = 5;
