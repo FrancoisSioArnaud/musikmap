@@ -12,6 +12,7 @@ from .views import (
     ClientAdminArticleImportPageView,
     ClientAdminArticleListCreateView,
     ClientAdminArticleDetailView,
+    PublicVisibleArticlesView,
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path("emojis/catalog", EmojiCatalogView.as_view(), name="emoji-catalog"),
     path("emojis/purchase", PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path("reactions", ReactionView.as_view(), name="reactions"),
+    path("articles/visible/", PublicVisibleArticlesView.as_view(), name="public-visible-articles"),
 
     # Client admin - articles
     path(
