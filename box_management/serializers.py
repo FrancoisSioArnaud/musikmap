@@ -142,10 +142,30 @@ class ReactionSerializer(serializers.ModelSerializer):
 
 
 class ClientAdminArticleSerializer(serializers.ModelSerializer):
+    display_start_date = serializers.DateField(required=False, allow_null=True)
+    display_end_date = serializers.DateField(required=False, allow_null=True)
+    display_start_time = serializers.TimeField(
+        required=False,
+        allow_null=True,
+        format="%H:%M",
+        input_formats=["%H:%M", "%H:%M:%S"],
+    )
+    display_end_time = serializers.TimeField(
+        required=False,
+        allow_null=True,
+        format="%H:%M",
+        input_formats=["%H:%M", "%H:%M:%S"],
+    )
     author_name = serializers.SerializerMethodField()
     author_username = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
     client_slug = serializers.SerializerMethodField()
+    visibility_state = serializers.SerializerMethodField()
+    visibility_state_label = serializers.SerializerMethodField()
+    is_visible_now = serializers.SerializerMethodField()
+    display_date_range_label = serializers.SerializerMethodField()
+    display_time_range_label = serializers.SerializerMethodField()
+    display_window_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Article
@@ -162,6 +182,16 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             "short_text",
             "cover_image",
             "status",
+            "display_start_date",
+            "display_end_date",
+            "display_start_time",
+            "display_end_time",
+            "visibility_state",
+            "visibility_state_label",
+            "is_visible_now",
+            "display_date_range_label",
+            "display_time_range_label",
+            "display_window_summary",
             "created_at",
             "updated_at",
             "published_at",
@@ -174,6 +204,12 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             "author",
             "author_name",
             "author_username",
+            "visibility_state",
+            "visibility_state_label",
+            "is_visible_now",
+            "display_date_range_label",
+            "display_time_range_label",
+            "display_window_summary",
             "created_at",
             "updated_at",
             "published_at",
@@ -200,6 +236,24 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
 
     def get_client_slug(self, obj):
         return obj.client.slug if obj.client else None
+
+    def get_visibility_state(self, obj):
+        return obj.get_visibility_state()
+
+    def get_visibility_state_label(self, obj):
+        return obj.get_visibility_state_label()
+
+    def get_is_visible_now(self, obj):
+        return obj.is_visible_now()
+
+    def get_display_date_range_label(self, obj):
+        return obj.get_display_date_range_label()
+
+    def get_display_time_range_label(self, obj):
+        return obj.get_display_time_range_label()
+
+    def get_display_window_summary(self, obj):
+        return obj.get_display_window_summary()
 
     def validate_title(self, value):
         return (value or "").strip()
@@ -245,23 +299,39 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             cover_image = getattr(instance, "cover_image", "") if instance else ""
         cover_image = (cover_image or "").strip()
 
+        display_start_date = (
+            attrs["display_start_date"]
+            if "display_start_date" in attrs
+            else (instance.display_start_date if instance else None)
+        )
+
+        display_end_date = (
+            attrs["display_end_date"]
+            if "display_end_date" in attrs
+            else (instance.display_end_date if instance else None)
+        )
+
         attrs["title"] = title
         attrs["link"] = link
         attrs["short_text"] = short_text
         attrs["cover_image"] = cover_image
 
+        errors = {}
+
+        if display_start_date and display_end_date and display_end_date < display_start_date:
+            errors["display_end_date"] = (
+                "La date de fin d’affichage doit être postérieure ou égale à la date de début."
+            )
+
         if status_value == "published":
             if not title:
-                raise serializers.ValidationError(
-                    {"title": "Le titre est obligatoire pour publier un article."}
-                )
+                errors["title"] = "Le titre est obligatoire pour publier un article."
             if not link and not short_text:
-                raise serializers.ValidationError(
-                    {
-                        "non_field_errors": [
-                            "Pour publier un article, renseigne au moins un lien externe ou un texte court."
-                        ]
-                    }
-                )
+                errors["non_field_errors"] = [
+                    "Pour publier un article, renseigne au moins un lien externe ou un texte court."
+                ]
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs

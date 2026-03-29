@@ -55,6 +55,24 @@ function getStatusLabel(status) {
   return "Brouillon";
 }
 
+function getVisibilityStateColor(state) {
+  if (state === "visible_now") return "success";
+  if (state === "scheduled") return "info";
+  if (state === "out_of_hours") return "warning";
+  if (state === "expired") return "default";
+  return "default";
+}
+
+function getVisibilityStateLabel(article) {
+  return article?.visibility_state_label || "—";
+}
+
+function getDisplayWindowLabel(article) {
+  const dateLabel = article?.display_date_range_label || "Toujours";
+  const timeLabel = article?.display_time_range_label || "Toute la journée";
+  return `${dateLabel} · ${timeLabel}`;
+}
+
 function normalizeArticles(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.results)) return payload.results;
@@ -286,11 +304,13 @@ export default function ArticlesList() {
           </Box>
         ) : (
           <TableContainer>
-            <Table sx={{ minWidth: 900 }}>
+            <Table sx={{ minWidth: 1200 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Titre</TableCell>
                   <TableCell>Statut</TableCell>
+                  <TableCell>Diffusion</TableCell>
+                  <TableCell>Fenêtre d’affichage</TableCell>
                   <TableCell>Auteur</TableCell>
                   <TableCell>Créé le</TableCell>
                   <TableCell>Modifié le</TableCell>
@@ -331,6 +351,21 @@ export default function ArticlesList() {
                         color={getStatusChipColor(article.status)}
                         variant={article.status === "published" ? "filled" : "outlined"}
                       />
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        label={getVisibilityStateLabel(article)}
+                        size="small"
+                        color={getVisibilityStateColor(article.visibility_state)}
+                        variant={article.visibility_state === "visible_now" ? "filled" : "outlined"}
+                      />
+                    </TableCell>
+
+                    <TableCell sx={{ minWidth: 260 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {getDisplayWindowLabel(article)}
+                      </Typography>
                     </TableCell>
 
                     <TableCell>

@@ -2,6 +2,7 @@ import csv
 
 from django.contrib import admin
 from django.http import HttpResponse
+from django.utils import timezone
 from django.db.models import Count
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
 from import_export.admin import ImportExportModelAdmin
@@ -47,11 +48,21 @@ class ArticleAdmin(admin.ModelAdmin):
         "client",
         "author",
         "status",
+        "visibility_state_admin",
+        "display_date_window_admin",
+        "display_time_window_admin",
         "created_at",
         "updated_at",
         "published_at",
     )
-    list_filter = ("status", "client", "created_at", "published_at")
+    list_filter = (
+        "status",
+        "client",
+        "created_at",
+        "published_at",
+        "display_start_date",
+        "display_end_date",
+    )
     search_fields = (
         "title",
         "short_text",
@@ -62,7 +73,13 @@ class ArticleAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("client", "author")
     ordering = ("-created_at",)
-    readonly_fields = ("created_at", "updated_at", "published_at")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "published_at",
+        "visibility_state_admin",
+        "display_window_summary_admin",
+    )
     fieldsets = (
         (
             None,
@@ -79,6 +96,17 @@ class ArticleAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Fenêtre d’affichage",
+            {
+                "fields": (
+                    ("display_start_date", "display_end_date"),
+                    ("display_start_time", "display_end_time"),
+                    "visibility_state_admin",
+                    "display_window_summary_admin",
+                )
+            },
+        ),
+        (
             "Dates",
             {
                 "fields": (
@@ -89,6 +117,22 @@ class ArticleAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="Diffusion")
+    def visibility_state_admin(self, obj):
+        return obj.get_visibility_state_label(at=timezone.now())
+
+    @admin.display(description="Dates affichage")
+    def display_date_window_admin(self, obj):
+        return obj.get_display_date_range_label()
+
+    @admin.display(description="Heures affichage")
+    def display_time_window_admin(self, obj):
+        return obj.get_display_time_range_label()
+
+    @admin.display(description="Résumé fenêtre")
+    def display_window_summary_admin(self, obj):
+        return obj.get_display_window_summary()
 
 
 @admin.register(LocationPoint)

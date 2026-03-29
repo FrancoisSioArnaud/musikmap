@@ -118,6 +118,55 @@ class ArticleQuerySet(models.QuerySet):
             return self
         return self.filter(status=status_value)
 
+    def published(self):
+        return self.filter(status="published")
+
+    def currently_visible(self, at=None):
+        local_now = Article.normalize_local_datetime(at)
+        current_date = local_now.date()
+        current_time = local_now.time().replace(second=0, microsecond=0, tzinfo=None)
+
+        date_filter = (
+            (models.Q(display_start_date__isnull=True) | models.Q(display_start_date__lte=current_date))
+            & (models.Q(display_end_date__isnull=True) | models.Q(display_end_date__gte=current_date))
+        )
+
+        time_filter = (
+            models.Q(display_start_time__isnull=True, display_end_time__isnull=True)
+            | models.Q(
+                display_start_time__isnull=False,
+                display_end_time__isnull=True,
+                display_start_time__lte=current_time,
+            )
+            | models.Q(
+                display_start_time__isnull=True,
+                display_end_time__isnull=False,
+                display_end_time__gte=current_time,
+            )
+            | (
+                models.Q(
+                    display_start_time__isnull=False,
+                    display_end_time__isnull=False,
+                    display_start_time__lte=models.F("display_end_time"),
+                )
+                & models.Q(display_start_time__lte=current_time)
+                & models.Q(display_end_time__gte=current_time)
+            )
+            | (
+                models.Q(
+                    display_start_time__isnull=False,
+                    display_end_time__isnull=False,
+                    display_start_time__gt=models.F("display_end_time"),
+                )
+                & (
+                    models.Q(display_start_time__lte=current_time)
+                    | models.Q(display_end_time__gte=current_time)
+                )
+            )
+        )
+
+        return self.published().filter(date_filter).filter(time_filter)
+
     def ordered_for_admin(self):
         return self.order_by("-updated_at", "-created_at")
 
@@ -128,6 +177,15 @@ class Article(models.Model):
         ("published", "Published"),
         ("archived", "Archived"),
     ]
+
+    VISIBILITY_STATE_LABELS = {
+        "draft": "Brouillon",
+        "archived": "Archivé",
+        "visible_now": "Visible maintenant",
+        "scheduled": "Planifié",
+        "expired": "Expiré",
+        "out_of_hours": "Hors horaire",
+    }
 
     client = models.ForeignKey(
         "Client",
@@ -166,6 +224,11 @@ class Article(models.Model):
         db_index=True,
     )
 
+    display_start_date = models.DateField(null=True, blank=True, db_index=True)
+    display_end_date = models.DateField(null=True, blank=True, db_index=True)
+    display_start_time = models.TimeField(null=True, blank=True)
+    display_end_time = models.TimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True, db_index=True)
@@ -178,10 +241,19 @@ class Article(models.Model):
             models.Index(fields=["client", "status"]),
             models.Index(fields=["client", "created_at"]),
             models.Index(fields=["client", "published_at"]),
+            models.Index(fields=["client", "display_start_date"]),
+            models.Index(fields=["client", "display_end_date"]),
             models.Index(fields=["author"]),
             models.Index(fields=["status"]),
             models.Index(fields=["title"]),
         ]
+
+    @staticmethod
+    def normalize_local_datetime(value=None):
+        current_dt = value or timezone.now()
+        if timezone.is_naive(current_dt):
+            current_dt = timezone.make_aware(current_dt, timezone.get_current_timezone())
+        return timezone.localtime(current_dt)
 
     def clean(self):
         if self.author_id and self.client_id and self.author.client_id != self.client_id:
@@ -199,16 +271,27 @@ class Article(models.Model):
                 {"short_text": "Le texte court ne peut pas dépasser 300 caractères."}
             )
 
+        errors = {}
+
+        if (
+            self.display_start_date
+            and self.display_end_date
+            and self.display_end_date < self.display_start_date
+        ):
+            errors["display_end_date"] = (
+                "La date de fin d’affichage doit être postérieure ou égale à la date de début."
+            )
+
         if self.status == "published":
-            errors = {}
             if not self.title:
                 errors["title"] = "Le titre est obligatoire pour publier un article."
             if not self.link and not self.short_text:
                 errors["non_field_errors"] = (
                     "Pour publier un article, renseigne au moins un lien externe ou un texte court."
                 )
-            if errors:
-                raise ValidationError(errors)
+
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def is_published(self):
@@ -222,6 +305,93 @@ class Article(models.Model):
     def is_archived(self):
         return self.status == "archived"
 
+    def is_within_date_window(self, at=None):
+        local_now = self.normalize_local_datetime(at)
+        current_date = local_now.date()
+
+        if self.display_start_date and current_date < self.display_start_date:
+            return False
+        if self.display_end_date and current_date > self.display_end_date:
+            return False
+        return True
+
+    def is_within_time_window(self, at=None):
+        local_now = self.normalize_local_datetime(at)
+        current_time = local_now.time().replace(second=0, microsecond=0, tzinfo=None)
+
+        start_time = self.display_start_time
+        end_time = self.display_end_time
+
+        if not start_time and not end_time:
+            return True
+
+        if start_time and end_time:
+            if start_time <= end_time:
+                return start_time <= current_time <= end_time
+            return current_time >= start_time or current_time <= end_time
+
+        if start_time:
+            return current_time >= start_time
+
+        return current_time <= end_time
+
+    def is_visible_now(self, at=None):
+        if self.status != "published":
+            return False
+        return self.is_within_date_window(at=at) and self.is_within_time_window(at=at)
+
+    def get_visibility_state(self, at=None):
+        if self.status == "draft":
+            return "draft"
+        if self.status == "archived":
+            return "archived"
+
+        local_now = self.normalize_local_datetime(at)
+        current_date = local_now.date()
+
+        if self.display_start_date and current_date < self.display_start_date:
+            return "scheduled"
+        if self.display_end_date and current_date > self.display_end_date:
+            return "expired"
+        if not self.is_within_time_window(at=local_now):
+            return "out_of_hours"
+        return "visible_now"
+
+    def get_visibility_state_label(self, at=None):
+        return self.VISIBILITY_STATE_LABELS.get(
+            self.get_visibility_state(at=at),
+            "—",
+        )
+
+    def get_display_date_range_label(self):
+        if self.display_start_date and self.display_end_date:
+            return f"Du {self.display_start_date.strftime('%d/%m/%Y')} au {self.display_end_date.strftime('%d/%m/%Y')}"
+        if self.display_start_date:
+            return f"À partir du {self.display_start_date.strftime('%d/%m/%Y')}"
+        if self.display_end_date:
+            return f"Jusqu’au {self.display_end_date.strftime('%d/%m/%Y')}"
+        return "Toujours"
+
+    def get_display_time_range_label(self):
+        def format_time(value):
+            if not value:
+                return None
+            return value.strftime('%H:%M')
+
+        start_label = format_time(self.display_start_time)
+        end_label = format_time(self.display_end_time)
+
+        if start_label and end_label:
+            return f"Chaque jour de {start_label} à {end_label}"
+        if start_label:
+            return f"Chaque jour à partir de {start_label}"
+        if end_label:
+            return f"Chaque jour jusqu’à {end_label}"
+        return "Toute la journée"
+
+    def get_display_window_summary(self):
+        return f"{self.get_display_date_range_label()} · {self.get_display_time_range_label()}"
+
     def save(self, *args, **kwargs):
         self.full_clean()
 
@@ -231,7 +401,7 @@ class Article(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.title or "Sans titre"} ({self.client.name})"
+        return f"{self.title or 'Sans titre'} ({self.client.name})"
 
 
 class Song(models.Model):

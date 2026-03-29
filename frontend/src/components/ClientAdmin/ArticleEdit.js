@@ -16,6 +16,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
@@ -29,6 +31,27 @@ const EMPTY_FORM = {
   link: "",
   short_text: "",
   cover_image: "",
+  display_start_date: "",
+  display_end_date: "",
+  display_start_time: "",
+  display_end_time: "",
+};
+
+const EMPTY_INITIAL_STATE = {
+  ...EMPTY_FORM,
+  status: "draft",
+  date_window_enabled: false,
+  time_window_enabled: false,
+};
+
+const EMPTY_META = {
+  status: "draft",
+  created_at: null,
+  updated_at: null,
+  published_at: null,
+  visibility_state: "draft",
+  visibility_state_label: "Brouillon",
+  is_visible_now: false,
 };
 
 function normalizeArticle(data) {
@@ -40,9 +63,16 @@ function normalizeArticle(data) {
     short_text: data.short_text || "",
     cover_image: data.cover_image || "",
     status: data.status || "draft",
+    display_start_date: data.display_start_date || "",
+    display_end_date: data.display_end_date || "",
+    display_start_time: data.display_start_time || "",
+    display_end_time: data.display_end_time || "",
     created_at: data.created_at || null,
     updated_at: data.updated_at || null,
     published_at: data.published_at || null,
+    visibility_state: data.visibility_state || "draft",
+    visibility_state_label: data.visibility_state_label || "Brouillon",
+    is_visible_now: Boolean(data.is_visible_now),
   };
 }
 
@@ -51,6 +81,47 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("fr-FR");
+}
+
+function formatDateFieldValue(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
+function formatTimeFieldValue(value) {
+  if (!value) return null;
+  return String(value).slice(0, 5);
+}
+
+function getDateRangeLabel(startDate, endDate) {
+  const startLabel = formatDateFieldValue(startDate);
+  const endLabel = formatDateFieldValue(endDate);
+
+  if (startLabel && endLabel) return `Du ${startLabel} au ${endLabel}`;
+  if (startLabel) return `À partir du ${startLabel}`;
+  if (endLabel) return `Jusqu’au ${endLabel}`;
+  return "Toujours";
+}
+
+function getTimeRangeLabel(startTime, endTime) {
+  const startLabel = formatTimeFieldValue(startTime);
+  const endLabel = formatTimeFieldValue(endTime);
+
+  if (startLabel && endLabel) return `Chaque jour de ${startLabel} à ${endLabel}`;
+  if (startLabel) return `Chaque jour à partir de ${startLabel}`;
+  if (endLabel) return `Chaque jour jusqu’à ${endLabel}`;
+  return "Toute la journée";
+}
+
+function getVisibilityStateColor(state) {
+  if (state === "visible_now") return "success";
+  if (state === "scheduled") return "info";
+  if (state === "out_of_hours") return "warning";
+  if (state === "expired") return "default";
+  if (state === "archived") return "default";
+  return "default";
 }
 
 function extractErrorMessage(data, fallbackMessage) {
@@ -91,10 +162,7 @@ export default function ArticleEdit() {
   const isCreateMode = !articleId;
 
   const [formValues, setFormValues] = useState(EMPTY_FORM);
-  const [initialValues, setInitialValues] = useState({
-    ...EMPTY_FORM,
-    status: "draft",
-  });
+  const [initialValues, setInitialValues] = useState(EMPTY_INITIAL_STATE);
   const [loading, setLoading] = useState(!isCreateMode);
   const [savingStatus, setSavingStatus] = useState("");
   const [importing, setImporting] = useState(false);
@@ -102,22 +170,32 @@ export default function ArticleEdit() {
   const [pageSuccess, setPageSuccess] = useState("");
   const [imageChoices, setImageChoices] = useState([]);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [meta, setMeta] = useState({
-    status: "draft",
-    created_at: null,
-    updated_at: null,
-    published_at: null,
-  });
+  const [dateWindowEnabled, setDateWindowEnabled] = useState(false);
+  const [timeWindowEnabled, setTimeWindowEnabled] = useState(false);
+  const [meta, setMeta] = useState(EMPTY_META);
 
   const remainingCharacters = useMemo(() => {
     return 300 - (formValues.short_text?.length || 0);
   }, [formValues.short_text]);
 
+  const displayDateSummary = useMemo(() => {
+    return getDateRangeLabel(formValues.display_start_date, formValues.display_end_date);
+  }, [formValues.display_end_date, formValues.display_start_date]);
+
+  const displayTimeSummary = useMemo(() => {
+    return getTimeRangeLabel(formValues.display_start_time, formValues.display_end_time);
+  }, [formValues.display_end_time, formValues.display_start_time]);
+
   const hasUnsavedChanges = useMemo(() => {
-    const current = JSON.stringify({ ...formValues, status: meta.status });
+    const current = JSON.stringify({
+      ...formValues,
+      status: meta.status,
+      date_window_enabled: dateWindowEnabled,
+      time_window_enabled: timeWindowEnabled,
+    });
     const initial = JSON.stringify(initialValues);
     return current !== initial;
-  }, [formValues, initialValues, meta.status]);
+  }, [dateWindowEnabled, formValues, initialValues, meta.status, timeWindowEnabled]);
 
   useEffect(() => {
     const onBeforeUnload = (event) => {
@@ -134,16 +212,10 @@ export default function ArticleEdit() {
     if (isCreateMode) {
       setLoading(false);
       setFormValues(EMPTY_FORM);
-      setInitialValues({
-        ...EMPTY_FORM,
-        status: "draft",
-      });
-      setMeta({
-        status: "draft",
-        created_at: null,
-        updated_at: null,
-        published_at: null,
-      });
+      setInitialValues(EMPTY_INITIAL_STATE);
+      setMeta(EMPTY_META);
+      setDateWindowEnabled(false);
+      setTimeWindowEnabled(false);
       setImageChoices([]);
       setPublishDialogOpen(false);
     }
@@ -179,18 +251,36 @@ export default function ArticleEdit() {
         link: normalized.link,
         short_text: normalized.short_text,
         cover_image: normalized.cover_image,
+        display_start_date: normalized.display_start_date,
+        display_end_date: normalized.display_end_date,
+        display_start_time: normalized.display_start_time,
+        display_end_time: normalized.display_end_time,
       };
+
+      const nextDateWindowEnabled = Boolean(
+        normalized.display_start_date || normalized.display_end_date
+      );
+      const nextTimeWindowEnabled = Boolean(
+        normalized.display_start_time || normalized.display_end_time
+      );
 
       setFormValues(values);
       setInitialValues({
         ...values,
         status: normalized.status,
+        date_window_enabled: nextDateWindowEnabled,
+        time_window_enabled: nextTimeWindowEnabled,
       });
+      setDateWindowEnabled(nextDateWindowEnabled);
+      setTimeWindowEnabled(nextTimeWindowEnabled);
       setMeta({
         status: normalized.status,
         created_at: normalized.created_at,
         updated_at: normalized.updated_at,
         published_at: normalized.published_at,
+        visibility_state: normalized.visibility_state,
+        visibility_state_label: normalized.visibility_state_label,
+        is_visible_now: normalized.is_visible_now,
       });
       setImageChoices(normalized.cover_image ? [normalized.cover_image] : []);
     } catch (error) {
@@ -210,6 +300,30 @@ export default function ArticleEdit() {
       ...prev,
       [field]: field === "short_text" ? value.slice(0, 300) : value,
     }));
+  };
+
+  const handleToggleDateWindow = (event) => {
+    const checked = event.target.checked;
+    setDateWindowEnabled(checked);
+    if (!checked) {
+      setFormValues((prev) => ({
+        ...prev,
+        display_start_date: "",
+        display_end_date: "",
+      }));
+    }
+  };
+
+  const handleToggleTimeWindow = (event) => {
+    const checked = event.target.checked;
+    setTimeWindowEnabled(checked);
+    if (!checked) {
+      setFormValues((prev) => ({
+        ...prev,
+        display_start_time: "",
+        display_end_time: "",
+      }));
+    }
   };
 
   const handleSelectCover = (imageUrl) => {
@@ -234,6 +348,15 @@ export default function ArticleEdit() {
   const validateForm = (targetStatus) => {
     if (formValues.short_text.length > 300) {
       return "Le texte court ne peut pas dépasser 300 caractères.";
+    }
+
+    if (
+      dateWindowEnabled &&
+      formValues.display_start_date &&
+      formValues.display_end_date &&
+      formValues.display_end_date < formValues.display_start_date
+    ) {
+      return "La date de fin d’affichage doit être postérieure ou égale à la date de début.";
     }
 
     if (targetStatus === "published") {
@@ -354,6 +477,18 @@ export default function ArticleEdit() {
           short_text: formValues.short_text.trim(),
           cover_image: formValues.cover_image.trim(),
           status: targetStatus,
+          display_start_date: dateWindowEnabled
+            ? formValues.display_start_date || null
+            : null,
+          display_end_date: dateWindowEnabled
+            ? formValues.display_end_date || null
+            : null,
+          display_start_time: timeWindowEnabled
+            ? formValues.display_start_time || null
+            : null,
+          display_end_time: timeWindowEnabled
+            ? formValues.display_end_time || null
+            : null,
         }),
       });
 
@@ -370,6 +505,11 @@ export default function ArticleEdit() {
         created_at: data?.created_at || null,
         updated_at: data?.updated_at || null,
         published_at: data?.published_at || null,
+        visibility_state: data?.visibility_state || (targetStatus === "published" ? "visible_now" : targetStatus),
+        visibility_state_label:
+          data?.visibility_state_label ||
+          (targetStatus === "published" ? "Visible maintenant" : getStatusLabel(targetStatus)),
+        is_visible_now: Boolean(data?.is_visible_now),
       };
 
       const nextValues = {
@@ -377,20 +517,41 @@ export default function ArticleEdit() {
         link: normalized.link || "",
         short_text: normalized.short_text || "",
         cover_image: normalized.cover_image || "",
+        display_start_date: normalized.display_start_date || "",
+        display_end_date: normalized.display_end_date || "",
+        display_start_time: normalized.display_start_time || "",
+        display_end_time: normalized.display_end_time || "",
       };
 
       const nextStatus = normalized.status || targetStatus;
+      const nextDateWindowEnabled = Boolean(
+        normalized.display_start_date || normalized.display_end_date
+      );
+      const nextTimeWindowEnabled = Boolean(
+        normalized.display_start_time || normalized.display_end_time
+      );
 
       setFormValues(nextValues);
       setInitialValues({
         ...nextValues,
         status: nextStatus,
+        date_window_enabled: nextDateWindowEnabled,
+        time_window_enabled: nextTimeWindowEnabled,
       });
+      setDateWindowEnabled(nextDateWindowEnabled);
+      setTimeWindowEnabled(nextTimeWindowEnabled);
       setMeta({
         status: nextStatus,
         created_at: normalized.created_at || meta.created_at,
         updated_at: normalized.updated_at || meta.updated_at,
         published_at: normalized.published_at || meta.published_at,
+        visibility_state: normalized.visibility_state || meta.visibility_state,
+        visibility_state_label:
+          normalized.visibility_state_label || meta.visibility_state_label,
+        is_visible_now:
+          typeof normalized.is_visible_now === "boolean"
+            ? normalized.is_visible_now
+            : meta.is_visible_now,
       });
       setImageChoices(
         normalized.cover_image
@@ -428,14 +589,53 @@ export default function ArticleEdit() {
   return (
     <>
       <Stack spacing={3}>
-        <Box>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
           <Button
-            onClick={handleBackToArticles}
+            variant="text"
             startIcon={<ArrowBackRoundedIcon />}
+            onClick={handleBackToArticles}
+            sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
           >
             Retour à mes articles
           </Button>
-        </Box>
+
+          {!isCreateMode && formValues.link ? (
+            <Button
+              variant="outlined"
+              component="a"
+              href={formValues.link}
+              target="_blank"
+              rel="noreferrer"
+              startIcon={<LaunchRoundedIcon />}
+            >
+              Ouvrir le lien
+            </Button>
+          ) : null}
+        </Stack>
+
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Stack spacing={1}>
+            <Typography variant="h4">
+              {isCreateMode ? "Nouvel article" : "Modifier l’article"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Article rédigé à la main ou importé depuis une page externe.
+            </Typography>
+          </Stack>
+        </Paper>
 
         {pageError ? <Alert severity="error">{pageError}</Alert> : null}
         {pageSuccess ? <Alert severity="success">{pageSuccess}</Alert> : null}
@@ -449,35 +649,6 @@ export default function ArticleEdit() {
             borderColor: "divider",
           }}
         >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            spacing={2}
-            sx={{ mb: 3 }}
-          >
-            <Box>
-              <Typography variant="h4" gutterBottom>
-                {isCreateMode ? "Nouvel article" : "Modifier l’article"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Article rédigé à la main ou importé depuis une page externe.
-              </Typography>
-            </Box>
-
-            {!isCreateMode && formValues.link ? (
-              <Button
-                component="a"
-                href={formValues.link}
-                target="_blank"
-                rel="noreferrer"
-                variant="outlined"
-                startIcon={<LaunchRoundedIcon />}
-              >
-                Ouvrir le lien
-              </Button>
-            ) : null}
-          </Stack>
-
           <Box component="form" onSubmit={(event) => event.preventDefault()}>
             <Stack spacing={2.5}>
               <Stack
@@ -641,15 +812,127 @@ export default function ArticleEdit() {
 
               <Divider />
 
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="h6">Diffusion</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Les dates et heures sont indépendantes. Chaque plage est optionnelle.
+                    </Typography>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={dateWindowEnabled}
+                          onChange={handleToggleDateWindow}
+                        />
+                      }
+                      label="Limiter par période de dates"
+                    />
+
+                    {dateWindowEnabled ? (
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                        <TextField
+                          label="Date de début"
+                          type="date"
+                          value={formValues.display_start_date}
+                          onChange={handleChange("display_start_date")}
+                          fullWidth
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <TextField
+                          label="Date de fin"
+                          type="date"
+                          value={formValues.display_end_date}
+                          onChange={handleChange("display_end_date")}
+                          fullWidth
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Stack>
+                    ) : null}
+
+                    <Typography variant="body2" color="text.secondary">
+                      {displayDateSummary}
+                    </Typography>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={timeWindowEnabled}
+                          onChange={handleToggleTimeWindow}
+                        />
+                      }
+                      label="Limiter par plage horaire quotidienne"
+                    />
+
+                    {timeWindowEnabled ? (
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                        <TextField
+                          label="Heure de début"
+                          type="time"
+                          value={formValues.display_start_time}
+                          onChange={handleChange("display_start_time")}
+                          fullWidth
+                          InputLabelProps={{ shrink: true }}
+                        />
+                        <TextField
+                          label="Heure de fin"
+                          type="time"
+                          value={formValues.display_end_time}
+                          onChange={handleChange("display_end_time")}
+                          fullWidth
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Stack>
+                    ) : null}
+
+                    <Typography variant="body2" color="text.secondary">
+                      {displayTimeSummary}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Exemple : 22:00 → 02:00 rend l’article visible la nuit, en traversant minuit.
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Paper>
+
+              <Divider />
+
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={1.5}
                 justifyContent="space-between"
                 alignItems={{ xs: "stretch", sm: "center" }}
               >
-                <Stack spacing={0.5}>
+                <Stack spacing={0.75}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">
+                      Statut éditorial : {getStatusLabel(meta.status || "draft")}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={meta.visibility_state_label || "Brouillon"}
+                      color={getVisibilityStateColor(meta.visibility_state)}
+                      variant={meta.visibility_state === "visible_now" ? "filled" : "outlined"}
+                    />
+                  </Stack>
                   <Typography variant="body2" color="text.secondary">
-                    Statut : {getStatusLabel(meta.status || "draft")}
+                    Dates d’affichage : {displayDateSummary}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Heures d’affichage : {displayTimeSummary}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Créé le : {formatDate(meta.created_at)}
