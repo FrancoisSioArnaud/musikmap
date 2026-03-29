@@ -14,7 +14,7 @@ export default function ArticleDrawer({ article, open, onClose }) {
       PaperProps={{ className: "drawer_paper" }}
       className="drawer"
     >
-      <Box className="drawer_content">
+      <Box className="article_drawer_content">
         {article?.cover_image ? (
           <Box
           component="img"
