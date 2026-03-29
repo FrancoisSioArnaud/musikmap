@@ -1,0 +1,29 @@
+.articles_list{
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 26px;
+  padding-bottom: 32px;
+}
+
+.article{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: none;
+  border: var(--mm-border-default);
+  border-radius: 3.2rem;
+  padding: 16px 20px;
+}
+
+.article .linkline{
+  text-decoration: underline;
+}
+
+.article .text{
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
