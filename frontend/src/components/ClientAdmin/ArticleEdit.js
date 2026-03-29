@@ -17,6 +17,9 @@ import Snackbar from "@mui/material/Snackbar";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SaveIcon from "@mui/icons-material/Save";
 import PublicIcon from "@mui/icons-material/Public";
+import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+
+import { getCookie } from "../Security/TokensUtils";
 
 function toInputDate(value) {
   if (!value) return "";
@@ -61,6 +64,7 @@ export default function ArticleEdit() {
 
   const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [pageError, setPageError] = useState("");
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -161,6 +165,61 @@ export default function ArticleEdit() {
       cancelled = true;
     };
   }, [articleId, isCreate]);
+
+  async function handleImportFromSource() {
+    const trimmedLink = (form.source_url || "").trim();
+
+    if (!trimmedLink) {
+      showError("Renseigne un lien source avant d’importer la page.");
+      return;
+    }
+
+    setImporting(true);
+    setPageError("");
+
+    try {
+      const csrftoken = getCookie("csrftoken");
+
+      const res = await fetch("/box-management/client-admin/articles/import-page/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({
+          link: trimmedLink,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const errText =
+          data?.detail ||
+          data?.error ||
+          data?.link?.[0] ||
+          "Impossible d’importer le contenu de cette page.";
+        throw new Error(errText);
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        source_url: data?.resolved_link || trimmedLink,
+        title: data?.title || prev.title,
+        excerpt: data?.short_text || prev.excerpt,
+        cover_url: data?.cover_image || prev.cover_url,
+      }));
+
+      setSnackbarText("Contenu importé.");
+      setSnackbarOpen(true);
+    } catch (err) {
+      showError(err?.message || "Impossible d’importer le contenu de cette page.");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function handleSave(nextStatus = null) {
     setSaving(true);
@@ -278,6 +337,35 @@ export default function ArticleEdit() {
           <Divider />
 
           <Stack spacing={2}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", md: "flex-start" }}
+            >
+              <TextField
+                label="Lien source"
+                value={form.source_url}
+                onChange={(e) => patchForm("source_url", e.target.value)}
+                fullWidth
+              />
+
+              <Button
+                variant="outlined"
+                onClick={handleImportFromSource}
+                disabled={saving || importing}
+                startIcon={
+                  importing ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <DownloadForOfflineRoundedIcon />
+                  )
+                }
+                sx={{ minWidth: { xs: "100%", md: 180 }, whiteSpace: "nowrap" }}
+              >
+                {importing ? "Import..." : "Importer la page"}
+              </Button>
+            </Stack>
+
             <TextField
               label="Titre"
               value={form.title}
@@ -309,13 +397,6 @@ export default function ArticleEdit() {
               label="Image de couverture"
               value={form.cover_url}
               onChange={(e) => patchForm("cover_url", e.target.value)}
-              fullWidth
-            />
-
-            <TextField
-              label="Lien source"
-              value={form.source_url}
-              onChange={(e) => patchForm("source_url", e.target.value)}
               fullWidth
             />
 
@@ -477,7 +558,7 @@ export default function ArticleEdit() {
             <Button
               variant="outlined"
               onClick={() => navigate("/client/articles")}
-              disabled={saving}
+              disabled={saving || importing}
             >
               Annuler
             </Button>
@@ -486,7 +567,7 @@ export default function ArticleEdit() {
               variant="outlined"
               startIcon={<SaveIcon />}
               onClick={() => handleSave("draft")}
-              disabled={saving}
+              disabled={saving || importing}
             >
               Enregistrer en brouillon
             </Button>
@@ -495,7 +576,7 @@ export default function ArticleEdit() {
               variant="contained"
               startIcon={<PublicIcon />}
               onClick={() => handleSave("published")}
-              disabled={saving}
+              disabled={saving || importing}
             >
               Publier
             </Button>
