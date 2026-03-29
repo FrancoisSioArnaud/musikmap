@@ -11,12 +11,18 @@ import Switch from "@mui/material/Switch";
 import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import MenuItem from "@mui/material/MenuItem";
 import Snackbar from "@mui/material/Snackbar";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
+import Chip from "@mui/material/Chip";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SaveIcon from "@mui/icons-material/Save";
 import PublicIcon from "@mui/icons-material/Public";
+import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
 import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
 
 import { getCookie } from "../Security/TokensUtils";
@@ -33,27 +39,57 @@ function toInputTime(value) {
 
 function buildWindowSummary(form) {
   const hasDate =
-    !!form.display_date_start || !!form.display_date_end;
+    !!form.display_start_date || !!form.display_end_date;
   const hasTime =
-    !!form.display_time_start || !!form.display_time_end;
+    !!form.display_start_time || !!form.display_end_time;
 
   if (!hasDate && !hasTime) return "Aucune restriction d’affichage";
 
   const parts = [];
 
   if (hasDate) {
-    const start = form.display_date_start || "début";
-    const end = form.display_date_end || "sans fin";
+    const start = form.display_start_date || "début";
+    const end = form.display_end_date || "sans fin";
     parts.push(`Dates : ${start} → ${end}`);
   }
 
   if (hasTime) {
-    const start = form.display_time_start || "00:00";
-    const end = form.display_time_end || "23:59";
+    const start = form.display_start_time || "00:00";
+    const end = form.display_end_time || "23:59";
     parts.push(`Heures : ${start} → ${end}`);
   }
 
   return parts.join(" • ");
+}
+
+function getStatusLabel(status) {
+  if (status === "published") return "Publié";
+  if (status === "archived") return "Archivé";
+  return "Brouillon";
+}
+
+function extractErrorMessage(data, fallback) {
+  if (!data || typeof data !== "object") return fallback;
+
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail.trim();
+  }
+
+  if (typeof data.error === "string" && data.error.trim()) {
+    return data.error.trim();
+  }
+
+  const values = Object.values(data);
+  for (const value of values) {
+    if (Array.isArray(value) && value.length > 0) {
+      return String(value[0]);
+    }
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return fallback;
 }
 
 export default function ArticleEdit() {
@@ -70,26 +106,29 @@ export default function ArticleEdit() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarText, setSnackbarText] = useState("");
 
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishedArticleId, setPublishedArticleId] = useState(null);
+
   const [form, setForm] = useState({
     title: "",
-    excerpt: "",
-    content: "",
+    link: "",
+    short_text: "",
+    cover_image: "",
     status: "draft",
-    cover_url: "",
-    source_url: "",
-    display_date_start: "",
-    display_date_end: "",
-    display_time_start: "",
-    display_time_end: "",
+    display_start_date: "",
+    display_end_date: "",
+    display_start_time: "",
+    display_end_time: "",
   });
 
+  const [imageChoices, setImageChoices] = useState([]);
   const [useDateRange, setUseDateRange] = useState(false);
   const [useTimeRange, setUseTimeRange] = useState(false);
 
   const displaySummary = useMemo(() => buildWindowSummary(form), [form]);
 
-  function showError(message) {
-    setSnackbarText(message || "Une erreur est survenue.");
+  function showSnackbar(message) {
+    setSnackbarText(message || "");
     setSnackbarOpen(true);
   }
 
@@ -107,49 +146,47 @@ export default function ArticleEdit() {
         setLoading(true);
         setPageError("");
 
-        const res = await fetch(`/box-management/client-admin/articles/${articleId}/`, {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            Accept: "application/json",
-          },
-        });
+        const res = await fetch(
+          `/box-management/client-admin/articles/${articleId}/`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        const data = await res.json().catch(() => null);
 
         if (!res.ok) {
-          let errText = "Impossible de charger l’article.";
-          try {
-            const errData = await res.json();
-            errText =
-              errData?.detail ||
-              errData?.error ||
-              errText;
-          } catch {}
-          throw new Error(errText);
+          throw new Error(
+            extractErrorMessage(data, "Impossible de charger l’article.")
+          );
         }
 
-        const data = await res.json();
         if (cancelled) return;
 
         const nextForm = {
           title: data?.title || "",
-          excerpt: data?.excerpt || "",
-          content: data?.content || "",
+          link: data?.link || "",
+          short_text: data?.short_text || "",
+          cover_image: data?.cover_image || "",
           status: data?.status || "draft",
-          cover_url: data?.cover_url || "",
-          source_url: data?.source_url || "",
-          display_date_start: toInputDate(data?.display_date_start),
-          display_date_end: toInputDate(data?.display_date_end),
-          display_time_start: toInputTime(data?.display_time_start),
-          display_time_end: toInputTime(data?.display_time_end),
+          display_start_date: toInputDate(data?.display_start_date),
+          display_end_date: toInputDate(data?.display_end_date),
+          display_start_time: toInputTime(data?.display_start_time),
+          display_end_time: toInputTime(data?.display_end_time),
         };
 
         setForm(nextForm);
         setUseDateRange(
-          !!nextForm.display_date_start || !!nextForm.display_date_end
+          !!nextForm.display_start_date || !!nextForm.display_end_date
         );
         setUseTimeRange(
-          !!nextForm.display_time_start || !!nextForm.display_time_end
+          !!nextForm.display_start_time || !!nextForm.display_end_time
         );
+        setImageChoices(nextForm.cover_image ? [nextForm.cover_image] : []);
       } catch (err) {
         if (!cancelled) {
           setPageError(err?.message || "Impossible de charger l’article.");
@@ -166,12 +203,24 @@ export default function ArticleEdit() {
     };
   }, [articleId, isCreate]);
 
-  async function handleImportFromSource() {
-    const trimmedLink = (form.source_url || "").trim();
+  async function handleImportFromLink() {
+    const trimmedLink = (form.link || "").trim();
 
     if (!trimmedLink) {
-      showError("Renseigne un lien source avant d’importer la page.");
+      showSnackbar("Renseigne un lien externe avant d’importer la page.");
       return;
+    }
+
+    const willOverwrite =
+      !!form.title.trim() ||
+      !!form.short_text.trim() ||
+      !!form.cover_image.trim();
+
+    if (willOverwrite) {
+      const confirmed = window.confirm(
+        "L’import va remplacer le titre, le texte court et l’image de couverture actuels. Continuer ?"
+      );
+      if (!confirmed) return;
     }
 
     setImporting(true);
@@ -180,59 +229,92 @@ export default function ArticleEdit() {
     try {
       const csrftoken = getCookie("csrftoken");
 
-      const res = await fetch("/box-management/client-admin/articles/import-page/", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-CSRFToken": csrftoken,
-        },
-        body: JSON.stringify({
-          link: trimmedLink,
-        }),
-      });
+      const res = await fetch(
+        "/box-management/client-admin/articles/import-page/",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+          body: JSON.stringify({
+            link: trimmedLink,
+          }),
+        }
+      );
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const errText =
-          data?.detail ||
-          data?.error ||
-          data?.link?.[0] ||
-          "Impossible d’importer le contenu de cette page.";
-        throw new Error(errText);
+        throw new Error(
+          extractErrorMessage(
+            data,
+            "Impossible d’importer le contenu de cette page."
+          )
+        );
       }
+
+      const nextImages = Array.isArray(data?.cover_images)
+        ? data.cover_images.filter(Boolean).slice(0, 3)
+        : [];
+
+      setImageChoices(nextImages);
 
       setForm((prev) => ({
         ...prev,
-        source_url: data?.resolved_link || trimmedLink,
-        title: data?.title || prev.title,
-        excerpt: data?.short_text || prev.excerpt,
-        cover_url: data?.cover_image || prev.cover_url,
+        link: data?.resolved_link || trimmedLink,
+        title: data?.title || "",
+        short_text: data?.short_text || "",
+        cover_image: data?.cover_image || "",
       }));
 
-      setSnackbarText("Contenu importé.");
-      setSnackbarOpen(true);
+      if (!data?.title && !data?.short_text && nextImages.length === 0) {
+        showSnackbar(
+          "Import terminé, mais la page ne contient pas de métadonnées exploitables."
+        );
+      } else if (nextImages.length > 1) {
+        showSnackbar(
+          "Import terminé. Choisis l’image à conserver parmi les propositions."
+        );
+      } else {
+        showSnackbar("Contenu importé.");
+      }
     } catch (err) {
-      showError(err?.message || "Impossible d’importer le contenu de cette page.");
+      showSnackbar(
+        err?.message || "Impossible d’importer le contenu de cette page."
+      );
     } finally {
       setImporting(false);
     }
   }
 
-  async function handleSave(nextStatus = null) {
+  async function handleSave(nextStatus) {
     setSaving(true);
     setPageError("");
 
     try {
+      const csrftoken = getCookie("csrftoken");
+
       const payload = {
-        ...form,
-        status: nextStatus || form.status,
-        display_date_start: useDateRange ? form.display_date_start || null : null,
-        display_date_end: useDateRange ? form.display_date_end || null : null,
-        display_time_start: useTimeRange ? form.display_time_start || null : null,
-        display_time_end: useTimeRange ? form.display_time_end || null : null,
+        title: form.title,
+        link: form.link,
+        short_text: form.short_text,
+        cover_image: form.cover_image,
+        status: nextStatus,
+        display_start_date: useDateRange
+          ? form.display_start_date || null
+          : null,
+        display_end_date: useDateRange
+          ? form.display_end_date || null
+          : null,
+        display_start_time: useTimeRange
+          ? form.display_start_time || null
+          : null,
+        display_end_time: useTimeRange
+          ? form.display_end_time || null
+          : null,
       };
 
       const method = isCreate ? "POST" : "PATCH";
@@ -246,6 +328,7 @@ export default function ArticleEdit() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-CSRFToken": csrftoken,
         },
         body: JSON.stringify(payload),
       });
@@ -253,46 +336,79 @@ export default function ArticleEdit() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        if (data && typeof data === "object") {
-          const firstError =
-            data.detail ||
-            data.error ||
-            Object.values(data)?.flat?.()?.[0] ||
-            Object.values(data)?.[0];
-          throw new Error(
-            typeof firstError === "string"
-              ? firstError
-              : "Impossible d’enregistrer l’article."
-          );
-        }
-        throw new Error("Impossible d’enregistrer l’article.");
+        throw new Error(
+          extractErrorMessage(data, "Impossible d’enregistrer l’article.")
+        );
       }
 
-      const savedId = data?.id || articleId;
+      const savedId = data?.id || articleId || null;
 
-      if ((nextStatus || form.status) === "published") {
-        navigate("/client/articles", {
-          state: {
-            publishSuccess: true,
-            articleId: savedId,
-          },
-        });
+      const nextForm = {
+        title: data?.title || "",
+        link: data?.link || "",
+        short_text: data?.short_text || "",
+        cover_image: data?.cover_image || "",
+        status: data?.status || nextStatus || "draft",
+        display_start_date: toInputDate(data?.display_start_date),
+        display_end_date: toInputDate(data?.display_end_date),
+        display_start_time: toInputTime(data?.display_start_time),
+        display_end_time: toInputTime(data?.display_end_time),
+      };
+
+      setForm(nextForm);
+      setUseDateRange(
+        !!nextForm.display_start_date || !!nextForm.display_end_date
+      );
+      setUseTimeRange(
+        !!nextForm.display_start_time || !!nextForm.display_end_time
+      );
+
+      setImageChoices((prev) => {
+        const merged = [
+          nextForm.cover_image,
+          ...(Array.isArray(prev) ? prev : []),
+        ].filter(Boolean);
+        return [...new Set(merged)].slice(0, 3);
+      });
+
+      if (nextStatus === "published") {
+        setPublishedArticleId(savedId);
+        setPublishDialogOpen(true);
         return;
       }
 
       if (isCreate && savedId) {
-        navigate(`/client/articles/${savedId}`, {
-          replace: true,
-        });
+        navigate(`/client/articles/${savedId}`, { replace: true });
+        return;
+      }
+
+      if (nextStatus === "archived") {
+        showSnackbar("Article archivé.");
       } else {
-        setSnackbarText("Article enregistré.");
-        setSnackbarOpen(true);
+        showSnackbar("Article enregistré.");
       }
     } catch (err) {
-      showError(err?.message || "Impossible d’enregistrer l’article.");
+      showSnackbar(err?.message || "Impossible d’enregistrer l’article.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleClosePublishDialog() {
+    setPublishDialogOpen(false);
+  }
+
+  function handleModifyAfterPublish() {
+    setPublishDialogOpen(false);
+
+    if (isCreate && publishedArticleId) {
+      navigate(`/client/articles/${publishedArticleId}`, { replace: true });
+    }
+  }
+
+  function handleBackToArticlesAfterPublish() {
+    setPublishDialogOpen(false);
+    navigate("/client/articles");
   }
 
   if (loading) {
@@ -330,7 +446,7 @@ export default function ArticleEdit() {
               {isCreate ? "Nouvel article" : "Modifier l’article"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Rédige ton contenu et définis, si besoin, une fenêtre d’affichage.
+              Crée un article manuellement ou importe les informations depuis un lien externe.
             </Typography>
           </Box>
 
@@ -343,15 +459,15 @@ export default function ArticleEdit() {
               alignItems={{ xs: "stretch", md: "flex-start" }}
             >
               <TextField
-                label="Lien source"
-                value={form.source_url}
-                onChange={(e) => patchForm("source_url", e.target.value)}
+                label="Lien externe"
+                value={form.link}
+                onChange={(e) => patchForm("link", e.target.value)}
                 fullWidth
               />
 
               <Button
                 variant="outlined"
-                onClick={handleImportFromSource}
+                onClick={handleImportFromLink}
                 disabled={saving || importing}
                 startIcon={
                   importing ? (
@@ -371,46 +487,123 @@ export default function ArticleEdit() {
               value={form.title}
               onChange={(e) => patchForm("title", e.target.value)}
               fullWidth
-              required
             />
 
             <TextField
-              label="Extrait"
-              value={form.excerpt}
-              onChange={(e) => patchForm("excerpt", e.target.value)}
+              label="Texte court"
+              value={form.short_text}
+              onChange={(e) =>
+                patchForm("short_text", e.target.value.slice(0, 300))
+              }
               fullWidth
               multiline
-              minRows={2}
-            />
-
-            <TextField
-              label="Contenu"
-              value={form.content}
-              onChange={(e) => patchForm("content", e.target.value)}
-              fullWidth
-              multiline
-              minRows={10}
-              required
+              minRows={3}
+              helperText={`${form.short_text.length}/300 caractères`}
             />
 
             <TextField
               label="Image de couverture"
-              value={form.cover_url}
-              onChange={(e) => patchForm("cover_url", e.target.value)}
+              value={form.cover_image}
+              onChange={(e) => patchForm("cover_image", e.target.value)}
               fullWidth
             />
 
-            <TextField
-              select
-              label="Statut"
-              value={form.status}
-              onChange={(e) => patchForm("status", e.target.value)}
-              fullWidth
-            >
-              <MenuItem value="draft">Brouillon</MenuItem>
-              <MenuItem value="published">Publié</MenuItem>
-              <MenuItem value="archived">Archivé</MenuItem>
-            </TextField>
+            {imageChoices.length > 1 ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Choisir l’image de couverture
+                  </Typography>
+
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={1.5}
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
+                    {imageChoices.map((imageUrl) => {
+                      const isSelected = imageUrl === form.cover_image;
+
+                      return (
+                        <Paper
+                          key={imageUrl}
+                          variant="outlined"
+                          sx={{
+                            p: 1,
+                            width: { xs: "100%", md: 220 },
+                            borderColor: isSelected ? "primary.main" : "divider",
+                          }}
+                        >
+                          <Stack spacing={1}>
+                            <Box
+                              component="img"
+                              src={imageUrl}
+                              alt="cover candidate"
+                              sx={{
+                                width: "100%",
+                                height: 120,
+                                objectFit: "cover",
+                                borderRadius: 1,
+                                bgcolor: "grey.100",
+                              }}
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+
+                            <Button
+                              size="small"
+                              variant={isSelected ? "contained" : "outlined"}
+                              onClick={() => patchForm("cover_image", imageUrl)}
+                            >
+                              {isSelected
+                                ? "Image sélectionnée"
+                                : "Utiliser cette image"}
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+              </Paper>
+            ) : null}
+
+            {form.cover_image ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      Aperçu de l’image
+                    </Typography>
+                    {imageChoices.length > 1 ? (
+                      <Chip size="small" label="modifiable" />
+                    ) : null}
+                  </Stack>
+
+                  <Box
+                    component="img"
+                    src={form.cover_image}
+                    alt={form.title || "cover preview"}
+                    sx={{
+                      width: "100%",
+                      maxWidth: 520,
+                      height: "auto",
+                      borderRadius: 1,
+                      display: "block",
+                      bgcolor: "grey.100",
+                    }}
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                </Stack>
+              </Paper>
+            ) : null}
+
+            <Alert severity="info">
+              Statut actuel : {getStatusLabel(form.status)}
+            </Alert>
           </Stack>
 
           <Divider />
@@ -442,8 +635,8 @@ export default function ArticleEdit() {
                       if (!checked) {
                         setForm((prev) => ({
                           ...prev,
-                          display_date_start: "",
-                          display_date_end: "",
+                          display_start_date: "",
+                          display_end_date: "",
                         }));
                       }
                     }}
@@ -454,16 +647,13 @@ export default function ArticleEdit() {
                 </Box>
 
                 {useDateRange ? (
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
-                  >
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                     <TextField
                       label="Date de début"
                       type="date"
-                      value={form.display_date_start}
+                      value={form.display_start_date}
                       onChange={(e) =>
-                        patchForm("display_date_start", e.target.value)
+                        patchForm("display_start_date", e.target.value)
                       }
                       InputLabelProps={{ shrink: true }}
                       fullWidth
@@ -471,9 +661,9 @@ export default function ArticleEdit() {
                     <TextField
                       label="Date de fin"
                       type="date"
-                      value={form.display_date_end}
+                      value={form.display_end_date}
                       onChange={(e) =>
-                        patchForm("display_date_end", e.target.value)
+                        patchForm("display_end_date", e.target.value)
                       }
                       InputLabelProps={{ shrink: true }}
                       fullWidth
@@ -500,8 +690,8 @@ export default function ArticleEdit() {
                       if (!checked) {
                         setForm((prev) => ({
                           ...prev,
-                          display_time_start: "",
-                          display_time_end: "",
+                          display_start_time: "",
+                          display_end_time: "",
                         }));
                       }
                     }}
@@ -512,16 +702,13 @@ export default function ArticleEdit() {
                 </Box>
 
                 {useTimeRange ? (
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
-                  >
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                     <TextField
                       label="Heure de début"
                       type="time"
-                      value={form.display_time_start}
+                      value={form.display_start_time}
                       onChange={(e) =>
-                        patchForm("display_time_start", e.target.value)
+                        patchForm("display_start_time", e.target.value)
                       }
                       InputLabelProps={{ shrink: true }}
                       inputProps={{ step: 60 }}
@@ -530,9 +717,9 @@ export default function ArticleEdit() {
                     <TextField
                       label="Heure de fin"
                       type="time"
-                      value={form.display_time_end}
+                      value={form.display_end_time}
                       onChange={(e) =>
-                        patchForm("display_time_end", e.target.value)
+                        patchForm("display_end_time", e.target.value)
                       }
                       InputLabelProps={{ shrink: true }}
                       inputProps={{ step: 60 }}
@@ -543,9 +730,7 @@ export default function ArticleEdit() {
               </Stack>
             </Paper>
 
-            <Alert severity="info">
-              {displaySummary}
-            </Alert>
+            <Alert severity="info">{displaySummary}</Alert>
           </Stack>
 
           <Divider />
@@ -563,13 +748,25 @@ export default function ArticleEdit() {
               Annuler
             </Button>
 
+            {!isCreate ? (
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<ArchiveRoundedIcon />}
+                onClick={() => handleSave("archived")}
+                disabled={saving || importing}
+              >
+                Archiver
+              </Button>
+            ) : null}
+
             <Button
               variant="outlined"
               startIcon={<SaveIcon />}
               onClick={() => handleSave("draft")}
               disabled={saving || importing}
             >
-              Enregistrer en brouillon
+              Enregistrer comme brouillon
             </Button>
 
             <Button
@@ -583,6 +780,31 @@ export default function ArticleEdit() {
           </Stack>
         </Stack>
       </Paper>
+
+      <Dialog
+        open={publishDialogOpen}
+        onClose={handleClosePublishDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Article publié !</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Ton article a bien été publié.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleModifyAfterPublish}>
+            Modifier
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleBackToArticlesAfterPublish}
+          >
+            Retour à mes articles
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbarOpen}
