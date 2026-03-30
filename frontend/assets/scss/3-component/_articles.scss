@@ -1,6 +1,6 @@
 .articles_section{
   background-color: var(--mm-color-secondary-light);
-  padding: 0 0 32px 0;
+  padding: 32px 0;
   margin-top: 66px;
 }
 
@@ -26,6 +26,7 @@
   flex: 0 0 75vw;
   min-width: 75vw;
   scroll-snap-align: start;
+  background-color: var(--mm-color-surface);
 }
 
 .article .content{
