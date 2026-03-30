@@ -42,7 +42,7 @@ color : var(--mm-color-secondary);
   gap: 4px;
   box-shadow: none;
   border: var(--mm-border-default);
-  border-radius: 3.2rem;
+  border-radius: 2;
 }
 .deposit_main{
 
@@ -122,7 +122,7 @@ color : var(--mm-color-secondary);
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+  box-shadow: 0 .4rem 0.6rem rgba(0, 0, 0, .15);
 }
 
 .img_container img {
@@ -211,7 +211,7 @@ color : var(--mm-color-secondary);
   -webkit-box-align: center;
   align-items: center;
   gap: 6px;
-  border-radius: 1rem;
+  border-radius: 0.6rem;
   padding: 2px 8px 2px 8px;
 }
 
@@ -220,7 +220,7 @@ color : var(--mm-color-secondary);
 }
 .deposit_react .icon_container{
   background-color : var(--mm-color-primary);
-  border-radius: 1rem;
+  border-radius: 0.6rem;
 }
 
 .deposit_react .icon_container svg{
