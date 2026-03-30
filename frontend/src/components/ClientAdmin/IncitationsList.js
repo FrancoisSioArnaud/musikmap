@@ -695,15 +695,6 @@ export default function IncitationsList() {
     }
   }, [fetchItems, itemToDelete]);
 
-  const periodSummary = useMemo(() => {
-    if (!editorForm.start_date || !editorForm.end_date) {
-      return "Choisis une date de début puis une date de fin.";
-    }
-    return `Du ${formatDateLabel(editorForm.start_date)} au ${formatDateLabel(
-      editorForm.end_date
-    )} inclus.`;
-  }, [editorForm.end_date, editorForm.start_date]);
-
   return (
     <Stack spacing={3}>
       <Paper
@@ -943,11 +934,6 @@ export default function IncitationsList() {
             </Box>
           ) : (
             <Stack spacing={2.5}>
-              <Alert severity="info">
-                {editorMode === "create"
-                  ? "La période a déjà été choisie dans le calendrier. Renseigne maintenant le texte, puis enregistre."
-                  : "Clique sur la date de début ou de fin pour rouvrir le calendrier et choisir une nouvelle plage."}
-              </Alert>
 
               <TextField
                 label="Phrase d’incitation"
@@ -1002,10 +988,6 @@ export default function IncitationsList() {
                       Fin : {formatDateLabel(editorForm.end_date)}
                     </Button>
                   </Stack>
-
-                  <Typography variant="body2" color="text.secondary">
-                    {periodSummary}
-                  </Typography>
 
                   {calendarExpanded ? (
                     <>
