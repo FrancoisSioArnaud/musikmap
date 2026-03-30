@@ -25,8 +25,8 @@ from api_aggregation.views import ApiAggregation
 from users.models import CustomUser
 from .models import (
     Article,
-    Box,
     IncitationPhrase,
+    Box,
     Deposit,
     DiscoveredSong,
     Emoji,
@@ -62,11 +62,11 @@ from .utils import (
     _looks_like_noise_text,
     _pick_best_short_text,
     _extract_import_preview_from_url,
-    DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT,
-    _coerce_bool,
     _get_active_incitation_for_box,
-    _get_incitation_overlap_queryset,
     _build_incitation_overlap_counts,
+    _get_incitation_overlap_queryset,
+    _coerce_bool,
+    DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT,
 )
 
 # Barèmes & coûts (importés depuis ton module utils global)
@@ -1135,6 +1135,176 @@ class ClientAdminArticleDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# ==========================================================
+# EMOJIS & REACTIONS
+# ==========================================================
+class EmojiCatalogView(APIView):
+    """
+    GET /box-management/emojis/catalog
+    ?dep_public_key=<str> (optionnel) pour retourner aussi la réaction courante
+    """
+    permission_classes = []
+
+    def get(self, request):
+        dep_public_key = request.GET.get("dep_public_key")
+        actives_paid = list(
+            Emoji.objects.filter(active=True).order_by("cost", "char")
+        )
+
+        owned_ids = []
+        current_reaction = None
+
+        if request.user.is_authenticated:
+            owned_ids = list(
+                EmojiRight.objects.filter(user=request.user, emoji__active=True)
+                .values_list("emoji_id", flat=True)
+            )
+
+            if dep_public_key:
+                r = (
+                    Reaction.objects.filter(
+                        user=request.user,
+                        deposit__public_key=dep_public_key,
+                    )
+                    .select_related("emoji")
+                    .first()
+                )
+                if r and r.emoji:
+                    current_reaction = {"emoji": r.emoji.char, "id": r.emoji.id}
+
+        data = {
+            "actives_paid": EmojiSerializer(actives_paid, many=True).data,
+            "owned_ids": owned_ids,
+            "current_reaction": current_reaction,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class PurchaseEmojiView(APIView):
+    """
+    POST /box-management/emojis/purchase
+    Body: { "emoji_id": <int> }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        emoji_id = request.data.get("emoji_id")
+        if not emoji_id:
+            return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        emoji = Emoji.objects.filter(id=emoji_id).first()
+        if not emoji or not emoji.active:
+            return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
+        if emoji.cost == 0:
+            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
+
+        if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
+            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
+
+        cost = int(emoji.cost or 0)
+        request.user.refresh_from_db(fields=["points"])
+        if getattr(request.user, "points", 0) < cost:
+            return Response(
+                {"error": "insufficient_funds", "message": "Crédits insuffisants"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        csrf_token = get_token(request)
+        origin = request.build_absolute_uri("/")
+        headers_bg = {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token,
+            "Referer": origin,
+            "Origin": origin.rstrip("/"),
+        }
+        r = requests.post(
+            request.build_absolute_uri(reverse("add-points")),
+            cookies=request.COOKIES,
+            headers=headers_bg,
+            data=json.dumps({"points": -cost}),
+            timeout=4,
+        )
+        if not r.ok:
+            return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        EmojiRight.objects.create(user=request.user, emoji=emoji)
+        request.user.refresh_from_db(fields=["points"])
+        return Response(
+            {"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ReactionView(APIView):
+    """
+    POST /box-management/reactions
+    Body: { "dep_public_key": "<str>", "emoji_id": <int|null|"none"> }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        dep_public_key = request.data.get("dep_public_key")
+        emoji_id = request.data.get("emoji_id")
+
+        if not dep_public_key:
+            return Response(
+                {"detail": "dep_public_key manquant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        deposit = Deposit.objects.filter(public_key=dep_public_key).first()
+        if not deposit:
+            return Response(
+                {"detail": "Dépôt introuvable"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if emoji_id in (None, "", 0, "none"):
+            Reaction.objects.filter(user=request.user, deposit=deposit).delete()
+            summary = _reactions_summary_for_deposits([deposit.id]).get(
+                deposit.id, []
+            )
+            return Response(
+                {"my_reaction": None, "reactions_summary": summary},
+                status=status.HTTP_200_OK,
+            )
+
+        emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
+        if not emoji:
+            return Response(
+                {"detail": "Emoji invalide"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not emoji.cost == 0:
+            has_right = EmojiRight.objects.filter(
+                user=request.user, emoji=emoji
+            ).exists()
+            if not has_right:
+                return Response(
+                    {"error": "forbidden", "message": "Emoji non débloqué"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        obj, created = Reaction.objects.get_or_create(
+            user=request.user,
+            deposit=deposit,
+            defaults={"emoji": emoji},
+        )
+        if not created and obj.emoji_id != emoji.id:
+            obj.emoji = emoji
+            obj.save(update_fields=["emoji", "updated_at"])
+
+        summary = _reactions_summary_for_deposits([deposit.id]).get(
+            deposit.id, []
+        )
+        my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
+        return Response(
+            {"my_reaction": my, "reactions_summary": summary},
+            status=status.HTTP_200_OK,
+        )
+
+
 class ClientAdminIncitationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1311,173 +1481,3 @@ class ClientAdminIncitationDetailView(APIView):
 
         phrase.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# ==========================================================
-# EMOJIS & REACTIONS
-# ==========================================================
-class EmojiCatalogView(APIView):
-    """
-    GET /box-management/emojis/catalog
-    ?dep_public_key=<str> (optionnel) pour retourner aussi la réaction courante
-    """
-    permission_classes = []
-
-    def get(self, request):
-        dep_public_key = request.GET.get("dep_public_key")
-        actives_paid = list(
-            Emoji.objects.filter(active=True).order_by("cost", "char")
-        )
-
-        owned_ids = []
-        current_reaction = None
-
-        if request.user.is_authenticated:
-            owned_ids = list(
-                EmojiRight.objects.filter(user=request.user, emoji__active=True)
-                .values_list("emoji_id", flat=True)
-            )
-
-            if dep_public_key:
-                r = (
-                    Reaction.objects.filter(
-                        user=request.user,
-                        deposit__public_key=dep_public_key,
-                    )
-                    .select_related("emoji")
-                    .first()
-                )
-                if r and r.emoji:
-                    current_reaction = {"emoji": r.emoji.char, "id": r.emoji.id}
-
-        data = {
-            "actives_paid": EmojiSerializer(actives_paid, many=True).data,
-            "owned_ids": owned_ids,
-            "current_reaction": current_reaction,
-        }
-        return Response(data, status=status.HTTP_200_OK)
-
-
-class PurchaseEmojiView(APIView):
-    """
-    POST /box-management/emojis/purchase
-    Body: { "emoji_id": <int> }
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        emoji_id = request.data.get("emoji_id")
-        if not emoji_id:
-            return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
-
-        emoji = Emoji.objects.filter(id=emoji_id).first()
-        if not emoji or not emoji.active:
-            return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
-        if emoji.cost == 0:
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
-
-        if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
-
-        cost = int(emoji.cost or 0)
-        request.user.refresh_from_db(fields=["points"])
-        if getattr(request.user, "points", 0) < cost:
-            return Response(
-                {"error": "insufficient_funds", "message": "Crédits insuffisants"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")
-        headers_bg = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token,
-            "Referer": origin,
-            "Origin": origin.rstrip("/"),
-        }
-        r = requests.post(
-            request.build_absolute_uri(reverse("add-points")),
-            cookies=request.COOKIES,
-            headers=headers_bg,
-            data=json.dumps({"points": -cost}),
-            timeout=4,
-        )
-        if not r.ok:
-            return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
-
-        EmojiRight.objects.create(user=request.user, emoji=emoji)
-        request.user.refresh_from_db(fields=["points"])
-        return Response(
-            {"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)},
-            status=status.HTTP_200_OK,
-        )
-
-
-class ReactionView(APIView):
-    """
-    POST /box-management/reactions
-    Body: { "dep_public_key": "<str>", "emoji_id": <int|null|"none"> }
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        dep_public_key = request.data.get("dep_public_key")
-        emoji_id = request.data.get("emoji_id")
-
-        if not dep_public_key:
-            return Response(
-                {"detail": "dep_public_key manquant"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        deposit = Deposit.objects.filter(public_key=dep_public_key).first()
-        if not deposit:
-            return Response(
-                {"detail": "Dépôt introuvable"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if emoji_id in (None, "", 0, "none"):
-            Reaction.objects.filter(user=request.user, deposit=deposit).delete()
-            summary = _reactions_summary_for_deposits([deposit.id]).get(
-                deposit.id, []
-            )
-            return Response(
-                {"my_reaction": None, "reactions_summary": summary},
-                status=status.HTTP_200_OK,
-            )
-
-        emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
-        if not emoji:
-            return Response(
-                {"detail": "Emoji invalide"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if not emoji.cost == 0:
-            has_right = EmojiRight.objects.filter(
-                user=request.user, emoji=emoji
-            ).exists()
-            if not has_right:
-                return Response(
-                    {"error": "forbidden", "message": "Emoji non débloqué"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-        obj, created = Reaction.objects.get_or_create(
-            user=request.user,
-            deposit=deposit,
-            defaults={"emoji": emoji},
-        )
-        if not created and obj.emoji_id != emoji.id:
-            obj.emoji = emoji
-            obj.save(update_fields=["emoji", "updated_at"])
-
-        summary = _reactions_summary_for_deposits([deposit.id]).get(
-            deposit.id, []
-        )
-        my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
-        return Response(
-            {"my_reaction": my, "reactions_summary": summary},
-            status=status.HTTP_200_OK,
-        )

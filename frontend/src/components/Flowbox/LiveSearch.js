@@ -347,29 +347,6 @@ export default function LiveSearch({
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
-
-          <Paper
-            variant="outlined"
-            sx={{
-              px: 1.5,
-              py: 1.25,
-              borderRadius: 2.5,
-              bgcolor: "background.default",
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 600, textAlign: "left" }}
-            >
-              {incitationText}
-            </Typography>
-            {incitationLoading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
-                <CircularProgress size={16} />
-              </Box>
-            ) : null}
-          </Paper>
-
         </Stack>
       </Paper>
 

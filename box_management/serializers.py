@@ -3,7 +3,6 @@ from .models import (
     Article,
     Box,
     Client,
-    IncitationPhrase,
     Song,
     Deposit,
     LocationPoint,
@@ -11,6 +10,7 @@ from .models import (
     Emoji,
     EmojiRight,
     Reaction,
+    IncitationPhrase,
 )
 
 
@@ -183,117 +183,6 @@ class PublicVisibleArticleDetailSerializer(serializers.ModelSerializer):
             "published_at",
         ]
         read_only_fields = fields
-
-
-class ClientAdminIncitationSerializer(serializers.ModelSerializer):
-    client_name = serializers.SerializerMethodField()
-    client_slug = serializers.SerializerMethodField()
-    period_label = serializers.SerializerMethodField()
-    overlap_count = serializers.SerializerMethodField()
-    has_overlap_warning = serializers.SerializerMethodField()
-    is_active_now = serializers.SerializerMethodField()
-    is_future = serializers.SerializerMethodField()
-    is_past = serializers.SerializerMethodField()
-
-    class Meta:
-        model = IncitationPhrase
-        fields = [
-            "id",
-            "client",
-            "client_name",
-            "client_slug",
-            "text",
-            "start_date",
-            "end_date",
-            "period_label",
-            "overlap_count",
-            "has_overlap_warning",
-            "is_active_now",
-            "is_future",
-            "is_past",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = [
-            "id",
-            "client",
-            "client_name",
-            "client_slug",
-            "period_label",
-            "overlap_count",
-            "has_overlap_warning",
-            "is_active_now",
-            "is_future",
-            "is_past",
-            "created_at",
-            "updated_at",
-        ]
-        extra_kwargs = {
-            "text": {"required": True, "allow_blank": False},
-            "start_date": {"required": True},
-            "end_date": {"required": True},
-        }
-
-    def _today(self):
-        return self.context.get("today")
-
-    def _overlap_counts(self):
-        return self.context.get("overlap_counts") or {}
-
-    def get_client_name(self, obj):
-        return obj.client.name if obj.client else None
-
-    def get_client_slug(self, obj):
-        return obj.client.slug if obj.client else None
-
-    def get_period_label(self, obj):
-        return obj.get_period_label()
-
-    def get_overlap_count(self, obj):
-        overlap_counts = self._overlap_counts()
-        if obj.pk in overlap_counts:
-            return overlap_counts[obj.pk]
-        return obj.get_overlap_count()
-
-    def get_has_overlap_warning(self, obj):
-        return self.get_overlap_count(obj) > 0
-
-    def get_is_active_now(self, obj):
-        return obj.is_active_on_date(self._today())
-
-    def get_is_future(self, obj):
-        return obj.is_future_on_date(self._today())
-
-    def get_is_past(self, obj):
-        return obj.is_past_on_date(self._today())
-
-    def validate_text(self, value):
-        value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("La phrase d’incitation est obligatoire.")
-        if len(value) > 100:
-            raise serializers.ValidationError(
-                "La phrase d’incitation ne peut pas dépasser 100 caractères."
-            )
-        return value
-
-    def validate(self, attrs):
-        instance = getattr(self, "instance", None)
-
-        start_date = attrs.get("start_date")
-        if start_date is None and instance is not None:
-            start_date = instance.start_date
-
-        end_date = attrs.get("end_date")
-        if end_date is None and instance is not None:
-            end_date = instance.end_date
-
-        if start_date and end_date and end_date < start_date:
-            raise serializers.ValidationError({
-                "end_date": "La date de fin doit être postérieure ou égale à la date de début."
-            })
-
-        return attrs
 
 
 class ClientAdminArticleSerializer(serializers.ModelSerializer):
@@ -499,5 +388,108 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
 
         if errors:
             raise serializers.ValidationError(errors)
+
+        return attrs
+
+
+class ClientAdminIncitationSerializer(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+    client_slug = serializers.SerializerMethodField()
+    period_label = serializers.SerializerMethodField()
+    overlap_count = serializers.SerializerMethodField()
+    has_overlap_warning = serializers.SerializerMethodField()
+    is_active_now = serializers.SerializerMethodField()
+    is_future = serializers.SerializerMethodField()
+    is_past = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IncitationPhrase
+        fields = [
+            "id",
+            "client",
+            "client_name",
+            "client_slug",
+            "text",
+            "start_date",
+            "end_date",
+            "period_label",
+            "overlap_count",
+            "has_overlap_warning",
+            "is_active_now",
+            "is_future",
+            "is_past",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "client",
+            "client_name",
+            "client_slug",
+            "period_label",
+            "overlap_count",
+            "has_overlap_warning",
+            "is_active_now",
+            "is_future",
+            "is_past",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "text": {"required": True, "allow_blank": False},
+            "start_date": {"required": True},
+            "end_date": {"required": True},
+        }
+
+    def _today(self):
+        return self.context.get("today")
+
+    def _overlap_counts(self):
+        return self.context.get("overlap_counts") or {}
+
+    def get_client_name(self, obj):
+        return obj.client.name if obj.client else None
+
+    def get_client_slug(self, obj):
+        return obj.client.slug if obj.client else None
+
+    def get_period_label(self, obj):
+        return obj.get_period_label()
+
+    def get_overlap_count(self, obj):
+        overlap_counts = self._overlap_counts()
+        if obj.pk in overlap_counts:
+            return overlap_counts[obj.pk]
+        return obj.get_overlap_count()
+
+    def get_has_overlap_warning(self, obj):
+        return self.get_overlap_count(obj) > 0
+
+    def get_is_active_now(self, obj):
+        return obj.is_active_on_date(self._today())
+
+    def get_is_future(self, obj):
+        return obj.is_future_on_date(self._today())
+
+    def get_is_past(self, obj):
+        return obj.is_past_on_date(self._today())
+
+    def validate_text(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("La phrase d’incitation est obligatoire.")
+        if len(value) > 100:
+            raise serializers.ValidationError("La phrase d’incitation ne peut pas dépasser 100 caractères.")
+        return value
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        start_date = attrs.get("start_date", getattr(instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(instance, "end_date", None))
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({
+                "end_date": "La date de fin doit être postérieure ou égale à la date de début."
+            })
 
         return attrs

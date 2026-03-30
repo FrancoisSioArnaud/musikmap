@@ -191,11 +191,13 @@ class IncitationPhrase(models.Model):
         return self.end_date < current_date
 
     def get_period_label(self):
+        if not self.start_date or not self.end_date:
+            return "—"
         return f"Du {self.start_date.strftime('%d/%m/%Y')} au {self.end_date.strftime('%d/%m/%Y')}"
 
     def __str__(self):
-        preview = (self.text or "").strip()
-        return f"{preview[:60]} ({self.client.name})"
+        return self.text
+
 
 
 class ArticleQuerySet(models.QuerySet):

@@ -30,6 +30,8 @@ from utils import (
     COST_REVEAL_BOX,
 )
 
+
+
 DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT = (
     "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment."
 )
@@ -78,7 +80,6 @@ def _build_incitation_overlap_counts(phrases):
     for phrase in phrases:
         counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
     return counts
-
 
 # --- Helper pour réactions ---
 def _reactions_summary_for_deposits(dep_ids):

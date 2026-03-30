@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -20,29 +19,19 @@ import TableContainer from "@mui/material/TableContainer";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import { getCookie } from "../Security/TokensUtils";
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
-function formatDate(value) {
-  if (!value) return "—";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("fr-FR");
-}
-
-function getCountLabel(items) {
-  const count = items.length;
-  return `${count} phrase${count > 1 ? "s" : ""}`;
-}
+const EMPTY_FORM = { text: "", start_date: "", end_date: "" };
 
 function parseDate(dateString) {
   if (!dateString) return null;
@@ -56,6 +45,13 @@ function formatDateKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatDateLabel(value) {
+  if (!value) return "—";
+  const date = parseDate(value);
+  if (!date) return value;
+  return date.toLocaleDateString("fr-FR");
 }
 
 function startOfMonth(date) {
@@ -84,6 +80,12 @@ function isWithinRange(date, start, end) {
   return date >= start && date <= end;
 }
 
+function compareItemsForChoice(a, b) {
+  const createdA = new Date(a?.created_at || 0).getTime();
+  const createdB = new Date(b?.created_at || 0).getTime();
+  return createdB - createdA;
+}
+
 function buildDayItemsMap(items) {
   const map = new Map();
 
@@ -105,22 +107,227 @@ function buildDayItemsMap(items) {
   return map;
 }
 
-function compareItemsForChoice(a, b) {
-  const createdA = new Date(a?.created_at || 0).getTime();
-  const createdB = new Date(b?.created_at || 0).getTime();
-  return createdB - createdA;
+function getCountLabel(items) {
+  const count = items.length;
+  return `${count} phrase${count > 1 ? "s" : ""}`;
+}
+
+function CalendarGrid({
+  monthDate,
+  onMonthChange,
+  dayItemsMap,
+  rangeStartKey,
+  rangeEndKey,
+  onDayClick,
+  showLegend = true,
+  minHeight,
+}) {
+  const todayKey = formatDateKey(new Date());
+  const rangeStartDate = parseDate(rangeStartKey);
+  const rangeEndDate = parseDate(rangeEndKey);
+  const calendarDays = useMemo(() => buildCalendarDays(monthDate), [monthDate]);
+
+  return (
+    <Stack spacing={2}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        spacing={1.5}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          {monthDate.toLocaleDateString("fr-FR", {
+            month: "long",
+            year: "numeric",
+          })}
+        </Typography>
+
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ChevronLeftRoundedIcon />}
+            onClick={() => onMonthChange(addMonths(monthDate, -1))}
+          >
+            Précédent
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            endIcon={<ChevronRightRoundedIcon />}
+            onClick={() => onMonthChange(addMonths(monthDate, 1))}
+          >
+            Suivant
+          </Button>
+        </Stack>
+      </Stack>
+
+      {showLegend ? (
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <Chip
+            size="small"
+            label="1 phrase"
+            sx={{
+              backgroundColor: "var(--mm-color-primary)",
+              color: "#fff",
+              fontWeight: 700,
+            }}
+          />
+          <Chip
+            size="small"
+            label="Plusieurs phrases"
+            sx={{
+              backgroundColor: "var(--mm-color-error)",
+              color: "#fff",
+              fontWeight: 700,
+            }}
+          />
+          <Chip size="small" variant="outlined" label="Plage sélectionnée" />
+        </Stack>
+      ) : null}
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+          gap: 1,
+          minHeight: minHeight || "auto",
+        }}
+      >
+        {WEEKDAY_LABELS.map((label) => (
+          <Box
+            key={label}
+            sx={{
+              textAlign: "center",
+              py: 1,
+              fontSize: 13,
+              fontWeight: 700,
+              color: "text.secondary",
+            }}
+          >
+            {label}
+          </Box>
+        ))}
+
+        {calendarDays.map((date) => {
+          const dateKey = formatDateKey(date);
+          const items = dayItemsMap.get(dateKey) || [];
+          const isCurrentMonth = date.getMonth() === monthDate.getMonth();
+          const isToday = dateKey === todayKey;
+          const isSelectedStart = rangeStartKey === dateKey;
+          const isSelectedEnd = rangeEndKey === dateKey;
+          const inSelectedRange = isWithinRange(date, rangeStartDate, rangeEndDate);
+          const hasOnePhrase = items.length === 1;
+          const hasMultiple = items.length > 1;
+
+          let backgroundColor = "transparent";
+          let textColor = isCurrentMonth ? "inherit" : "text.disabled";
+          let borderColor = "divider";
+
+          if (hasOnePhrase) {
+            backgroundColor = "var(--mm-color-primary)";
+            textColor = "#fff";
+            borderColor = "var(--mm-color-primary)";
+          }
+
+          if (hasMultiple) {
+            backgroundColor = "var(--mm-color-error)";
+            textColor = "#fff";
+            borderColor = "var(--mm-color-error)";
+          }
+
+          if (inSelectedRange && !isSelectedStart && !isSelectedEnd) {
+            backgroundColor = "rgba(0, 0, 0, 0.06)";
+            textColor = "inherit";
+          }
+
+          if (isSelectedStart || isSelectedEnd) {
+            backgroundColor = "rgba(0, 0, 0, 0.15)";
+            textColor = "inherit";
+            borderColor = "text.primary";
+          }
+
+          return (
+            <Button
+              key={dateKey}
+              variant="outlined"
+              onClick={() => onDayClick(date)}
+              sx={{
+                minHeight: 72,
+                borderRadius: 2,
+                borderColor,
+                backgroundColor,
+                color: textColor,
+                justifyContent: "flex-start",
+                alignItems: "flex-start",
+                p: 1,
+                textTransform: "none",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  borderColor,
+                  backgroundColor,
+                  opacity: 0.92,
+                },
+              }}
+            >
+              <Stack spacing={0.5} alignItems="flex-start" sx={{ width: "100%" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: isToday ? 800 : 600,
+                    opacity: isCurrentMonth ? 1 : 0.45,
+                  }}
+                >
+                  {date.getDate()}
+                </Typography>
+
+                {items.length ? (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      opacity: 0.95,
+                    }}
+                  >
+                    {items.length > 1 ? `${items.length} phrases` : "1 phrase"}
+                  </Typography>
+                ) : null}
+
+                {isToday ? (
+                  <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                    Aujourd’hui
+                  </Typography>
+                ) : null}
+              </Stack>
+            </Button>
+          );
+        })}
+      </Box>
+    </Stack>
+  );
 }
 
 export default function IncitationsList() {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
-  const [dayChoice, setDayChoice] = useState({ open: false, dateKey: "", items: [] });
+  const [mainMonth, setMainMonth] = useState(() => startOfMonth(new Date()));
   const [rangeStartKey, setRangeStartKey] = useState("");
+  const [rangeEndKey, setRangeEndKey] = useState("");
+  const [choiceDialog, setChoiceDialog] = useState({ open: false, dateKey: "", items: [] });
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState("create");
+  const [editorMonth, setEditorMonth] = useState(() => startOfMonth(new Date()));
+  const [editorForm, setEditorForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [editorLoading, setEditorLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [overlapDialogOpen, setOverlapDialogOpen] = useState(false);
+  const [overlapItems, setOverlapItems] = useState([]);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -139,13 +346,13 @@ export default function IncitationsList() {
       const nextItems = Array.isArray(data) ? data : [];
       setItems(nextItems);
 
-      const firstRelevantItem = nextItems.find((item) => item?.is_active_now) || nextItems[0] || null;
-      if (firstRelevantItem?.start_date) {
-        setCurrentMonth(startOfMonth(parseDate(firstRelevantItem.start_date) || new Date()));
+      const activeOrFirst = nextItems.find((item) => item?.is_active_now) || nextItems[0] || null;
+      if (activeOrFirst?.start_date) {
+        setMainMonth(startOfMonth(parseDate(activeOrFirst.start_date) || new Date()));
       }
     } catch (error) {
-      setPageError(error.message || "Impossible de charger les phrases d’incitation.");
       setItems([]);
+      setPageError(error.message || "Impossible de charger les phrases d’incitation.");
     } finally {
       setLoading(false);
     }
@@ -157,11 +364,184 @@ export default function IncitationsList() {
 
   const countLabel = useMemo(() => getCountLabel(items), [items]);
   const dayItemsMap = useMemo(() => buildDayItemsMap(items), [items]);
-  const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
-  const todayKey = useMemo(() => formatDateKey(new Date()), []);
-  const rangeStartDate = useMemo(() => parseDate(rangeStartKey), [rangeStartKey]);
+  const selectedStartDate = useMemo(() => parseDate(rangeStartKey), [rangeStartKey]);
 
-  const handleDeleteConfirm = async () => {
+  const resetSelection = useCallback(() => {
+    setRangeStartKey("");
+    setRangeEndKey("");
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setEditorOpen(false);
+    setEditorMode("create");
+    setEditingId(null);
+    setEditorForm(EMPTY_FORM);
+    setEditorLoading(false);
+    setSaving(false);
+    setCalendarExpanded(false);
+    setOverlapItems([]);
+    setOverlapDialogOpen(false);
+  }, []);
+
+  const openCreateModal = useCallback((startKey, endKey) => {
+    setEditorMode("create");
+    setEditingId(null);
+    setEditorForm({ text: "", start_date: startKey, end_date: endKey });
+    setEditorMonth(startOfMonth(parseDate(startKey) || new Date()));
+    setCalendarExpanded(false);
+    setEditorOpen(true);
+  }, []);
+
+  const openEditModal = useCallback(async (itemOrId) => {
+    const nextId = typeof itemOrId === "number" ? itemOrId : itemOrId?.id;
+    if (!nextId) return;
+
+    setEditorOpen(true);
+    setEditorMode("edit");
+    setEditingId(nextId);
+    setEditorLoading(true);
+    setCalendarExpanded(false);
+    setPageError("");
+
+    try {
+      const response = await fetch(`/box-management/client-admin/incitations/${nextId}/`, {
+        credentials: "same-origin",
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.detail || "Impossible de charger la phrase d’incitation.");
+      }
+
+      setEditorForm({
+        text: typeof data?.text === "string" ? data.text : "",
+        start_date: data?.start_date || "",
+        end_date: data?.end_date || "",
+      });
+      setEditorMonth(startOfMonth(parseDate(data?.start_date) || new Date()));
+    } catch (error) {
+      closeEditor();
+      setPageError(error.message || "Impossible de charger la phrase d’incitation.");
+    } finally {
+      setEditorLoading(false);
+    }
+  }, [closeEditor]);
+
+  const handleMainDayClick = useCallback((date) => {
+    const dateKey = formatDateKey(date);
+    const matchedItems = [...(dayItemsMap.get(dateKey) || [])].sort(compareItemsForChoice);
+
+    if (matchedItems.length > 1) {
+      resetSelection();
+      setChoiceDialog({ open: true, dateKey, items: matchedItems });
+      return;
+    }
+
+    if (matchedItems.length === 1) {
+      resetSelection();
+      openEditModal(matchedItems[0].id);
+      return;
+    }
+
+    if (!rangeStartKey) {
+      setRangeStartKey(dateKey);
+      setRangeEndKey("");
+      return;
+    }
+
+    if (!selectedStartDate) {
+      setRangeStartKey(dateKey);
+      setRangeEndKey("");
+      return;
+    }
+
+    const startKey = date < selectedStartDate ? dateKey : rangeStartKey;
+    const endKey = date < selectedStartDate ? rangeStartKey : dateKey;
+    setRangeStartKey(startKey);
+    setRangeEndKey(endKey);
+    openCreateModal(startKey, endKey);
+  }, [dayItemsMap, openEditModal, openCreateModal, rangeStartKey, resetSelection, selectedStartDate]);
+
+  const handleEditorCalendarClick = useCallback((date) => {
+    const key = formatDateKey(date);
+    const startKey = editorForm.start_date;
+    const endKey = editorForm.end_date;
+    const startDate = parseDate(startKey);
+
+    if (!startKey || (startKey && endKey)) {
+      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+      return;
+    }
+
+    if (!startDate) {
+      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+      return;
+    }
+
+    if (date < startDate) {
+      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: prev.start_date }));
+      return;
+    }
+
+    setEditorForm((prev) => ({ ...prev, end_date: key }));
+  }, [editorForm.end_date, editorForm.start_date]);
+
+  const submitEditor = useCallback(async (forceOverlap = false) => {
+    setSaving(true);
+    setPageError("");
+
+    try {
+      const url =
+        editorMode === "create"
+          ? "/box-management/client-admin/incitations/"
+          : `/box-management/client-admin/incitations/${editingId}/`;
+      const method = editorMode === "create" ? "POST" : "PATCH";
+      const csrftoken = getCookie("csrftoken");
+
+      const response = await fetch(url, {
+        method,
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({
+          text: editorForm.text,
+          start_date: editorForm.start_date,
+          end_date: editorForm.end_date,
+          force_overlap: forceOverlap,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 409 && data?.error === "overlap_warning") {
+        setOverlapItems(Array.isArray(data?.overlaps) ? data.overlaps : []);
+        setOverlapDialogOpen(true);
+        return;
+      }
+
+      if (!response.ok) {
+        if (data && typeof data === "object") {
+          const firstKey = Object.keys(data)[0];
+          const firstValue = data[firstKey];
+          const detail = Array.isArray(firstValue) ? firstValue[0] : firstValue;
+          throw new Error(detail || data?.detail || "Enregistrement impossible.");
+        }
+        throw new Error("Enregistrement impossible.");
+      }
+
+      closeEditor();
+      resetSelection();
+      await fetchItems();
+    } catch (error) {
+      setPageError(error.message || "Enregistrement impossible.");
+    } finally {
+      setSaving(false);
+    }
+  }, [closeEditor, editorForm, editorMode, editingId, fetchItems, resetSelection]);
+
+  const handleDeleteConfirm = useCallback(async () => {
     if (!itemToDelete) return;
 
     setDeleteLoading(true);
@@ -174,9 +554,7 @@ export default function IncitationsList() {
         {
           method: "DELETE",
           credentials: "same-origin",
-          headers: {
-            "X-CSRFToken": csrftoken,
-          },
+          headers: { "X-CSRFToken": csrftoken },
         }
       );
 
@@ -192,40 +570,14 @@ export default function IncitationsList() {
     } finally {
       setDeleteLoading(false);
     }
-  };
+  }, [fetchItems, itemToDelete]);
 
-  const handleDayClick = (date) => {
-    const dateKey = formatDateKey(date);
-    const matchedItems = [...(dayItemsMap.get(dateKey) || [])].sort(compareItemsForChoice);
-
-    if (matchedItems.length > 1) {
-      setRangeStartKey("");
-      setDayChoice({ open: true, dateKey, items: matchedItems });
-      return;
+  const periodSummary = useMemo(() => {
+    if (!editorForm.start_date || !editorForm.end_date) {
+      return "Choisis une date de début puis une date de fin.";
     }
-
-    if (matchedItems.length === 1) {
-      setRangeStartKey("");
-      navigate(`/client/incitation/${matchedItems[0].id}`);
-      return;
-    }
-
-    if (!rangeStartKey) {
-      setRangeStartKey(dateKey);
-      return;
-    }
-
-    const start = parseDate(rangeStartKey);
-    if (!start) {
-      setRangeStartKey(dateKey);
-      return;
-    }
-
-    const startKey = date < start ? dateKey : rangeStartKey;
-    const endKey = date < start ? rangeStartKey : dateKey;
-    setRangeStartKey("");
-    navigate(`/client/incitation/new?start_date=${startKey}&end_date=${endKey}`);
-  };
+    return `Du ${formatDateLabel(editorForm.start_date)} au ${formatDateLabel(editorForm.end_date)} inclus.`;
+  }, [editorForm.end_date, editorForm.start_date]);
 
   return (
     <Stack spacing={3}>
@@ -238,30 +590,14 @@ export default function IncitationsList() {
           borderColor: "divider",
         }}
       >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "center" }}
-        >
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              Mes phrases d’incitation
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Définis la phrase affichée sous la barre de recherche dans Flowbox.
-            </Typography>
-          </Box>
-
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            component={RouterLink}
-            to="/client/incitation/new"
-          >
-            Nouvelle phrase
-          </Button>
-        </Stack>
+        <Box>
+          <Typography variant="h4" gutterBottom>
+            Mes phrases d’incitation
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Sélectionne une plage libre dans le calendrier pour créer une phrase. Clique sur un jour déjà occupé pour modifier une phrase existante.
+          </Typography>
+        </Box>
       </Paper>
 
       {pageError ? <Alert severity="error">{pageError}</Alert> : null}
@@ -276,384 +612,348 @@ export default function IncitationsList() {
         }}
       >
         <Stack spacing={2}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            justifyContent="space-between"
-            spacing={1.5}
-          >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<ChevronLeftRoundedIcon />}
-                onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
-              >
-                Précédent
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                endIcon={<ChevronRightRoundedIcon />}
-                onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-              >
-                Suivant
-              </Button>
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => setRangeStartKey("")}
-                disabled={!rangeStartKey}
-              >
-                Effacer la sélection
-              </Button>
-            </Stack>
-          </Stack>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Calendrier des phrases
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Les jours avec une phrase sont en couleur principale. Les jours avec plusieurs phrases sont en rouge. Un clic sur un jour libre démarre une sélection de période.
+            </Typography>
+          </Box>
 
-          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ px: 0.5, pb: 1.5 }}
+          <CalendarGrid
+            monthDate={mainMonth}
+            onMonthChange={setMainMonth}
+            dayItemsMap={dayItemsMap}
+            rangeStartKey={rangeStartKey}
+            rangeEndKey={rangeEndKey}
+            onDayClick={handleMainDayClick}
+            showLegend
+          />
+
+          {rangeStartKey ? (
+            <Alert
+              severity="info"
+              action={
+                <Button color="inherit" size="small" onClick={resetSelection}>
+                  Annuler
+                </Button>
+              }
             >
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {currentMonth.toLocaleDateString("fr-FR", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </Typography>
-            </Stack>
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-                gap: 1,
-              }}
-            >
-              {WEEKDAY_LABELS.map((label) => (
-                <Box key={label} sx={{ px: 1, py: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>
-                    {label}
-                  </Typography>
-                </Box>
-              ))}
-
-              {calendarDays.map((date) => {
-                const dateKey = formatDateKey(date);
-                const dateItems = dayItemsMap.get(dateKey) || [];
-                const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-                const hasItems = dateItems.length > 0;
-                const hasMultipleItems = dateItems.length > 1;
-                const isToday = dateKey === todayKey;
-                const rangePreviewEnd = !hasItems && rangeStartDate ? date : null;
-                const rangeStartPreview = rangeStartDate && !hasItems ? rangeStartDate : null;
-                const previewStart = rangeStartPreview && rangePreviewEnd
-                  ? (rangePreviewEnd < rangeStartPreview ? rangePreviewEnd : rangeStartPreview)
-                  : null;
-                const previewEnd = rangeStartPreview && rangePreviewEnd
-                  ? (rangePreviewEnd < rangeStartPreview ? rangeStartPreview : rangePreviewEnd)
-                  : null;
-                const inPreviewRange = !hasItems && isWithinRange(date, previewStart, previewEnd);
-                const isSelectedStart = rangeStartKey && dateKey === rangeStartKey && !hasItems;
-
-                return (
-                  <Button
-                    key={dateKey}
-                    variant="text"
-                    onClick={() => handleDayClick(date)}
-                    sx={{
-                      minHeight: { xs: 64, sm: 86 },
-                      borderRadius: 2,
-                      border: isToday ? "2px solid" : "1px solid",
-                      borderColor: isToday ? "primary.main" : isSelectedStart ? "primary.main" : "divider",
-                      alignItems: "flex-start",
-                      justifyContent: "flex-start",
-                      p: 1,
-                      textTransform: "none",
-                      opacity: isCurrentMonth ? 1 : 0.45,
-                      backgroundColor: hasMultipleItems
-                        ? "var(--mm-color-error)"
-                        : hasItems
-                          ? "var(--mm-color-primary)"
-                          : inPreviewRange
-                            ? "action.selected"
-                            : "transparent",
-                      color: hasItems ? "#fff" : "text.primary",
-                      '&:hover': {
-                        backgroundColor: hasMultipleItems
-                          ? "var(--mm-color-error)"
-                          : hasItems
-                            ? "var(--mm-color-primary)"
-                            : inPreviewRange
-                              ? "action.selected"
-                              : "action.hover",
-                      },
-                    }}
-                  >
-                    <Stack spacing={0.5} alignItems="flex-start" sx={{ width: "100%" }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 700, color: hasItems ? "#fff" : "text.primary" }}
-                      >
-                        {date.getDate()}
-                      </Typography>
-                      {hasItems ? (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "rgba(255,255,255,0.92)",
-                            textAlign: "left",
-                            lineHeight: 1.2,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {dateItems.length > 1 ? `${dateItems.length} phrases` : dateItems[0]?.text}
-                        </Typography>
-                      ) : isSelectedStart ? (
-                        <Typography variant="caption" sx={{ textAlign: "left", lineHeight: 1.2 }}>
-                          Début
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                  </Button>
-                );
-              })}
-            </Box>
-          </Paper>
+              {rangeEndKey
+                ? `Période en cours de création : du ${formatDateLabel(rangeStartKey)} au ${formatDateLabel(rangeEndKey)}.`
+                : `Début sélectionné : ${formatDateLabel(rangeStartKey)}. Clique sur un second jour libre pour fermer la période.`}
+            </Alert>
+          ) : null}
         </Stack>
       </Paper>
 
       <Paper
         elevation={0}
         sx={{
+          p: { xs: 2, sm: 2.5 },
           borderRadius: 3,
           border: "1px solid",
           borderColor: "divider",
-          overflow: "hidden",
         }}
       >
-        <Box
-          sx={{
-            px: 2.5,
-            py: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 2,
-            flexWrap: "wrap",
-          }}
-        >
-          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-            {countLabel}
-          </Typography>
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", md: "center" }}
+            spacing={1.5}
+          >
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Liste des phrases
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {countLabel}
+              </Typography>
+            </Box>
+            <Chip icon={<CampaignRoundedIcon />} label={countLabel} />
+          </Stack>
 
-          <Button variant="outlined" onClick={fetchItems}>
-            Actualiser
-          </Button>
-        </Box>
-
-        {loading ? (
-          <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
-            <CircularProgress />
-          </Box>
-        ) : items.length === 0 ? (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="body1">Aucune phrase d’incitation.</Typography>
-          </Box>
-        ) : (
-          <TableContainer>
-            <Table sx={{ minWidth: 980 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Phrase</TableCell>
-                  <TableCell>Période</TableCell>
-                  <TableCell>État</TableCell>
-                  <TableCell>Chevauchement</TableCell>
-                  <TableCell>Créée le</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item) => {
-                  const isPast = !!item?.is_past;
-                  const overlapCount = Number(item?.overlap_count || 0);
-
-                  return (
-                    <TableRow hover key={item.id}>
-                      <TableCell sx={{ minWidth: 320 }}>
-                        <Stack spacing={1}>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <CampaignRoundedIcon color="primary" fontSize="small" />
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                              {item.text}
-                            </Typography>
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">
-                            Client : {item.client_slug || "default"}
+          {loading ? (
+            <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Phrase</TableCell>
+                    <TableCell>Période</TableCell>
+                    <TableCell>État</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id} hover>
+                      <TableCell sx={{ maxWidth: 480 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {item.text}
+                        </Typography>
+                        {item.has_overlap_warning ? (
+                          <Typography variant="caption" color="error.main" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                            <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
+                            Attention : se superpose
                           </Typography>
-                        </Stack>
+                        ) : null}
                       </TableCell>
-
                       <TableCell>
                         <Typography
                           variant="body2"
-                          sx={{ color: isPast ? "error.main" : "text.primary", fontWeight: 600 }}
+                          sx={{ color: item.is_past ? "error.main" : "inherit", fontWeight: 500 }}
                         >
-                          {item.period_label || `${formatDate(item.start_date)} → ${formatDate(item.end_date)}`}
+                          {item.period_label || `Du ${formatDateLabel(item.start_date)} au ${formatDateLabel(item.end_date)}`}
                         </Typography>
                       </TableCell>
-
                       <TableCell>
                         {item.is_active_now ? (
                           <Chip size="small" color="success" label="En cours" />
                         ) : item.is_future ? (
                           <Chip size="small" color="info" label="À venir" />
                         ) : (
-                          <Chip size="small" color="default" label="Passée" />
+                          <Chip size="small" label="Passée" />
                         )}
                       </TableCell>
-
-                      <TableCell>
-                        {overlapCount > 0 ? (
-                          <Chip
-                            size="small"
-                            color="warning"
-                            label={`Attention : se superpose (${overlapCount})`}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
-                        )}
-                      </TableCell>
-
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {item?.created_at ? new Date(item.created_at).toLocaleDateString("fr-FR") : "—"}
-                        </Typography>
-                      </TableCell>
-
                       <TableCell align="right">
-                        <Stack direction="row" justifyContent="flex-end" spacing={1}>
-                          <IconButton
-                            aria-label="Modifier"
-                            color="primary"
-                            onClick={() => navigate(`/client/incitation/${item.id}`)}
-                          >
-                            <EditRoundedIcon fontSize="small" />
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <IconButton onClick={() => openEditModal(item.id)}>
+                            <EditRoundedIcon />
                           </IconButton>
-                          <IconButton
-                            aria-label="Supprimer"
-                            color="error"
-                            onClick={() => setItemToDelete(item)}
-                          >
-                            <DeleteOutlineRoundedIcon fontSize="small" />
+                          <IconButton onClick={() => setItemToDelete(item)}>
+                            <DeleteOutlineRoundedIcon />
                           </IconButton>
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+                  ))}
+                  {!items.length ? (
+                    <TableRow>
+                      <TableCell colSpan={4}>
+                        <Typography variant="body2" color="text.secondary">
+                          Aucune phrase pour le moment.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Stack>
       </Paper>
 
-      <Dialog
-        open={dayChoice.open}
-        onClose={() => setDayChoice({ open: false, dateKey: "", items: [] })}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Plusieurs phrases ce jour-là</DialogTitle>
-        <DialogContent>
+      <Dialog open={choiceDialog.open} onClose={() => setChoiceDialog({ open: false, dateKey: "", items: [] })} maxWidth="sm" fullWidth>
+        <DialogTitle>Choisir la phrase à modifier</DialogTitle>
+        <DialogContent dividers>
           <DialogContentText sx={{ mb: 2 }}>
-            Le {formatDate(dayChoice.dateKey)} contient plusieurs phrases d’incitation. Choisis celle que tu veux modifier.
+            Plusieurs phrases existent le {formatDateLabel(choiceDialog.dateKey)}. Choisis celle que tu veux modifier.
           </DialogContentText>
+          <Stack spacing={1.5}>
+            {choiceDialog.items.map((item) => (
+              <Button
+                key={item.id}
+                variant="outlined"
+                sx={{ justifyContent: "space-between", textTransform: "none", py: 1.25 }}
+                onClick={() => {
+                  setChoiceDialog({ open: false, dateKey: "", items: [] });
+                  openEditModal(item.id);
+                }}
+              >
+                <Stack alignItems="flex-start" sx={{ textAlign: "left" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {item.text}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {item.period_label}
+                  </Typography>
+                </Stack>
+                <EditRoundedIcon />
+              </Button>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setChoiceDialog({ open: false, dateKey: "", items: [] })}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
 
-          <Stack spacing={1.25}>
-            {dayChoice.items.map((item) => (
-              <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                <Stack spacing={1}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                      {item.text}
-                    </Typography>
-                    {Number(item?.overlap_count || 0) > 0 ? (
-                      <Chip
-                        size="small"
-                        icon={<WarningAmberRoundedIcon />}
-                        label={`Chevauchement (${item.overlap_count})`}
-                        color="warning"
-                      />
-                    ) : null}
+      <Dialog open={editorOpen} onClose={saving ? undefined : closeEditor} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {editorMode === "create" ? "Nouvelle phrase d’incitation" : "Modifier la phrase d’incitation"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {editorLoading ? (
+            <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Stack spacing={2.5}>
+              <Alert severity="info">
+                {editorMode === "create"
+                  ? "La période a déjà été choisie dans le calendrier. Renseigne maintenant le texte, puis enregistre."
+                  : "Clique sur la date de début ou de fin pour rouvrir le calendrier et choisir une nouvelle plage."}
+              </Alert>
+
+              <TextField
+                label="Phrase d’incitation"
+                value={editorForm.text}
+                onChange={(event) =>
+                  setEditorForm((prev) => ({ ...prev, text: event.target.value }))
+                }
+                placeholder="C’est la semaine du carnaval, partage une chanson qui te donne envie de faire la fête"
+                inputProps={{ maxLength: 100 }}
+                helperText={`${editorForm.text.length}/100`}
+                fullWidth
+              />
+
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<CalendarMonthRoundedIcon />}
+                      onClick={() => setCalendarExpanded((prev) => !prev)}
+                      sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                    >
+                      Début : {formatDateLabel(editorForm.start_date)}
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      startIcon={<CalendarMonthRoundedIcon />}
+                      onClick={() => setCalendarExpanded((prev) => !prev)}
+                      sx={{ justifyContent: "flex-start", textTransform: "none" }}
+                    >
+                      Fin : {formatDateLabel(editorForm.end_date)}
+                    </Button>
                   </Stack>
 
                   <Typography variant="body2" color="text.secondary">
-                    {item.period_label || `${formatDate(item.start_date)} → ${formatDate(item.end_date)}`}
+                    {periodSummary}
                   </Typography>
 
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setDayChoice({ open: false, dateKey: "", items: [] });
-                      navigate(`/client/incitation/${item.id}`);
-                    }}
-                  >
-                    Modifier cette phrase
-                  </Button>
+                  {calendarExpanded ? (
+                    <>
+                      <Divider />
+                      <Typography variant="body2" color="text.secondary">
+                        Calendrier de sélection. Premier clic = début, deuxième clic = fin. Il montre aussi les autres phrases déjà existantes.
+                      </Typography>
+                      <CalendarGrid
+                        monthDate={editorMonth}
+                        onMonthChange={setEditorMonth}
+                        dayItemsMap={dayItemsMap}
+                        rangeStartKey={editorForm.start_date}
+                        rangeEndKey={editorForm.end_date}
+                        onDayClick={handleEditorCalendarClick}
+                        showLegend={false}
+                        minHeight={420}
+                      />
+                    </>
+                  ) : null}
                 </Stack>
+              </Paper>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {editorMode === "edit" ? (
+            <Button
+              color="error"
+              onClick={() => {
+                if (editingId && !saving) {
+                  setItemToDelete({ id: editingId, text: editorForm.text });
+                  closeEditor();
+                }
+              }}
+              disabled={saving || editorLoading}
+            >
+              Supprimer
+            </Button>
+          ) : null}
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={closeEditor} disabled={saving || editorLoading}>
+            Annuler
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => submitEditor(false)}
+            disabled={saving || editorLoading}
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={overlapDialogOpen} onClose={() => setOverlapDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>La période se superpose</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText sx={{ mb: 2 }}>
+            Une ou plusieurs phrases existent déjà sur cette période. Tu peux quand même enregistrer si tu confirmes.
+          </DialogContentText>
+          <Stack spacing={1.5}>
+            {overlapItems.map((item) => (
+              <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {item.text}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {item.period_label}
+                </Typography>
               </Paper>
             ))}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDayChoice({ open: false, dateKey: "", items: [] })}>
-            Fermer
+          <Button onClick={() => setOverlapDialogOpen(false)}>Retour</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setOverlapDialogOpen(false);
+              submitEditor(true);
+            }}
+          >
+            Enregistrer quand même
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={!!itemToDelete}
-        onClose={() => (deleteLoading ? null : setItemToDelete(null))}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Supprimer la phrase</DialogTitle>
-        <DialogContent>
+      <Dialog open={!!itemToDelete} onClose={deleteLoading ? undefined : () => setItemToDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Supprimer cette phrase ?</DialogTitle>
+        <DialogContent dividers>
           <DialogContentText>
-            Cette phrase sera supprimée définitivement. Cette action est irréversible.
+            Cette action supprimera définitivement la phrase d’incitation.
           </DialogContentText>
-          {itemToDelete ? (
-            <Paper variant="outlined" sx={{ p: 1.5, mt: 2, borderRadius: 2 }}>
-              <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.75 }}>
-                {itemToDelete.text}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {itemToDelete.period_label || `${formatDate(itemToDelete.start_date)} → ${formatDate(itemToDelete.end_date)}`}
-              </Typography>
-            </Paper>
+          {itemToDelete?.text ? (
+            <Typography variant="body2" sx={{ mt: 2, fontWeight: 700 }}>
+              {itemToDelete.text}
+            </Typography>
           ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setItemToDelete(null)} disabled={deleteLoading}>
             Annuler
           </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleDeleteConfirm}
-            disabled={deleteLoading}
-          >
+          <Button color="error" onClick={handleDeleteConfirm} disabled={deleteLoading}>
             {deleteLoading ? "Suppression…" : "Supprimer"}
           </Button>
         </DialogActions>

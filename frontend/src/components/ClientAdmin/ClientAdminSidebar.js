@@ -130,10 +130,7 @@ export default function ClientAdminSidebar({
             label="Mes phrases d’incitation"
             icon={<CampaignRoundedIcon />}
             onClick={onClose}
-            isActive={
-              location.pathname === "/client/incitation" ||
-              location.pathname.startsWith("/client/incitation/")
-            }
+            isActive={location.pathname === "/client/incitation"}
           />
         </List>
       </Box>

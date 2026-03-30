@@ -36,7 +36,6 @@ import ClientDashboard from "./ClientAdmin/Dashboard";
 import ClientArticlesList from "./ClientAdmin/ArticlesList";
 import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
 import ClientIncitationsList from "./ClientAdmin/IncitationsList";
-import ClientIncitationEdit from "./ClientAdmin/IncitationEdit";
 
 import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
@@ -168,8 +167,6 @@ export default function App() {
                 <Route path="articles/new" element={<ClientArticleEdit />} />
                 <Route path="articles/:articleId" element={<ClientArticleEdit />} />
                 <Route path="incitation" element={<ClientIncitationsList />} />
-                <Route path="incitation/new" element={<ClientIncitationEdit />} />
-                <Route path="incitation/:incitationId" element={<ClientIncitationEdit />} />
               </Route>
 
               <Route
