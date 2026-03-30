@@ -13,7 +13,7 @@
   width: calc(25% - 8px);
   padding: 0;
   margin: 4px;
-  border-radius: 16px;
+  border-radius: var(--mm-radius-md);
   aspect-ratio: 1 / 1;
   height: calc(25% - 8px);
 }
