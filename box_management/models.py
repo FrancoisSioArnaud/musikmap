@@ -208,7 +208,7 @@ class Article(models.Model):
     short_text = models.CharField(
         max_length=10000,
         blank=True,
-        help_text="Article text, maximum 1000 characters.",
+        help_text="Article text, maximum 10000 characters.",
     )
 
     favicon = models.URLField(
@@ -273,9 +273,9 @@ class Article(models.Model):
         self.favicon = (self.favicon or "").strip()
         self.cover_image = (self.cover_image or "").strip()
 
-        if self.short_text and len(self.short_text) > 1000:
+        if self.short_text and len(self.short_text) > 10000:
             raise ValidationError(
-                {"short_text": "Le texte de l’article ne peut pas dépasser 1000 caractères."}
+                {"short_text": "Le texte de l’article ne peut pas dépasser 10000 caractères."}
             )
 
         errors = {}
