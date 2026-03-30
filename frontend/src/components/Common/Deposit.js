@@ -425,7 +425,6 @@ export default function Deposit({
           >
             <AddReactionIcon
               color="primary"
-              sx={{ height: "1.6em", width: "1.6em" }}
             />
           </Box>
         )}
