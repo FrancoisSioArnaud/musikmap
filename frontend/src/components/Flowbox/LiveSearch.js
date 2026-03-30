@@ -469,7 +469,7 @@ export default function LiveSearch({
             margin: "0px 16px",
             backgroundColor: "var(--mm-color-secondary-light)",
             padding: "16px 20px",
-            borderRadius: "3rem",
+            borderRadius: "2rem",
             display: "flex",
             gap:"12px",
             alignItems: "center",
