@@ -4,7 +4,7 @@ import json
 import re
 from datetime import date, timedelta
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -45,6 +45,7 @@ from .serializers import (
     EmojiSerializer,
     ClientAdminArticleSerializer,
     PublicVisibleArticleSerializer,
+    PublicVisibleArticleDetailSerializer,
 )
 from .utils import (
     _calculate_distance,
@@ -168,6 +169,7 @@ class _ArticleImportHTMLParser(HTMLParser):
         self.body_chunks = []
         self.paragraph_chunks = []
         self.image_sources = []
+        self.favicon_sources = []
 
         self._in_title = False
         self._skip_depth = 0
@@ -212,6 +214,13 @@ class _ArticleImportHTMLParser(HTMLParser):
             content = (attrs_dict.get("content") or "").strip()
             if meta_key and content and meta_key not in self.meta:
                 self.meta[meta_key] = content
+            return
+
+        if tag == "link":
+            rel_value = (attrs_dict.get("rel") or "").strip().lower()
+            href = (attrs_dict.get("href") or "").strip()
+            if href and any(marker in rel_value for marker in ("icon", "apple-touch-icon", "mask-icon")):
+                self.favicon_sources.append(href)
             return
 
         if tag == "img":
@@ -288,7 +297,7 @@ def _collapse_article_text(value):
     return value
 
 
-def _truncate_article_text(value, limit=300):
+def _truncate_article_text(value, limit=1000):
     value = _collapse_article_text(value)
     if len(value) <= limit:
         return value
@@ -330,6 +339,20 @@ def _dedupe_keep_order(values, limit=None):
             break
 
     return output
+
+
+def _pick_best_favicon_url(final_url, parser):
+    favicon_candidates = [
+        _absolute_remote_url(final_url, href)
+        for href in getattr(parser, "favicon_sources", [])
+    ]
+
+    parsed = urlparse(final_url)
+    if parsed.scheme and parsed.netloc:
+        favicon_candidates.append(f"{parsed.scheme}://{parsed.netloc}/favicon.ico")
+
+    favicon_candidates = _dedupe_keep_order(favicon_candidates, limit=5)
+    return favicon_candidates[0] if favicon_candidates else ""
 
 
 def _clean_import_title(title):
@@ -385,7 +408,7 @@ def _pick_best_short_text(meta, parser):
     )
 
     if description and not _looks_like_noise_text(description):
-        return _truncate_article_text(description, limit=300)
+        return _truncate_article_text(description, limit=1000)
 
     paragraph_candidates = []
     for chunk in parser.paragraph_chunks:
@@ -406,7 +429,7 @@ def _pick_best_short_text(meta, parser):
         if len(combined) >= 220:
             break
 
-    combined = _truncate_article_text(combined, limit=300)
+    combined = _truncate_article_text(combined, limit=1000)
     if combined:
         return combined
 
@@ -417,7 +440,7 @@ def _pick_best_short_text(meta, parser):
             continue
         body_candidates.append(text)
 
-    merged_body = _truncate_article_text(" ".join(body_candidates), limit=300)
+    merged_body = _truncate_article_text(" ".join(body_candidates), limit=1000)
     return merged_body
 
 
@@ -485,12 +508,14 @@ def _extract_import_preview_from_url(link):
         if img and not img.lower().endswith(".svg")
     ]
     image_candidates = _dedupe_keep_order(image_candidates, limit=3)
+    favicon = _pick_best_favicon_url(final_url, parser)
 
     return {
         "title": title,
         "short_text": short_text,
         "cover_image": image_candidates[0] if image_candidates else "",
         "cover_images": image_candidates,
+        "favicon": favicon,
         "resolved_link": final_url,
     }
 
@@ -1308,10 +1333,23 @@ class UserDepositsView(APIView):
 
 
 class PublicVisibleArticlesView(APIView):
-    def get(self, request, format=None):
+    def get_box(self, request):
         box_slug = (request.query_params.get("boxSlug") or request.query_params.get("box_slug") or "").strip()
         if not box_slug:
-            return Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+            return None, Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+
+        box = Box.objects.select_related("client").filter(url=box_slug).first()
+        if not box or not box.client_id:
+            return None, None
+
+        return box, None
+
+    def get(self, request, format=None):
+        box, error_response = self.get_box(request)
+        if error_response:
+            return error_response
+        if not box:
+            return Response([], status=status.HTTP_200_OK)
 
         try:
             limit = int(request.query_params.get("limit", 5))
@@ -1319,13 +1357,6 @@ class PublicVisibleArticlesView(APIView):
             limit = 5
 
         limit = max(1, min(limit, 20))
-
-        box = Box.objects.select_related("client").filter(url=box_slug).first()
-        if not box:
-            return Response([], status=status.HTTP_200_OK)
-
-        if not box.client_id:
-            return Response([], status=status.HTTP_200_OK)
 
         articles_qs = (
             Article.objects
@@ -1336,6 +1367,30 @@ class PublicVisibleArticlesView(APIView):
         )
 
         serializer = PublicVisibleArticleSerializer(articles_qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PublicVisibleArticleDetailView(APIView):
+    def get(self, request, article_id, format=None):
+        box, error_response = PublicVisibleArticlesView().get_box(request)
+        if error_response:
+            return error_response
+        if not box:
+            return Response({"detail": "Article introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        article = (
+            Article.objects
+            .with_related()
+            .for_client(box.client_id)
+            .currently_visible()
+            .filter(id=article_id)
+            .first()
+        )
+
+        if not article:
+            return Response({"detail": "Article introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PublicVisibleArticleDetailSerializer(article)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

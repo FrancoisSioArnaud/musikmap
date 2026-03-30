@@ -26,6 +26,10 @@ function truncateText(text, maxLength = 220) {
 export default function ArticleCard({ article, onOpenDrawer }) {
   const domainLabel = useMemo(() => getDomainLabel(article?.link), [article?.link]);
   const previewText = useMemo(() => truncateText(article?.short_text, 220), [article?.short_text]);
+  const fallbackLinkLabel = useMemo(() => {
+    const clientSlug = String(article?.client_slug || "").trim();
+    return clientSlug ? `À lire, par ${clientSlug}` : "À lire";
+  }, [article?.client_slug]);
 
   const handleClick = () => {
     if (article?.link) {
@@ -49,14 +53,12 @@ export default function ArticleCard({ article, onOpenDrawer }) {
       ) : null}
 
       <Box className="content">  
-        {domainLabel ? (
-          <Box className="linkline">
-            <Typography component="span" variant="body2" className="domain">
-              {domainLabel}
-            </Typography>
-            <OpenInNewIcon className="external_icon" fontSize="inherit" />
-          </Box>
-        ) : null}
+        <Box className="linkline">
+          <Typography component="span" variant="body2" className="domain">
+            {domainLabel || fallbackLinkLabel}
+          </Typography>
+          {domainLabel ? <OpenInNewIcon className="external_icon" fontSize="inherit" /> : null}
+        </Box>
   
   
   

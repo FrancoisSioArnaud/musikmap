@@ -142,13 +142,43 @@ class ReactionSerializer(serializers.ModelSerializer):
 
 
 class PublicVisibleArticleSerializer(serializers.ModelSerializer):
+    client_slug = serializers.CharField(source="client.slug", read_only=True)
+    short_text = serializers.SerializerMethodField()
+
     class Meta:
         model = Article
         fields = [
+            "id",
             "title",
             "link",
             "short_text",
             "cover_image",
+            "favicon",
+            "client_slug",
+            "published_at",
+        ]
+        read_only_fields = fields
+
+    def get_short_text(self, obj):
+        value = (obj.short_text or "").strip()
+        if len(value) <= 100:
+            return value
+        return value[:100]
+
+
+class PublicVisibleArticleDetailSerializer(serializers.ModelSerializer):
+    client_slug = serializers.CharField(source="client.slug", read_only=True)
+
+    class Meta:
+        model = Article
+        fields = [
+            "id",
+            "title",
+            "link",
+            "short_text",
+            "cover_image",
+            "favicon",
+            "client_slug",
             "published_at",
         ]
         read_only_fields = fields
@@ -193,6 +223,7 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             "title",
             "link",
             "short_text",
+            "favicon",
             "cover_image",
             "status",
             "display_start_date",
@@ -231,6 +262,7 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             "title": {"required": False, "allow_blank": True},
             "link": {"required": False, "allow_blank": True},
             "short_text": {"required": False, "allow_blank": True},
+            "favicon": {"required": False, "allow_blank": True},
             "cover_image": {"required": False, "allow_blank": True},
             "status": {"required": False},
         }
@@ -276,11 +308,14 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
 
     def validate_short_text(self, value):
         value = (value or "").strip()
-        if len(value) > 300:
+        if len(value) > 1000:
             raise serializers.ValidationError(
-                "Le texte court ne peut pas dépasser 300 caractères."
+                "Le texte de l’article ne peut pas dépasser 1000 caractères."
             )
         return value
+
+    def validate_favicon(self, value):
+        return (value or "").strip()
 
     def validate_cover_image(self, value):
         return (value or "").strip()
@@ -307,6 +342,11 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
             short_text = getattr(instance, "short_text", "") if instance else ""
         short_text = (short_text or "").strip()
 
+        favicon = attrs.get("favicon")
+        if favicon is None:
+            favicon = getattr(instance, "favicon", "") if instance else ""
+        favicon = (favicon or "").strip()
+
         cover_image = attrs.get("cover_image")
         if cover_image is None:
             cover_image = getattr(instance, "cover_image", "") if instance else ""
@@ -327,6 +367,7 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
         attrs["title"] = title
         attrs["link"] = link
         attrs["short_text"] = short_text
+        attrs["favicon"] = favicon
         attrs["cover_image"] = cover_image
 
         errors = {}

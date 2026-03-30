@@ -13,6 +13,7 @@ from .views import (
     ClientAdminArticleListCreateView,
     ClientAdminArticleDetailView,
     PublicVisibleArticlesView,
+    PublicVisibleArticleDetailView,
 )
 
 urlpatterns = [
@@ -26,6 +27,11 @@ urlpatterns = [
     path("emojis/purchase", PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path("reactions", ReactionView.as_view(), name="reactions"),
     path("articles/visible/", PublicVisibleArticlesView.as_view(), name="public-visible-articles"),
+    path(
+        "articles/visible/<int:article_id>/",
+        PublicVisibleArticleDetailView.as_view(),
+        name="public-visible-article-detail",
+    ),
 
     # Client admin - articles
     path(

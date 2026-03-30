@@ -113,6 +113,7 @@ export default function ArticleEdit() {
     title: "",
     link: "",
     short_text: "",
+    favicon: "",
     cover_image: "",
     status: "draft",
     display_start_date: "",
@@ -171,6 +172,7 @@ export default function ArticleEdit() {
           title: data?.title || "",
           link: data?.link || "",
           short_text: data?.short_text || "",
+          favicon: data?.favicon || "",
           cover_image: data?.cover_image || "",
           status: data?.status || "draft",
           display_start_date: toInputDate(data?.display_start_date),
@@ -214,6 +216,7 @@ export default function ArticleEdit() {
     const willOverwrite =
       !!form.title.trim() ||
       !!form.short_text.trim() ||
+      !!form.favicon.trim() ||
       !!form.cover_image.trim();
 
     if (willOverwrite) {
@@ -267,10 +270,11 @@ export default function ArticleEdit() {
         link: data?.resolved_link || trimmedLink,
         title: data?.title || "",
         short_text: data?.short_text || "",
+        favicon: data?.favicon || "",
         cover_image: data?.cover_image || "",
       }));
 
-      if (!data?.title && !data?.short_text && nextImages.length === 0) {
+      if (!data?.title && !data?.short_text && !data?.favicon && nextImages.length === 0) {
         showSnackbar(
           "Import terminé, mais la page ne contient pas de métadonnées exploitables."
         );
@@ -301,6 +305,7 @@ export default function ArticleEdit() {
         title: form.title,
         link: form.link,
         short_text: form.short_text,
+        favicon: form.favicon,
         cover_image: form.cover_image,
         status: nextStatus,
         display_start_date: useDateRange
@@ -347,6 +352,7 @@ export default function ArticleEdit() {
         title: data?.title || "",
         link: data?.link || "",
         short_text: data?.short_text || "",
+        favicon: data?.favicon || "",
         cover_image: data?.cover_image || "",
         status: data?.status || nextStatus || "draft",
         display_start_date: toInputDate(data?.display_start_date),
@@ -493,12 +499,12 @@ export default function ArticleEdit() {
               label="Texte court"
               value={form.short_text}
               onChange={(e) =>
-                patchForm("short_text", e.target.value.slice(0, 300))
+                patchForm("short_text", e.target.value.slice(0, 1000))
               }
               fullWidth
               multiline
               minRows={3}
-              helperText={`${form.short_text.length}/300 caractères`}
+              helperText={`${form.short_text.length}/1000 caractères`}
             />
 
             <TextField

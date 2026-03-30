@@ -206,9 +206,15 @@ class Article(models.Model):
     link = models.URLField(max_length=2048, blank=True)
 
     short_text = models.CharField(
-        max_length=300,
+        max_length=1000,
         blank=True,
-        help_text="Short preview text, maximum 300 characters.",
+        help_text="Article text, maximum 1000 characters.",
+    )
+
+    favicon = models.URLField(
+        max_length=2048,
+        blank=True,
+        help_text="Remote URL of the favicon.",
     )
 
     cover_image = models.URLField(
@@ -264,11 +270,12 @@ class Article(models.Model):
         self.title = (self.title or "").strip()
         self.link = (self.link or "").strip()
         self.short_text = (self.short_text or "").strip()
+        self.favicon = (self.favicon or "").strip()
         self.cover_image = (self.cover_image or "").strip()
 
-        if self.short_text and len(self.short_text) > 300:
+        if self.short_text and len(self.short_text) > 1000:
             raise ValidationError(
-                {"short_text": "Le texte court ne peut pas dépasser 300 caractères."}
+                {"short_text": "Le texte de l’article ne peut pas dépasser 1000 caractères."}
             )
 
         errors = {}

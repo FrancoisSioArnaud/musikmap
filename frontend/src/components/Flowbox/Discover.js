@@ -132,6 +132,7 @@ export default function Discover() {
         article={selectedArticle}
         open={!!selectedArticle}
         onClose={handleCloseArticleDrawer}
+        boxSlug={boxSlug}
       />
 
       <Box className="my_deposit_notif">
@@ -223,7 +224,7 @@ export default function Discover() {
           <Box className="articles_list">
             {articles.map((article, idx) => (
               <ArticleCard
-                key={`${article?.link || article?.title || "article"}-${idx}`}
+                key={article?.id || `${article?.link || article?.title || "article"}-${idx}`}
                 article={article}
                 onOpenDrawer={handleOpenArticleDrawer}
               />
