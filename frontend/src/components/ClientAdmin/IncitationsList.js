@@ -955,6 +955,14 @@ export default function IncitationsList() {
                 onChange={(event) =>
                   setEditorForm((prev) => ({ ...prev, text: event.target.value }))
                 }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (!saving && !editorLoading) {
+                      submitEditor(false);
+                    }
+                  }
+                }}
                 placeholder="C’est la semaine du carnaval, partage une chanson qui te donne envie de faire la fête"
                 inputProps={{ maxLength: 100 }}
                 helperText={`${editorForm.text.length}/100`}
