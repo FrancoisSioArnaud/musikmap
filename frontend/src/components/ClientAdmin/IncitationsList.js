@@ -195,7 +195,7 @@ function CalendarGrid({
             startIcon={<ChevronLeftRoundedIcon />}
             onClick={() => onMonthChange(addMonths(monthDate, -1))}
           >
-            Précédent
+            Mois précédent
           </Button>
           <Button
             variant="outlined"
@@ -203,7 +203,7 @@ function CalendarGrid({
             endIcon={<ChevronRightRoundedIcon />}
             onClick={() => onMonthChange(addMonths(monthDate, 1))}
           >
-            Suivant
+            Mois suivant
           </Button>
         </Stack>
       </Stack>
