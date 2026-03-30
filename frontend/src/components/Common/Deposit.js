@@ -14,7 +14,9 @@ import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AlbumIcon from "@mui/icons-material/Album";
 import MusicNote from "@mui/icons-material/MusicNote";
+
 
 import AddReactionIcon from "@mui/icons-material/AddReaction";
 
@@ -575,7 +577,7 @@ export default function Deposit({
                       <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                         {cost}
                       </Typography>
-                      <MusicNoteIcon />
+                      <MusicNote />
                     </Box>
                   </Button>
                 </>
