@@ -8,7 +8,6 @@ import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Chip from "@mui/material/Chip";
-import Tooltip from "@mui/material/Tooltip";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -80,8 +79,9 @@ function buildCalendarDays(monthDate) {
   });
 }
 
-function isSameDay(a, b) {
-  return formatDateKey(a) === formatDateKey(b);
+function isWithinRange(date, start, end) {
+  if (!start || !end) return false;
+  return date >= start && date <= end;
 }
 
 function buildDayItemsMap(items) {
@@ -120,6 +120,7 @@ export default function IncitationsList() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [dayChoice, setDayChoice] = useState({ open: false, dateKey: "", items: [] });
+  const [rangeStartKey, setRangeStartKey] = useState("");
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -158,6 +159,7 @@ export default function IncitationsList() {
   const dayItemsMap = useMemo(() => buildDayItemsMap(items), [items]);
   const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
   const todayKey = useMemo(() => formatDateKey(new Date()), []);
+  const rangeStartDate = useMemo(() => parseDate(rangeStartKey), [rangeStartKey]);
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
@@ -195,12 +197,34 @@ export default function IncitationsList() {
   const handleDayClick = (date) => {
     const dateKey = formatDateKey(date);
     const matchedItems = [...(dayItemsMap.get(dateKey) || [])].sort(compareItemsForChoice);
-    if (matchedItems.length === 0) return;
+
+    if (matchedItems.length > 1) {
+      setRangeStartKey("");
+      setDayChoice({ open: true, dateKey, items: matchedItems });
+      return;
+    }
+
     if (matchedItems.length === 1) {
+      setRangeStartKey("");
       navigate(`/client/incitation/${matchedItems[0].id}`);
       return;
     }
-    setDayChoice({ open: true, dateKey, items: matchedItems });
+
+    if (!rangeStartKey) {
+      setRangeStartKey(dateKey);
+      return;
+    }
+
+    const start = parseDate(rangeStartKey);
+    if (!start) {
+      setRangeStartKey(dateKey);
+      return;
+    }
+
+    const startKey = date < start ? dateKey : rangeStartKey;
+    const endKey = date < start ? rangeStartKey : dateKey;
+    setRangeStartKey("");
+    navigate(`/client/incitation/new?start_date=${startKey}&end_date=${endKey}`);
   };
 
   return (
@@ -263,7 +287,7 @@ export default function IncitationsList() {
                 Calendrier des phrases
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Clique sur un jour coloré pour modifier la phrase liée. Si plusieurs phrases existent ce jour-là, tu choisiras laquelle ouvrir.
+                Clique sur un jour avec phrase pour la modifier. Clique sur un jour libre pour démarrer une période, puis clique sur le jour de fin pour ouvrir la création avec ces dates préremplies.
               </Typography>
             </Box>
 
@@ -284,6 +308,14 @@ export default function IncitationsList() {
               >
                 Suivant
               </Button>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setRangeStartKey("")}
+                disabled={!rangeStartKey}
+              >
+                Effacer la sélection
+              </Button>
             </Stack>
           </Stack>
 
@@ -299,13 +331,20 @@ export default function IncitationsList() {
             />
             <Chip
               size="small"
-              label="Chevauchement"
+              label="Plusieurs phrases ce jour-là"
               sx={{
                 backgroundColor: "var(--mm-color-error)",
                 color: "#fff",
                 fontWeight: 700,
               }}
             />
+            {rangeStartKey ? (
+              <Chip
+                size="small"
+                label={`Début sélectionné : ${formatDate(rangeStartKey)}`}
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
 
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
@@ -343,40 +382,50 @@ export default function IncitationsList() {
                 const dateItems = dayItemsMap.get(dateKey) || [];
                 const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                 const hasItems = dateItems.length > 0;
-                const hasOverlap = dateItems.length > 1 || dateItems.some((item) => Number(item?.overlap_count || 0) > 0);
+                const hasMultipleItems = dateItems.length > 1;
                 const isToday = dateKey === todayKey;
+                const rangePreviewEnd = !hasItems && rangeStartDate ? date : null;
+                const rangeStartPreview = rangeStartDate && !hasItems ? rangeStartDate : null;
+                const previewStart = rangeStartPreview && rangePreviewEnd
+                  ? (rangePreviewEnd < rangeStartPreview ? rangePreviewEnd : rangeStartPreview)
+                  : null;
+                const previewEnd = rangeStartPreview && rangePreviewEnd
+                  ? (rangePreviewEnd < rangeStartPreview ? rangeStartPreview : rangePreviewEnd)
+                  : null;
+                const inPreviewRange = !hasItems && isWithinRange(date, previewStart, previewEnd);
+                const isSelectedStart = rangeStartKey && dateKey === rangeStartKey && !hasItems;
 
                 return (
                   <Button
                     key={dateKey}
                     variant="text"
                     onClick={() => handleDayClick(date)}
-                    disabled={!hasItems}
                     sx={{
                       minHeight: { xs: 64, sm: 86 },
                       borderRadius: 2,
                       border: isToday ? "2px solid" : "1px solid",
-                      borderColor: isToday ? "primary.main" : "divider",
+                      borderColor: isToday ? "primary.main" : isSelectedStart ? "primary.main" : "divider",
                       alignItems: "flex-start",
                       justifyContent: "flex-start",
                       p: 1,
                       textTransform: "none",
                       opacity: isCurrentMonth ? 1 : 0.45,
-                      backgroundColor: hasOverlap
+                      backgroundColor: hasMultipleItems
                         ? "var(--mm-color-error)"
                         : hasItems
                           ? "var(--mm-color-primary)"
-                          : "transparent",
+                          : inPreviewRange
+                            ? "action.selected"
+                            : "transparent",
                       color: hasItems ? "#fff" : "text.primary",
                       '&:hover': {
-                        backgroundColor: hasOverlap
+                        backgroundColor: hasMultipleItems
                           ? "var(--mm-color-error)"
                           : hasItems
                             ? "var(--mm-color-primary)"
-                            : "action.hover",
-                      },
-                      '&.Mui-disabled': {
-                        color: "text.primary",
+                            : inPreviewRange
+                              ? "action.selected"
+                              : "action.hover",
                       },
                     }}
                   >
@@ -401,6 +450,10 @@ export default function IncitationsList() {
                           }}
                         >
                           {dateItems.length > 1 ? `${dateItems.length} phrases` : dateItems[0]?.text}
+                        </Typography>
+                      ) : isSelectedStart ? (
+                        <Typography variant="caption" sx={{ textAlign: "left", lineHeight: 1.2 }}>
+                          Début
                         </Typography>
                       ) : null}
                     </Stack>
@@ -520,26 +573,26 @@ export default function IncitationsList() {
 
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
-                          {new Date(item.created_at).toLocaleString("fr-FR")}
+                          {item?.created_at ? new Date(item.created_at).toLocaleDateString("fr-FR") : "—"}
                         </Typography>
                       </TableCell>
 
                       <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Tooltip title="Modifier">
-                            <IconButton
-                              color="primary"
-                              onClick={() => navigate(`/client/incitation/${item.id}`)}
-                            >
-                              <EditRoundedIcon />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip title="Supprimer">
-                            <IconButton color="error" onClick={() => setItemToDelete(item)}>
-                              <DeleteOutlineRoundedIcon />
-                            </IconButton>
-                          </Tooltip>
+                        <Stack direction="row" justifyContent="flex-end" spacing={1}>
+                          <IconButton
+                            aria-label="Modifier"
+                            color="primary"
+                            onClick={() => navigate(`/client/incitation/${item.id}`)}
+                          >
+                            <EditRoundedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            aria-label="Supprimer"
+                            color="error"
+                            onClick={() => setItemToDelete(item)}
+                          >
+                            <DeleteOutlineRoundedIcon fontSize="small" />
+                          </IconButton>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -552,16 +605,81 @@ export default function IncitationsList() {
       </Paper>
 
       <Dialog
+        open={dayChoice.open}
+        onClose={() => setDayChoice({ open: false, dateKey: "", items: [] })}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Plusieurs phrases ce jour-là</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Le {formatDate(dayChoice.dateKey)} contient plusieurs phrases d’incitation. Choisis celle que tu veux modifier.
+          </DialogContentText>
+
+          <Stack spacing={1.25}>
+            {dayChoice.items.map((item) => (
+              <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Stack spacing={1}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                      {item.text}
+                    </Typography>
+                    {Number(item?.overlap_count || 0) > 0 ? (
+                      <Chip
+                        size="small"
+                        icon={<WarningAmberRoundedIcon />}
+                        label={`Chevauchement (${item.overlap_count})`}
+                        color="warning"
+                      />
+                    ) : null}
+                  </Stack>
+
+                  <Typography variant="body2" color="text.secondary">
+                    {item.period_label || `${formatDate(item.start_date)} → ${formatDate(item.end_date)}`}
+                  </Typography>
+
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setDayChoice({ open: false, dateKey: "", items: [] });
+                      navigate(`/client/incitation/${item.id}`);
+                    }}
+                  >
+                    Modifier cette phrase
+                  </Button>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDayChoice({ open: false, dateKey: "", items: [] })}>
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={!!itemToDelete}
         onClose={() => (deleteLoading ? null : setItemToDelete(null))}
-        maxWidth="xs"
         fullWidth
+        maxWidth="xs"
       >
-        <DialogTitle>Supprimer cette phrase ?</DialogTitle>
+        <DialogTitle>Supprimer la phrase</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Cette phrase d’incitation sera supprimée définitivement.
+            Cette phrase sera supprimée définitivement. Cette action est irréversible.
           </DialogContentText>
+          {itemToDelete ? (
+            <Paper variant="outlined" sx={{ p: 1.5, mt: 2, borderRadius: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.75 }}>
+                {itemToDelete.text}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {itemToDelete.period_label || `${formatDate(itemToDelete.start_date)} → ${formatDate(itemToDelete.end_date)}`}
+              </Typography>
+            </Paper>
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setItemToDelete(null)} disabled={deleteLoading}>
@@ -574,60 +692,6 @@ export default function IncitationsList() {
             disabled={deleteLoading}
           >
             {deleteLoading ? "Suppression…" : "Supprimer"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={dayChoice.open}
-        onClose={() => setDayChoice({ open: false, dateKey: "", items: [] })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Plusieurs phrases ce jour-là</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Le {formatDate(dayChoice.dateKey)}, plusieurs phrases sont actives. Choisis celle à modifier.
-          </DialogContentText>
-          <Stack spacing={1.25}>
-            {dayChoice.items.map((item) => {
-              const overlapCount = Number(item?.overlap_count || 0);
-              return (
-                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                  <Stack direction="row" spacing={1.25} alignItems="flex-start">
-                    {overlapCount > 0 ? (
-                      <WarningAmberRoundedIcon sx={{ color: "warning.main", mt: 0.2 }} />
-                    ) : (
-                      <CampaignRoundedIcon sx={{ color: "primary.main", mt: 0.2 }} />
-                    )}
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                        {item.text}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.period_label}
-                      </Typography>
-                      {overlapCount > 0 ? (
-                        <Typography variant="caption" color="warning.main">
-                          Se superpose avec {overlapCount} autre{overlapCount > 1 ? "s" : ""} phrase{overlapCount > 1 ? "s" : ""}.
-                        </Typography>
-                      ) : null}
-                    </Box>
-                    <Button
-                      variant="outlined"
-                      onClick={() => navigate(`/client/incitation/${item.id}`)}
-                    >
-                      Modifier
-                    </Button>
-                  </Stack>
-                </Paper>
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDayChoice({ open: false, dateKey: "", items: [] })}>
-            Fermer
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
@@ -87,6 +87,7 @@ function isWithinRange(date, start, end) {
 export default function IncitationEdit() {
   const navigate = useNavigate();
   const { incitationId } = useParams();
+  const [searchParams] = useSearchParams();
   const isCreate = !incitationId || incitationId === "new";
 
   const [form, setForm] = useState({ text: "", start_date: "", end_date: "" });
@@ -110,6 +111,16 @@ export default function IncitationEdit() {
 
   useEffect(() => {
     if (isCreate) {
+      const presetStart = searchParams.get("start_date") || "";
+      const presetEnd = searchParams.get("end_date") || "";
+      setForm((prev) => ({
+        ...prev,
+        start_date: presetStart || prev.start_date,
+        end_date: presetEnd || prev.end_date,
+      }));
+      if (presetStart) {
+        setCurrentMonth(startOfMonth(parseDate(presetStart) || new Date()));
+      }
       setLoading(false);
       return;
     }
@@ -148,7 +159,7 @@ export default function IncitationEdit() {
     return () => {
       cancelled = true;
     };
-  }, [incitationId, isCreate]);
+  }, [incitationId, isCreate, searchParams]);
 
   const startDateObj = useMemo(() => parseDate(form.start_date), [form.start_date]);
   const endDateObj = useMemo(() => parseDate(form.end_date), [form.end_date]);
