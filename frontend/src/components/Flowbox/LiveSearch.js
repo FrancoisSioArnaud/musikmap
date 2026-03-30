@@ -27,7 +27,6 @@ import { setWithTTL } from "../Utils/mmStorage";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
-const DEFAULT_INCITATION_TEXT = "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment.";
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
@@ -61,7 +60,7 @@ export default function LiveSearch({
   const effectiveUser = user || {};
 
   const [searchValue, setSearchValue] = useState("");
-  const [incitationText, setIncitationText] = useState(DEFAULT_INCITATION_TEXT);
+  const [incitationText, setIncitationText] = useState("");
   const [incitationLoading, setIncitationLoading] = useState(true);
   const [jsonResults, setJsonResults] = useState([]);
   const [selectedStreamingService, setSelectedStreamingService] = useState(
@@ -105,11 +104,9 @@ export default function LiveSearch({
 
         setIncitationText(
           (data?.active_incitation?.text || data?.search_incitation_text || "").trim()
-            || DEFAULT_INCITATION_TEXT
         );
       } catch (error) {
         if (cancelled) return;
-        setIncitationText(DEFAULT_INCITATION_TEXT);
       } finally {
         if (!cancelled) setIncitationLoading(false);
       }
@@ -350,119 +347,127 @@ export default function LiveSearch({
         </Stack>
       </Paper>
 
-      {isSearching && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-          <CircularProgress size={28} />
-        </Box>
-      )}
-
-      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll"}}>
-        <List disablePadding>
-          {jsonResults.map((option) => {
-            const id = option?.id ?? "__posting__";
-            const isThisPosting = posting && postingId === id;
-
-            return (
-              <ListItem
-                key={id}
-                divider
-                sx={{ overflow: "hidden", alignItems: "center" }}
-                secondaryAction={
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={posting} // ✅ disable tous les boutons
-                    onClick={() => handleDeposit(option)}
-                    sx={{ minWidth: 0 }}
+      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
+        {isSearching ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : jsonResults.length > 0 ? (
+          <List disablePadding>
+            {jsonResults.map((option) => {
+              const id = option?.id ?? "__posting__";
+              const isThisPosting = posting && postingId === id;
+      
+              return (
+                <ListItem
+                  key={id}
+                  divider
+                  sx={{ overflow: "hidden", alignItems: "center" }}
+                  secondaryAction={
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={posting}
+                      onClick={() => handleDeposit(option)}
+                      sx={{ minWidth: 0 }}
+                    >
+                      {isThisPosting ? (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <CircularProgress size={16} />
+                          Déposer
+                        </Box>
+                      ) : (
+                        "Déposer"
+                      )}
+                    </Button>
+                  }
+                >
+                  <Box
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      bgcolor: "action.hover",
+                      mr: 2,
+                    }}
                   >
-                    {isThisPosting ? (
+                    {option?.image_url ? (
                       <Box
+                        component="img"
+                        src={option.image_url}
+                        alt={option.name || "Cover"}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
                         }}
-                      >
-                        <CircularProgress size={16} />
-                        Déposer
-                      </Box>
-                    ) : (
-                      "Déposer"
-                    )}
-                  </Button>
-                }
-              >
-                <Box
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    bgcolor: "action.hover",
-                    mr: 2,
-                  }}
-                >
-                  {option?.image_url ? (
-                    <Box
-                      component="img"
-                      src={option.image_url}
-                      alt={option.name || "Cover"}
+                      />
+                    ) : null}
+                  </Box>
+      
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 0,
+                      mr: 2,
+                      flex: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Typography
+                      component="h3"
+                      variant="h6"
+                      noWrap
                       sx={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
+                        fontWeight: 700,
+                        textAlign: "left",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
                       }}
-                    />
-                  ) : null}
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minWidth: 0,
-                    mr: 2,
-                    flex: 1,
-                    overflow: "hidden",
-                  }}
-                >
-                  <Typography
-                    component="h3"
-                    variant="h6"
-                    noWrap
-                    sx={{
-                      fontWeight: 700,
-                      textAlign: "left",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                    }}
-                    title={option?.name || ""}
-                  >
-                    {option?.name || ""}
-                  </Typography>
-                  <Typography
-                    component="p"
-                    variant="body2"
-                    color="text.secondary"
-                    noWrap
-                    sx={{
-                      textAlign: "left",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                    }}
-                    title={option?.artist || ""}
-                  >
-                    {option?.artist || ""}
-                  </Typography>
-                </Box>
-              </ListItem>
-            );
-          })}
-        </List>
+                      title={option?.name || ""}
+                    >
+                      {option?.name || ""}
+                    </Typography>
+                    <Typography
+                      component="p"
+                      variant="body2"
+                      color="text.secondary"
+                      noWrap
+                      sx={{
+                        textAlign: "left",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                      }}
+                      title={option?.artist || ""}
+                    >
+                      {option?.artist || ""}
+                    </Typography>
+                  </Box>
+                </ListItem>
+              );
+            })}
+          </List>
+        ) : incitationLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : incitationText ? (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="body1">{incitationText}</Typography>
+          </Box>
+        ) : null}
       </Paper>
     </Stack>
   );
