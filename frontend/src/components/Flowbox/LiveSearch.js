@@ -471,7 +471,7 @@ export default function LiveSearch({
             padding: "16px 20px",
             borderRadius: "3rem",
             display: "flex",
-            gap:"8px",
+            gap:"12px",
             alignItems: "center",
           }}>
             <CampaignRoundedIcon />
