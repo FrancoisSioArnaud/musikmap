@@ -464,8 +464,8 @@ export default function LiveSearch({
             <CircularProgress size={28} />
           </Box>
         ) : incitationText ? (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="body1">{incitationText}</Typography>
+          <Box sx={{ p:"0 16px" }}>
+            <Typography variant="body1" sx={{ textAlign="center" }}>>{incitationText}</Typography>
           </Box>
         ) : null}
       </Paper>
