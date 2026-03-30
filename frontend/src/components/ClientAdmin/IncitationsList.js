@@ -425,7 +425,7 @@ export default function IncitationsList() {
     setRangeEndKey("");
     setHoverDateKey("");
   }, []);
-
+  
   const closeEditor = useCallback(() => {
     setEditorOpen(false);
     setEditorMode("create");
@@ -436,7 +436,8 @@ export default function IncitationsList() {
     setCalendarExpanded(false);
     setOverlapItems([]);
     setOverlapDialogOpen(false);
-  }, []);
+    resetSelection();
+  }, [resetSelection]);
 
   const openCreateModal = useCallback((startKey, endKey) => {
     setEditorMode("create");
