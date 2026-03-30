@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 
-import MarkdownContent from "../Markdown/MarkdownContent";
+import MarkdownContent from "../../Utils/MarkdownContent";
 
 export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
   const previewText = typeof article?.short_text === "string" ? article.short_text : "";
