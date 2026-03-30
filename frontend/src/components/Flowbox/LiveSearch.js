@@ -472,6 +472,7 @@ export default function LiveSearch({
             borderRadius: "3rem",
             display: "flex",
             gap:"8px",
+            alignItems: "center",
           }}>
             <CampaignRoundedIcon />
             <Typography variant="subtitle1" sx={{}}>{incitationText}</Typography>
