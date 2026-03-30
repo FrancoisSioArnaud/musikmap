@@ -284,7 +284,6 @@ function CalendarGrid({
               onMouseEnter={() => onDayHover?.(date)}
               onMouseLeave={() => onDayLeave?.()}
               sx={{
-                bod
                 minHeight: 72,
                 borderRadius: 2,
                 borderColor,
