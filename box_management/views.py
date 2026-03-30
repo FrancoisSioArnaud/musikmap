@@ -297,7 +297,7 @@ def _collapse_article_text(value):
     return value
 
 
-def _truncate_article_text(value, limit=1000):
+def _truncate_article_text(value, limit=10000):
     value = _collapse_article_text(value)
     if len(value) <= limit:
         return value
@@ -408,7 +408,7 @@ def _pick_best_short_text(meta, parser):
     )
 
     if description and not _looks_like_noise_text(description):
-        return _truncate_article_text(description, limit=1000)
+        return _truncate_article_text(description, limit=10000)
 
     paragraph_candidates = []
     for chunk in parser.paragraph_chunks:
@@ -429,7 +429,7 @@ def _pick_best_short_text(meta, parser):
         if len(combined) >= 220:
             break
 
-    combined = _truncate_article_text(combined, limit=1000)
+    combined = _truncate_article_text(combined, limit=10000)
     if combined:
         return combined
 
@@ -440,7 +440,7 @@ def _pick_best_short_text(meta, parser):
             continue
         body_candidates.append(text)
 
-    merged_body = _truncate_article_text(" ".join(body_candidates), limit=1000)
+    merged_body = _truncate_article_text(" ".join(body_candidates), limit=10000)
     return merged_body
 
 
