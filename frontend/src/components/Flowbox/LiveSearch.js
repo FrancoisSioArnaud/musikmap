@@ -465,7 +465,7 @@ export default function LiveSearch({
           </Box>
         ) : incitationText ? (
           <Box sx={{ p:"0 16px" }}>
-            <Typography variant="body1" sx={{ textAlign="center" }}>>{incitationText}</Typography>
+            <Typography variant="body1" sx={{ textAlign:" center" }}>>{incitationText}</Typography>
           </Box>
         ) : null}
       </Paper>
