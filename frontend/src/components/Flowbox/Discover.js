@@ -220,12 +220,6 @@ export default function Discover() {
 
       {articles.length > 0 ? (
         <Box className="articles_section">
-          <Box className="intro articles_intro">
-            <Typography component="h2" variant="h3">
-              À lire
-            </Typography>
-          </Box>
-
           <Box className="articles_list">
             {articles.map((article, idx) => (
               <ArticleCard
