@@ -282,15 +282,6 @@ export default function IncitationsList() {
             justifyContent="space-between"
             spacing={1.5}
           >
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Calendrier des phrases
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Clique sur un jour avec phrase pour la modifier. Clique sur un jour libre pour démarrer une période, puis clique sur le jour de fin pour ouvrir la création avec ces dates préremplies.
-              </Typography>
-            </Box>
-
             <Stack direction="row" spacing={1} alignItems="center">
               <Button
                 variant="outlined"
@@ -317,34 +308,6 @@ export default function IncitationsList() {
                 Effacer la sélection
               </Button>
             </Stack>
-          </Stack>
-
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip
-              size="small"
-              label="Phrase existante"
-              sx={{
-                backgroundColor: "var(--mm-color-primary)",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            />
-            <Chip
-              size="small"
-              label="Plusieurs phrases ce jour-là"
-              sx={{
-                backgroundColor: "var(--mm-color-error)",
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            />
-            {rangeStartKey ? (
-              <Chip
-                size="small"
-                label={`Début sélectionné : ${formatDate(rangeStartKey)}`}
-                variant="outlined"
-              />
-            ) : null}
           </Stack>
 
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
