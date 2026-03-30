@@ -4,7 +4,7 @@
 .info_box{
   box-shadow: none;
   border: var(--mm-border-default);
-  border-radius: 2rem;
+  border-radius: var(--mm-radius-xl);
   padding: 16px 26px;
   margin: 0 auto;
   display: flex;
@@ -18,10 +18,9 @@
 }
 
 .info_box svg{
-  width: 1.6em;
-  height: 1.6em;
+
 }
 
 .info_box + div > :first-child{
-margin-top: 30px;
+  margin-top: 30px;
 }
