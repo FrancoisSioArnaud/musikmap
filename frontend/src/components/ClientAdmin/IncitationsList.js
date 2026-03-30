@@ -119,19 +119,58 @@ function truncatePhrase(text, maxLength = 26) {
   return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function getPreviewRange(rangeStartKey, rangeEndKey, hoverDateKey) {
+  if (!rangeStartKey || rangeEndKey || !hoverDateKey) {
+    return {
+      previewStartKey: rangeStartKey || "",
+      previewEndKey: rangeEndKey || "",
+    };
+  }
+
+  const startDate = parseDate(rangeStartKey);
+  const hoverDate = parseDate(hoverDateKey);
+
+  if (!startDate || !hoverDate) {
+    return {
+      previewStartKey: rangeStartKey || "",
+      previewEndKey: rangeEndKey || "",
+    };
+  }
+
+  if (hoverDate < startDate) {
+    return {
+      previewStartKey: hoverDateKey,
+      previewEndKey: rangeStartKey,
+    };
+  }
+
+  return {
+    previewStartKey: rangeStartKey,
+    previewEndKey: hoverDateKey,
+  };
+}
+
 function CalendarGrid({
   monthDate,
   onMonthChange,
   dayItemsMap,
   rangeStartKey,
   rangeEndKey,
+  hoverDateKey = "",
   onDayClick,
+  onDayHover,
+  onDayLeave,
   showLegend = true,
   minHeight,
 }) {
   const todayKey = formatDateKey(new Date());
-  const rangeStartDate = parseDate(rangeStartKey);
-  const rangeEndDate = parseDate(rangeEndKey);
+  const { previewStartKey, previewEndKey } = useMemo(
+    () => getPreviewRange(rangeStartKey, rangeEndKey, hoverDateKey),
+    [hoverDateKey, rangeEndKey, rangeStartKey]
+  );
+
+  const rangeStartDate = parseDate(previewStartKey);
+  const rangeEndDate = parseDate(previewEndKey);
   const calendarDays = useMemo(() => buildCalendarDays(monthDate), [monthDate]);
 
   return (
@@ -190,6 +229,9 @@ function CalendarGrid({
             }}
           />
           <Chip size="small" variant="outlined" label="Plage sélectionnée" />
+          {!rangeEndKey && rangeStartKey ? (
+            <Chip size="small" variant="outlined" label="Survole un jour pour prévisualiser" />
+          ) : null}
         </Stack>
       ) : null}
 
@@ -221,8 +263,8 @@ function CalendarGrid({
           const items = dayItemsMap.get(dateKey) || [];
           const isCurrentMonth = date.getMonth() === monthDate.getMonth();
           const isToday = dateKey === todayKey;
-          const isSelectedStart = rangeStartKey === dateKey;
-          const isSelectedEnd = rangeEndKey === dateKey;
+          const isSelectedStart = previewStartKey === dateKey;
+          const isSelectedEnd = previewEndKey === dateKey;
           const inSelectedRange = isWithinRange(date, rangeStartDate, rangeEndDate);
           const hasOnePhrase = items.length === 1;
           const hasMultiple = items.length > 1;
@@ -247,6 +289,7 @@ function CalendarGrid({
           if (inSelectedRange && !isSelectedStart && !isSelectedEnd) {
             backgroundColor = "rgba(0, 0, 0, 0.06)";
             textColor = "inherit";
+            borderColor = "rgba(0, 0, 0, 0.18)";
           }
 
           if (isSelectedStart || isSelectedEnd) {
@@ -265,6 +308,8 @@ function CalendarGrid({
               key={dateKey}
               variant="outlined"
               onClick={() => onDayClick(date)}
+              onMouseEnter={() => onDayHover?.(date)}
+              onMouseLeave={() => onDayLeave?.()}
               sx={{
                 minHeight: 72,
                 borderRadius: 2,
@@ -280,7 +325,7 @@ function CalendarGrid({
                 overflow: "hidden",
                 "&:hover": {
                   borderColor,
-                borderWidth,
+                  borderWidth,
                   backgroundColor,
                   opacity: 0.92,
                 },
@@ -332,6 +377,7 @@ export default function IncitationsList() {
   const [mainMonth, setMainMonth] = useState(() => startOfMonth(new Date()));
   const [rangeStartKey, setRangeStartKey] = useState("");
   const [rangeEndKey, setRangeEndKey] = useState("");
+  const [hoverDateKey, setHoverDateKey] = useState("");
   const [choiceDialog, setChoiceDialog] = useState({ open: false, dateKey: "", items: [] });
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState("create");
@@ -380,6 +426,22 @@ export default function IncitationsList() {
   const countLabel = useMemo(() => getCountLabel(items), [items]);
   const dayItemsMap = useMemo(() => buildDayItemsMap(items), [items]);
   const selectedStartDate = useMemo(() => parseDate(rangeStartKey), [rangeStartKey]);
+  const hoveredDate = useMemo(() => parseDate(hoverDateKey), [hoverDateKey]);
+  const previewPeriodLabel = useMemo(() => {
+    const { previewStartKey, previewEndKey } = getPreviewRange(
+      rangeStartKey,
+      rangeEndKey,
+      hoverDateKey
+    );
+
+    if (!previewStartKey) return "";
+    if (!previewEndKey) {
+      return `Début sélectionné : ${formatDateLabel(previewStartKey)}. Clique sur un second jour libre pour fermer la période.`;
+    }
+
+    return `Période en cours de création : du ${formatDateLabel(previewStartKey)} au ${formatDateLabel(previewEndKey)}.`;
+  }, [hoverDateKey, rangeEndKey, rangeStartKey]);
+
   const editorDayItemsMap = useMemo(() => {
     if (editorMode !== "edit" || !editingId) return dayItemsMap;
     return buildDayItemsMap(items.filter((item) => item.id !== editingId));
@@ -388,6 +450,7 @@ export default function IncitationsList() {
   const resetSelection = useCallback(() => {
     setRangeStartKey("");
     setRangeEndKey("");
+    setHoverDateKey("");
   }, []);
 
   const closeEditor = useCallback(() => {
@@ -411,154 +474,195 @@ export default function IncitationsList() {
     setEditorOpen(true);
   }, []);
 
-  const openEditModal = useCallback(async (itemOrId) => {
-    const nextId = typeof itemOrId === "number" ? itemOrId : itemOrId?.id;
-    if (!nextId) return;
+  const openEditModal = useCallback(
+    async (itemOrId) => {
+      const nextId = typeof itemOrId === "number" ? itemOrId : itemOrId?.id;
+      if (!nextId) return;
 
-    setEditorOpen(true);
-    setEditorMode("edit");
-    setEditingId(nextId);
-    setEditorLoading(true);
-    setCalendarExpanded(false);
-    setPageError("");
+      setEditorOpen(true);
+      setEditorMode("edit");
+      setEditingId(nextId);
+      setEditorLoading(true);
+      setCalendarExpanded(false);
+      setPageError("");
 
-    try {
-      const response = await fetch(`/box-management/client-admin/incitations/${nextId}/`, {
-        credentials: "same-origin",
-      });
-      const data = await response.json().catch(() => ({}));
+      try {
+        const response = await fetch(`/box-management/client-admin/incitations/${nextId}/`, {
+          credentials: "same-origin",
+        });
+        const data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        throw new Error(data?.detail || "Impossible de charger la phrase d’incitation.");
+        if (!response.ok) {
+          throw new Error(data?.detail || "Impossible de charger la phrase d’incitation.");
+        }
+
+        setEditorForm({
+          text: typeof data?.text === "string" ? data.text : "",
+          start_date: data?.start_date || "",
+          end_date: data?.end_date || "",
+        });
+        setEditorMonth(startOfMonth(parseDate(data?.start_date) || new Date()));
+      } catch (error) {
+        closeEditor();
+        setPageError(error.message || "Impossible de charger la phrase d’incitation.");
+      } finally {
+        setEditorLoading(false);
       }
+    },
+    [closeEditor]
+  );
 
-      setEditorForm({
-        text: typeof data?.text === "string" ? data.text : "",
-        start_date: data?.start_date || "",
-        end_date: data?.end_date || "",
-      });
-      setEditorMonth(startOfMonth(parseDate(data?.start_date) || new Date()));
-    } catch (error) {
-      closeEditor();
-      setPageError(error.message || "Impossible de charger la phrase d’incitation.");
-    } finally {
-      setEditorLoading(false);
-    }
-  }, [closeEditor]);
-
-  const handleMainDayClick = useCallback((date) => {
-    const dateKey = formatDateKey(date);
-    const matchedItems = [...(dayItemsMap.get(dateKey) || [])].sort(compareItemsForChoice);
-
-    if (matchedItems.length > 1) {
-      resetSelection();
-      setChoiceDialog({ open: true, dateKey, items: matchedItems });
-      return;
-    }
-
-    if (matchedItems.length === 1) {
-      resetSelection();
-      openEditModal(matchedItems[0].id);
-      return;
-    }
-
-    if (!rangeStartKey) {
-      setRangeStartKey(dateKey);
-      setRangeEndKey("");
-      return;
-    }
-
-    if (!selectedStartDate) {
-      setRangeStartKey(dateKey);
-      setRangeEndKey("");
-      return;
-    }
-
-    const startKey = date < selectedStartDate ? dateKey : rangeStartKey;
-    const endKey = date < selectedStartDate ? rangeStartKey : dateKey;
-    setRangeStartKey(startKey);
-    setRangeEndKey(endKey);
-    openCreateModal(startKey, endKey);
-  }, [dayItemsMap, openEditModal, openCreateModal, rangeStartKey, resetSelection, selectedStartDate]);
-
-  const handleEditorCalendarClick = useCallback((date) => {
-    const key = formatDateKey(date);
-    const startKey = editorForm.start_date;
-    const endKey = editorForm.end_date;
-    const startDate = parseDate(startKey);
-
-    if (!startKey || (startKey && endKey)) {
-      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
-      return;
-    }
-
-    if (!startDate) {
-      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
-      return;
-    }
-
-    if (date < startDate) {
-      setEditorForm((prev) => ({ ...prev, start_date: key, end_date: prev.start_date }));
-      return;
-    }
-
-    setEditorForm((prev) => ({ ...prev, end_date: key }));
-  }, [editorForm.end_date, editorForm.start_date]);
-
-  const submitEditor = useCallback(async (forceOverlap = false) => {
-    setSaving(true);
-    setPageError("");
-
-    try {
-      const url =
-        editorMode === "create"
-          ? "/box-management/client-admin/incitations/"
-          : `/box-management/client-admin/incitations/${editingId}/`;
-      const method = editorMode === "create" ? "POST" : "PATCH";
-      const csrftoken = getCookie("csrftoken");
-
-      const response = await fetch(url, {
-        method,
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrftoken,
-        },
-        body: JSON.stringify({
-          text: editorForm.text,
-          start_date: editorForm.start_date,
-          end_date: editorForm.end_date,
-          force_overlap: forceOverlap,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (response.status === 409 && data?.error === "overlap_warning") {
-        setOverlapItems(Array.isArray(data?.overlaps) ? data.overlaps : []);
-        setOverlapDialogOpen(true);
+  const handleMainDayHover = useCallback(
+    (date) => {
+      if (!rangeStartKey || rangeEndKey) {
+        setHoverDateKey("");
         return;
       }
 
-      if (!response.ok) {
-        if (data && typeof data === "object") {
-          const firstKey = Object.keys(data)[0];
-          const firstValue = data[firstKey];
-          const detail = Array.isArray(firstValue) ? firstValue[0] : firstValue;
-          throw new Error(detail || data?.detail || "Enregistrement impossible.");
-        }
-        throw new Error("Enregistrement impossible.");
+      const dateKey = formatDateKey(date);
+      const matchedItems = dayItemsMap.get(dateKey) || [];
+
+      if (matchedItems.length) {
+        setHoverDateKey("");
+        return;
       }
 
-      closeEditor();
-      resetSelection();
-      await fetchItems();
-    } catch (error) {
-      setPageError(error.message || "Enregistrement impossible.");
-    } finally {
-      setSaving(false);
+      setHoverDateKey(dateKey);
+    },
+    [dayItemsMap, rangeEndKey, rangeStartKey]
+  );
+
+  const handleMainDayLeave = useCallback(() => {
+    if (!rangeStartKey || rangeEndKey) {
+      setHoverDateKey("");
     }
-  }, [closeEditor, editorForm, editorMode, editingId, fetchItems, resetSelection]);
+  }, [rangeEndKey, rangeStartKey]);
+
+  const handleMainDayClick = useCallback(
+    (date) => {
+      const dateKey = formatDateKey(date);
+      const matchedItems = [...(dayItemsMap.get(dateKey) || [])].sort(compareItemsForChoice);
+
+      if (matchedItems.length > 1) {
+        resetSelection();
+        setChoiceDialog({ open: true, dateKey, items: matchedItems });
+        return;
+      }
+
+      if (matchedItems.length === 1) {
+        resetSelection();
+        openEditModal(matchedItems[0].id);
+        return;
+      }
+
+      if (!rangeStartKey) {
+        setRangeStartKey(dateKey);
+        setRangeEndKey("");
+        setHoverDateKey("");
+        return;
+      }
+
+      if (!selectedStartDate) {
+        setRangeStartKey(dateKey);
+        setRangeEndKey("");
+        setHoverDateKey("");
+        return;
+      }
+
+      const startKey = date < selectedStartDate ? dateKey : rangeStartKey;
+      const endKey = date < selectedStartDate ? rangeStartKey : dateKey;
+      setRangeStartKey(startKey);
+      setRangeEndKey(endKey);
+      setHoverDateKey("");
+      openCreateModal(startKey, endKey);
+    },
+    [dayItemsMap, openEditModal, openCreateModal, rangeStartKey, resetSelection, selectedStartDate]
+  );
+
+  const handleEditorCalendarClick = useCallback(
+    (date) => {
+      const key = formatDateKey(date);
+      const startKey = editorForm.start_date;
+      const endKey = editorForm.end_date;
+      const startDate = parseDate(startKey);
+
+      if (!startKey || (startKey && endKey)) {
+        setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+        return;
+      }
+
+      if (!startDate) {
+        setEditorForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+        return;
+      }
+
+      if (date < startDate) {
+        setEditorForm((prev) => ({ ...prev, start_date: key, end_date: prev.start_date }));
+        return;
+      }
+
+      setEditorForm((prev) => ({ ...prev, end_date: key }));
+    },
+    [editorForm.end_date, editorForm.start_date]
+  );
+
+  const submitEditor = useCallback(
+    async (forceOverlap = false) => {
+      setSaving(true);
+      setPageError("");
+
+      try {
+        const url =
+          editorMode === "create"
+            ? "/box-management/client-admin/incitations/"
+            : `/box-management/client-admin/incitations/${editingId}/`;
+        const method = editorMode === "create" ? "POST" : "PATCH";
+        const csrftoken = getCookie("csrftoken");
+
+        const response = await fetch(url, {
+          method,
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+          body: JSON.stringify({
+            text: editorForm.text,
+            start_date: editorForm.start_date,
+            end_date: editorForm.end_date,
+            force_overlap: forceOverlap,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 409 && data?.error === "overlap_warning") {
+          setOverlapItems(Array.isArray(data?.overlaps) ? data.overlaps : []);
+          setOverlapDialogOpen(true);
+          return;
+        }
+
+        if (!response.ok) {
+          if (data && typeof data === "object") {
+            const firstKey = Object.keys(data)[0];
+            const firstValue = data[firstKey];
+            const detail = Array.isArray(firstValue) ? firstValue[0] : firstValue;
+            throw new Error(detail || data?.detail || "Enregistrement impossible.");
+          }
+          throw new Error("Enregistrement impossible.");
+        }
+
+        closeEditor();
+        resetSelection();
+        await fetchItems();
+      } catch (error) {
+        setPageError(error.message || "Enregistrement impossible.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [closeEditor, editorForm, editorMode, editingId, fetchItems, resetSelection]
+  );
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!itemToDelete) return;
@@ -595,7 +699,9 @@ export default function IncitationsList() {
     if (!editorForm.start_date || !editorForm.end_date) {
       return "Choisis une date de début puis une date de fin.";
     }
-    return `Du ${formatDateLabel(editorForm.start_date)} au ${formatDateLabel(editorForm.end_date)} inclus.`;
+    return `Du ${formatDateLabel(editorForm.start_date)} au ${formatDateLabel(
+      editorForm.end_date
+    )} inclus.`;
   }, [editorForm.end_date, editorForm.start_date]);
 
   return (
@@ -614,7 +720,8 @@ export default function IncitationsList() {
             Mes phrases d’incitation
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Sélectionne une plage libre dans le calendrier pour créer une phrase. Clique sur un jour déjà occupé pour modifier une phrase existante.
+            Sélectionne une plage libre dans le calendrier pour créer une phrase. Clique sur un
+            jour déjà occupé pour modifier une phrase existante.
           </Typography>
         </Box>
       </Paper>
@@ -636,7 +743,8 @@ export default function IncitationsList() {
               Calendrier des phrases
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Les jours avec une phrase sont en couleur principale. Les jours avec plusieurs phrases sont en rouge. Un clic sur un jour libre démarre une sélection de période.
+              Les jours avec une phrase sont en couleur principale. Les jours avec plusieurs phrases
+              sont en rouge. Un clic sur un jour libre démarre une sélection de période.
             </Typography>
           </Box>
 
@@ -646,7 +754,10 @@ export default function IncitationsList() {
             dayItemsMap={dayItemsMap}
             rangeStartKey={rangeStartKey}
             rangeEndKey={rangeEndKey}
+            hoverDateKey={hoverDateKey}
             onDayClick={handleMainDayClick}
+            onDayHover={handleMainDayHover}
+            onDayLeave={handleMainDayLeave}
             showLegend
           />
 
@@ -659,9 +770,7 @@ export default function IncitationsList() {
                 </Button>
               }
             >
-              {rangeEndKey
-                ? `Période en cours de création : du ${formatDateLabel(rangeStartKey)} au ${formatDateLabel(rangeEndKey)}.`
-                : `Début sélectionné : ${formatDateLabel(rangeStartKey)}. Clique sur un second jour libre pour fermer la période.`}
+              {previewPeriodLabel}
             </Alert>
           ) : null}
         </Stack>
@@ -717,7 +826,16 @@ export default function IncitationsList() {
                           {item.text}
                         </Typography>
                         {item.has_overlap_warning ? (
-                          <Typography variant="caption" color="error.main" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                          <Typography
+                            variant="caption"
+                            color="error.main"
+                            sx={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                              mt: 0.5,
+                            }}
+                          >
                             <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
                             Attention : se superpose
                           </Typography>
@@ -728,7 +846,10 @@ export default function IncitationsList() {
                           variant="body2"
                           sx={{ color: item.is_past ? "error.main" : "inherit", fontWeight: 500 }}
                         >
-                          {item.period_label || `Du ${formatDateLabel(item.start_date)} au ${formatDateLabel(item.end_date)}`}
+                          {item.period_label ||
+                            `Du ${formatDateLabel(item.start_date)} au ${formatDateLabel(
+                              item.end_date
+                            )}`}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -768,11 +889,17 @@ export default function IncitationsList() {
         </Stack>
       </Paper>
 
-      <Dialog open={choiceDialog.open} onClose={() => setChoiceDialog({ open: false, dateKey: "", items: [] })} maxWidth="sm" fullWidth>
+      <Dialog
+        open={choiceDialog.open}
+        onClose={() => setChoiceDialog({ open: false, dateKey: "", items: [] })}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Choisir la phrase à modifier</DialogTitle>
         <DialogContent dividers>
           <DialogContentText sx={{ mb: 2 }}>
-            Plusieurs phrases existent le {formatDateLabel(choiceDialog.dateKey)}. Choisis celle que tu veux modifier.
+            Plusieurs phrases existent le {formatDateLabel(choiceDialog.dateKey)}. Choisis celle que
+            tu veux modifier.
           </DialogContentText>
           <Stack spacing={1.5}>
             {choiceDialog.items.map((item) => (
@@ -799,7 +926,9 @@ export default function IncitationsList() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setChoiceDialog({ open: false, dateKey: "", items: [] })}>Fermer</Button>
+          <Button onClick={() => setChoiceDialog({ open: false, dateKey: "", items: [] })}>
+            Fermer
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -874,7 +1003,8 @@ export default function IncitationsList() {
                     <>
                       <Divider />
                       <Typography variant="body2" color="text.secondary">
-                        Calendrier de sélection. Premier clic = début, deuxième clic = fin. Il montre aussi les autres phrases déjà existantes.
+                        Calendrier de sélection. Premier clic = début, deuxième clic = fin. Il montre
+                        aussi les autres phrases déjà existantes.
                       </Typography>
                       <CalendarGrid
                         monthDate={editorMonth}
@@ -922,11 +1052,17 @@ export default function IncitationsList() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={overlapDialogOpen} onClose={() => setOverlapDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={overlapDialogOpen}
+        onClose={() => setOverlapDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>La période se superpose</DialogTitle>
         <DialogContent dividers>
           <DialogContentText sx={{ mb: 2 }}>
-            Une ou plusieurs phrases existent déjà sur cette période. Tu peux quand même enregistrer si tu confirmes.
+            Une ou plusieurs phrases existent déjà sur cette période. Tu peux quand même enregistrer
+            si tu confirmes.
           </DialogContentText>
           <Stack spacing={1.5}>
             {overlapItems.map((item) => (
@@ -956,7 +1092,12 @@ export default function IncitationsList() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!itemToDelete} onClose={deleteLoading ? undefined : () => setItemToDelete(null)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={!!itemToDelete}
+        onClose={deleteLoading ? undefined : () => setItemToDelete(null)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>Supprimer cette phrase ?</DialogTitle>
         <DialogContent dividers>
           <DialogContentText>
