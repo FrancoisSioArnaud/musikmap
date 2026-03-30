@@ -499,12 +499,12 @@ export default function ArticleEdit() {
               label="Texte court"
               value={form.short_text}
               onChange={(e) =>
-                patchForm("short_text", e.target.value.slice(0, 1000))
+                patchForm("short_text", e.target.value.slice(0, 10000))
               }
               fullWidth
               multiline
               minRows={3}
-              helperText={`${form.short_text.length}/1000 caractères`}
+              helperText={`${form.short_text.length}/10000 caractères`}
             />
 
             <TextField
