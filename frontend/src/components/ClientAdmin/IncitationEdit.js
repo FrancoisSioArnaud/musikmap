@@ -404,7 +404,7 @@ export default function IncitationEdit() {
                 />
               </Stack>
 
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5, maxWidth: "580px" }}>
                 <Stack
                   direction="row"
                   alignItems="center"
