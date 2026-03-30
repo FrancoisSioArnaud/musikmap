@@ -308,9 +308,9 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
 
     def validate_short_text(self, value):
         value = (value or "").strip()
-        if len(value) > 1000:
+        if len(value) > 10000:
             raise serializers.ValidationError(
-                "Le texte de l’article ne peut pas dépasser 1000 caractères."
+                "Le texte de l’article ne peut pas dépasser 10000 caractères."
             )
         return value
 
