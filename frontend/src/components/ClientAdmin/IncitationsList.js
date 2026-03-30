@@ -112,6 +112,13 @@ function getCountLabel(items) {
   return `${count} phrase${count > 1 ? "s" : ""}`;
 }
 
+function truncatePhrase(text, maxLength = 26) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function CalendarGrid({
   monthDate,
   onMonthChange,
@@ -223,6 +230,7 @@ function CalendarGrid({
           let backgroundColor = "transparent";
           let textColor = isCurrentMonth ? "inherit" : "text.disabled";
           let borderColor = "divider";
+          let borderWidth = 1;
 
           if (hasOnePhrase) {
             backgroundColor = "var(--mm-color-primary)";
@@ -247,6 +255,11 @@ function CalendarGrid({
             borderColor = "text.primary";
           }
 
+          if (isToday) {
+            borderColor = "var(--mm-color-secondary)";
+            borderWidth = 4;
+          }
+
           return (
             <Button
               key={dateKey}
@@ -256,6 +269,7 @@ function CalendarGrid({
                 minHeight: 72,
                 borderRadius: 2,
                 borderColor,
+                borderWidth,
                 backgroundColor,
                 color: textColor,
                 justifyContent: "flex-start",
@@ -266,6 +280,7 @@ function CalendarGrid({
                 overflow: "hidden",
                 "&:hover": {
                   borderColor,
+                borderWidth,
                   backgroundColor,
                   opacity: 0.92,
                 },
@@ -290,7 +305,7 @@ function CalendarGrid({
                       opacity: 0.95,
                     }}
                   >
-                    {items.length > 1 ? `${items.length} phrases` : "1 phrase"}
+                    {items.length > 1 ? `${items.length} phrases` : truncatePhrase(items[0]?.text)}
                   </Typography>
                 ) : null}
 
@@ -365,6 +380,10 @@ export default function IncitationsList() {
   const countLabel = useMemo(() => getCountLabel(items), [items]);
   const dayItemsMap = useMemo(() => buildDayItemsMap(items), [items]);
   const selectedStartDate = useMemo(() => parseDate(rangeStartKey), [rangeStartKey]);
+  const editorDayItemsMap = useMemo(() => {
+    if (editorMode !== "edit" || !editingId) return dayItemsMap;
+    return buildDayItemsMap(items.filter((item) => item.id !== editingId));
+  }, [dayItemsMap, editorMode, editingId, items]);
 
   const resetSelection = useCallback(() => {
     setRangeStartKey("");
@@ -860,7 +879,7 @@ export default function IncitationsList() {
                       <CalendarGrid
                         monthDate={editorMonth}
                         onMonthChange={setEditorMonth}
-                        dayItemsMap={dayItemsMap}
+                        dayItemsMap={editorDayItemsMap}
                         rangeStartKey={editorForm.start_date}
                         rangeEndKey={editorForm.end_date}
                         onDayClick={handleEditorCalendarClick}
