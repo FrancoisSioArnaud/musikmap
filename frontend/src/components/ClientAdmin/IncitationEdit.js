@@ -1,53 +1,103 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import Divider from "@mui/material/Divider";
+import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import Snackbar from "@mui/material/Snackbar";
+import Divider from "@mui/material/Divider";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
+import Snackbar from "@mui/material/Snackbar";
 import Chip from "@mui/material/Chip";
 import SaveIcon from "@mui/icons-material/Save";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { getCookie } from "../Security/TokensUtils";
 
-const EMPTY_FORM = {
-  text: "",
-  start_date: "",
-  end_date: "",
-};
+const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-function normalizeForm(data) {
-  if (!data || typeof data !== "object") return EMPTY_FORM;
+function normalizeForm(data = {}) {
   return {
-    text: data.text || "",
-    start_date: data.start_date || "",
-    end_date: data.end_date || "",
+    text: typeof data?.text === "string" ? data.text : "",
+    start_date: data?.start_date || "",
+    end_date: data?.end_date || "",
   };
+}
+
+function parseDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatHumanDate(value) {
+  if (!value) return "—";
+  const date = parseDate(value);
+  if (!date) return value;
+  return date.toLocaleDateString("fr-FR");
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function buildCalendarDays(monthDate) {
+  const firstDay = startOfMonth(monthDate);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const startDate = new Date(firstDay);
+  startDate.setDate(firstDay.getDate() - firstWeekday);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    return date;
+  });
+}
+
+function isSameDay(a, b) {
+  if (!a || !b) return false;
+  return formatDateKey(a) === formatDateKey(b);
+}
+
+function isWithinRange(date, start, end) {
+  if (!start || !end) return false;
+  return date >= start && date <= end;
 }
 
 export default function IncitationEdit() {
   const navigate = useNavigate();
   const { incitationId } = useParams();
-  const isCreate = !incitationId;
+  const isCreate = !incitationId || incitationId === "new";
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ text: "", start_date: "", end_date: "" });
   const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
   const [pageError, setPageError] = useState("");
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarText, setSnackbarText] = useState("");
   const [overlapDialogOpen, setOverlapDialogOpen] = useState(false);
   const [overlapItems, setOverlapItems] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarText, setSnackbarText] = useState("");
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
 
   const patchForm = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -82,7 +132,11 @@ export default function IncitationEdit() {
         }
 
         if (cancelled) return;
-        setForm(normalizeForm(data));
+        const normalized = normalizeForm(data);
+        setForm(normalized);
+        if (normalized.start_date) {
+          setCurrentMonth(startOfMonth(parseDate(normalized.start_date) || new Date()));
+        }
       } catch (error) {
         if (cancelled) return;
         setPageError(error.message || "Impossible de charger la phrase d’incitation.");
@@ -96,12 +150,40 @@ export default function IncitationEdit() {
     };
   }, [incitationId, isCreate]);
 
+  const startDateObj = useMemo(() => parseDate(form.start_date), [form.start_date]);
+  const endDateObj = useMemo(() => parseDate(form.end_date), [form.end_date]);
+  const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
+
   const periodSummary = useMemo(() => {
     if (!form.start_date || !form.end_date) {
-      return "Choisis une période complète en jours pleins.";
+      return "Clique une première fois pour choisir le début, puis une deuxième fois pour choisir la fin.";
     }
-    return `La phrase sera affichée du ${form.start_date} au ${form.end_date} inclus.`;
+    return `La phrase sera affichée du ${formatHumanDate(form.start_date)} au ${formatHumanDate(form.end_date)} inclus.`;
   }, [form.start_date, form.end_date]);
+
+  const handleCalendarDayClick = (date) => {
+    const key = formatDateKey(date);
+
+    if (!form.start_date || (form.start_date && form.end_date)) {
+      setForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+      return;
+    }
+
+    if (form.start_date && !form.end_date) {
+      const start = parseDate(form.start_date);
+      if (!start) {
+        setForm((prev) => ({ ...prev, start_date: key, end_date: "" }));
+        return;
+      }
+
+      if (date < start) {
+        setForm((prev) => ({ ...prev, start_date: key, end_date: form.start_date }));
+        return;
+      }
+
+      setForm((prev) => ({ ...prev, end_date: key }));
+    }
+  };
 
   const submit = useCallback(async (forceOverlap = false) => {
     setSaving(true);
@@ -209,9 +291,7 @@ export default function IncitationEdit() {
             Retour aux phrases d’incitation
           </Button>
 
-          {!isCreate ? (
-            <Chip size="small" label="Modification" />
-          ) : null}
+          {!isCreate ? <Chip size="small" label="Modification" /> : null}
         </Stack>
 
         {pageError ? <Alert severity="error">{pageError}</Alert> : null}
@@ -257,30 +337,140 @@ export default function IncitationEdit() {
             <Divider />
 
             <Stack spacing={2}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Période d’affichage
-              </Typography>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", sm: "center" }}
+              >
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Période d’affichage
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Premier clic : début. Deuxième clic : fin.
+                  </Typography>
+                </Box>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField
-                  label="Date de début"
-                  type="date"
-                  value={form.start_date}
-                  onChange={(event) => patchForm("start_date", event.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                  required
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ChevronLeftRoundedIcon />}
+                    onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+                  >
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    endIcon={<ChevronRightRoundedIcon />}
+                    onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                  >
+                    Suivant
+                  </Button>
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => setForm((prev) => ({ ...prev, start_date: "", end_date: "" }))}
+                    disabled={!form.start_date && !form.end_date}
+                  >
+                    Effacer
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Chip
+                  label={`Début : ${formatHumanDate(form.start_date)}`}
+                  color={form.start_date ? "primary" : "default"}
+                  variant={form.start_date ? "filled" : "outlined"}
                 />
-                <TextField
-                  label="Date de fin"
-                  type="date"
-                  value={form.end_date}
-                  onChange={(event) => patchForm("end_date", event.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                  required
+                <Chip
+                  label={`Fin : ${formatHumanDate(form.end_date)}`}
+                  color={form.end_date ? "primary" : "default"}
+                  variant={form.end_date ? "filled" : "outlined"}
                 />
               </Stack>
+
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ px: 0.5, pb: 1.5 }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {currentMonth.toLocaleDateString("fr-FR", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </Typography>
+                </Stack>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                    gap: 1,
+                  }}
+                >
+                  {WEEKDAY_LABELS.map((label) => (
+                    <Box key={label} sx={{ px: 1, py: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>
+                        {label}
+                      </Typography>
+                    </Box>
+                  ))}
+
+                  {calendarDays.map((date) => {
+                    const dateKey = formatDateKey(date);
+                    const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+                    const isStart = isSameDay(date, startDateObj);
+                    const isEnd = isSameDay(date, endDateObj);
+                    const inRange = isWithinRange(date, startDateObj, endDateObj);
+                    const isSingle = isStart && isEnd;
+
+                    return (
+                      <Button
+                        key={dateKey}
+                        variant="text"
+                        onClick={() => handleCalendarDayClick(date)}
+                        sx={{
+                          minHeight: { xs: 52, sm: 68 },
+                          borderRadius: 2,
+                          border: "1px solid",
+                          borderColor: isStart || isEnd ? "primary.main" : "divider",
+                          backgroundColor: isSingle || isStart || isEnd
+                            ? "primary.main"
+                            : inRange
+                              ? "action.selected"
+                              : "transparent",
+                          color: isSingle || isStart || isEnd ? "#fff" : "text.primary",
+                          opacity: isCurrentMonth ? 1 : 0.45,
+                          '&:hover': {
+                            backgroundColor: isSingle || isStart || isEnd
+                              ? "primary.main"
+                              : inRange
+                                ? "action.selected"
+                                : "action.hover",
+                          },
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: isStart || isEnd ? 700 : 500,
+                            color: isSingle || isStart || isEnd ? "#fff" : "text.primary",
+                          }}
+                        >
+                          {date.getDate()}
+                        </Typography>
+                      </Button>
+                    );
+                  })}
+                </Box>
+              </Paper>
 
               <Alert severity="info">{periodSummary}</Alert>
             </Stack>
@@ -353,7 +543,7 @@ export default function IncitationEdit() {
           <Button
             onClick={() => {
               setOverlapDialogOpen(false);
-                    }}
+            }}
             disabled={saving}
           >
             Modifier
