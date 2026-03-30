@@ -208,33 +208,6 @@ function CalendarGrid({
         </Stack>
       </Stack>
 
-      {showLegend ? (
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-          <Chip
-            size="small"
-            label="1 phrase"
-            sx={{
-              backgroundColor: "var(--mm-color-primary)",
-              color: "#fff",
-              fontWeight: 700,
-            }}
-          />
-          <Chip
-            size="small"
-            label="Plusieurs phrases"
-            sx={{
-              backgroundColor: "var(--mm-color-error)",
-              color: "#fff",
-              fontWeight: 700,
-            }}
-          />
-          <Chip size="small" variant="outlined" label="Plage sélectionnée" />
-          {!rangeEndKey && rangeStartKey ? (
-            <Chip size="small" variant="outlined" label="Survole un jour pour prévisualiser" />
-          ) : null}
-        </Stack>
-      ) : null}
-
       <Box
         sx={{
           display: "grid",
