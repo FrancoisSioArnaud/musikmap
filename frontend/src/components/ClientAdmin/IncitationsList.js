@@ -299,8 +299,8 @@ function CalendarGrid({
           }
 
           if (isToday) {
-            borderColor = "var(--mm-color-secondary)";
-            borderWidth = 4;
+            borderColor = "var(--mm-color-black)";
+            borderWidth = 2;
           }
 
           return (
