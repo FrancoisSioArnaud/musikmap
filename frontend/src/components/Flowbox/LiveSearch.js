@@ -20,6 +20,7 @@ import ListItem from "@mui/material/ListItem";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -464,8 +465,16 @@ export default function LiveSearch({
             <CircularProgress size={28} />
           </Box>
         ) : incitationText ? (
-          <Box sx={{ p:"0 16px" }}>
-            <Typography variant="body1" sx={{ textAlign:" center" }}>>{incitationText}</Typography>
+          <Box sx={{ 
+            margin: "0px 16px",
+            backgroundColor: "var(--mm-color-secondary-light)",
+            padding: "16px 20px",
+            borderRadius: "3rem",
+            display: "flex",
+            
+          }}>
+            <CampaignRoundedIcon />
+            <Typography variant="subtitle1" sx={{ textAlign:" center" }}>{incitationText}</Typography>
           </Box>
         ) : null}
       </Paper>
