@@ -59,6 +59,7 @@ export function buildMuiTheme(clientTheme) {
       subtitle1: {
         fontSize: "16px",
         fontWeight: 700,
+        lineHeight:"normal",
         color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.subtitle1,
       },
