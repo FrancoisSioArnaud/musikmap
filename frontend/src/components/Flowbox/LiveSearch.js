@@ -27,6 +27,7 @@ import { setWithTTL } from "../Utils/mmStorage";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
+const DEFAULT_INCITATION_TEXT = "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment.";
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
@@ -60,6 +61,8 @@ export default function LiveSearch({
   const effectiveUser = user || {};
 
   const [searchValue, setSearchValue] = useState("");
+  const [incitationText, setIncitationText] = useState(DEFAULT_INCITATION_TEXT);
+  const [incitationLoading, setIncitationLoading] = useState(true);
   const [jsonResults, setJsonResults] = useState([]);
   const [selectedStreamingService, setSelectedStreamingService] = useState(
     effectiveUser?.preferred_platform || "spotify"
@@ -80,6 +83,42 @@ export default function LiveSearch({
     }, 50);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setIncitationLoading(true);
+        const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
+        const response = await fetch(url, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error("Impossible de charger la phrase d’incitation.");
+        }
+
+        const data = await response.json().catch(() => ({}));
+        if (cancelled) return;
+
+        setIncitationText(
+          (data?.active_incitation?.text || data?.search_incitation_text || "").trim()
+            || DEFAULT_INCITATION_TEXT
+        );
+      } catch (error) {
+        if (cancelled) return;
+        setIncitationText(DEFAULT_INCITATION_TEXT);
+      } finally {
+        if (!cancelled) setIncitationLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boxSlug]);
 
   // Préférence utilisateur (quand UserContext se met à jour)
   useEffect(() => {
@@ -308,6 +347,29 @@ export default function LiveSearch({
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
+
+          <Paper
+            variant="outlined"
+            sx={{
+              px: 1.5,
+              py: 1.25,
+              borderRadius: 2.5,
+              bgcolor: "background.default",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, textAlign: "left" }}
+            >
+              {incitationText}
+            </Typography>
+            {incitationLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
+                <CircularProgress size={16} />
+              </Box>
+            ) : null}
+          </Paper>
+
         </Stack>
       </Paper>
 

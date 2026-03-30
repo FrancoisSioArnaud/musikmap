@@ -18,7 +18,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from users.models import CustomUser
-from .models import Deposit, Reaction, DiscoveredSong, Song
+from .models import Deposit, Reaction, DiscoveredSong, Song, IncitationPhrase
 
 # Barèmes & coûts (importés depuis ton module utils global)
 from utils import (
@@ -29,6 +29,56 @@ from utils import (
     NB_POINTS_CONSECUTIVE_DAYS_BOX,
     COST_REVEAL_BOX,
 )
+
+DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT = (
+    "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment."
+)
+
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    value = (str(value or "").strip().lower())
+    return value in {"1", "true", "yes", "y", "on", "oui"}
+
+
+def _get_active_incitation_for_box(box, at_date=None):
+    client_id = getattr(box, "client_id", None)
+    if not client_id:
+        return None
+
+    current_date = at_date or localdate()
+    return (
+        IncitationPhrase.objects
+        .for_client(client_id)
+        .active_on_date(current_date)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+
+
+def _get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude_id=None):
+    if not client_id or not start_date or not end_date:
+        return IncitationPhrase.objects.none()
+
+    qs = IncitationPhrase.objects.for_client(client_id).filter(
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    )
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    return qs
+
+
+def _build_incitation_overlap_counts(phrases):
+    phrases = list(phrases or [])
+    counts = {}
+    for phrase in phrases:
+        counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
+    return counts
+
 
 # --- Helper pour réactions ---
 def _reactions_summary_for_deposits(dep_ids):

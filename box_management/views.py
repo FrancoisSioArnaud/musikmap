@@ -26,6 +26,7 @@ from users.models import CustomUser
 from .models import (
     Article,
     Box,
+    IncitationPhrase,
     Deposit,
     DiscoveredSong,
     Emoji,
@@ -41,6 +42,7 @@ from .serializers import (
     ClientAdminArticleSerializer,
     PublicVisibleArticleSerializer,
     PublicVisibleArticleDetailSerializer,
+    ClientAdminIncitationSerializer,
 )
 from .utils import (
     _calculate_distance,
@@ -60,6 +62,11 @@ from .utils import (
     _looks_like_noise_text,
     _pick_best_short_text,
     _extract_import_preview_from_url,
+    DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT,
+    _coerce_bool,
+    _get_active_incitation_for_box,
+    _get_incitation_overlap_queryset,
+    _build_incitation_overlap_counts,
 )
 
 # Barèmes & coûts (importés depuis ton module utils global)
@@ -184,12 +191,29 @@ class GetBox(APIView):
             else None
         )
 
+        active_incitation = _get_active_incitation_for_box(box)
+
         data = {
             "name": box.name,
             "client_slug": box.client.slug if box.client else None,
             "deposit_count": box.deposit_count,
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
+            "active_incitation": (
+                {
+                    "id": active_incitation.id,
+                    "text": active_incitation.text,
+                    "start_date": active_incitation.start_date.isoformat(),
+                    "end_date": active_incitation.end_date.isoformat(),
+                }
+                if active_incitation
+                else None
+            ),
+            "search_incitation_text": (
+                active_incitation.text
+                if active_incitation
+                else DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT
+            ),
         }
 
         return Response(data, status=status.HTTP_200_OK)
@@ -1108,6 +1132,184 @@ class ClientAdminArticleDetailView(APIView):
             return error_response
 
         article.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ClientAdminIncitationListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        today = localtime().date()
+        phrases = list(
+            IncitationPhrase.objects
+            .visible_for_client_user(user)
+            .select_related("client")
+        )
+
+        overlap_counts = _build_incitation_overlap_counts(phrases)
+
+        def sort_key(item):
+            if item.is_active_on_date(today):
+                return (0, item.start_date, item.created_at, item.id)
+            if item.is_future_on_date(today):
+                return (1, item.start_date, item.created_at, item.id)
+            return (2, -item.end_date.toordinal(), -item.created_at.timestamp(), -item.id)
+
+        phrases.sort(key=sort_key)
+
+        serializer = ClientAdminIncitationSerializer(
+            phrases,
+            many=True,
+            context={"today": today, "overlap_counts": overlap_counts},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        serializer = ClientAdminIncitationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date = serializer.validated_data.get("start_date")
+        end_date = serializer.validated_data.get("end_date")
+        force_overlap = _coerce_bool(request.data.get("force_overlap"))
+
+        overlap_qs = _get_incitation_overlap_queryset(
+            client_id=user.client_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        if overlap_qs.exists() and not force_overlap:
+            overlap_serializer = ClientAdminIncitationSerializer(
+                overlap_qs.select_related("client"),
+                many=True,
+                context={"today": localtime().date()},
+            )
+            return Response(
+                {
+                    "error": "overlap_warning",
+                    "detail": "La période se superpose avec une autre phrase d’incitation.",
+                    "overlaps": overlap_serializer.data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        phrase = serializer.save(client_id=user.client_id)
+        output = ClientAdminIncitationSerializer(
+            phrase,
+            context={
+                "today": localtime().date(),
+                "overlap_counts": {phrase.id: phrase.get_overlap_count()},
+            },
+        )
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+class ClientAdminIncitationDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, incitation_id):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return None, error_response
+
+        phrase = (
+            IncitationPhrase.objects
+            .visible_for_client_user(user)
+            .select_related("client")
+            .filter(id=incitation_id)
+            .first()
+        )
+
+        if not phrase:
+            return None, Response(
+                {"detail": "Phrase d’incitation introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return phrase, None
+
+    def get(self, request, incitation_id):
+        phrase, error_response = self.get_object(request, incitation_id)
+        if error_response:
+            return error_response
+
+        serializer = ClientAdminIncitationSerializer(
+            phrase,
+            context={
+                "today": localtime().date(),
+                "overlap_counts": {phrase.id: phrase.get_overlap_count()},
+            },
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, incitation_id):
+        phrase, error_response = self.get_object(request, incitation_id)
+        if error_response:
+            return error_response
+
+        payload = dict(request.data)
+        payload.pop("client", None)
+        payload.pop("client_id", None)
+
+        serializer = ClientAdminIncitationSerializer(
+            phrase,
+            data=payload,
+            partial=True,
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date = serializer.validated_data.get("start_date", phrase.start_date)
+        end_date = serializer.validated_data.get("end_date", phrase.end_date)
+        force_overlap = _coerce_bool(request.data.get("force_overlap"))
+
+        overlap_qs = _get_incitation_overlap_queryset(
+            client_id=phrase.client_id,
+            start_date=start_date,
+            end_date=end_date,
+            exclude_id=phrase.id,
+        )
+
+        if overlap_qs.exists() and not force_overlap:
+            overlap_serializer = ClientAdminIncitationSerializer(
+                overlap_qs.select_related("client"),
+                many=True,
+                context={"today": localtime().date()},
+            )
+            return Response(
+                {
+                    "error": "overlap_warning",
+                    "detail": "La période se superpose avec une autre phrase d’incitation.",
+                    "overlaps": overlap_serializer.data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        phrase = serializer.save()
+        output = ClientAdminIncitationSerializer(
+            phrase,
+            context={
+                "today": localtime().date(),
+                "overlap_counts": {phrase.id: phrase.get_overlap_count()},
+            },
+        )
+        return Response(output.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, incitation_id):
+        phrase, error_response = self.get_object(request, incitation_id)
+        if error_response:
+            return error_response
+
+        phrase.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

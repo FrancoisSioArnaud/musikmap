@@ -14,6 +14,8 @@ from .views import (
     ClientAdminArticleDetailView,
     PublicVisibleArticlesView,
     PublicVisibleArticleDetailView,
+    ClientAdminIncitationListCreateView,
+    ClientAdminIncitationDetailView,
 )
 
 urlpatterns = [
@@ -48,5 +50,15 @@ urlpatterns = [
         "client-admin/articles/<int:article_id>/",
         ClientAdminArticleDetailView.as_view(),
         name="client-admin-articles-detail",
+    ),
+    path(
+        "client-admin/incitations/",
+        ClientAdminIncitationListCreateView.as_view(),
+        name="client-admin-incitations-list-create",
+    ),
+    path(
+        "client-admin/incitations/<int:incitation_id>/",
+        ClientAdminIncitationDetailView.as_view(),
+        name="client-admin-incitations-detail",
     ),
 ]

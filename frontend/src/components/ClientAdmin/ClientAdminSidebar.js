@@ -12,6 +12,7 @@ import ListItemText from "@mui/material/ListItemText";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import { UserContext } from "../UserContext";
 
 export const CLIENT_ADMIN_DRAWER_WIDTH = 280;
@@ -122,6 +123,16 @@ export default function ClientAdminSidebar({
             isActive={
               location.pathname === "/client/articles" ||
               location.pathname.startsWith("/client/articles/")
+            }
+          />
+          <NavItem
+            to="/client/incitation"
+            label="Mes phrases d’incitation"
+            icon={<CampaignRoundedIcon />}
+            onClick={onClose}
+            isActive={
+              location.pathname === "/client/incitation" ||
+              location.pathname.startsWith("/client/incitation/")
             }
           />
         </List>

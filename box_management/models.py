@@ -88,6 +88,116 @@ class Box(models.Model):
         return self.name
 
 
+class IncitationPhraseQuerySet(models.QuerySet):
+    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+        return getattr(obj_or_id, "pk", obj_or_id)
+
+    def for_client(self, client_or_id: Union[int, "Client"]):
+        client_id = self._coerce_id(client_or_id)
+        return self.filter(client_id=client_id)
+
+    def visible_for_client_user(self, user: CustomUser):
+        if not user or not getattr(user, "client_id", None):
+            return self.none()
+        return self.for_client(user.client_id)
+
+    def active_on_date(self, at_date=None):
+        current_date = at_date or timezone.localdate()
+        return self.filter(start_date__lte=current_date, end_date__gte=current_date)
+
+
+class IncitationPhrase(models.Model):
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.CASCADE,
+        related_name="incitation_phrases",
+        db_index=True,
+    )
+
+    text = models.CharField(
+        max_length=100,
+        blank=False,
+        help_text=(
+            "Phrase affichée sous la barre de recherche pendant la période choisie."
+        ),
+    )
+
+    start_date = models.DateField(db_index=True)
+    end_date = models.DateField(db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = IncitationPhraseQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["start_date", "created_at"]
+        indexes = [
+            models.Index(fields=["client", "start_date"]),
+            models.Index(fields=["client", "end_date"]),
+            models.Index(fields=["client", "created_at"]),
+        ]
+
+    def clean(self):
+        self.text = (self.text or "").strip()
+
+        errors = {}
+
+        if not self.text:
+            errors["text"] = "La phrase d’incitation est obligatoire."
+        elif len(self.text) > 100:
+            errors["text"] = "La phrase d’incitation ne peut pas dépasser 100 caractères."
+
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            errors["end_date"] = (
+                "La date de fin doit être postérieure ou égale à la date de début."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def get_overlapping_queryset(self):
+        if not self.client_id or not self.start_date or not self.end_date:
+            return self.__class__.objects.none()
+
+        qs = self.__class__.objects.for_client(self.client_id).filter(
+            start_date__lte=self.end_date,
+            end_date__gte=self.start_date,
+        )
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        return qs
+
+    def get_overlap_count(self):
+        return self.get_overlapping_queryset().count()
+
+    def has_overlap(self):
+        return self.get_overlapping_queryset().exists()
+
+    def is_active_on_date(self, at_date=None):
+        current_date = at_date or timezone.localdate()
+        return self.start_date <= current_date <= self.end_date
+
+    def is_future_on_date(self, at_date=None):
+        current_date = at_date or timezone.localdate()
+        return self.start_date > current_date
+
+    def is_past_on_date(self, at_date=None):
+        current_date = at_date or timezone.localdate()
+        return self.end_date < current_date
+
+    def get_period_label(self):
+        return f"Du {self.start_date.strftime('%d/%m/%Y')} au {self.end_date.strftime('%d/%m/%Y')}"
+
+    def __str__(self):
+        preview = (self.text or "").strip()
+        return f"{preview[:60]} ({self.client.name})"
+
+
 class ArticleQuerySet(models.QuerySet):
     def with_related(self):
         return self.select_related("client", "author")
