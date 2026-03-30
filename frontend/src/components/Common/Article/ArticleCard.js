@@ -16,8 +16,23 @@ function getDomainLabel(url) {
   }
 }
 
+function stripMarkdown(text) {
+  return String(text || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^#{1,3}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function truncateText(text, maxLength = 220) {
-  const value = String(text || "").trim();
+  const value = stripMarkdown(text);
   if (!value) return "";
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength).trimEnd()}...`;

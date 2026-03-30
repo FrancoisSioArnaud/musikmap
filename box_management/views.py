@@ -129,6 +129,7 @@ class _ArticleImportHTMLParser(HTMLParser):
         "h2",
         "h3",
         "blockquote",
+        "pre",
     }
 
     SKIP_TAGS = {
@@ -168,6 +169,7 @@ class _ArticleImportHTMLParser(HTMLParser):
 
         self.body_chunks = []
         self.paragraph_chunks = []
+        self.markdown_blocks = []
         self.image_sources = []
         self.favicon_sources = []
 
@@ -176,6 +178,12 @@ class _ArticleImportHTMLParser(HTMLParser):
 
         self._paragraph_stack = []
         self._current_paragraph_parts = []
+
+        self._current_block_tag = None
+        self._current_block_parts = []
+        self._list_stack = []
+        self._ordered_list_counters = []
+        self._in_pre = False
 
     def _attrs_to_dict(self, attrs):
         return {key.lower(): value for key, value in attrs if key}
@@ -191,6 +199,61 @@ class _ArticleImportHTMLParser(HTMLParser):
         ).lower()
 
         return any(keyword in haystack for keyword in self.SKIP_ATTR_KEYWORDS)
+
+    def _append_to_current_block(self, value):
+        if self._current_block_tag and value:
+            self._current_block_parts.append(value)
+
+    def _start_block(self, tag):
+        if self._current_block_tag != tag:
+            self._flush_current_block()
+            self._current_block_tag = tag
+            self._current_block_parts = []
+
+    def _flush_current_block(self):
+        if not self._current_block_tag:
+            return
+
+        if self._in_pre:
+            raw_text = html.unescape("".join(self._current_block_parts or []))
+            raw_text = raw_text.replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+            text = raw_text.strip()
+        else:
+            text = _normalize_markdown_inline_text("".join(self._current_block_parts or []))
+
+        if text:
+            tag = self._current_block_tag
+            block = self._format_markdown_block(tag, text)
+            if block:
+                self.markdown_blocks.append(block)
+            if tag in {"p", "article", "main", "section", "blockquote"}:
+                plain_text = _collapse_article_text(text)
+                if plain_text:
+                    self.paragraph_chunks.append(plain_text)
+
+        self._current_block_tag = None
+        self._current_block_parts = []
+
+    def _format_markdown_block(self, tag, text):
+        if tag == "h1":
+            return f"# {text}"
+        if tag == "h2":
+            return f"## {text}"
+        if tag == "h3":
+            return f"### {text}"
+        if tag == "blockquote":
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            return "\n".join(f"> {line}" for line in lines)
+        if tag == "li":
+            if self._list_stack and self._list_stack[-1] == "ol":
+                index = self._ordered_list_counters[-1] if self._ordered_list_counters else 1
+                if self._ordered_list_counters:
+                    self._ordered_list_counters[-1] += 1
+                return f"{index}. {text}"
+            return f"- {text}"
+        if tag == "pre":
+            return f"```\n{text}\n```"
+        return text
 
     def handle_starttag(self, tag, attrs):
         tag = (tag or "").lower()
@@ -236,9 +299,43 @@ class _ArticleImportHTMLParser(HTMLParser):
         if self._skip_depth > 0:
             return
 
+        if tag in {"p", "article", "main", "section", "blockquote", "h1", "h2", "h3", "li", "pre"}:
+            self._start_block(tag)
+
         if tag in {"p", "article", "main", "section", "blockquote"}:
             self._paragraph_stack.append(tag)
             self._current_paragraph_parts.append([])
+
+        if tag == "ul":
+            self._flush_current_block()
+            self._list_stack.append("ul")
+            return
+
+        if tag == "ol":
+            self._flush_current_block()
+            self._list_stack.append("ol")
+            self._ordered_list_counters.append(1)
+            return
+
+        if tag == "br":
+            self._append_to_current_block("\n")
+            return
+
+        if tag in {"strong", "b"}:
+            self._append_to_current_block("**")
+            return
+
+        if tag in {"em", "i"}:
+            self._append_to_current_block("*")
+            return
+
+        if tag == "code" and not self._in_pre:
+            self._append_to_current_block("`")
+            return
+
+        if tag == "pre":
+            self._in_pre = True
+            return
 
     def handle_endtag(self, tag):
         tag = (tag or "").lower()
@@ -248,10 +345,39 @@ class _ArticleImportHTMLParser(HTMLParser):
             return
 
         if self._skip_depth > 0:
-            if tag in self.SKIP_TAGS or tag in {
-                "nav", "header", "footer", "aside"
-            }:
+            if tag in self.SKIP_TAGS or tag in {"nav", "header", "footer", "aside"}:
                 self._skip_depth -= 1
+            return
+
+        if tag in {"strong", "b"}:
+            self._append_to_current_block("**")
+            return
+
+        if tag in {"em", "i"}:
+            self._append_to_current_block("*")
+            return
+
+        if tag == "code" and not self._in_pre:
+            self._append_to_current_block("`")
+            return
+
+        if tag == "pre":
+            self._in_pre = False
+            self._flush_current_block()
+            return
+
+        if tag == "ul":
+            self._flush_current_block()
+            if self._list_stack:
+                self._list_stack.pop()
+            return
+
+        if tag == "ol":
+            self._flush_current_block()
+            if self._list_stack:
+                self._list_stack.pop()
+            if self._ordered_list_counters:
+                self._ordered_list_counters.pop()
             return
 
         if tag in {"p", "article", "main", "section", "blockquote"}:
@@ -261,6 +387,12 @@ class _ArticleImportHTMLParser(HTMLParser):
                 text = _collapse_article_text(" ".join(parts))
                 if text:
                     self.paragraph_chunks.append(text)
+            self._flush_current_block()
+            return
+
+        if tag in {"h1", "h2", "h3", "li"}:
+            self._flush_current_block()
+            return
 
     def handle_data(self, data):
         if not data:
@@ -273,14 +405,14 @@ class _ArticleImportHTMLParser(HTMLParser):
         if self._skip_depth > 0:
             return
 
-        cleaned = _collapse_article_text(data)
-        if not cleaned:
-            return
+        cleaned_body = _collapse_article_text(data)
+        if cleaned_body:
+            self.body_chunks.append(cleaned_body)
+            if self._current_paragraph_parts:
+                self._current_paragraph_parts[-1].append(cleaned_body)
 
-        self.body_chunks.append(cleaned)
-
-        if self._current_paragraph_parts:
-            self._current_paragraph_parts[-1].append(cleaned)
+        if self._current_block_tag:
+            self._current_block_parts.append(data)
 
     @property
     def title_text(self):
@@ -289,6 +421,24 @@ class _ArticleImportHTMLParser(HTMLParser):
     @property
     def body_text(self):
         return _collapse_article_text(" ".join(self.body_chunks))
+
+    @property
+    def markdown_text(self):
+        self._flush_current_block()
+        blocks = []
+        previous_was_list = False
+        for block in self.markdown_blocks:
+            is_list = block.startswith("- ") or bool(re.match(r"^\d+\. ", block))
+            if blocks:
+                if is_list and previous_was_list:
+                    blocks.append(block)
+                else:
+                    blocks.append("")
+                    blocks.append(block)
+            else:
+                blocks.append(block)
+            previous_was_list = is_list
+        return _truncate_markdown_text("\n".join(blocks).strip(), limit=10000)
 
 
 def _collapse_article_text(value):
@@ -307,6 +457,29 @@ def _truncate_article_text(value, limit=10000):
     if last_space >= max(80, limit // 2):
         truncated = truncated[:last_space].rstrip()
     return truncated
+
+
+def _normalize_markdown_inline_text(value):
+    value = html.unescape(value or "")
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
+    value = re.sub(r"[ \t]+", " ", value)
+    value = re.sub(r" ?\n ?", "\n", value)
+    value = re.sub(r"\n{3,}", "\n\n", value)
+    return value.strip()
+
+
+
+def _truncate_markdown_text(value, limit=10000):
+    value = (value or "").strip()
+    if len(value) <= limit:
+        return value
+
+    truncated = value[:limit].rstrip()
+    last_break = max(truncated.rfind("\n\n"), truncated.rfind("\n"), truncated.rfind(" "))
+    if last_break >= max(120, limit // 2):
+        truncated = truncated[:last_break].rstrip()
+    return truncated
+
 
 
 def _absolute_remote_url(base_url, candidate):
@@ -401,6 +574,10 @@ def _looks_like_noise_text(text):
 
 
 def _pick_best_short_text(meta, parser):
+    markdown_text = (getattr(parser, "markdown_text", "") or "").strip()
+    if markdown_text:
+        return _truncate_markdown_text(markdown_text, limit=10000)
+
     description = _collapse_article_text(
         meta.get("description")
         or meta.get("og:description")
@@ -408,7 +585,7 @@ def _pick_best_short_text(meta, parser):
     )
 
     if description and not _looks_like_noise_text(description):
-        return _truncate_article_text(description, limit=10000)
+        return _truncate_markdown_text(description, limit=10000)
 
     paragraph_candidates = []
     for chunk in parser.paragraph_chunks:
@@ -420,28 +597,29 @@ def _pick_best_short_text(meta, parser):
     paragraph_candidates = _dedupe_keep_order(paragraph_candidates)
 
     combined = ""
-    for text in paragraph_candidates:
+    for text_value in paragraph_candidates:
         if not combined:
-            combined = text
+            combined = text_value
         else:
-            combined = f"{combined} {text}"
+            combined = f"{combined}\n\n{text_value}"
 
         if len(combined) >= 220:
             break
 
-    combined = _truncate_article_text(combined, limit=10000)
+    combined = _truncate_markdown_text(combined, limit=10000)
     if combined:
         return combined
 
     body_candidates = []
     for piece in parser.body_chunks:
-        text = _collapse_article_text(piece)
-        if _looks_like_noise_text(text):
+        text_value = _collapse_article_text(piece)
+        if _looks_like_noise_text(text_value):
             continue
-        body_candidates.append(text)
+        body_candidates.append(text_value)
 
-    merged_body = _truncate_article_text(" ".join(body_candidates), limit=10000)
+    merged_body = _truncate_markdown_text("\n\n".join(body_candidates), limit=10000)
     return merged_body
+
 
 
 def _extract_import_preview_from_url(link):

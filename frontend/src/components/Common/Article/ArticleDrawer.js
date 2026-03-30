@@ -6,6 +6,8 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 
+import MarkdownContent from "../Markdown/MarkdownContent";
+
 export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
   const previewText = typeof article?.short_text === "string" ? article.short_text : "";
   const [fullText, setFullText] = useState(previewText);
@@ -87,13 +89,11 @@ export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
           ) : null}
 
           {fullText ? (
-            <Typography component="div" variant="body1" className="body">
-              {fullText}
-            </Typography>
+            <MarkdownContent markdown={fullText} className="body" />
           ) : null}
 
           {loadingFullText ? (
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, pt: 1 }}>
               <CircularProgress size={22} />
             </Box>
           ) : null}

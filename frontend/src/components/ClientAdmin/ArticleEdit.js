@@ -496,16 +496,46 @@ export default function ArticleEdit() {
             />
 
             <TextField
-              label="Texte court"
+              label="Texte de l’article (Markdown)"
               value={form.short_text}
               onChange={(e) =>
                 patchForm("short_text", e.target.value.slice(0, 10000))
               }
               fullWidth
               multiline
-              minRows={3}
+              minRows={8}
               helperText={`${form.short_text.length}/10000 caractères`}
             />
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Aide Markdown rapide
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Tu peux styliser le texte avec quelques règles simples.
+                </Typography>
+                <Box component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: "0.9rem" }}>
+{`# Grand titre
+## Sous-titre
+
+**gras**
+*italique*
+
+- élément de liste
+- autre élément
+
+1. premier point
+2. second point
+
+> citation
+
+[Texte du lien](https://exemple.com)
+
+\`code\``}
+                </Box>
+              </Stack>
+            </Paper>
 
             <TextField
               label="Image de couverture"
