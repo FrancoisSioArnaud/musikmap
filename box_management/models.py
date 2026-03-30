@@ -206,7 +206,7 @@ class Article(models.Model):
     link = models.URLField(max_length=2048, blank=True)
 
     short_text = models.CharField(
-        max_length=1000,
+        max_length=10000,
         blank=True,
         help_text="Article text, maximum 1000 characters.",
     )
