@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   background-color: var(--mm-color-secondary-light);
-  border-radius: 20px;
+  border-radius: var(--mm-radius-lg);
   margin: 20px;
   padding: 24px 16px 16px 16px;
   gap: 16px;
@@ -42,7 +42,7 @@ color : var(--mm-color-secondary);
   gap: 4px;
   box-shadow: none;
   border: var(--mm-border-default);
-  border-radius: 2em;
+  border-radius: var(--mm-radius-xl);
 }
 .deposit_main{
 
@@ -117,7 +117,7 @@ color : var(--mm-color-secondary);
 }
 
 .deposit .img_container{
-  border-radius: 8px;
+  border-radius: var(--mm-radius-sm);
   aspect-ratio: 1 / 1;
   width: 100%;
   max-width: 100%;
@@ -210,7 +210,7 @@ color : var(--mm-color-secondary);
   -webkit-box-align: center;
   align-items: center;
   gap: 6px;
-  border-radius: 0.6rem;
+  border-radius: var(--mm-radius-sm);
   padding: 2px 8px 2px 8px;
 }
 
@@ -219,7 +219,7 @@ color : var(--mm-color-secondary);
 }
 .deposit_react .icon_container{
   background-color : var(--mm-color-primary);
-  border-radius: 0.6rem;
+  border-radius: var(--mm-radius-sm);
 }
 
 .deposit_react .icon_container svg{
