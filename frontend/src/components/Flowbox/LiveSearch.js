@@ -471,10 +471,10 @@ export default function LiveSearch({
             padding: "16px 20px",
             borderRadius: "3rem",
             display: "flex",
-            
+            gap:"8px",
           }}>
             <CampaignRoundedIcon />
-            <Typography variant="subtitle1" sx={{ textAlign:" center" }}>{incitationText}</Typography>
+            <Typography variant="subtitle1" sx={{}}>{incitationText}</Typography>
           </Box>
         ) : null}
       </Paper>
