@@ -329,7 +329,7 @@ export default function Deposit({
       </Box>
       <Typography component="span" className="username " variant="subtitle1">
         {userObj?.username || "anonyme"}
-        {userObj?.username && <ArrowForwardIosIcon className="icon" />}
+        {userObj?.username && <ArrowForwardIosIcon className="icon" sx={{height : "0.8em", width : "0.8em" }}/>}
       </Typography>
     </Box>
   );
