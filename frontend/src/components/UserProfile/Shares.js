@@ -1,4 +1,3 @@
-// frontend/src/components/UserProfile/Shares.js
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import Box from "@mui/material/Box";
@@ -7,18 +6,15 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 import Deposit from "../Common/Deposit";
 
-/* ===========================
-   API helper
-   =========================== */
-async function fetchUserShares(username, { limit, offset }, signal) {
-  if (!username) {
-    return { ok: false, status: 400, items: [], has_more: false, next_offset: 0 };
-  }
+async function fetchUserShares({ username, me, limit, offset }, signal) {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  if (me) params.set("me", "1");
+  else if (username) params.set("username", username);
+  else return { ok: false, status: 400, items: [], has_more: false, next_offset: 0 };
 
-  const url = `/box-management/user-deposits?username=${encodeURIComponent(
-    username
-  )}&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`;
-
+  const url = `/box-management/user-deposits?${params.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
@@ -28,7 +24,6 @@ async function fetchUserShares(username, { limit, offset }, signal) {
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    console.error("user-deposits HTTP", res.status, data);
     return { ok: false, status: res.status, items: [], has_more: false, next_offset: offset };
   }
 
@@ -42,14 +37,11 @@ async function fetchUserShares(username, { limit, offset }, signal) {
   };
 }
 
-/* ===========================
-   Shares page component
-   =========================== */
-export default function Shares({ username, user, autoLoad }) {
+export default function Shares({ username, me = false, user, autoLoad }) {
   const LIMIT = 20;
 
   const [items, setItems] = useState([]);
-  const [error, setError] = useState(null); // "error" | null
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
@@ -58,24 +50,21 @@ export default function Shares({ username, user, autoLoad }) {
   const abortRef = useRef(null);
   const loadingRef = useRef(false);
 
-  // Reset when username changes
   useEffect(() => {
     if (abortRef.current) abortRef.current.abort();
-
     setItems([]);
     setError(null);
     setLoading(false);
     setHasMore(true);
     setNextOffset(0);
     setLoadedOnce(false);
-
     loadingRef.current = false;
-  }, [username]);
+  }, [username, me, user?.id]);
 
   const loadMore = useCallback(async () => {
-    if (!autoLoad) return; // respecte ton param
+    if (!autoLoad) return;
     if (loadingRef.current || !hasMore) return;
-    if (!username) return;
+    if (!me && !username) return;
 
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -87,8 +76,7 @@ export default function Shares({ username, user, autoLoad }) {
 
     try {
       const { ok, items: newItems, has_more, next_offset } = await fetchUserShares(
-        username,
-        { limit: LIMIT, offset: nextOffset },
+        { username, me, limit: LIMIT, offset: nextOffset },
         controller.signal
       );
 
@@ -115,24 +103,20 @@ export default function Shares({ username, user, autoLoad }) {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [autoLoad, hasMore, username, nextOffset]);
+  }, [autoLoad, hasMore, me, username, nextOffset]);
 
-  // First load
   useEffect(() => {
     if (!autoLoad) return;
     if (loadedOnce) return;
     loadMore();
   }, [autoLoad, loadedOnce, loadMore]);
 
-  // Infinite scroll (same spirit as Library)
   useEffect(() => {
     if (!autoLoad) return;
 
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
-      const nearBottom =
-        window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 200;
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
       if (nearBottom) loadMore();
     }
 
@@ -158,7 +142,7 @@ export default function Shares({ username, user, autoLoad }) {
 
   return (
     <>
-      <Box sx={{ display: "grid", gap: 5, p: 5}}>
+      <Box sx={{ display: "grid", gap: 5, p: 5 }}>
         {items.map((it) => (
           <Deposit
             key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
@@ -171,15 +155,12 @@ export default function Shares({ username, user, autoLoad }) {
           />
         ))}
 
-        {/* Loader en bas comme Library */}
         {loading && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
             <CircularProgress />
           </Box>
         )}
       </Box>
-
-      {/* IMPORTANT: pas de "Fin des partages" */}
     </>
   );
 }

@@ -3,6 +3,19 @@ from .models import CustomUser
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    display_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'profile_picture', 'points', 'preferred_platform']
+        fields = [
+            'id',
+            'username',
+            'display_name',
+            'email',
+            'profile_picture',
+            'points',
+            'preferred_platform',
+            'is_guest',
+            'last_seen_at',
+            'converted_at',
+        ]

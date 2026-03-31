@@ -67,7 +67,7 @@ function ClientAdminRouteWrapper() {
 }
 
 export default function App() {
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [currentBoxName, setCurrentBoxName] = useState("");

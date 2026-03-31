@@ -36,25 +36,28 @@ const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
 
 function normalizeReactionUser(rawUser = {}) {
-  const username = rawUser?.username || rawUser?.name || "";
+  const username = (rawUser?.username || rawUser?.name || "").trim();
+  const displayName = (rawUser?.display_name || rawUser?.displayName || username || "anonyme").trim();
+  const isGuest = Boolean(rawUser?.is_guest);
   return {
+    id: rawUser?.id || null,
     username: username || "",
-    name: username || "anonyme",
+    display_name: displayName || "anonyme",
+    name: displayName || "anonyme",
     profile_picture_url:
       rawUser?.profile_picture_url || rawUser?.profile_pic_url || null,
-    isAnonymous: !username || String(username).toLowerCase() === "anonyme",
+    is_guest: isGuest,
+    isAnonymous: (!username && !rawUser?.id) || String(displayName).toLowerCase() === "anonyme",
   };
 }
 
 function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
   const list = Array.isArray(reactions) ? [...reactions] : [];
-  const viewerUsername = (viewer?.username || "").trim();
+  const viewerId = viewer?.id || null;
 
-  if (!viewerUsername) return list;
+  if (!viewerId) return list;
 
-  const withoutMine = list.filter(
-    (r) => (r?.user?.name || "").trim() !== viewerUsername
-  );
+  const withoutMine = list.filter((r) => (r?.user?.id || null) !== viewerId);
 
   if (!nextEmoji) {
     return withoutMine;
@@ -63,10 +66,13 @@ function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
   const myReaction = {
     emoji: nextEmoji,
     user: {
-      name: viewerUsername,
-      username: viewerUsername,
+      id: viewerId,
+      name: viewer?.display_name || viewer?.username || "Invité",
+      display_name: viewer?.display_name || viewer?.username || "Invité",
+      username: viewer?.is_guest ? null : viewer?.username || null,
       profile_picture_url: viewer?.profile_picture_url || null,
       profile_pic_url: viewer?.profile_picture_url || null,
+      is_guest: Boolean(viewer?.is_guest),
     },
   };
 
@@ -135,7 +141,7 @@ export default function Deposit({
     }
   };
 
-  const viewerUsername = (user?.username || "").trim();
+  const viewerId = user?.id || null;
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
   const reactionsDetail = Array.isArray(localDep?.reactions)
     ? localDep.reactions
@@ -182,18 +188,10 @@ export default function Deposit({
 
   const revealDeposit = async () => {
     try {
-      if (!user || !user.username) {
-        const goLogin = window.confirm(
-          "Crée-toi un compte pour cumuler tes points et pouvoir révéler cette chanson"
+      if (!user?.id) {
+        window.alert(
+          "Dépose d’abord une chanson pour commencer à cumuler des points et révéler des morceaux."
         );
-        if (goLogin) {
-          navigate(
-            "/login?next=" +
-              encodeURIComponent(
-                window.location.pathname + window.location.search
-              )
-          );
-        }
         return;
       }
 
@@ -270,8 +268,8 @@ export default function Deposit({
   };
 
   const handleOpenReactModal = () => {
-    if (!user || !user.username) {
-      window.alert("Connecte-toi pour ajouter une réaction à cette chanson");
+    if (!user?.id) {
+      window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
       return;
     }
     openReact();
@@ -310,12 +308,14 @@ export default function Deposit({
     });
   };
 
-  const renderDepositUser = (userObj) => (
+  const renderDepositUser = (userObj) => {
+    const canNavigate = Boolean(userObj?.username && !userObj?.is_guest);
+    return (
     <Box
       onClick={() => {
-        if (userObj?.username) navigate("/profile/" + userObj.username);
+        if (canNavigate) navigate("/profile/" + userObj.username);
       }}
-      className={userObj?.username ? "hasUsername deposit_user" : "deposit_user"}
+      className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
     >
       <Typography variant="body1" component="span">
         Partagée par
@@ -323,22 +323,23 @@ export default function Deposit({
       <Box className=" avatarbox">
         <Avatar
           src={userObj?.profile_pic_url || undefined}
-          alt={userObj?.username || "anonyme"}
+          alt={userObj?.display_name || "anonyme"}
           className="avatar"
         />
       </Box>
       <Typography component="span" className="username " variant="subtitle1">
-        {userObj?.username || "anonyme"}
-        {userObj?.username && <ArrowForwardIosIcon className="icon" sx={{height : "0.8em", width : "0.8em" }}/>}
+        {userObj?.display_name || "anonyme"}
+        {canNavigate && <ArrowForwardIosIcon className="icon" sx={{height : "0.8em", width : "0.8em" }}/>}
       </Typography>
     </Box>
   );
+  };
 
   const ReactionsStrip = ({
     items = [],
     reactions = [],
     myReactionEmoji = null,
-    viewerUsername = null,
+    viewerId = null,
     onOpenReact,
     onOpenSummary,
   }) => {
@@ -347,9 +348,8 @@ export default function Deposit({
 
     const currentEmoji =
       myReactionEmoji ??
-      (viewerUsername
-        ? rx.find((r) => (r?.user?.name || "").trim() === viewerUsername)?.emoji ??
-          null
+      (viewerId
+        ? rx.find((r) => (r?.user?.id || null) === viewerId)?.emoji ?? null
         : null);
 
     const hasMyReaction = Boolean(currentEmoji);
@@ -487,7 +487,7 @@ export default function Deposit({
                 items={reactionsSummary}
                 reactions={reactionsDetail}
                 myReactionEmoji={myReactionEmoji}
-                viewerUsername={viewerUsername}
+                viewerId={viewerId}
                 onOpenReact={handleOpenReactModal}
                 onOpenSummary={openReactionSummary}
               />
@@ -592,7 +592,7 @@ export default function Deposit({
               items={reactionsSummary}
               reactions={reactionsDetail}
               myReactionEmoji={myReactionEmoji}
-              viewerUsername={viewerUsername}
+              viewerId={viewerId}
               onOpenReact={handleOpenReactModal}
               onOpenSummary={openReactionSummary}
             />

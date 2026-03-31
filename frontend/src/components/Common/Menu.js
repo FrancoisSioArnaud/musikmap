@@ -16,8 +16,8 @@ import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 
 export default function MenuAppBar() {
   // States & Variables
-  const { user, setUser, isAuthenticated, setIsAuthenticated } =
-    useContext(UserContext);
+  const { user, isAuthenticated } = useContext(UserContext);
+  const hasIdentity = Boolean(user?.id);
 
   return (
     <AppBar
@@ -33,7 +33,7 @@ export default function MenuAppBar() {
           </Typography>
         </Box>
 
-        {isAuthenticated ? (
+        {hasIdentity ? (
           <>
             <Box 
               className="points_container"
@@ -45,7 +45,7 @@ export default function MenuAppBar() {
                   color: "text.primary",
                 }}
               >
-                {user.points}
+                {user?.points ?? 0}
               </Typography>
               <MusicNote/>
             </Box>
@@ -59,7 +59,7 @@ export default function MenuAppBar() {
               component={Link}
               to="/profile"
             >
-              <Avatar alt={user.username} src={user.profile_picture_url} />
+              <Avatar alt={user?.display_name || user?.username || "Invité"} src={user?.profile_picture_url || undefined} />
             </IconButton>
                 
           </>

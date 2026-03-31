@@ -542,14 +542,28 @@ def _extract_import_preview_from_url(link):
 def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
     if not user:
-        return 
+        return {
+            "id": None,
+            "username": None,
+            "display_name": "anonyme",
+            "profile_pic_url": default_pic,
+            "profile_picture_url": default_pic,
+            "is_guest": False,
+        }
 
     pic = getattr(user, "profile_picture", None)
     profile_url = pic.url if pic else default_pic
+    is_guest = bool(getattr(user, "is_guest", False))
+    username = None if is_guest else getattr(user, "username", None)
+    display_name = "Invité" if is_guest else (getattr(user, "username", None) or "anonyme")
 
     return {
-        "username": getattr(user, "username", "Anonyme"),
+        "id": getattr(user, "id", None),
+        "username": username,
+        "display_name": display_name,
         "profile_pic_url": profile_url,
+        "profile_picture_url": profile_url,
+        "is_guest": is_guest,
     }
 
 
@@ -588,7 +602,7 @@ def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUs
     for r in _iter_reactions_from_instance(dep):
         if not getattr(r.emoji, "active", True):
             continue
-        payload = {"user": {"name": getattr(r.user, "username", "Anonyme")}, "emoji": r.emoji.char}
+        payload = {"user": _build_user_from_instance(getattr(r, "user", None)), "emoji": r.emoji.char}
         counts[r.emoji.char] += 1
         if current_user_id is not None and r.user_id == current_user_id:
             mine = payload

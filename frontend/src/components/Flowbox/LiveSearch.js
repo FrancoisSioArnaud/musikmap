@@ -38,17 +38,6 @@ function normalizeOptionToSong(option) {
   };
 }
 
-function addAnonPointsFromSuccesses(successes) {
-  const sx = Array.isArray(successes) ? successes : [];
-  const total =
-    sx.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
-    sx.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
-    0;
-
-  const key = "anon_points";
-  const cur = parseInt(localStorage.getItem(key) || "0", 10);
-  localStorage.setItem(key, String(cur + (Number(total) || 0)));
-}
 
 export default function LiveSearch({
   isSpotifyAuthenticated,
@@ -253,11 +242,12 @@ export default function LiveSearch({
           main = null,
         } = data;
 
-        // points (connecté) / anon_points (anonyme)
-        if (typeof points_balance === "number" && setUser) {
-          setUser((prev) => ({ ...(prev || {}), points: points_balance }));
-        } else {
-          addAnonPointsFromSuccesses(successes);
+        if (setUser) {
+          if (data?.current_user) {
+            setUser(data.current_user);
+          } else if (typeof points_balance === "number") {
+            setUser((prev) => ({ ...(prev || {}), points: points_balance }));
+          }
         }
 
         // myDeposit minimal (front-only)

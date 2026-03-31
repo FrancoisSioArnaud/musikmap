@@ -26,6 +26,10 @@ class CustomUser(AbstractUser):
     profile_picture = models.ImageField(upload_to=profile_picture_path, blank=True, null=True)
 
     points = models.IntegerField(default=0)
+    is_guest = models.BooleanField(default=False, db_index=True)
+    guest_device_token = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
 
     # Preferred platform choice
     PLATFORM_CHOICES = [
@@ -86,7 +90,11 @@ class CustomUser(AbstractUser):
 
     @property
     def can_access_client_portal(self):
-        return self.client_id is not None and self.portal_status == "active"
+        return (not self.is_guest) and self.client_id is not None and self.portal_status == "active"
+
+    @property
+    def display_name(self):
+        return "Invité" if self.is_guest else self.username
 
     @property
     def can_manage_articles(self):

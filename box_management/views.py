@@ -24,6 +24,14 @@ from rest_framework.views import APIView
 # ===== Project =====
 from api_aggregation.views import ApiAggregation
 from users.models import CustomUser
+from users.utils import (
+    apply_points_delta,
+    attach_guest_cookie,
+    build_current_user_payload,
+    ensure_guest_user_for_request,
+    get_current_app_user,
+    touch_last_seen,
+)
 from .models import (
     Article,
     IncitationPhrase,
@@ -114,15 +122,9 @@ class GetMain(APIView):
         )
         deposits = list(qs)
 
-        viewer = (
-            request.user
-            if (
-                hasattr(request, "user")
-                and not isinstance(request.user, AnonymousUser)
-                and getattr(request.user, "is_authenticated", False)
-            )
-            else None
-        )
+        viewer = get_current_app_user(request)
+        if viewer:
+            touch_last_seen(viewer)
 
         if viewer and deposits:
             dep = deposits[0]
@@ -259,8 +261,11 @@ class GetBox(APIView):
         if not song_name or not song_author:
             return Response({"detail": "Titre ou artiste manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = request.user if not isinstance(request.user, AnonymousUser) else None
-        is_authed = bool(user and getattr(user, "is_authenticated", False))
+        user = get_current_app_user(request)
+        guest_created = False
+        if not user:
+            user, guest_created = ensure_guest_user_for_request(request)
+        touch_last_seen(user)
 
         prev_head, older_list = _get_prev_head_and_older(box, limit=15)
 
@@ -319,7 +324,7 @@ class GetBox(APIView):
 
             Deposit.objects.create(song=song, box=box, user=user)
 
-        if is_authed and prev_head is not None:
+        if prev_head is not None:
             try:
                 DiscoveredSong.objects.get_or_create(
                     user=user,
@@ -330,32 +335,9 @@ class GetBox(APIView):
                 pass
 
         points_balance = None
-        if is_authed:
-            try:
-                add_points_url = request.build_absolute_uri(reverse("add-points"))
-                csrftoken_cookie = request.COOKIES.get("csrftoken")
-                csrftoken_header = csrftoken_cookie or get_token(request)
-
-                headers_bg = {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": csrftoken_header,
-                    "Referer": request.build_absolute_uri("/"),
-                }
-                r = requests.post(
-                    add_points_url,
-                    cookies=request.COOKIES,
-                    headers=headers_bg,
-                    data=json.dumps({"points": points_to_add}),
-                    timeout=4,
-                )
-                if r.ok:
-                    try:
-                        data = r.json()
-                        points_balance = data.get("points_balance")
-                    except ValueError:
-                        points_balance = None
-            except Exception:
-                pass
+        ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add)
+        if ok_points:
+            points_balance = points_payload.get("points_balance")
 
         deps_to_serialize = []
         if prev_head is not None:
@@ -363,8 +345,6 @@ class GetBox(APIView):
         deps_to_serialize.extend(older_list)
 
         force_ids = []
-        if prev_head is not None and not is_authed:
-            force_ids = [prev_head.pk]
 
         payloads = _build_deposits_payload(
             deps_to_serialize,
@@ -380,13 +360,19 @@ class GetBox(APIView):
             main_payload = payloads[0] if payloads else None
             older_payloads = payloads[1:] if len(payloads) > 1 else []
 
-        response = {
-            "main": main_payload,
-            "older_deposits": older_payloads,
-            "successes": list(successes),
-            "points_balance": points_balance,
-        }
-        return Response(response, status=status.HTTP_200_OK)
+        response = Response(
+            {
+                "main": main_payload,
+                "older_deposits": older_payloads,
+                "successes": list(successes),
+                "points_balance": points_balance,
+                "current_user": build_current_user_payload(user),
+            },
+            status=status.HTTP_200_OK,
+        )
+        if guest_created and getattr(user, "guest_device_token", None):
+            attach_guest_cookie(response, user.guest_device_token)
+        return response
 
 
 class Location(APIView):
@@ -444,12 +430,13 @@ class RevealSong(APIView):
     """
 
     def post(self, request, format=None):
-        user = request.user
-        if not user.is_authenticated:
+        user = get_current_app_user(request)
+        if not user:
             return Response(
-                {"detail": "Authentification requise."},
+                {"detail": "Identité requise."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        touch_last_seen(user)
 
         public_key = request.data.get("dep_public_key")
         if not public_key:
@@ -478,42 +465,9 @@ class RevealSong(APIView):
             )
 
         cost = int(COST_REVEAL_BOX)
-
-        csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")
-
-        headers_bg = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token,
-            "Referer": origin,
-            "Origin": origin.rstrip("/"),
-        }
-        cookies = request.COOKIES
-
-        try:
-            add_points_url = request.build_absolute_uri(reverse("add-points"))
-
-            r = requests.post(
-                add_points_url,
-                cookies=cookies,
-                headers=headers_bg,
-                data=json.dumps({"points": -cost}),
-                timeout=4,
-            )
-
-            try:
-                points_payload = r.json()
-            except ValueError:
-                points_payload = {}
-
-            if r.status_code != 200:
-                return Response(points_payload, status=r.status_code)
-
-        except Exception:
-            return Response(
-                {"detail": "Oops une erreur s’est produite, réessayez dans quelques instants."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        ok_points, points_payload, points_status = apply_points_delta(user, -cost)
+        if not ok_points:
+            return Response(points_payload, status=points_status)
 
         points_balance = points_payload.get("points_balance")
 
@@ -545,12 +499,13 @@ class ManageDiscoveredSongs(APIView):
     """
 
     def post(self, request, format=None):
-        user = request.user
-        if not user.is_authenticated:
+        user = get_current_app_user(request)
+        if not user:
             return Response(
                 {"error": "Vous devez être connecté pour effectuer cette action."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        touch_last_seen(user)
 
         deposit_id = request.data.get("deposit_id")
         if not deposit_id:
@@ -590,12 +545,13 @@ class ManageDiscoveredSongs(APIView):
         return Response({"success": True}, status=status.HTTP_200_OK)
 
     def get(self, request):
-        user = request.user
-        if not user.is_authenticated:
+        user = get_current_app_user(request)
+        if not user:
             return Response(
                 {"error": "Vous devez être connecté pour effectuer cette action."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        touch_last_seen(user)
 
         try:
             limit = int(request.GET.get("limit", 10))
@@ -776,57 +732,22 @@ class AddUserPoints(APIView):
     Class goal : add (or delete) points to the connected user.
     """
     def post(self, request, format=None):
-        if not request.user.is_authenticated:
+        user = get_current_app_user(request)
+        if not user:
             return Response(
                 {"errors": "Utilisateur non connecté."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        user = request.user
         points = request.data.get("points")
-
         if points is None:
             return Response(
                 {"errors": "Nombre de points invalide."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            points = int(points)
-        except (TypeError, ValueError):
-            return Response(
-                {"errors": "Nombre de points invalide."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            user.refresh_from_db(fields=["points"])
-        except Exception:
-            user.refresh_from_db()
-
-        current = getattr(user, "points", 0)
-        new_balance = current + points
-
-        if new_balance < 0:
-            return Response(
-                {
-                    "error": "insufficient_funds",
-                    "message": "Pas assez de points pour effectuer cette action.",
-                    "points_balance": current,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user.points = new_balance
-        user.save(update_fields=["points"])
-
-        return Response(
-            {
-                "status": "Points mis à jour avec succès.",
-                "points_balance": user.points,
-            },
-            status=status.HTTP_200_OK,
-        )
+        ok, payload, code = apply_points_delta(user, points)
+        return Response(payload, status=code)
 
 
 class UserDepositsView(APIView):
@@ -837,8 +758,9 @@ class UserDepositsView(APIView):
         GET /box-management/user-deposits?username=<str>&limit=<int>&offset=<int>
         """
 
+        me = _coerce_bool(request.GET.get("me"))
         raw_username = (request.GET.get("username") or "").strip()
-        if not raw_username:
+        if not me and not raw_username:
             return Response(
                 {"errors": ["Pas d'utilisateur spécifié"]},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -860,12 +782,21 @@ class UserDepositsView(APIView):
         if offset < 0:
             offset = 0
 
-        target_user = User.objects.filter(username__iexact=raw_username).first()
-        if not target_user:
-            return Response(
-                {"errors": ["Utilisateur inexistant"]},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if me:
+            target_user = get_current_app_user(request)
+            if not target_user:
+                return Response(
+                    {"errors": ["Utilisateur non connecté"]},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            touch_last_seen(target_user)
+        else:
+            target_user = User.objects.filter(username__iexact=raw_username, is_guest=False).first()
+            if not target_user:
+                return Response(
+                    {"errors": ["Utilisateur inexistant"]},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
         base_qs = (
             Deposit.objects
@@ -885,7 +816,7 @@ class UserDepositsView(APIView):
         has_more = len(page_qs) > limit
         deposits = page_qs[:limit]
 
-        viewer = request.user if getattr(request.user, "is_authenticated", False) else None
+        viewer = get_current_app_user(request)
 
         items = _build_deposits_payload(
             deposits,
@@ -970,7 +901,7 @@ class PublicVisibleArticleDetailView(APIView):
 
 
 class ClientAdminArticleImportPageView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def post(self, request):
         user, error_response = _get_active_client_user_or_response(request)
@@ -1032,7 +963,7 @@ class ClientAdminArticleImportPageView(APIView):
         return Response(preview, status=status.HTTP_200_OK)
 
 class ClientAdminArticleListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def get(self, request):
         user, error_response = _get_active_client_user_or_response(request)
@@ -1155,16 +1086,18 @@ class EmojiCatalogView(APIView):
         owned_ids = []
         current_reaction = None
 
-        if request.user.is_authenticated:
+        current_user = get_current_app_user(request)
+        if current_user:
+            touch_last_seen(current_user)
             owned_ids = list(
-                EmojiRight.objects.filter(user=request.user, emoji__active=True)
+                EmojiRight.objects.filter(user=current_user, emoji__active=True)
                 .values_list("emoji_id", flat=True)
             )
 
             if dep_public_key:
                 r = (
                     Reaction.objects.filter(
-                        user=request.user,
+                        user=current_user,
                         deposit__public_key=dep_public_key,
                     )
                     .select_related("emoji")
@@ -1186,9 +1119,14 @@ class PurchaseEmojiView(APIView):
     POST /box-management/emojis/purchase
     Body: { "emoji_id": <int> }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def post(self, request):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+        touch_last_seen(current_user)
+
         emoji_id = request.data.get("emoji_id")
         if not emoji_id:
             return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1199,39 +1137,17 @@ class PurchaseEmojiView(APIView):
         if emoji.cost == 0:
             return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
 
-        if EmojiRight.objects.filter(user=request.user, emoji=emoji).exists():
+        if EmojiRight.objects.filter(user=current_user, emoji=emoji).exists():
             return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
 
         cost = int(emoji.cost or 0)
-        request.user.refresh_from_db(fields=["points"])
-        if getattr(request.user, "points", 0) < cost:
-            return Response(
-                {"error": "insufficient_funds", "message": "Crédits insuffisants"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        ok_points, payload_points, code_points = apply_points_delta(current_user, -cost)
+        if not ok_points:
+            return Response(payload_points, status=code_points)
 
-        csrf_token = get_token(request)
-        origin = request.build_absolute_uri("/")
-        headers_bg = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token,
-            "Referer": origin,
-            "Origin": origin.rstrip("/"),
-        }
-        r = requests.post(
-            request.build_absolute_uri(reverse("add-points")),
-            cookies=request.COOKIES,
-            headers=headers_bg,
-            data=json.dumps({"points": -cost}),
-            timeout=4,
-        )
-        if not r.ok:
-            return Response({"detail": "Erreur débit points"}, status=status.HTTP_502_BAD_GATEWAY)
-
-        EmojiRight.objects.create(user=request.user, emoji=emoji)
-        request.user.refresh_from_db(fields=["points"])
+        EmojiRight.objects.create(user=current_user, emoji=emoji)
         return Response(
-            {"ok": True, "owned": True, "points_balance": getattr(request.user, "points", None)},
+            {"ok": True, "owned": True, "points_balance": payload_points.get("points_balance")},
             status=status.HTTP_200_OK,
         )
 
@@ -1241,9 +1157,14 @@ class ReactionView(APIView):
     POST /box-management/reactions
     Body: { "dep_public_key": "<str>", "emoji_id": <int|null|"none"> }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def post(self, request):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+        touch_last_seen(current_user)
+
         dep_public_key = request.data.get("dep_public_key")
         emoji_id = request.data.get("emoji_id")
 
@@ -1261,7 +1182,7 @@ class ReactionView(APIView):
             )
 
         if emoji_id in (None, "", 0, "none"):
-            Reaction.objects.filter(user=request.user, deposit=deposit).delete()
+            Reaction.objects.filter(user=current_user, deposit=deposit).delete()
             summary = _reactions_summary_for_deposits([deposit.id]).get(
                 deposit.id, []
             )
@@ -1279,7 +1200,7 @@ class ReactionView(APIView):
 
         if not emoji.cost == 0:
             has_right = EmojiRight.objects.filter(
-                user=request.user, emoji=emoji
+                user=current_user, emoji=emoji
             ).exists()
             if not has_right:
                 return Response(
@@ -1288,7 +1209,7 @@ class ReactionView(APIView):
                 )
 
         obj, created = Reaction.objects.get_or_create(
-            user=request.user,
+            user=current_user,
             deposit=deposit,
             defaults={"emoji": emoji},
         )

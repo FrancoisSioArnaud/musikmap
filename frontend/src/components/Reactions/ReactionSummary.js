@@ -1,31 +1,30 @@
-// frontend/src/components/Reactions/ReactionSummary.js
-
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
-import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
-import CircularProgress from "@mui/material/CircularProgress";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { getCookie } from "../Security/TokensUtils";
 
 function normalizeReactionUser(rawUser = {}) {
-  const username = rawUser?.username || rawUser?.name || "";
-  const safeUsername = (username || "").trim();
+  const isGuest = Boolean(rawUser?.is_guest);
+  const username = (rawUser?.username || "").trim();
+  const displayName = (rawUser?.display_name || rawUser?.displayName || rawUser?.name || username || "anonyme").trim();
 
   return {
-    username: safeUsername,
-    displayName: safeUsername || "anonyme",
+    id: rawUser?.id || null,
+    username: username || "",
+    displayName: displayName || "anonyme",
     profile_picture_url:
       rawUser?.profile_picture_url || rawUser?.profile_pic_url || null,
+    isGuest,
     isAnonymous:
-      !safeUsername || String(safeUsername).toLowerCase() === "anonyme",
+      (!username && !rawUser?.id) || String(displayName).toLowerCase() === "anonyme",
   };
 }
 
@@ -38,95 +37,17 @@ export default function ReactionSummary({
   onApplied,
 }) {
   const navigate = useNavigate();
-  const [profilesByName, setProfilesByName] = useState({});
-  const [loadingProfiles, setLoadingProfiles] = useState(false);
-  const viewerUsername = (viewer?.username || "").trim();
-
-  useEffect(() => {
-    if (!open) return;
-
-    const rawList = Array.isArray(reactions) ? reactions : [];
-    const uniqueUsernames = [
-      ...new Set(
-        rawList
-          .map((r) => (r?.user?.username || r?.user?.name || "").trim())
-          .filter(
-            (name) => name && String(name).toLowerCase() !== "anonyme"
-          )
-      ),
-    ];
-
-    if (!uniqueUsernames.length) {
-      setProfilesByName({});
-      return;
-    }
-
-    let cancelled = false;
-
-    async function run() {
-      setLoadingProfiles(true);
-      try {
-        const entries = await Promise.all(
-          uniqueUsernames.map(async (username) => {
-            try {
-              const res = await fetch(
-                `/users/get-user-info?username=${encodeURIComponent(username)}`,
-                {
-                  headers: { Accept: "application/json" },
-                  credentials: "same-origin",
-                }
-              );
-
-              if (!res.ok) {
-                return [username, null];
-              }
-
-              const data = await res.json().catch(() => null);
-              if (!data) return [username, null];
-
-              return [
-                username,
-                {
-                  username: data?.username || username,
-                  profile_picture_url: data?.profile_picture_url || null,
-                },
-              ];
-            } catch {
-              return [username, null];
-            }
-          })
-        );
-
-        if (cancelled) return;
-
-        const nextMap = {};
-        entries.forEach(([username, value]) => {
-          nextMap[username] = value;
-        });
-        setProfilesByName(nextMap);
-      } finally {
-        if (!cancelled) setLoadingProfiles(false);
-      }
-    }
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, reactions]);
+  const viewerId = viewer?.id || null;
 
   const orderedReactions = useMemo(() => {
     const list = Array.isArray(reactions) ? [...reactions] : [];
 
     return list.sort((a, b) => {
-      const aName = (a?.user?.name || "").trim();
-      const bName = (b?.user?.name || "").trim();
-      const aMine = viewerUsername && aName === viewerUsername ? 1 : 0;
-      const bMine = viewerUsername && bName === viewerUsername ? 1 : 0;
+      const aMine = viewerId && (a?.user?.id || null) === viewerId ? 1 : 0;
+      const bMine = viewerId && (b?.user?.id || null) === viewerId ? 1 : 0;
       return bMine - aMine;
     });
-  }, [reactions, viewerUsername]);
+  }, [reactions, viewerId]);
 
   const handleDeleteOwnReaction = async () => {
     if (!depPublicKey) {
@@ -164,21 +85,9 @@ export default function ReactionSummary({
   };
 
   const renderReactionRow = (reaction, index) => {
-    const rawName = (reaction?.user?.username || reaction?.user?.name || "").trim();
-    const isMine = Boolean(viewerUsername && rawName === viewerUsername);
-
-    const normalized = normalizeReactionUser({
-      ...(reaction?.user || {}),
-      username: reaction?.user?.username || reaction?.user?.name || "",
-      profile_picture_url:
-        reaction?.user?.profile_picture_url ||
-        profilesByName?.[rawName]?.profile_picture_url ||
-        null,
-    });
-
-    const resolvedUsername =
-      profilesByName?.[rawName]?.username || normalized.username || "";
-    const canNavigate = !isMine && Boolean(resolvedUsername);
+    const normalized = normalizeReactionUser(reaction?.user || {});
+    const isMine = Boolean(viewerId && normalized.id === viewerId);
+    const canNavigate = !isMine && !normalized.isGuest && Boolean(normalized.username);
 
     const handleClick = () => {
       if (isMine) {
@@ -189,12 +98,12 @@ export default function ReactionSummary({
       if (!canNavigate) return;
 
       onClose?.();
-      navigate("/profile/" + resolvedUsername);
+      navigate("/profile/" + normalized.username);
     };
 
     return (
       <Box
-        key={`${reaction?.emoji || "emoji"}-${rawName || index}`}
+        key={`${reaction?.emoji || "emoji"}-${normalized.id || normalized.username || index}`}
         onClick={handleClick}
         role={isMine || canNavigate ? "button" : undefined}
         tabIndex={isMine || canNavigate ? 0 : -1}
@@ -204,9 +113,7 @@ export default function ReactionSummary({
             handleClick();
           }
         }}
-        className={
-          normalized?.username ? "hasUsername reaction" : "reaction"
-        }
+        className={normalized?.username ? "hasUsername reaction" : "reaction"}
         sx={{
           py: 1.25,
           alignItems: "center",
@@ -215,11 +122,7 @@ export default function ReactionSummary({
           gap: 2,
         }}
       >
-        <Typography
-          variant="h4"
-          component="span"
-          className="emoji"
-        >
+        <Typography variant="h4" component="span" className="emoji">
           {reaction?.emoji}
         </Typography>
 
@@ -234,9 +137,7 @@ export default function ReactionSummary({
         <Box className="texts">
           <Typography component="span" className="username" variant="subtitle1">
             {normalized?.displayName || "anonyme"}
-            {!isMine && !normalized?.isAnonymous && (
-              <ArrowForwardIosIcon className="icon" />
-            )}
+            {canNavigate && <ArrowForwardIosIcon className="icon" />}
           </Typography>
 
           {isMine && (
@@ -289,12 +190,6 @@ export default function ReactionSummary({
         </Box>
 
         <Box className="reactions_list">
-          {loadingProfiles && orderedReactions.length > 0 && (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-              <CircularProgress size={22} />
-            </Box>
-          )}
-
           {!orderedReactions.length ? (
             <Typography variant="body1" sx={{ py: 2 }}>
               Aucune réaction

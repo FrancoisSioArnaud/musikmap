@@ -6,7 +6,9 @@ export const logoutUser = async (
   setCurrentClient = null
 ) => {
   try {
-    const response = await fetch("/users/logout_user");
+    const response = await fetch("/users/logout_user", {
+      credentials: "same-origin",
+    });
     if (response.ok) {
       setIsAuthenticated(false);
       setUser(null);
@@ -25,12 +27,15 @@ export const checkUserStatus = async (
   setAuthChecked = null
 ) => {
   try {
-    const response = await fetch("/users/check-authentication");
+    const response = await fetch("/users/check-authentication/", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
     const data = await response.json().catch(() => ({}));
 
     if (response.ok) {
       setUser(data);
-      setIsAuthenticated(true);
+      setIsAuthenticated(!data?.is_guest);
     } else {
       setIsAuthenticated(false);
       setUser(null);
@@ -58,6 +63,7 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
       "Content-Type": "application/json",
       "X-CSRFToken": csrftoken,
     },
+    credentials: "same-origin",
     body: form,
   };
 
@@ -81,7 +87,9 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
 
 export const getUserDetails = async (userID) => {
   try {
-    const response = await fetch("/users/get-user-info?userID=" + userID);
+    const response = await fetch("/users/get-user-info?userID=" + userID, {
+      credentials: "same-origin",
+    });
     if (!response.ok) {
       return null;
     }

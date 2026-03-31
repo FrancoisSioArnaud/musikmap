@@ -16,6 +16,8 @@ class CustomUserAdmin(UserAdmin):
                     "profile_picture",
                     "preferred_platform",
                     "points",
+                    "is_guest",
+                    "guest_device_token",
                     "client",
                     "client_role",
                     "portal_status",
@@ -34,7 +36,7 @@ class CustomUserAdmin(UserAdmin):
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Important dates", {"fields": ("last_login", "date_joined", "last_seen_at", "converted_at")}),
     )
 
     add_fieldsets = (
@@ -47,6 +49,8 @@ class CustomUserAdmin(UserAdmin):
                     "email",
                     "password1",
                     "password2",
+                    "is_guest",
+                    "guest_device_token",
                     "client",
                     "client_role",
                     "portal_status",
@@ -63,15 +67,19 @@ class CustomUserAdmin(UserAdmin):
     list_display = (
         "username",
         "email",
+        "is_guest",
         "client",
         "client_role",
         "portal_status",
         "preferred_platform",
         "points",
+        "last_seen_at",
+        "converted_at",
         "is_staff",
         "is_active",
     )
     list_filter = (
+        "is_guest",
         "client_role",
         "portal_status",
         "preferred_platform",
@@ -85,6 +93,8 @@ class CustomUserAdmin(UserAdmin):
         "username",
         "email",
         "client__name",
+        "guest_device_token",
     )
     autocomplete_fields = ("client",)
+    readonly_fields = ("guest_device_token", "last_seen_at", "converted_at")
     ordering = ("username",)

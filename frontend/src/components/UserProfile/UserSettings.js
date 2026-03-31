@@ -1,4 +1,3 @@
-// frontend/src/components/UserSettings.js
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
@@ -35,16 +34,43 @@ export default function UserSettings() {
 
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
   const [isDeezerAuthenticated, setIsDeezerAuthenticated] = useState(false);
-
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [errorMessages, setErrorMessages] = useState({}); // backend field->message
+  const [errorMessages, setErrorMessages] = useState({});
 
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
     checkDeezerAuthentication(setIsDeezerAuthenticated);
   }, []);
 
-  // ---- Streaming auth handlers (inchangé)
+  if (user?.is_guest) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 3 }}>
+        <Card variant="outlined">
+          <CardHeader titleTypographyProps={{ variant: "h6" }} title="Finaliser mon compte" />
+          <Divider />
+          <CardContent>
+            <Stack spacing={2}>
+              <Typography variant="body1">
+                Ton profil invité te permet déjà de cumuler tes points, déposer, réagir et retrouver tes chansons sur cet appareil.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Finalise ton compte pour choisir un nom visible par les autres, personnaliser ton apparence et accéder aux autres fonctionnalités du compte.
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button variant="contained" onClick={() => navigate("/register")}>
+                  Finaliser mon compte
+                </Button>
+                <Button variant="outlined" onClick={() => navigate("/profile")}>
+                  Retour
+                </Button>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
+    );
+  }
+
   const handleButtonClickConnectSpotify = () =>
     authenticateSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
 
@@ -67,7 +93,6 @@ export default function UserSettings() {
       .catch(() => console.log("cannot change preferred platform"));
   }
 
-  // ---- Password change (inchangé)
   const handlePasswordChange = () => setShowPasswordForm(true);
   const handlePasswordCancel = () => setShowPasswordForm(false);
 
@@ -98,51 +123,33 @@ export default function UserSettings() {
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       <Stack spacing={3}>
-        {/* ================== INFOS PERSONNELLES ================== */}
         <Card variant="outlined">
-          <CardHeader
-            titleTypographyProps={{ variant: "h6" }}
-            title="Tes informations personnelles"
-          />
+          <CardHeader titleTypographyProps={{ variant: "h6" }} title="Tes informations personnelles" />
           <Divider />
           <CardContent>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Email"
-                  variant="outlined"
-                  fullWidth
-                  value={user.email}
-                  InputProps={{ readOnly: true }}
-                />
+                <TextField label="Email" variant="outlined" fullWidth value={user?.email || ""} InputProps={{ readOnly: true }} />
               </Grid>
 
-              {!user.is_social_auth ? (
+              {!user?.is_social_auth ? (
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Mot de passe"
-                    variant="outlined"
-                    fullWidth
-                    type="password"
-                    value="*******"
-                    InputProps={{ readOnly: true }}
-                  />
+                  <TextField label="Mot de passe" variant="outlined" fullWidth type="password" value="*******" InputProps={{ readOnly: true }} />
                 </Grid>
               ) : null}
             </Grid>
           </CardContent>
         </Card>
 
-        {/* ================== MOT DE PASSE ================== */}
         <Card variant="outlined">
           <CardHeader
             titleTypographyProps={{ variant: "h6" }}
             title="Mot de passe"
-            subheader={!user.is_social_auth ? "Modifie ton mot de passe de connexion." : "Vous êtes connecté avec une plateforme de streaming."}
+            subheader={!user?.is_social_auth ? "Modifie ton mot de passe de connexion." : "Vous êtes connecté avec une plateforme de streaming."}
           />
           <Divider />
           <CardContent>
-            {!user.is_social_auth ? (
+            {!user?.is_social_auth ? (
               showPasswordForm ? (
                 <Box component="form" noValidate onSubmit={handleSubmit}>
                   <Grid container spacing={2}>
@@ -157,7 +164,6 @@ export default function UserSettings() {
                     </Grid>
                   </Grid>
 
-                  {/* Erreurs backend éventuelles */}
                   {Object.keys(errorMessages).length > 0 && (
                     <Box sx={{ mt: 2 }}>
                       {Object.keys(errorMessages).map((k) => (
@@ -190,7 +196,6 @@ export default function UserSettings() {
           </CardContent>
         </Card>
 
-        {/* ================== SERVICES DE STREAMING ================== */}
         <Card variant="outlined">
           <CardHeader
             titleTypographyProps={{ variant: "h6" }}
@@ -200,40 +205,23 @@ export default function UserSettings() {
           <Divider />
           <CardContent>
             <Stack spacing={3}>
-              {/* Spotify */}
               <Box>
                 <Grid container spacing={2} alignItems="center" wrap="wrap">
                   <Grid item>
-                    <Box
-                      component="img"
-                      src="../static/images/spotify_logo.svg"
-                      alt="Spotify"
-                      sx={{ width: 96, height: "auto" }}
-                    />
+                    <Box component="img" src="../static/images/spotify_logo.svg" alt="Spotify" sx={{ width: 96, height: "auto" }} />
                   </Grid>
-
                   <Grid item xs>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       {isSpotifyAuthenticated ? (
-                        <Button variant="outlined" onClick={handleButtonClickDisconnectSpotify}>
-                          Se déconnecter
-                        </Button>
+                        <Button variant="outlined" onClick={handleButtonClickDisconnectSpotify}>Se déconnecter</Button>
                       ) : (
-                        <Button variant="contained" onClick={handleButtonClickConnectSpotify}>
-                          Se connecter
-                        </Button>
+                        <Button variant="contained" onClick={handleButtonClickConnectSpotify}>Se connecter</Button>
                       )}
 
-                      {user.preferred_platform === "spotify" ? (
-                        <Typography variant="body2" sx={{ ml: 1 }}>
-                          Plateforme principale
-                        </Typography>
+                      {user?.preferred_platform === "spotify" ? (
+                        <Typography variant="body2" sx={{ ml: 1 }}>Plateforme principale</Typography>
                       ) : (
-                        <Button
-                          variant="text"
-                          onClick={() => handlePreferredPlatform("spotify")}
-                          sx={{ ml: 1 }}
-                        >
+                        <Button variant="text" onClick={() => handlePreferredPlatform("spotify")} sx={{ ml: 1 }}>
                           Choisir comme plateforme principale
                         </Button>
                       )}
@@ -242,42 +230,23 @@ export default function UserSettings() {
                 </Grid>
               </Box>
 
-              <Divider />
-
-              {/* Deezer */}
               <Box>
                 <Grid container spacing={2} alignItems="center" wrap="wrap">
                   <Grid item>
-                    <Box
-                      component="img"
-                      src="../static/images/deezer_logo.svg"
-                      alt="Deezer"
-                      sx={{ width: 96, height: "auto" }}
-                    />
+                    <Box component="img" src="../static/images/deezer_logo.svg" alt="Deezer" sx={{ width: 96, height: "auto" }} />
                   </Grid>
-
                   <Grid item xs>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       {isDeezerAuthenticated ? (
-                        <Button variant="outlined" onClick={handleButtonClickDisconnectDeezer}>
-                          Se déconnecter
-                        </Button>
+                        <Button variant="outlined" onClick={handleButtonClickDisconnectDeezer}>Se déconnecter</Button>
                       ) : (
-                        <Button variant="contained" onClick={handleButtonClickConnectDeezer}>
-                          Se connecter
-                        </Button>
+                        <Button variant="contained" onClick={handleButtonClickConnectDeezer}>Se connecter</Button>
                       )}
 
-                      {user.preferred_platform === "deezer" ? (
-                        <Typography variant="body2" sx={{ ml: 1 }}>
-                          Plateforme principale
-                        </Typography>
+                      {user?.preferred_platform === "deezer" ? (
+                        <Typography variant="body2" sx={{ ml: 1 }}>Plateforme principale</Typography>
                       ) : (
-                        <Button
-                          variant="text"
-                          onClick={() => handlePreferredPlatform("deezer")}
-                          sx={{ ml: 1 }}
-                        >
+                        <Button variant="text" onClick={() => handlePreferredPlatform("deezer")} sx={{ ml: 1 }}>
                           Choisir comme plateforme principale
                         </Button>
                       )}
@@ -289,21 +258,17 @@ export default function UserSettings() {
           </CardContent>
         </Card>
 
-        {/* ================== DÉCONNEXION ================== */}
         <Card variant="outlined">
+          <CardHeader titleTypographyProps={{ variant: "h6" }} title="Session" />
+          <Divider />
           <CardContent>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center" justifyContent="space-between">
-              <Button
-                variant="contained"
-                color="error"
-                onClick={() => {
-                  logoutUser(setUser, setIsAuthenticated);
-                  navigate("/"); // redirection home
-                }}
-              >
-                Déconnexion
-              </Button>
-            </Stack>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => logoutUser(setUser, setIsAuthenticated)}
+            >
+              Se déconnecter
+            </Button>
           </CardContent>
         </Card>
       </Stack>
