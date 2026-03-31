@@ -5,7 +5,7 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import AlbumIcon from "@mui/icons-material/Album";
+import MusicNote from "@mui/icons-material/MusicNote";
 import { getCookie } from "../Security/TokensUtils";
 
 export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }) {
@@ -60,7 +60,7 @@ export default function PurchaseEmojiModal({ open, emoji, onCancel, onUnlocked }
                   <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                     {emoji?.cost ?? 0}
                   </Typography>
-                  <AlbumIcon />
+                  <MusicNote />
                 </Box>
               </Button>
             </Box>
