@@ -3,20 +3,20 @@ import { getCookie } from "./Security/TokensUtils";
 export const logoutUser = async (
   setUser,
   setIsAuthenticated,
+  navigate = null,
   setCurrentClient = null
 ) => {
   try {
-    const response = await fetch("/users/logout_user", {
+    await fetch("/users/logout_user", {
       credentials: "same-origin",
     });
-    if (response.ok) {
-      setIsAuthenticated(false);
-      setUser(null);
-    } else {
-      console.error("Can't disconnect because not connected");
-    }
   } catch (error) {
     console.error(error);
+  } finally {
+    await checkUserStatus(setUser, setIsAuthenticated, setCurrentClient);
+    if (navigate) {
+      navigate("/profile");
+    }
   }
 };
 

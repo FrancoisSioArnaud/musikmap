@@ -265,7 +265,7 @@ export default function UserSettings() {
             <Button
               variant="outlined"
               color="error"
-              onClick={() => logoutUser(setUser, setIsAuthenticated)}
+              onClick={() => logoutUser(setUser, setIsAuthenticated, navigate)}
             >
               Se déconnecter
             </Button>

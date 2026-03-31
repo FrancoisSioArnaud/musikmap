@@ -2,6 +2,7 @@ import secrets
 from typing import Optional, Tuple
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from social_django.models import UserSocialAuth
 
@@ -180,3 +181,107 @@ def apply_points_delta(user: CustomUser, delta: int):
         user.save()
 
     return True, {"status": "Points mis à jour avec succès.", "points_balance": user.points}, 200
+
+
+def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
+    if not guest_user or not target_user:
+        return {"merged": False, "reason": "missing_user"}
+    if guest_user.pk == target_user.pk:
+        return {"merged": False, "reason": "same_user"}
+    if not getattr(guest_user, "is_guest", False):
+        return {"merged": False, "reason": "source_not_guest"}
+
+    from box_management.models import Deposit, DiscoveredSong, EmojiRight, Reaction
+
+    with transaction.atomic():
+        guest = CustomUser.objects.select_for_update().get(pk=guest_user.pk)
+        target = CustomUser.objects.select_for_update().get(pk=target_user.pk)
+
+        if not guest.is_guest:
+            return {"merged": False, "reason": "source_not_guest"}
+
+        points_added = int(guest.points or 0)
+        if points_added:
+            target.points = int(target.points or 0) + points_added
+
+        target.last_seen_at = _now()
+        target.save(update_fields=["points", "last_seen_at"])
+
+        moved_deposits = Deposit.objects.filter(user=guest).update(user=target)
+
+        for right in list(EmojiRight.objects.filter(user=guest).select_related("emoji")):
+            exists = EmojiRight.objects.filter(user=target, emoji_id=right.emoji_id).exists()
+            if exists:
+                right.delete()
+            else:
+                right.user = target
+                right.save(update_fields=["user"])
+
+        guest_discoveries = list(
+            DiscoveredSong.objects.filter(user=guest).select_related("deposit").order_by("discovered_at", "id")
+        )
+        for discovery in guest_discoveries:
+            existing = (
+                DiscoveredSong.objects.filter(user=target, deposit_id=discovery.deposit_id)
+                .order_by("discovered_at", "id")
+                .first()
+            )
+            if not existing:
+                discovery.user = target
+                discovery.save(update_fields=["user"])
+                continue
+
+            update_fields = []
+            if discovery.discovered_type == "main" and existing.discovered_type != "main":
+                existing.discovered_type = "main"
+                update_fields.append("discovered_type")
+            if discovery.discovered_at and existing.discovered_at and discovery.discovered_at < existing.discovered_at:
+                existing.discovered_at = discovery.discovered_at
+                update_fields.append("discovered_at")
+            if update_fields:
+                existing.save(update_fields=update_fields)
+            discovery.delete()
+
+        latest_guest_reaction_by_deposit = {}
+        guest_reactions = list(
+            Reaction.objects.filter(user=guest).select_related("emoji", "deposit").order_by("-updated_at", "-created_at", "-id")
+        )
+        for reaction in guest_reactions:
+            if reaction.deposit_id not in latest_guest_reaction_by_deposit:
+                latest_guest_reaction_by_deposit[reaction.deposit_id] = reaction
+            else:
+                reaction.delete()
+
+        for deposit_id, guest_reaction in latest_guest_reaction_by_deposit.items():
+            target_reactions = list(
+                Reaction.objects.filter(user=target, deposit_id=deposit_id).order_by("-updated_at", "-created_at", "-id")
+            )
+            target_reaction = target_reactions[0] if target_reactions else None
+            for duplicate in target_reactions[1:]:
+                duplicate.delete()
+
+            if not target_reaction:
+                try:
+                    guest_reaction.user = target
+                    guest_reaction.save(update_fields=["user"])
+                except IntegrityError:
+                    Reaction.objects.filter(pk=guest_reaction.pk).delete()
+                continue
+
+            guest_stamp = guest_reaction.updated_at or guest_reaction.created_at
+            target_stamp = target_reaction.updated_at or target_reaction.created_at
+            if guest_stamp and target_stamp and guest_stamp > target_stamp:
+                if target_reaction.emoji_id != guest_reaction.emoji_id:
+                    target_reaction.emoji_id = guest_reaction.emoji_id
+                    target_reaction.save(update_fields=["emoji", "updated_at"])
+                else:
+                    target_reaction.save(update_fields=["updated_at"])
+            guest_reaction.delete()
+
+        guest.delete()
+
+    return {
+        "merged": True,
+        "points_added": points_added,
+        "moved_deposits": moved_deposits,
+    }

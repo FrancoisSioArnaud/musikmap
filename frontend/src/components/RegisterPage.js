@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useContext } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { UserContext } from "./UserContext";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
@@ -11,9 +12,8 @@ import Box from "@mui/material/Box";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
-import { checkUserStatus } from "./UsersUtils";
-import { useNavigate } from "react-router-dom";
 import CircularProgress from "@mui/material/CircularProgress";
+import { checkUserStatus } from "./UsersUtils";
 import { getCookie } from "./Security/TokensUtils";
 import { navigateToCurrentBox } from "./Utils/navigation/boxNavigation";
 
@@ -61,9 +61,13 @@ export default function RegisterPage() {
         setErrorMessages({});
         setRegistrationSuccess(true);
 
-        setTimeout(() => {
-          checkUserStatus(setUser, setIsAuthenticated);
-          navigateToCurrentBox(navigate);
+        setTimeout(async () => {
+          await checkUserStatus(setUser, setIsAuthenticated);
+          if (isGuest) {
+            navigate("/profile");
+          } else {
+            navigateToCurrentBox(navigate);
+          }
         }, 1200);
       } else if (data.errors) {
         setErrorMessages(data.errors);
@@ -134,11 +138,20 @@ export default function RegisterPage() {
                 {errorMessages[key][0]}
               </Typography>
             ))}
-            {!isGuest && (
+
+            {isGuest ? (
+              <Grid container justifyContent="center">
+                <Grid item>
+                  <Link component={RouterLink} to="/login?merge_guest=1" variant="body2">
+                    J&apos;ai déjà un compte
+                  </Link>
+                </Grid>
+              </Grid>
+            ) : (
               <Grid container justifyContent="flex-end">
                 <Grid item>
-                  <Link href="/login" variant="body2">
-                    Vous avez déjà un compte ? S'identifier
+                  <Link component={RouterLink} to="/login" variant="body2">
+                    Vous avez déjà un compte ? S&apos;identifier
                   </Link>
                 </Grid>
               </Grid>

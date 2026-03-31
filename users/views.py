@@ -25,6 +25,7 @@ from .utils import (
     clear_guest_cookie,
     get_current_app_user,
     get_guest_user_from_request,
+    merge_guest_into_user,
     touch_last_seen,
 )
 
@@ -42,18 +43,46 @@ def _build_authenticated_user_payload(user):
     return build_current_user_payload(user)
 
 
+def _is_truthy(value):
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class LoginUser(APIView):
     def post(self, request, format=None):
         username = request.data.get("username")
         password = request.data.get("password")
+        merge_guest = _is_truthy(request.data.get("merge_guest"))
+        guest_user = get_guest_user_from_request(request)
+
         user = authenticate(request, username=username, password=password)
         if user is None:
             return Response({"status": False}, status=status.HTTP_401_UNAUTHORIZED)
 
+        guest_merged = False
+        merge_error = None
+        merge_attempted = bool(merge_guest and guest_user)
+
+        if merge_attempted and guest_user and guest_user.pk != user.pk:
+            try:
+                merge_result = merge_guest_into_user(guest_user, user)
+                guest_merged = bool(merge_result.get("merged"))
+            except Exception:
+                merge_error = "Connexion réussie, mais la fusion des partages de cet appareil a échoué."
+
         login(request, user)
         touch_last_seen(user)
-        response = Response({"status": True}, status=status.HTTP_200_OK)
-        clear_guest_cookie(response)
+
+        response = Response(
+            {
+                "status": True,
+                "guest_merged": guest_merged,
+                "merge_attempted": merge_attempted,
+                "merge_error": merge_error,
+            },
+            status=status.HTTP_200_OK,
+        )
+        if guest_merged:
+            clear_guest_cookie(response)
         return response
 
 
