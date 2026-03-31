@@ -5,7 +5,7 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import AlbumIcon from "@mui/icons-material/Album";
+import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
 import PurchaseEmojiModal from "./PurchaseEmojiModal";
@@ -218,7 +218,7 @@ export default function ReactionModal({
                             <Typography variant="body2" component="span">
                               {emoji.cost}
                             </Typography>
-                            <AlbumIcon />
+                            <MusicNote />
                           </Box>
                         )}
                       </Button>
