@@ -235,7 +235,7 @@ export function buildMuiTheme(clientTheme) {
               "border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
 
             "& .MuiOutlinedInput-notchedOutline": {
-              borderColor: clientTheme.colors.error,
+              borderColor: clientTheme.colors.divider,
               borderWidth: 1,
             },
 
