@@ -1,8 +1,13 @@
-// frontend/src/theme.js
+// frontend/src/muiThemeBuilder.js
 
 import { createTheme } from "@mui/material/styles";
 
 export function buildMuiTheme(clientTheme) {
+  const inputRadius =
+    parseInt(clientTheme.radius.input, 10) ||
+    parseInt(clientTheme.radius.button, 10) ||
+    16;
+
   return createTheme({
     palette: {
       mode: "light",
@@ -26,7 +31,7 @@ export function buildMuiTheme(clientTheme) {
     spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64],
 
     typography: {
-      fontFamily: clientTheme.fonts.body,
+      fontFamily: clientTheme.fonts.body1,
 
       h1: {
         fontSize: "40px",
@@ -59,7 +64,7 @@ export function buildMuiTheme(clientTheme) {
       subtitle1: {
         fontSize: "16px",
         fontWeight: 700,
-        lineHeight:"normal",
+        lineHeight: "normal",
         color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.subtitle1,
       },
@@ -195,6 +200,85 @@ export function buildMuiTheme(clientTheme) {
             },
           },
         ],
+      },
+
+      MuiTextField: {
+        defaultProps: {
+          variant: "outlined",
+        },
+      },
+
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: clientTheme.colors.inputLabel,
+            "&.Mui-focused": {
+              color: clientTheme.colors.primary,
+            },
+            "&.Mui-error": {
+              color: clientTheme.colors.inputBorderError,
+            },
+            "&.Mui-disabled": {
+              color: clientTheme.colors.inputPlaceholder,
+            },
+          },
+        },
+      },
+
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            borderRadius: inputRadius,
+            backgroundColor: clientTheme.colors.white,
+            color: clientTheme.colors.text,
+            transition:
+              "border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
+
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: clientTheme.colors.divider,
+              borderWidth: 1,
+            },
+
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: clientTheme.colors.secondarylight,
+            },
+
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: clientTheme.colors.secondary,
+              borderWidth: 1,
+            },
+
+            "&.Mui-error .MuiOutlinedInput-notchedOutline": {
+              borderColor: clientTheme.colors.error,
+            },
+
+            /*"&.Mui-disabled": {
+              backgroundColor: clientTheme.colors.inputDisabledBg,
+            },
+
+            "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
+              borderColor: clientTheme.colors.inputDisabledBorder,
+            },*/
+
+            "& input::placeholder": {
+              color: clientTheme.colors.text,
+              opacity: 1,
+            },
+
+            "& textarea::placeholder": {
+              color: clientTheme.colors.text,
+              opacity: 1,
+            },
+          },
+
+          input: {
+            padding: "14px 16px",
+          },
+
+          multiline: {
+            padding: "14px 16px",
+          },
+        },
       },
     },
   });
