@@ -147,51 +147,49 @@ export default function UserProfilePage() {
 
   return (
     <Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            m: "0 16px",
-            pb: "12px",
-          }}
-        >  
-          {isOwner && !isGuestOwner && (
-            <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-              <SettingsIcon size="large" />
-            </IconButton>
-          )}
-
-          {isGuestOwner && (
-            <Button variant="contained" onClick={() => navigate("/register")} size="small">
-              Finaliser mon compte
-            </Button>
-          )}
-        </Box>
-
-
-
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          m: "0 16px",
+          pb: "12px",
+        }}
+      >
+        {isOwner && !isGuestOwner && (
+          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
+            <SettingsIcon size="large" />
+          </IconButton>
+        )}
+      </Box>
 
       <Box
         sx={{
           display: "flex",
+          flexDirection: "vertical",
+          alignItems: "center",
           gap: 4,
           p: "38px 16px",
         }}
       >
-          <Avatar
-            src={headerUser?.profile_picture_url || undefined}
-            alt={headerUser?.display_name || ""}
-            sx={{ width: 64, height: 64 }}
-          />
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">{headerUser?.display_name}</Typography>
-          </Box>
+        <Avatar
+          src={headerUser?.profile_picture_url || undefined}
+          alt={headerUser?.display_name || ""}
+          sx={{ width: 64, height: 64 }}
+        />
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h2">{headerUser?.display_name}</Typography>
+        </Box>
 
         {isOwner && !isGuestOwner && (
           <Button variant="outlined" onClick={() => navigate("/profile/edit")} size="small">
             Modifier
+          </Button>
+        )}
+
+        {isGuestOwner && (
+          <Button variant="contained" onClick={() => navigate("/register")} size="small">
+            Finaliser mon compte
           </Button>
         )}
       </Box>
