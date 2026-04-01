@@ -299,34 +299,43 @@ def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer:
     comments_by_dep = {dep_id: [] for dep_id in dep_ids}
     viewer_comments = {}
 
-    public_comments = (
-        Comment.objects
-        .filter(deposit_id__in=dep_ids, status=Comment.STATUS_PUBLISHED)
-        .select_related("user")
-        .order_by("created_at", "id")
-    )
-    for comment in public_comments:
-        comments_by_dep.setdefault(comment.deposit_id, []).append(
-            _build_comment_item_from_instance(comment, viewer_id=viewer_id)
-        )
-
+    comments_qs = Comment.objects.filter(deposit_id__in=dep_ids).select_related("user").order_by("created_at", "id")
     if viewer_id:
-        own_comments = (
-            Comment.objects
-            .filter(deposit_id__in=dep_ids, user_id=viewer_id)
-            .select_related("user")
-            .order_by("created_at", "id")
-        )
-        viewer_comments = {comment.deposit_id: comment for comment in own_comments}
+        comments_qs = comments_qs.filter(Q(status=Comment.STATUS_PUBLISHED) | Q(user_id=viewer_id))
+    else:
+        comments_qs = comments_qs.filter(status=Comment.STATUS_PUBLISHED)
+
+    for comment in comments_qs:
+        if comment.status == Comment.STATUS_PUBLISHED:
+            comments_by_dep.setdefault(comment.deposit_id, []).append(
+                _build_comment_item_from_instance(comment, viewer_id=viewer_id)
+            )
+        if viewer_id and comment.user_id == viewer_id and comment.deposit_id not in viewer_comments:
+            viewer_comments[comment.deposit_id] = comment
+
+    client_id_by_dep_id = {}
+    missing_dep_ids = []
+    for dep in deps:
+        cached_box = getattr(getattr(dep, "_state", None), "fields_cache", {}).get("box")
+        if cached_box is not None:
+            client_id_by_dep_id[dep.id] = getattr(cached_box, "client_id", None)
+        else:
+            missing_dep_ids.append(dep.id)
+
+    if missing_dep_ids:
+        client_id_by_dep_id.update({
+            deposit_id: client_id
+            for deposit_id, client_id in Deposit.objects.filter(id__in=missing_dep_ids).values_list("id", "box__client_id")
+        })
 
     restriction_by_client = _get_active_comment_restrictions_for_clients(
         viewer,
-        [getattr(dep, "box", None).client_id for dep in deps if getattr(dep, "box", None)],
+        [client_id for client_id in client_id_by_dep_id.values() if client_id],
     )
 
     payload = {}
     for dep in deps:
-        restriction = restriction_by_client.get(getattr(dep.box, "client_id", None))
+        restriction = restriction_by_client.get(client_id_by_dep_id.get(dep.id))
         existing_comment = viewer_comments.get(dep.id)
         payload[dep.id] = {
             "items": comments_by_dep.get(dep.id, []),

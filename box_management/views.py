@@ -48,6 +48,7 @@ from .models import (
     CommentReport,
     CommentModerationDecision,
     CommentUserRestriction,
+    CommentAttemptLog,
 )
 from .serializers import (
     BoxSerializer,
@@ -1576,6 +1577,8 @@ class CommentReportView(APIView):
             return Response({"detail": "Commentaire introuvable."}, status=status.HTTP_404_NOT_FOUND)
         if comment.user_id == current_user.id:
             return Response({"detail": "Vous ne pouvez pas signaler votre propre commentaire."}, status=status.HTTP_400_BAD_REQUEST)
+        if comment.status != Comment.STATUS_PUBLISHED:
+            return Response({"detail": "Ce commentaire ne peut plus être signalé."}, status=status.HTTP_400_BAD_REQUEST)
 
         reason_code = (request.data.get("reason") or "other").strip()
         if reason_code not in COMMENT_REPORT_REASON_CHOICES:
@@ -1734,6 +1737,14 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
         target_user = CustomUser.objects.filter(pk=target_user_id, is_guest=False).first()
         if not target_user:
             return Response({"detail": "Utilisateur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        has_client_comment_activity = Comment.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
+        has_client_attempt_activity = CommentAttemptLog.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
+        if not (has_client_comment_activity or has_client_attempt_activity):
+            return Response(
+                {"detail": "Vous ne pouvez sanctionner que des utilisateurs ayant déjà interagi avec vos commentaires."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         restriction_type = (request.data.get("restriction_type") or "").strip()
         if restriction_type not in {
