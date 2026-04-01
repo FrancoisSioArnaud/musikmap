@@ -17,18 +17,6 @@ import { checkUserStatus } from "./UsersUtils";
 import { getCookie } from "./Security/TokensUtils";
 import { navigateToCurrentBox } from "./Utils/navigation/boxNavigation";
 
-const styles = {
-  button: {
-    borderRadius: "20px",
-    backgroundImage: "linear-gradient(to right, #fa9500, #fa4000)",
-    color: "white",
-    border: "none",
-    textTransform: "none",
-    "&:hover": {
-      border: "none",
-    },
-  },
-};
 
 export default function RegisterPage() {
   const [profilePicture, setProfilePicture] = useState(null);
@@ -108,7 +96,7 @@ export default function RegisterPage() {
             <Typography variant="body2" color="text.primary" align="center">
               {isGuest ? "Ton compte a été finalisé avec succès !" : "Vous êtes enregistré avec succès !"}
             </Typography>
-            <CircularProgress sx={{ color: "#fa9500" }} />
+            <CircularProgress sx={{ color: "var(--mm-color_primary)" }} />
           </>
         ) : (
           <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
@@ -130,11 +118,11 @@ export default function RegisterPage() {
                 <input type="file" id="profilePicture" accept=".jpg, .jpeg, .png" onChange={handleProfilePictureChange} />
               </Grid>
             </Grid>
-            <Button type="submit" fullWidth variant="contained" style={styles.button} sx={{ mt: 3, mb: 2 }}>
+            <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
               {isGuest ? "Finaliser mon compte" : "S'enregistrer"}
             </Button>
             {Object.keys(errorMessages).map((key) => (
-              <Typography key={key} variant="body2" color="error" align="center">
+              <Typography key={key} variant="body1" color="error" align="center">
                 {errorMessages[key][0]}
               </Typography>
             ))}
@@ -142,7 +130,7 @@ export default function RegisterPage() {
             {isGuest ? (
               <Grid container justifyContent="center">
                 <Grid item>
-                  <Link component={RouterLink} to="/login?merge_guest=1" variant="body2">
+                  <Link component={RouterLink} to="/login?merge_guest=1" variant="subtitle1">
                     J&apos;ai déjà un compte
                   </Link>
                 </Grid>
