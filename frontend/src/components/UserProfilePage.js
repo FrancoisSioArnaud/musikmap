@@ -188,7 +188,7 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 320, gap: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", maxWidth: 320, gap: "12px" }}>
           {isGuestOwner ? (
             <>
               <TextField
