@@ -12,6 +12,11 @@ from .models import (
     Article,
     Box,
     Client,
+    Comment,
+    CommentAttemptLog,
+    CommentModerationDecision,
+    CommentReport,
+    CommentUserRestriction,
     Deposit,
     DiscoveredSong,
     Emoji,
@@ -364,6 +369,184 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit", "emoji")
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "reason_code",
+        "client",
+        "deposit_public_key",
+        "deposit_deleted",
+        "deposit_owner_username",
+        "user",
+        "author_email",
+        "reports_count",
+        "risk_score",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "reason_code",
+        "deposit_deleted",
+        "client",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = (
+        "id",
+        "text",
+        "normalized_text",
+        "reason_code",
+        "deposit_public_key",
+        "deposit_box_name",
+        "deposit_box_url",
+        "deposit_owner_username",
+        "user__username",
+        "user__email",
+        "author_username",
+        "author_display_name",
+        "author_email",
+    )
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("client", "deposit", "user")
+    readonly_fields = (
+        "normalized_text",
+        "reports_count",
+        "risk_score",
+        "risk_flags",
+        "deposit_public_key",
+        "deposit_box_name",
+        "deposit_box_url",
+        "deposit_deleted",
+        "deposit_owner_user_id",
+        "deposit_owner_username",
+        "author_username",
+        "author_display_name",
+        "author_email",
+        "author_avatar_url",
+        "author_ip",
+        "author_user_agent",
+        "created_at",
+        "updated_at",
+    )
+
+
+@admin.register(CommentReport)
+class CommentReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "comment",
+        "reason_code",
+        "reporter",
+        "reporter_email",
+        "created_at",
+    )
+    list_filter = ("reason_code", "created_at")
+    search_fields = (
+        "comment__id",
+        "comment__text",
+        "comment__deposit_public_key",
+        "reporter__username",
+        "reporter__email",
+        "reporter_username",
+        "reporter_email",
+        "free_text",
+    )
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("comment", "reporter")
+    readonly_fields = ("reporter_username", "reporter_email", "created_at")
+
+
+@admin.register(CommentModerationDecision)
+class CommentModerationDecisionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "comment",
+        "decision_code",
+        "reason_code",
+        "acted_by",
+        "created_at",
+    )
+    list_filter = ("decision_code", "reason_code", "created_at")
+    search_fields = (
+        "comment__id",
+        "comment__text",
+        "comment__deposit_public_key",
+        "decision_code",
+        "reason_code",
+        "acted_by__username",
+        "acted_by__email",
+        "internal_note",
+    )
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("comment", "acted_by")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(CommentUserRestriction)
+class CommentUserRestrictionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "restriction_type",
+        "client",
+        "user",
+        "reason_code",
+        "starts_at",
+        "ends_at",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("restriction_type", "reason_code", "client", "created_at")
+    search_fields = (
+        "user__username",
+        "user__email",
+        "client__name",
+        "reason_code",
+        "internal_note",
+        "created_by__username",
+        "created_by__email",
+    )
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("client", "user", "created_by")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(CommentAttemptLog)
+class CommentAttemptLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "reason_code",
+        "client",
+        "deposit_public_key",
+        "target_owner_username",
+        "user",
+        "created_at",
+    )
+    list_filter = ("reason_code", "client", "created_at")
+    search_fields = (
+        "deposit_public_key",
+        "target_owner_username",
+        "user__username",
+        "user__email",
+        "text",
+        "normalized_text",
+        "reason_code",
+    )
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("client", "deposit", "user")
+    readonly_fields = (
+        "deposit_public_key",
+        "target_owner_user_id",
+        "target_owner_username",
+        "normalized_text",
+        "meta",
+        "author_ip",
+        "author_user_agent",
+        "created_at",
+    )
 
 
 admin.site.site_header = "Administration de la Boîte à Son"
