@@ -5,12 +5,14 @@ import { UserContext } from "./UserContext";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
+import EditIcon from "@mui/icons-material/Edit";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import CircularProgress from "@mui/material/CircularProgress";
+import TextField from "@mui/material/TextField";
 
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
@@ -51,6 +53,7 @@ export default function UserProfilePage() {
   const isGuestOwner = Boolean(isOwner && user?.is_guest);
 
   const [tab, setTab] = useState(0);
+  const [guestUsernameDraft, setGuestUsernameDraft] = useState("");
   const [header, setHeader] = useState({
     status: "loading",
     user: null,
@@ -60,6 +63,10 @@ export default function UserProfilePage() {
   useEffect(() => {
     setTab(0);
   }, [routeUsername, user?.id]);
+
+  useEffect(() => {
+    setGuestUsernameDraft("");
+  }, [user?.id]);
 
   useEffect(() => {
     if (headerAbortRef.current) headerAbortRef.current.abort();
@@ -112,6 +119,12 @@ export default function UserProfilePage() {
     return () => controller.abort();
   }, [routeUsername, isOwner, user]);
 
+  const handleGuestContinue = () => {
+    const nextUsername = guestUsernameDraft.trim();
+    if (!nextUsername) return;
+    navigate(`/register?merge_guest=1&prefill_username=${encodeURIComponent(nextUsername)}`);
+  };
+
   if (header.status === "loading") {
     return (
       <Box sx={{ pb: 8 }}>
@@ -140,10 +153,8 @@ export default function UserProfilePage() {
 
   const headerUser = header.user || {};
   const totalDeposits = headerUser?.total_deposits ?? 0;
-  const depositsLabel =
-    headerUser?.total_deposits == null
-      ? "Partages"
-      : `${totalDeposits} partage${totalDeposits > 1 ? "s" : ""}`;
+  const depositsLabel = `${totalDeposits} partage${totalDeposits > 1 ? "s" : ""}`;
+  const trimmedGuestUsername = guestUsernameDraft.trim();
 
   return (
     <Box>
@@ -177,25 +188,40 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        <Box sx={{display :"flex", flexDirection: "column",}}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h3">{headerUser?.display_name}</Typography>
-          </Box>
-          <Typography variant="h5">
-            {depositsLabel}
-          </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 320, gap: 1.5 }}>
+          {isGuestOwner ? (
+            <>
+              <TextField
+                fullWidth
+                label="Choisis ton pseudo"
+                value={guestUsernameDraft}
+                onChange={(event) => setGuestUsernameDraft(event.target.value)}
+                inputProps={{ maxLength: 150 }}
+                autoFocus
+              />
+              <Button
+                variant="contained"
+                onClick={handleGuestContinue}
+                disabled={!trimmedGuestUsername}
+                size="small"
+              >
+                Valider
+              </Button>
+            </>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h3">{headerUser?.display_name}</Typography>
+              </Box>
+              {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
+            </Box>
+          )}
         </Box>
 
         {isOwner && !isGuestOwner && (
-          <Button variant="outlined" onClick={() => navigate("/profile/edit")} size="small">
-            Modifier
-          </Button>
-        )}
-
-        {isGuestOwner && (
-          <Button variant="contained" onClick={() => navigate("/register")} size="small">
-            Finaliser mon compte
-          </Button>
+          <IconButton aria-label="Modifier" onClick={() => navigate("/profile/edit")} size="small">
+            <EditIcon />
+          </IconButton>
         )}
       </Box>
 
@@ -203,7 +229,7 @@ export default function UserProfilePage() {
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
             <Tab label="Découvertes" />
-            <Tab label={depositsLabel} />
+            <Tab label="Partages" />
           </Tabs>
 
           <TabPanel value={tab} index={0}>

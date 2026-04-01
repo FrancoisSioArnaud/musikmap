@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useState, useContext } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useState, useContext, useMemo } from "react";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
@@ -24,8 +24,13 @@ export default function RegisterPage() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const isGuest = Boolean(user?.is_guest);
+  const prefilledUsername = useMemo(
+    () => (searchParams.get("prefill_username") || "").trim(),
+    [searchParams]
+  );
 
   const handleProfilePictureChange = (event) => {
     const file = event.target.files[0];
@@ -102,7 +107,16 @@ export default function RegisterPage() {
           <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
-                <TextField autoComplete="username" name="username" required fullWidth id="username" label="Nom d'utilisateur" autoFocus />
+                <TextField
+                  autoComplete="username"
+                  name="username"
+                  required
+                  fullWidth
+                  id="username"
+                  label="Nom d'utilisateur"
+                  autoFocus
+                  defaultValue={prefilledUsername}
+                />
               </Grid>
               <Grid item xs={12}>
                 <TextField required fullWidth id="email" label="Adresse email" name="email" autoComplete="email" />
