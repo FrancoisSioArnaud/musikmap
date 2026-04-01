@@ -178,7 +178,7 @@ export default function UserProfilePage() {
           sx={{ width: 64, height: 64 }}
         />
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h2">{headerUser?.display_name}</Typography>
+          <Typography variant="h3">{headerUser?.display_name}</Typography>
         </Box>
 
         {isOwner && !isGuestOwner && (
