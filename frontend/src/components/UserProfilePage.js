@@ -188,36 +188,43 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        <Box sx={{ display: "flex", alignItems: "center", maxWidth: 320, gap: "12px" }}>
-          {isGuestOwner ? (
-            <>
-              <TextField
-                fullWidth
-                label="Choisis ton pseudo"
-                value={guestUsernameDraft}
-                onChange={(event) => setGuestUsernameDraft(event.target.value)}
-                inputProps={{ maxLength: 150 }}
-                autoFocus
-                sx={{width:"auto"}}
-              />
-              <Button
-                variant="contained"
-                onClick={handleGuestContinue}
-                disabled={!trimmedGuestUsername}
-                size="small"
-              >
-                Valider
-              </Button>
-            </>
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h3">{headerUser?.display_name}</Typography>
+        
+        {isGuestOwner ? (
+          <>
+            <Box sx={{ display: "flex", flexDirection:"column" }}>
+              <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
+                <TextField
+                  fullWidth
+                  label="Choisis ton pseudo"
+                  value={guestUsernameDraft}
+                  onChange={(event) => setGuestUsernameDraft(event.target.value)}
+                  inputProps={{ maxLength: 150 }}
+                  autoFocus
+                  sx={{width:"auto"}}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleGuestContinue}
+                  disabled={!trimmedGuestUsername}
+                  size="small"
+                >
+                  Valider
+                </Button>
               </Box>
-              {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
+              <Typography variant="body1">
+                  {user.display_name}     
+              </Typography>
             </Box>
-          )}
-        </Box>
+          </>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h3">{headerUser?.display_name}</Typography>
+            </Box>
+            {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
+          </Box>
+        )}
+
 
         {isOwner && !isGuestOwner && (
           <IconButton aria-label="Modifier" onClick={() => navigate("/profile/edit")} size="small">
