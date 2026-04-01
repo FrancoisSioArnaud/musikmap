@@ -235,7 +235,7 @@ export function buildMuiTheme(clientTheme) {
               "border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
 
             "& .MuiOutlinedInput-notchedOutline": {
-              borderColor: clientTheme.colors.divider,
+              borderColor: clientTheme.colors.error,
               borderWidth: 1,
             },
 
@@ -244,7 +244,7 @@ export function buildMuiTheme(clientTheme) {
             },
 
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: clientTheme.colors.secondary,
+              borderColor: clientTheme.colors.primary,
               borderWidth: 1,
             },
 
