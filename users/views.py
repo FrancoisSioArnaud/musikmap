@@ -344,8 +344,8 @@ class ChangeUsername(APIView):
         except ValidationError as e:
             return Response({"errors": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if len(new_username) < 3 or len(new_username) > 150:
-            return Response({"errors": ["Le nom d’utilisateur doit contenir entre 3 et 150 caractères."]}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new_username) < 3 or len(new_username) > 30:
+            return Response({"errors": ["Le nom d’utilisateur doit contenir entre 3 et 30 caractères."]}, status=status.HTTP_400_BAD_REQUEST)
 
         if CustomUser.objects.filter(username__iexact=new_username).exclude(pk=request.user.pk).exists():
             return Response({"errors": ["Ce nom d’utilisateur est déjà pris."]}, status=status.HTTP_400_BAD_REQUEST)
