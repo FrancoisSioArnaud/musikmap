@@ -147,7 +147,7 @@ export default function UserProfilePage() {
 
   return (
     <Box>
-      {isOwner && !isGuestOwner && (
+
         <Box
           sx={{
             display: "flex",
@@ -157,17 +157,25 @@ export default function UserProfilePage() {
             pb: "12px",
           }}
         >  
-          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
-            <SettingsIcon size="large" />
-          </IconButton>
+          {isOwner && !isGuestOwner && (
+            <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
+              <SettingsIcon size="large" />
+            </IconButton>
+          )}
+
+          {isGuestOwner && (
+            <Button variant="contained" onClick={() => navigate("/register")} size="small">
+              Finaliser mon compte
+            </Button>
+          )}
         </Box>
-      )}
+
+
+
 
       <Box
         sx={{
           display: "flex",
-          flexDirection: "vertical",
-          alignItems: "center",
           gap: 4,
           p: "38px 16px",
         }}
@@ -186,12 +194,6 @@ export default function UserProfilePage() {
         {isOwner && !isGuestOwner && (
           <Button variant="outlined" onClick={() => navigate("/profile/edit")} size="small">
             Modifier
-          </Button>
-        )}
-
-        {isGuestOwner && (
-          <Button variant="contained" onClick={() => navigate("/register")} size="small">
-            Finaliser mon compte
           </Button>
         )}
       </Box>
