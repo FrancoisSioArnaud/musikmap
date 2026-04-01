@@ -191,7 +191,7 @@ export default function UserProfilePage() {
         
         {isGuestOwner ? (
           <>
-            <Box sx={{ display: "flex", flexDirection:"column", gap:"8px" }}>
+            <Box sx={{ display: "flex", flexDirection:"column", gap:"4px" }}>
               <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
                 <TextField
                   fullWidth
