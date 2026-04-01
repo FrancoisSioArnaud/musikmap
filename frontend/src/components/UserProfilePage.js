@@ -212,7 +212,7 @@ export default function UserProfilePage() {
                 </Button>
               </Box>
               <Typography variant="body1">
-                  {user.display_name}     
+                  {user.username}     
               </Typography>
             </Box>
           </>
