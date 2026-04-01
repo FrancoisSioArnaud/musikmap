@@ -147,21 +147,21 @@ export default function UserProfilePage() {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          m: "0 16px",
-          pb: "12px",
-        }}
-      >
-        {isOwner && !isGuestOwner && (
+      {isOwner && !isGuestOwner && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            m: "0 16px",
+            pb: "12px",
+          }}
+        >  
           <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
             <SettingsIcon size="large" />
           </IconButton>
-        )}
-      </Box>
+        </Box>
+      )}
 
       <Box
         sx={{
@@ -172,13 +172,15 @@ export default function UserProfilePage() {
           p: "38px 16px",
         }}
       >
-        <Avatar
-          src={headerUser?.profile_picture_url || undefined}
-          alt={headerUser?.display_name || ""}
-          sx={{ width: 64, height: 64 }}
-        />
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h2">{headerUser?.display_name}</Typography>
+        <Box>
+          <Avatar
+            src={headerUser?.profile_picture_url || undefined}
+            alt={headerUser?.display_name || ""}
+            sx={{ width: 64, height: 64 }}
+          />
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h2">{headerUser?.display_name}</Typography>
+          </Box>
         </Box>
 
         {isOwner && !isGuestOwner && (
