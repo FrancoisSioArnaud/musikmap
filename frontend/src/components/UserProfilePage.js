@@ -191,7 +191,7 @@ export default function UserProfilePage() {
         
         {isGuestOwner ? (
           <>
-            <Box sx={{ display: "flex", flexDirection:"column" }}>
+            <Box sx={{ display: "flex", flexDirection:"column", gap:"8px" }}>
               <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
                 <TextField
                   fullWidth
@@ -211,7 +211,7 @@ export default function UserProfilePage() {
                   Valider
                 </Button>
               </Box>
-              <Typography variant="body1">
+              <Typography variant="body2" sx={{ opacity:"0.7", padding: "0 6px"}}>
                   {user.username}     
               </Typography>
             </Box>
