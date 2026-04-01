@@ -4,7 +4,7 @@ import html
 import json
 import re
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone as dt_timezone
 from html.parser import HTMLParser
 from math import radians, sin, cos, sqrt, atan2
 from typing import Any, Dict, List, Optional, Union, Iterable, Sequence, Tuple
@@ -205,7 +205,7 @@ def _build_comment_item_from_instance(comment: Comment, *, viewer_id: Optional[i
     payload = {
         "id": comment.id,
         "text": comment.text,
-        "created_at": comment.created_at.astimezone(timezone.utc).isoformat(),
+        "created_at": comment.created_at.astimezone(dt_timezone.utc).isoformat(),
         "user": _get_comment_snapshot_user_payload(comment),
         "is_mine": bool(viewer_id and comment.user_id == viewer_id),
     }
@@ -250,7 +250,7 @@ def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, e
         restriction_payload = {
             "restriction_type": restriction.restriction_type,
             "reason_code": restriction.reason_code or "",
-            "ends_at": restriction.ends_at.astimezone(timezone.utc).isoformat() if restriction.ends_at else None,
+            "ends_at": restriction.ends_at.astimezone(dt_timezone.utc).isoformat() if restriction.ends_at else None,
         }
 
     if existing_comment:
@@ -954,7 +954,7 @@ def _build_deposit_from_instance(
     if include_deposit_time:
         # Date brute en UTC, au format ISO 8601
         payload["deposited_at"] = (
-            dep.deposited_at.astimezone(timezone.utc).isoformat()
+            dep.deposited_at.astimezone(dt_timezone.utc).isoformat()
         )
 
     if include_user:
