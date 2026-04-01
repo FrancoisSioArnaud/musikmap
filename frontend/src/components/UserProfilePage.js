@@ -177,8 +177,16 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h3">{headerUser?.display_name}</Typography>
+        <Box sx={{
+                  display :"flex", 
+                  flexDirection: "column",
+                }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h3">{headerUser?.display_name}</Typography>
+          </Box>
+          <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
+            {depositsLabel}
+          </Typography>
         </Box>
 
         {isOwner && !isGuestOwner && (
@@ -210,12 +218,7 @@ export default function UserProfilePage() {
           </TabPanel>
         </>
       ) : (
-        <>
-          <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
-            {depositsLabel}
-          </Typography>
-          <Shares username={routeUsername} me={false} user={user} autoLoad={true} />
-        </>
+        <Shares username={routeUsername} me={false} user={user} autoLoad={true} />
       )}
     </Box>
   );
