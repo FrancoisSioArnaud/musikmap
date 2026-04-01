@@ -143,7 +143,7 @@ export default function UserProfileEdit() {
         fullWidth
       />
 
-      <Typography variant="body2">
+      <Typography variant="body2" sx={{ opacity:"0.7" }}>
             Ton pseudo doit faire entre 3 et 30 caractères, sans espaces, et avec uniquement des lettres, des chiffres ou les caractères @ . + - _ 
       </Typography>
       <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
