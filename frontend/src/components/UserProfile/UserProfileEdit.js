@@ -115,10 +115,10 @@ export default function UserProfileEdit() {
   };
 
   return (
-    <Box sx={{ p: 2, display: "grid", gap: 4 }}>
-      <Typography variant="h4">Modifier le profil</Typography>
+    <Box sx={{ p: "20px", display: "grid", gap: "26px" }}>
+      <Typography variant="h1">Modifier le profil</Typography>
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <Avatar src={user?.profile_picture_url} alt={user?.username} sx={{ width: 72, height: 72 }} />
         <label htmlFor="avatar-edit-input">
           <input id="avatar-edit-input" type="file" accept="image/*" hidden onChange={onAvatarChange} />
