@@ -198,6 +198,7 @@ export default function UserProfilePage() {
                 onChange={(event) => setGuestUsernameDraft(event.target.value)}
                 inputProps={{ maxLength: 150 }}
                 autoFocus
+                sx={{width:"auto"}}
               />
               <Button
                 variant="contained"
