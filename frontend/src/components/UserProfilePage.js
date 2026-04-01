@@ -141,7 +141,7 @@ export default function UserProfilePage() {
   const headerUser = header.user || {};
   const totalDeposits = headerUser?.total_deposits ?? 0;
   const depositsLabel =
-    isOwner && headerUser?.total_deposits == null
+    headerUser?.total_deposits == null
       ? "Partages"
       : `${totalDeposits} partage${totalDeposits > 1 ? "s" : ""}`;
 
@@ -177,14 +177,11 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        <Box sx={{
-                  display :"flex", 
-                  flexDirection: "column",
-                }}>
+        <Box sx={{display :"flex", flexDirection: "column",}}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h3">{headerUser?.display_name}</Typography>
           </Box>
-          <Typography variant="h5" sx={{ p: "26px 16px 6px 16px" }}>
+          <Typography variant="h5">
             {depositsLabel}
           </Typography>
         </Box>
