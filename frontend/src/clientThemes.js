@@ -40,7 +40,7 @@ export const CLIENT_THEMES = {
       
       success: "#0FCC0A",
       error: "#FB0000",
-      divider: "rgba(255,255,255,0.12)",
+      divider: "rgba(0,0,0,0.12)",
       
       appBarBg: "#FFFFFF",
       appBarBorder: "1px solid rgba(255,255,255,0.12)",
