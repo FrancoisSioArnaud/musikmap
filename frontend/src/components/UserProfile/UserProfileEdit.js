@@ -142,6 +142,10 @@ export default function UserProfileEdit() {
         onChange={(e) => setUsername(e.target.value)}
         fullWidth
       />
+
+      <Typography variant="body2">
+            Ton pseudo doit faire entre 3 et 30 caractères, sans espaces, et avec uniquement des lettres, des chiffres ou les caractères @ . + - _ 
+      </Typography>
       <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
         <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate("/profile")}>Annuler</Button>
         <Button sx={{ width: "100%" }} variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
