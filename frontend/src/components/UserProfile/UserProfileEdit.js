@@ -136,16 +136,18 @@ export default function UserProfileEdit() {
         onConfirm={onConfirmCropped}
       />
 
-      <TextField
-        label="Nom d’utilisateur"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        fullWidth
-      />
+      <Box sx={{display:"grid", gap:"12px"}}>
+        <TextField
+          label="Nom d’utilisateur"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          fullWidth
+        />
 
-      <Typography variant="body2" sx={{ opacity:"0.7" }}>
-            Ton pseudo doit faire entre 3 et 30 caractères, sans espaces, et avec uniquement des lettres, des chiffres ou les caractères @ . + - _ 
-      </Typography>
+        <Typography variant="body2" sx={{ opacity:"0.7" }}>
+              Ton nom doit faire entre 3 et 30 caractères, sans espaces, et avec uniquement des lettres, des chiffres ou les caractères @ . + - _ 
+        </Typography>
+      </Box>
       <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
         <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate("/profile")}>Annuler</Button>
         <Button sx={{ width: "100%" }} variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
