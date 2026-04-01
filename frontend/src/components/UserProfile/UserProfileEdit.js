@@ -142,9 +142,9 @@ export default function UserProfileEdit() {
         onChange={(e) => setUsername(e.target.value)}
         fullWidth
       />
-      <Box sx={{ display: "flex", gap: 1 }}>
-        <Button variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
-        <Button variant="outlined" onClick={() => navigate("/profile")}>Annuler</Button>
+      <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
+        <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate("/profile")}>Annuler</Button>
+        <Button sx={{ width: "100%" }} variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
       </Box>
     </Box>
   );
