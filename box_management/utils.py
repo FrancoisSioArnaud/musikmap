@@ -18,7 +18,18 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from users.models import CustomUser
-from .models import Deposit, Reaction, DiscoveredSong, Song, IncitationPhrase
+from .models import (
+    Client,
+    Deposit,
+    Reaction,
+    DiscoveredSong,
+    Song,
+    IncitationPhrase,
+    Comment,
+    CommentReport,
+    CommentUserRestriction,
+    CommentAttemptLog,
+)
 
 # Barèmes & coûts (importés depuis ton module utils global)
 from utils import (
@@ -36,6 +47,314 @@ DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT = (
     "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment."
 )
 
+
+COMMENT_MAX_LENGTH = 100
+COMMENT_COOLDOWN_SECONDS = 120
+COMMENT_TARGET_USER_DAILY_LIMIT = 2
+
+COMMENT_REASON_ALREADY_COMMENTED = "already_commented"
+COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED = "target_user_daily_comment_limit_reached"
+COMMENT_REASON_RATE_LIMIT = "rate_limit"
+COMMENT_REASON_LINK_FORBIDDEN = "link_forbidden"
+COMMENT_REASON_EMAIL_FORBIDDEN = "email_forbidden"
+COMMENT_REASON_PHONE_FORBIDDEN = "phone_forbidden"
+COMMENT_REASON_EMPTY = "empty"
+COMMENT_REASON_TOO_LONG = "too_long"
+COMMENT_REASON_RESTRICTED = "restricted"
+COMMENT_REASON_REPORT_THRESHOLD = "report_threshold"
+COMMENT_REASON_RISK_QUARANTINE = "risk_quarantine"
+COMMENT_REASON_SPAM = "spam"
+COMMENT_REASON_HARASSMENT = "harassment"
+COMMENT_REASON_DOXXING = "doxxing"
+COMMENT_REASON_DELETE_BY_AUTHOR = "deleted_by_author"
+COMMENT_REASON_REMOVE_BY_MODERATION = "removed_by_moderation"
+
+COMMENT_REPORT_REASON_CHOICES = {
+    "harassment",
+    "personal_info",
+    "spam",
+    "other",
+}
+
+_COMMENT_URL_RE = re.compile(
+    r"(?:https?://|www\.|\b[a-z0-9.-]+\.(?:fr|com|net|org|io|gg|be|de|es|co|app|ly)\b)",
+    re.IGNORECASE,
+)
+_COMMENT_EMAIL_RE = re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")
+_COMMENT_PHONE_RE = re.compile(r"(?:\+?\d[\d\s().-]{7,}\d)")
+_COMMENT_SPAM_REPEAT_RE = re.compile(r"(.)\1{5,}")
+_COMMENT_SYMBOL_RE = re.compile(r"[^\w\sÀ-ÿ]")
+_COMMENT_INSULT_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bconnard(?:e)?s?\b",
+        r"\bfdp\b",
+        r"\bencul[ée]s?\b",
+        r"\bta gueule\b",
+        r"\bnique ta m[èe]re\b",
+        r"\bsale con(?:ne)?\b",
+        r"\bsalope\b",
+        r"\bb[âa]tard\b",
+    ]
+]
+_COMMENT_DOXX_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bon sait o[uù] tu habites\b",
+        r"\bton adresse\b",
+        r"\bton num[ée]ro\b",
+        r"\bje vais venir chez toi\b",
+        r"\bon va venir chez toi\b",
+    ]
+]
+
+
+def _is_full_comment_user(user: Optional[CustomUser]) -> bool:
+    return bool(user and getattr(user, "id", None) and not getattr(user, "is_guest", False))
+
+
+def _get_profile_picture_url(user: Optional[CustomUser]) -> Optional[str]:
+    if not user or not getattr(user, "profile_picture", None):
+        return None
+    try:
+        return user.profile_picture.url
+    except Exception:
+        return None
+
+
+def _normalize_comment_text(value: Optional[str]) -> str:
+    value = str(value or "")
+    value = value.replace("​", "").replace("‌", "").replace("‍", "")
+    value = re.sub(r"\s+", " ", value).strip()
+    value = value.lower()
+    return value
+
+
+def _extract_digits_count(value: Optional[str]) -> int:
+    return len(re.sub(r"\D", "", str(value or "")))
+
+
+def _contains_forbidden_phone(value: Optional[str]) -> bool:
+    text = str(value or "")
+    if not _COMMENT_PHONE_RE.search(text):
+        return False
+    return _extract_digits_count(text) >= 8
+
+
+def _detect_comment_pre_creation_error(text: str):
+    if not text:
+        return COMMENT_REASON_EMPTY
+    if len(text) > COMMENT_MAX_LENGTH:
+        return COMMENT_REASON_TOO_LONG
+    if _COMMENT_URL_RE.search(text):
+        return COMMENT_REASON_LINK_FORBIDDEN
+    if _COMMENT_EMAIL_RE.search(text):
+        return COMMENT_REASON_EMAIL_FORBIDDEN
+    if _contains_forbidden_phone(text):
+        return COMMENT_REASON_PHONE_FORBIDDEN
+    return None
+
+
+def _score_comment_risk(*, text: str, normalized_text: str):
+    score = 0
+    flags = []
+
+    if _COMMENT_SPAM_REPEAT_RE.search(normalized_text):
+        score += 50
+        flags.append(COMMENT_REASON_SPAM)
+
+    if len(normalized_text) >= 24 and len(set(normalized_text)) <= 4:
+        score += 30
+        flags.append("low_variation")
+
+    if _COMMENT_SYMBOL_RE.findall(text) and len(_COMMENT_SYMBOL_RE.findall(text)) >= 8:
+        score += 15
+        flags.append("symbol_noise")
+
+    for pattern in _COMMENT_INSULT_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 70
+            flags.append(COMMENT_REASON_HARASSMENT)
+            break
+
+    for pattern in _COMMENT_DOXX_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 95
+            flags.append(COMMENT_REASON_DOXXING)
+            break
+
+    return min(score, 100), list(dict.fromkeys(flags))
+
+
+def _get_comment_snapshot_user_payload(comment: Comment) -> Dict[str, Any]:
+    user = getattr(comment, "user", None)
+    if user and not getattr(user, "is_guest", False):
+        return _build_user_from_instance(user)
+    return {
+        "id": getattr(comment, "user_id", None),
+        "username": comment.author_username or None,
+        "display_name": comment.author_display_name or comment.author_username or "anonyme",
+        "profile_picture_url": comment.author_avatar_url or None,
+        "profile_pic_url": comment.author_avatar_url or None,
+        "is_guest": False,
+    }
+
+
+def _build_comment_item_from_instance(comment: Comment, *, viewer_id: Optional[int] = None) -> Dict[str, Any]:
+    payload = {
+        "id": comment.id,
+        "text": comment.text,
+        "created_at": comment.created_at.astimezone(timezone.utc).isoformat(),
+        "user": _get_comment_snapshot_user_payload(comment),
+        "is_mine": bool(viewer_id and comment.user_id == viewer_id),
+    }
+    return payload
+
+
+def _get_active_comment_restrictions_for_clients(user: Optional[CustomUser], client_ids: Iterable[int]):
+    if not _is_full_comment_user(user):
+        return {}
+
+    clean_client_ids = [cid for cid in set(client_ids or []) if cid]
+    if not clean_client_ids:
+        return {}
+
+    now_dt = timezone.now()
+    restrictions = (
+        CommentUserRestriction.objects
+        .filter(user_id=user.id, client_id__in=clean_client_ids, starts_at__lte=now_dt)
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now_dt))
+        .order_by("client_id", "-created_at", "-id")
+    )
+
+    by_client = {}
+    for restriction in restrictions:
+        by_client.setdefault(restriction.client_id, restriction)
+    return by_client
+
+
+def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, existing_comment: Optional[Comment], restriction: Optional[CommentUserRestriction]):
+    if not _is_full_comment_user(viewer):
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": None,
+            "restriction": None,
+        }
+
+    restriction_payload = None
+    if restriction:
+        restriction_payload = {
+            "restriction_type": restriction.restriction_type,
+            "reason_code": restriction.reason_code or "",
+            "ends_at": restriction.ends_at.astimezone(timezone.utc).isoformat() if restriction.ends_at else None,
+        }
+
+    if existing_comment:
+        notice = None
+        if existing_comment.status == Comment.STATUS_QUARANTINED:
+            notice = "Votre commentaire est en cours de vérification."
+        return {
+            "can_post": False,
+            "has_spent_right": True,
+            "status": existing_comment.status,
+            "comment_id": existing_comment.id,
+            "notice": notice,
+            "restriction": restriction_payload,
+        }
+
+    if restriction:
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": "Vous ne pouvez pas commenter pour le moment.",
+            "restriction": restriction_payload,
+        }
+
+    return {
+        "can_post": True,
+        "has_spent_right": False,
+        "status": None,
+        "comment_id": None,
+        "notice": None,
+        "restriction": restriction_payload,
+    }
+
+
+def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: Optional[CustomUser] = None):
+    deps = list(deposits or [])
+    if not deps:
+        return {}
+
+    dep_ids = [dep.id for dep in deps if getattr(dep, "id", None)]
+    if not dep_ids:
+        return {}
+
+    viewer_id = getattr(viewer, "id", None) if _is_full_comment_user(viewer) else None
+    comments_by_dep = {dep_id: [] for dep_id in dep_ids}
+    viewer_comments = {}
+
+    public_comments = (
+        Comment.objects
+        .filter(deposit_id__in=dep_ids, status=Comment.STATUS_PUBLISHED)
+        .select_related("user")
+        .order_by("created_at", "id")
+    )
+    for comment in public_comments:
+        comments_by_dep.setdefault(comment.deposit_id, []).append(
+            _build_comment_item_from_instance(comment, viewer_id=viewer_id)
+        )
+
+    if viewer_id:
+        own_comments = (
+            Comment.objects
+            .filter(deposit_id__in=dep_ids, user_id=viewer_id)
+            .select_related("user")
+            .order_by("created_at", "id")
+        )
+        viewer_comments = {comment.deposit_id: comment for comment in own_comments}
+
+    restriction_by_client = _get_active_comment_restrictions_for_clients(
+        viewer,
+        [getattr(dep, "box", None).client_id for dep in deps if getattr(dep, "box", None)],
+    )
+
+    payload = {}
+    for dep in deps:
+        restriction = restriction_by_client.get(getattr(dep.box, "client_id", None))
+        existing_comment = viewer_comments.get(dep.id)
+        payload[dep.id] = {
+            "items": comments_by_dep.get(dep.id, []),
+            "viewer_state": _build_comment_viewer_state(
+                viewer=viewer,
+                dep=dep,
+                existing_comment=existing_comment,
+                restriction=restriction,
+            ),
+        }
+    return payload
+
+
+def _log_blocked_comment_attempt(*, client: Optional[Client], deposit: Optional[Deposit], user: Optional[CustomUser], text: str, normalized_text: str, reason_code: str, author_ip: Optional[str] = None, author_user_agent: str = "", meta: Optional[Dict[str, Any]] = None):
+    target_owner = getattr(deposit, "user", None) if deposit else None
+    CommentAttemptLog.objects.create(
+        client=client,
+        deposit=deposit,
+        user=user,
+        deposit_public_key=getattr(deposit, "public_key", "") or "",
+        target_owner_user_id=getattr(target_owner, "id", None),
+        target_owner_username=getattr(target_owner, "username", "") or "",
+        text=(text or "")[:COMMENT_MAX_LENGTH],
+        normalized_text=(normalized_text or "")[:160],
+        reason_code=reason_code,
+        meta=meta or {},
+        author_ip=author_ip,
+        author_user_agent=(author_user_agent or "")[:255],
+    )
 
 def _coerce_bool(value):
     if isinstance(value, bool):
@@ -622,6 +941,7 @@ def _build_deposit_from_instance(
     include_deposit_time: bool,
     hidden: bool,
     current_user: Optional[CustomUser] = None,
+    comments_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
 
@@ -642,6 +962,7 @@ def _build_deposit_from_instance(
     rx = _build_reactions_from_instance(dep, current_user=current_user)
     payload["reactions"] = rx["detail"]
     payload["reactions_summary"] = rx["summary"]
+    payload["comments"] = comments_context or {"items": [], "viewer_state": {}}
 
     return payload
 
@@ -701,6 +1022,8 @@ def _build_deposits_payload(
 
         revealed_ids = own_dep_ids | discovered_ids
 
+    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer)
+
     # ------- Construction des payloads à partir des instances -------
     out: List[Dict[str, Any]] = []
     for dep in deps:
@@ -713,6 +1036,7 @@ def _build_deposits_payload(
             include_deposit_time=include_deposit_time,
             hidden=hidden,
             current_user=viewer,
+            comments_context=comments_by_deposit.get(dep.pk) or {"items": [], "viewer_state": {}},
         )
         out.append(payload)
 

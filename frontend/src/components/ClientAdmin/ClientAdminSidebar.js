@@ -13,6 +13,7 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import { UserContext } from "../UserContext";
 
 export const CLIENT_ADMIN_DRAWER_WIDTH = 280;
@@ -131,6 +132,13 @@ export default function ClientAdminSidebar({
             icon={<CampaignRoundedIcon />}
             onClick={onClose}
             isActive={location.pathname === "/client/incitation"}
+          />
+          <NavItem
+            to="/client/commentaires"
+            label="Commentaires"
+            icon={<ForumRoundedIcon />}
+            onClick={onClose}
+            isActive={location.pathname === "/client/commentaires"}
           />
         </List>
       </Box>

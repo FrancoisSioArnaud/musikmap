@@ -1,6 +1,4 @@
-// frontend/src/components/Common/Deposit.js
-
-import React, { useState, useContext, useMemo, useEffect } from "react";
+import React, { useState, useContext, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -14,17 +12,15 @@ import Slide from "@mui/material/Slide";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import AlbumIcon from "@mui/icons-material/Album";
 import MusicNote from "@mui/icons-material/MusicNote";
-
-
-import AddReactionIcon from "@mui/icons-material/AddReaction";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import ReactionModal from "../Reactions/ReactionModal";
 import ReactionSummary from "../Reactions/ReactionSummary";
+import DepositReactions from "./DepositReactions";
+import DepositComments from "./DepositComments";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { formatRelativeTime } from "../Utils/time";
 
@@ -34,22 +30,6 @@ function SlideDownTransition(props) {
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
-
-function normalizeReactionUser(rawUser = {}) {
-  const username = (rawUser?.username || rawUser?.name || "").trim();
-  const displayName = (rawUser?.display_name || rawUser?.displayName || username || "anonyme").trim();
-  const isGuest = Boolean(rawUser?.is_guest);
-  return {
-    id: rawUser?.id || null,
-    username: username || "",
-    display_name: displayName || "anonyme",
-    name: displayName || "anonyme",
-    profile_picture_url:
-      rawUser?.profile_picture_url || rawUser?.profile_pic_url || null,
-    is_guest: isGuest,
-    isAnonymous: (!username && !rawUser?.id) || String(displayName).toLowerCase() === "anonyme",
-  };
-}
 
 function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
   const list = Array.isArray(reactions) ? [...reactions] : [];
@@ -101,6 +81,8 @@ export default function Deposit({
 
   const s = localDep?.song || {};
   const u = localDep?.user || {};
+  const comments = localDep?.comments || { items: [], viewer_state: {} };
+
   const isRevealed = useMemo(
     () => Boolean(s?.title && s?.artist),
     [s?.title, s?.artist]
@@ -124,22 +106,8 @@ export default function Deposit({
   };
 
   const [reactOpen, setReactOpen] = useState(false);
-  const openReact = () => setReactOpen(true);
-  const closeReact = () => setReactOpen(false);
-
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
-  const openReactionSummary = () => setReactionSummaryOpen(true);
-  const closeReactionSummary = () => setReactionSummaryOpen(false);
-
   const [snackOpen, setSnackOpen] = useState(false);
-  const showRevealSnackbar = () => {
-    if (snackOpen) {
-      setSnackOpen(false);
-      setTimeout(() => setSnackOpen(true), 0);
-    } else {
-      setSnackOpen(true);
-    }
-  };
 
   const viewerId = user?.id || null;
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
@@ -149,6 +117,16 @@ export default function Deposit({
   const reactionsSummary = Array.isArray(localDep?.reactions_summary)
     ? localDep.reactions_summary
     : [];
+
+  const updateDepositCollections = useCallback((transform) => {
+    setDispDeposits?.((prev) => {
+      const arr = Array.isArray(prev) ? [...prev] : [];
+      return arr.map((item) => {
+        if (!item || item.public_key !== localDep?.public_key) return item;
+        return transform(item);
+      });
+    });
+  }, [localDep?.public_key, setDispDeposits]);
 
   const updateLocalStorageSnapshot = (revealedSong) => {
     try {
@@ -183,7 +161,7 @@ export default function Deposit({
 
       next.timestamp = Date.now();
       setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
-    } catch (e) {}
+    } catch (error) {}
   };
 
   const revealDeposit = async () => {
@@ -235,33 +213,26 @@ export default function Deposit({
         },
       }));
 
-      setDispDeposits?.((prev) => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
-        if (idx >= 0) {
-          arr[idx] = {
-            ...arr[idx],
-            discovered_at: isoNow,
-            song: {
-              ...(arr[idx]?.song || {}),
-              title: revealed.title,
-              artist: revealed.artist,
-              spotify_url: revealed.spotify_url,
-              deezer_url: revealed.deezer_url,
-              image_url: revealed.image_url || arr[idx]?.song?.image_url,
-            },
-          };
-        }
-        return arr;
-      });
+      updateDepositCollections((item) => ({
+        ...item,
+        discovered_at: isoNow,
+        song: {
+          ...(item?.song || {}),
+          title: revealed.title,
+          artist: revealed.artist,
+          spotify_url: revealed.spotify_url,
+          deezer_url: revealed.deezer_url,
+          image_url: revealed.image_url || item?.song?.image_url,
+        },
+      }));
 
       updateLocalStorageSnapshot(revealed);
 
       if (typeof payload?.points_balance === "number" && setUser) {
-        setUser((p) => ({ ...(p || {}), points: payload.points_balance }));
+        setUser((prev) => ({ ...(prev || {}), points: payload.points_balance }));
       }
 
-      showRevealSnackbar();
+      setSnackOpen((prev) => !prev);
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
     }
@@ -272,7 +243,7 @@ export default function Deposit({
       window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
       return;
     }
-    openReact();
+    setReactOpen(true);
   };
 
   const handleReactionApplied = (result) => {
@@ -282,6 +253,10 @@ export default function Deposit({
       user
     );
 
+    const nextComments = Array.isArray(result?.comments?.items)
+      ? result.comments
+      : comments;
+
     setLocalDep((prev) => ({
       ...(prev || {}),
       my_reaction: result?.my_reaction || null,
@@ -289,151 +264,74 @@ export default function Deposit({
         ? result.reactions_summary
         : [],
       reactions: nextReactions,
+      comments: nextComments,
     }));
 
-    setDispDeposits?.((prev) => {
-      const arr = Array.isArray(prev) ? [...prev] : [];
-      const idx = arr.findIndex((x) => x?.deposit_id === localDep.deposit_id);
-      if (idx >= 0) {
-        arr[idx] = {
-          ...arr[idx],
-          my_reaction: result?.my_reaction || null,
-          reactions_summary: Array.isArray(result?.reactions_summary)
-            ? result.reactions_summary
-            : [],
-          reactions: nextReactions,
-        };
-      }
-      return arr;
-    });
+    updateDepositCollections((item) => ({
+      ...item,
+      my_reaction: result?.my_reaction || null,
+      reactions_summary: Array.isArray(result?.reactions_summary)
+        ? result.reactions_summary
+        : [],
+      reactions: nextReactions,
+      comments: nextComments,
+    }));
+  };
+
+  const handleCommentsChange = (nextComments) => {
+    const safeComments = nextComments || { items: [], viewer_state: {} };
+    setLocalDep((prev) => ({ ...(prev || {}), comments: safeComments }));
+    updateDepositCollections((item) => ({ ...(item || {}), comments: safeComments }));
   };
 
   const renderDepositUser = (userObj) => {
     const canNavigate = Boolean(userObj?.username && !userObj?.is_guest);
     return (
-    <Box
-      onClick={() => {
-        if (canNavigate) navigate("/profile/" + userObj.username);
-      }}
-      className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
-    >
-      <Typography variant="body1" component="span">
-        Partagée par
-      </Typography>
-      <Box className=" avatarbox">
-        <Avatar
-          src={userObj?.profile_pic_url || undefined}
-          alt={userObj?.display_name || "anonyme"}
-          className="avatar"
-        />
-      </Box>
-      <Typography component="span" className="username " variant="subtitle1">
-        {userObj?.display_name || "anonyme"}
-        {canNavigate && <ArrowForwardIosIcon className="icon" sx={{height : "0.8em", width : "0.8em" }}/>}
-      </Typography>
-    </Box>
-  );
-  };
-
-  const ReactionsStrip = ({
-    items = [],
-    reactions = [],
-    myReactionEmoji = null,
-    viewerId = null,
-    onOpenReact,
-    onOpenSummary,
-  }) => {
-    const list = Array.isArray(items) ? items : [];
-    const rx = Array.isArray(reactions) ? reactions : [];
-
-    const currentEmoji =
-      myReactionEmoji ??
-      (viewerId
-        ? rx.find((r) => (r?.user?.id || null) === viewerId)?.emoji ?? null
-        : null);
-
-    const hasMyReaction = Boolean(currentEmoji);
-
-    const orderedList = hasMyReaction
-      ? [
-          ...list.filter((it) => it?.emoji !== currentEmoji),
-          ...list.filter((it) => it?.emoji === currentEmoji),
-        ]
-      : list;
-
-    return (
-      <Box className="deposit_react" sx={{ userSelect: "none" }}>
-        {orderedList.map((it, i) => {
-          const isCurrent = Boolean(currentEmoji && it?.emoji === currentEmoji);
-
-          const handleClick = (e) => {
-            e.stopPropagation();
-            if (isCurrent) {
-              onOpenReact?.();
-            } else {
-              onOpenSummary?.();
-            }
-          };
-
-          const handleKeyDown = (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleClick(e);
-            }
-          };
-
-          return (
-            <Box
-              key={`${it?.emoji || i}-${it?.count || 0}`}
-              className={isCurrent ? "current_reaction reaction" : "reaction"}
-              role="button"
-              tabIndex={0}
-              onClick={handleClick}
-              onKeyDown={handleKeyDown}
-              sx={{ cursor: "pointer" }}
-            >
-              <Typography variant="h4" component="span">
-                {it?.emoji}
-              </Typography>
-              <Typography variant="h5" component="span">
-                × {it?.count}
-              </Typography>
-            </Box>
-          );
-        })}
-
-        {!hasMyReaction && (
-          <Box
-            className="icon_container"
-            aria-label="Réagir"
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenReact?.();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onOpenReact?.();
-              }
-            }}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              p: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            <AddReactionIcon
-              color="primary"
-            />
-          </Box>
-        )}
+      <Box
+        onClick={() => {
+          if (canNavigate) navigate("/profile/" + userObj.username);
+        }}
+        className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
+      >
+        <Typography variant="body1" component="span">
+          Partagée par
+        </Typography>
+        <Box className="avatarbox">
+          <Avatar
+            src={userObj?.profile_pic_url || userObj?.profile_picture_url || undefined}
+            alt={userObj?.display_name || "anonyme"}
+            className="avatar"
+          />
+        </Box>
+        <Typography component="span" className="username" variant="subtitle1">
+          {userObj?.display_name || "anonyme"}
+          {canNavigate && (
+            <ArrowForwardIosIcon className="icon" sx={{ height: "0.8em", width: "0.8em" }} />
+          )}
+        </Typography>
       </Box>
     );
   };
+
+  const reactionsBlock = allowReact ? (
+    <DepositReactions
+      items={reactionsSummary}
+      reactions={reactionsDetail}
+      myReactionEmoji={myReactionEmoji}
+      viewerId={viewerId}
+      onOpenReact={handleOpenReactModal}
+      onOpenSummary={() => setReactionSummaryOpen(true)}
+    />
+  ) : null;
+
+  const commentsBlock = (
+    <DepositComments
+      depPublicKey={localDep?.public_key}
+      comments={comments}
+      viewer={user}
+      onCommentsChange={handleCommentsChange}
+    />
+  );
 
   if (variant === "main") {
     return (
@@ -446,7 +344,7 @@ export default function Deposit({
           )}
           <Card className="deposit deposit_main">
             <Box className="deposit_song">
-              <Box className=" img_container">
+              <Box className="img_container">
                 {s?.image_url && (
                   <Box
                     component="img"
@@ -458,10 +356,10 @@ export default function Deposit({
 
               <Box className="interact">
                 <Box className="texts">
-                  <Typography component="span" className="titre " variant="h4">
+                  <Typography component="span" className="titre" variant="h4">
                     {s.title}
                   </Typography>
-                  <Typography component="span" className="artist " variant="body1">
+                  <Typography component="span" className="artist" variant="body1">
                     {s.artist}
                   </Typography>
                 </Box>
@@ -482,22 +380,15 @@ export default function Deposit({
 
             <Box className="deposit_infos">
               {showUser && renderDepositUser(u)}
-
-              <ReactionsStrip
-                items={reactionsSummary}
-                reactions={reactionsDetail}
-                myReactionEmoji={myReactionEmoji}
-                viewerId={viewerId}
-                onOpenReact={handleOpenReactModal}
-                onOpenSummary={openReactionSummary}
-              />
+              {reactionsBlock}
+              {commentsBlock}
             </Box>
           </Card>
         </Box>
 
         <ReactionModal
           open={reactOpen}
-          onClose={closeReact}
+          onClose={() => setReactOpen(false)}
           depPublicKey={localDep?.public_key}
           currentEmoji={myReactionEmoji}
           onApplied={handleReactionApplied}
@@ -505,7 +396,7 @@ export default function Deposit({
 
         <ReactionSummary
           open={reactionSummaryOpen}
-          onClose={closeReactionSummary}
+          onClose={() => setReactionSummaryOpen(false)}
           depPublicKey={localDep?.public_key}
           reactions={reactionsDetail}
           viewer={user}
@@ -527,15 +418,13 @@ export default function Deposit({
         )}
         <Card className="deposit deposit_list">
           <Box className="deposit_song">
-            <Box className=" img_container">
+            <Box className="img_container">
               {s?.image_url && (
                 <Box
                   component="img"
                   src={s.image_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{
-                    filter: isRevealed ? "none" : "blur(6px)",
-                  }}
+                  sx={{ filter: isRevealed ? "none" : "blur(6px)" }}
                 />
               )}
             </Box>
@@ -544,10 +433,10 @@ export default function Deposit({
               {isRevealed ? (
                 <>
                   <Box className="texts">
-                    <Typography component="span" className="titre " variant="h5">
+                    <Typography component="span" className="titre" variant="h5">
                       {s.title}
                     </Typography>
-                    <Typography component="span" className="artist " variant="body1">
+                    <Typography component="span" className="artist" variant="body1">
                       {s.artist}
                     </Typography>
                   </Box>
@@ -587,15 +476,8 @@ export default function Deposit({
 
           <Box className="deposit_infos">
             {showUser && renderDepositUser(u)}
-
-            <ReactionsStrip
-              items={reactionsSummary}
-              reactions={reactionsDetail}
-              myReactionEmoji={myReactionEmoji}
-              viewerId={viewerId}
-              onOpenReact={handleOpenReactModal}
-              onOpenSummary={openReactionSummary}
-            />
+            {reactionsBlock}
+            {commentsBlock}
           </Box>
         </Card>
       </Box>
@@ -608,7 +490,7 @@ export default function Deposit({
         autoHideDuration={5000}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         TransitionComponent={SlideDownTransition}
-        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <SnackbarContent
           sx={{
@@ -648,7 +530,7 @@ export default function Deposit({
 
       <ReactionModal
         open={reactOpen}
-        onClose={closeReact}
+        onClose={() => setReactOpen(false)}
         depPublicKey={localDep?.public_key}
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
@@ -656,7 +538,7 @@ export default function Deposit({
 
       <ReactionSummary
         open={reactionSummaryOpen}
-        onClose={closeReactionSummary}
+        onClose={() => setReactionSummaryOpen(false)}
         depPublicKey={localDep?.public_key}
         reactions={reactionsDetail}
         viewer={user}

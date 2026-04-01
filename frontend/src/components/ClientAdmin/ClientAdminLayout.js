@@ -20,6 +20,7 @@ function getPageTitle(pathname) {
   if (pathname === "/client/articles/new") return "Nouvel article";
   if (pathname.startsWith("/client/articles/")) return "Modifier l’article";
   if (pathname === "/client/incitation") return "Mes phrases d’incitation";
+  if (pathname === "/client/commentaires") return "Commentaires";
   if (pathname === "/client/incitation/new") return "Nouvelle phrase d’incitation";
   if (pathname.startsWith("/client/incitation/")) return "Modifier la phrase d’incitation";
   return "Espace client";

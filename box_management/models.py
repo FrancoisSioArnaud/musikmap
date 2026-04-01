@@ -755,3 +755,234 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.user_id} -> {self.deposit_id} {self.emoji.char}"
+
+
+class Comment(models.Model):
+    STATUS_PUBLISHED = "published"
+    STATUS_QUARANTINED = "quarantined"
+    STATUS_REMOVED_MODERATION = "removed_moderation"
+    STATUS_DELETED_BY_AUTHOR = "deleted_by_author"
+
+    STATUS_CHOICES = (
+        (STATUS_PUBLISHED, "Published"),
+        (STATUS_QUARANTINED, "Quarantined"),
+        (STATUS_REMOVED_MODERATION, "Removed by moderation"),
+        (STATUS_DELETED_BY_AUTHOR, "Deleted by author"),
+    )
+
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comments",
+    )
+    deposit = models.ForeignKey(
+        Deposit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comments",
+    )
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comments",
+    )
+
+    text = models.CharField(max_length=100)
+    normalized_text = models.CharField(max_length=160, blank=True, default="", db_index=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PUBLISHED, db_index=True)
+    reason_code = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    risk_score = models.PositiveSmallIntegerField(default=0)
+    risk_flags = models.JSONField(default=list, blank=True)
+    reports_count = models.PositiveIntegerField(default=0)
+
+    deposit_public_key = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    deposit_box_name = models.CharField(max_length=100, blank=True, default="")
+    deposit_box_url = models.CharField(max_length=100, blank=True, default="")
+    deposit_deleted = models.BooleanField(default=False, db_index=True)
+
+    deposit_owner_user_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    deposit_owner_username = models.CharField(max_length=150, blank=True, default="")
+
+    author_username = models.CharField(max_length=150, blank=True, default="")
+    author_display_name = models.CharField(max_length=150, blank=True, default="")
+    author_email = models.EmailField(blank=True, default="")
+    author_avatar_url = models.CharField(max_length=500, blank=True, default="")
+
+    author_ip = models.GenericIPAddressField(null=True, blank=True)
+    author_user_agent = models.CharField(max_length=255, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["deposit", "user"], name="unique_comment_per_user_and_deposit"),
+        ]
+        indexes = [
+            models.Index(fields=["client", "status", "created_at"]),
+            models.Index(fields=["deposit", "status", "created_at"]),
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["deposit_owner_user_id", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Comment {self.id} on {self.deposit_public_key or self.deposit_id}"
+
+
+class CommentReport(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_reports",
+    )
+    reason_code = models.CharField(max_length=64, db_index=True)
+    free_text = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    reporter_username = models.CharField(max_length=150, blank=True, default="")
+    reporter_email = models.EmailField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["comment", "reporter"], name="unique_comment_report_per_user"),
+        ]
+        indexes = [
+            models.Index(fields=["reason_code", "created_at"]),
+        ]
+
+
+class CommentModerationDecision(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="moderation_decisions")
+    acted_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_moderation_actions",
+    )
+    decision_code = models.CharField(max_length=64, db_index=True)
+    reason_code = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    internal_note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["decision_code", "created_at"]),
+            models.Index(fields=["reason_code", "created_at"]),
+        ]
+
+
+class CommentUserRestriction(models.Model):
+    TYPE_MUTE_24H = "comment_mute_24h"
+    TYPE_MUTE_7D = "comment_mute_7d"
+    TYPE_BAN = "comment_ban"
+
+    RESTRICTION_TYPE_CHOICES = (
+        (TYPE_MUTE_24H, "Comment mute 24h"),
+        (TYPE_MUTE_7D, "Comment mute 7d"),
+        (TYPE_BAN, "Comment ban"),
+    )
+
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_restrictions",
+    )
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_restrictions",
+    )
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_comment_restrictions",
+    )
+
+    restriction_type = models.CharField(max_length=32, choices=RESTRICTION_TYPE_CHOICES, db_index=True)
+    reason_code = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    internal_note = models.TextField(blank=True, default="")
+    starts_at = models.DateTimeField(default=timezone.now, db_index=True)
+    ends_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["client", "user", "created_at"]),
+            models.Index(fields=["client", "starts_at", "ends_at"]),
+        ]
+
+    def is_active_at(self, at=None):
+        current = at or timezone.now()
+        if self.starts_at and self.starts_at > current:
+            return False
+        if self.ends_at and self.ends_at <= current:
+            return False
+        return True
+
+
+class CommentAttemptLog(models.Model):
+    client = models.ForeignKey(
+        "Client",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_attempt_logs",
+    )
+    deposit = models.ForeignKey(
+        Deposit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_attempt_logs",
+    )
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comment_attempt_logs",
+    )
+
+    deposit_public_key = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    target_owner_user_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    target_owner_username = models.CharField(max_length=150, blank=True, default="")
+
+    text = models.CharField(max_length=100, blank=True, default="")
+    normalized_text = models.CharField(max_length=160, blank=True, default="", db_index=True)
+    reason_code = models.CharField(max_length=64, db_index=True)
+    meta = models.JSONField(default=dict, blank=True)
+    author_ip = models.GenericIPAddressField(null=True, blank=True)
+    author_user_agent = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["client", "reason_code", "created_at"]),
+            models.Index(fields=["user", "reason_code", "created_at"]),
+        ]
+
+
+@receiver(models.signals.pre_delete, sender=Deposit)
+def mark_comments_when_deposit_deleted(sender, instance, **kwargs):
+    Comment.objects.filter(deposit=instance).update(deposit_deleted=True)
+    CommentAttemptLog.objects.filter(deposit=instance).update(deposit_public_key=instance.public_key or "")

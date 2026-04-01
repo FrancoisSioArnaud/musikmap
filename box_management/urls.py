@@ -16,6 +16,12 @@ from .views import (
     PublicVisibleArticleDetailView,
     ClientAdminIncitationListCreateView,
     ClientAdminIncitationDetailView,
+    CommentCreateView,
+    CommentDetailView,
+    CommentReportView,
+    ClientAdminCommentListView,
+    ClientAdminCommentModerateView,
+    ClientAdminCommentRestrictionListCreateView,
 )
 
 urlpatterns = [
@@ -28,6 +34,9 @@ urlpatterns = [
     path("emojis/catalog", EmojiCatalogView.as_view(), name="emoji-catalog"),
     path("emojis/purchase", PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path("reactions", ReactionView.as_view(), name="reactions"),
+    path("comments/", CommentCreateView.as_view(), name="comments-create"),
+    path("comments/<int:comment_id>/", CommentDetailView.as_view(), name="comments-detail"),
+    path("comments/<int:comment_id>/report/", CommentReportView.as_view(), name="comments-report"),
     path("articles/visible/", PublicVisibleArticlesView.as_view(), name="public-visible-articles"),
     path(
         "articles/visible/<int:article_id>/",
@@ -50,6 +59,21 @@ urlpatterns = [
         "client-admin/articles/<int:article_id>/",
         ClientAdminArticleDetailView.as_view(),
         name="client-admin-articles-detail",
+    ),
+    path(
+        "client-admin/comments/",
+        ClientAdminCommentListView.as_view(),
+        name="client-admin-comments-list",
+    ),
+    path(
+        "client-admin/comments/<int:comment_id>/moderate/",
+        ClientAdminCommentModerateView.as_view(),
+        name="client-admin-comments-moderate",
+    ),
+    path(
+        "client-admin/comment-restrictions/",
+        ClientAdminCommentRestrictionListCreateView.as_view(),
+        name="client-admin-comment-restrictions",
     ),
     path(
         "client-admin/incitations/",
