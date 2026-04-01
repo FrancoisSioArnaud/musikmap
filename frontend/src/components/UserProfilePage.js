@@ -218,7 +218,7 @@ export default function UserProfilePage() {
           </>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <Typography variant="h5">{headerUser?.display_name}</Typography>
+            <Typography variant="h4">{headerUser?.display_name}</Typography>
             {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
         )}
