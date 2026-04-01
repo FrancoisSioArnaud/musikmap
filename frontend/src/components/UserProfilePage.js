@@ -180,7 +180,6 @@ export default function UserProfilePage() {
           p: "38px 16px",
         }}
       >
-        <Box>
           <Avatar
             src={headerUser?.profile_picture_url || undefined}
             alt={headerUser?.display_name || ""}
@@ -189,7 +188,6 @@ export default function UserProfilePage() {
           <Box sx={{ flex: 1 }}>
             <Typography variant="h2">{headerUser?.display_name}</Typography>
           </Box>
-        </Box>
 
         {isOwner && !isGuestOwner && (
           <Button variant="outlined" onClick={() => navigate("/profile/edit")} size="small">
