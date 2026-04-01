@@ -13,7 +13,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from django.conf import settings
 from django.db.models import QuerySet, Prefetch, Q, Count
-from django.utils.timezone import localtime, localdate, timezone
+from django.utils import timezone
+from django.utils.timezone import localtime, localdate
 from rest_framework import status
 from rest_framework.response import Response
 
