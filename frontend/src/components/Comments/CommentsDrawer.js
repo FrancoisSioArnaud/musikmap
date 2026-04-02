@@ -185,7 +185,7 @@ export default function CommentsDrawer({
           }}
         >
           <Box className="comments_panel">
-            <Typography variant="body1" sx={{ py: 2 }}>
+            <Typography variant="subtitle1" sx={{ py: 2 }}>
               Sois sympa et respectueux.
             </Typography>
           Reste sympa et respectueux.
