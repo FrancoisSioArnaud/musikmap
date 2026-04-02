@@ -25,7 +25,6 @@ import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import MenuAppBar from "./Common/Menu";
 
-import FlowboxLayout from "./Flowbox/FlowboxLayout";
 import Onboarding from "./Flowbox/Onboarding";
 import LiveSearch from "./Flowbox/LiveSearch";
 import Discover from "./Flowbox/Discover";
@@ -147,19 +146,9 @@ export default function App() {
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/profile/:username" element={<UserProfilePage />} />
 
-                <Route path="/flowbox/:boxSlug" element={<FlowboxLayout />}>
-                  <Route index element={<Onboarding />} />
-                  <Route
-                    path="search"
-                    element={
-                      <LiveSearch
-                        isSpotifyAuthenticated={true}
-                        isDeezerAuthenticated={true}
-                      />
-                    }
-                  />
-                  <Route path="discover" element={<Discover />} />
-                </Route>
+                <Route path="/flowbox/:boxSlug" element={<Onboarding />} />
+                <Route path="/flowbox/:boxSlug/search" element={<LiveSearch />} />
+                <Route path="/flowbox/:boxSlug/discover" element={<Discover />} />
               </Route>
 
               <Route path="/client" element={<ClientAdminRouteWrapper />}>
