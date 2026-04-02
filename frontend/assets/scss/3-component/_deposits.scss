@@ -11,7 +11,10 @@
   transform: translateY(-120%);
   opacity:0;
   animation: slideIn 300ms ease-out forwards;
+}
 
+.my_deposit .img_container{
+  width: 23%;
 }
 
 @keyframes slideIn {
