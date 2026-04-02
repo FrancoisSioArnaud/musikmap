@@ -231,9 +231,27 @@ export default function Deposit({
     } catch (error) {}
   };
 
+  const getPlaySongKey = (song) => {
+    if (!song) return "";
+
+    return [song?.spotify_url, song?.deezer_url, song?.title, song?.artist]
+      .filter(Boolean)
+      .join("|");
+  };
+
   const openPlayFor = (song) => {
-    setPlaySong(song || null);
-    setPlayOpen(true);
+    const nextSong = song || null;
+    const nextKey = getPlaySongKey(nextSong);
+    const currentKey = getPlaySongKey(playSong);
+
+    if (playOpen && nextKey && nextKey === currentKey) {
+      setPlayOpen(false);
+      setPlaySong(null);
+      return;
+    }
+
+    setPlaySong(nextSong);
+    setPlayOpen(Boolean(nextSong));
   };
 
   const closePlay = () => {
@@ -396,10 +414,6 @@ export default function Deposit({
             className="deposit_action_button addreaction_button addreaction_icon_button"
             onClick={(event) => {
               event.stopPropagation();
-              if (!isRevealed) {
-                window.alert("Écoute la chanson avant de réagir");
-                return;
-              }
               if (!user?.id) {
                 window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
                 return;
@@ -531,7 +545,7 @@ export default function Deposit({
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
                   <Button
                     variant="depositInteract"
                     className="play playMain"
@@ -541,7 +555,7 @@ export default function Deposit({
                   >
                     Écouter la chanson
                   </Button>
-                </Box>
+                </PlayModal>
               </Box>
             </Box>
 
@@ -556,7 +570,6 @@ export default function Deposit({
           currentEmoji={myReactionEmoji}
           onApplied={handleReactionApplied}
           setUser={setUser}
-          viewer={user}
         />
 
         <ReactionSummary
@@ -577,7 +590,6 @@ export default function Deposit({
           onCommentsChange={handleCommentsChange}
         />
 
-        <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
   }
@@ -609,15 +621,17 @@ export default function Deposit({
                   </Box>
 
                   {showPlay ? (
-                    <Button
-                      variant="depositInteract"
-                      className="play playSecondary"
-                      size="large"
-                      onClick={() => openPlayFor(s)}
-                      startIcon={<PlayArrowIcon />}
-                    >
-                      Écouter
-                    </Button>
+                    <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
+                      <Button
+                        variant="depositInteract"
+                        className="play playSecondary"
+                        size="large"
+                        onClick={() => openPlayFor(s)}
+                        startIcon={<PlayArrowIcon />}
+                      >
+                        Écouter
+                      </Button>
+                    </PlayModal>
                   ) : null}
                 </>
               ) : (
@@ -644,8 +658,6 @@ export default function Deposit({
           {depositInteractBlock}
         </Card>
       </Box>
-
-      <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
 
       <Snackbar
         open={snackOpen}
@@ -698,7 +710,6 @@ export default function Deposit({
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
         setUser={setUser}
-        viewer={user}
       />
 
       <ReactionSummary

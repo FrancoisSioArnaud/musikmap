@@ -1,42 +1,49 @@
-// frontend/src/components/Common/PlayModal.jsx
 import React from "react";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ButtonBase from "@mui/material/ButtonBase";
+import ClickAwayListener from "@mui/material/ClickAwayListener";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 
-export default function PlayModal({ open, song, onClose }) {
-  if (!open || !song) return null;
+const logoByPlatform = {
+  spotify: "/static/images/spotify_logo.svg",
+  deezer: "/static/images/deezer_logo.svg",
+  youtube: "/static/images/youtube_logo.svg",
+};
 
+export default function PlayModal({ open, song, onClose, children }) {
   const safeText = () => `${song?.title ?? ""} ${song?.artist ?? ""}`.trim();
 
   const openOrAlert = (url) => {
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-    else
-      alert(
-        "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
-      );
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    window.alert(
+      "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
+    );
   };
 
   const openYouTubeSearch = () => {
     const q = safeText();
+
     if (!q) {
-      alert(
+      window.alert(
         "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
       );
       return;
     }
+
     const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const copySongText = async () => {
     const text = `${song?.title ?? ""} - ${song?.artist ?? ""}`.trim();
+
     try {
       await navigator.clipboard.writeText(text);
-      alert("Copié dans le presse-papiers !");
+      window.alert("Copié dans le presse-papiers !");
     } catch {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -44,56 +51,113 @@ export default function PlayModal({ open, song, onClose }) {
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      alert("Copié dans le presse-papiers !");
+      window.alert("Copié dans le presse-papiers !");
     }
   };
 
-  return (
-    <Box
-      onClick={onClose}
-      sx={{
-        position: "fixed",
-        inset: 0,
-        bgcolor: "rgba(0,0,0,0.35)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 2,
-        zIndex: 1300,
-      }}
-    >
-      <Box onClick={(e) => e.stopPropagation()} sx={{ width: "100%", maxWidth: "90vw" }}>
-        <Card sx={{ width: "100%", maxWidth: 500, borderRadius: 4 }}>
-          <CardContent sx={{ pb: 1 ,}}>
-            {/* En-tête */}
-            <Box className="intro">
-              <Typography variant="h1">
-                  Écouter
-              </Typography>
-              <Typography variant="body1" sx={{ mb:3 }}>
-                  {song?.title || "Titre"} — {song?.artist || "Artiste"}
-              </Typography>
-            </Box>
+  const actions = [
+    {
+      key: "spotify",
+      label: "Ouvrir sur Spotify",
+      onClick: () => openOrAlert(song?.spotify_url),
+      renderIcon: () => (
+        <Box
+          component="img"
+          src={logoByPlatform.spotify}
+          alt="Spotify"
+          sx={{ width: 28, height: 28, display: "block" }}
+        />
+      ),
+    },
+    {
+      key: "deezer",
+      label: "Ouvrir sur Deezer",
+      onClick: () => openOrAlert(song?.deezer_url),
+      renderIcon: () => (
+        <Box
+          component="img"
+          src={logoByPlatform.deezer}
+          alt="Deezer"
+          sx={{ width: 28, height: 28, display: "block" }}
+        />
+      ),
+    },
+    {
+      key: "youtube",
+      label: "Ouvrir la recherche YouTube",
+      onClick: openYouTubeSearch,
+      renderIcon: () => (
+        <Box
+          component="img"
+          src={logoByPlatform.youtube}
+          alt="YouTube"
+          sx={{ width: 28, height: 28, display: "block" }}
+        />
+      ),
+    },
+    {
+      key: "copy",
+      label: "Copier le nom de la chanson",
+      onClick: copySongText,
+      renderIcon: () => (
+        <ContentCopyOutlinedIcon
+          sx={{ fontSize: 28, color: "var(--mm-color-text)" }}
+        />
+      ),
+    },
+  ];
 
-            {/* 3 colonnes égales */}
-            <Box sx={{display:"grid", gridTemplateColumns: "1fr 1fr", gap:"12px"}}>
-              <Button fullWidth variant="outlined" sx={{borderColor:"#1ED760", color:"#1ED760"}} onClick={() => openOrAlert(song?.spotify_url)} endIcon={<OpenInNewIcon />} >
-                Spotify
-              </Button>
-              <Button fullWidth variant="outlined" sx={{borderColor:"#A238FF", color:"#A238FF"}} onClick={() => openOrAlert(song?.deezer_url)} endIcon={<OpenInNewIcon />} >
-                Deezer
-              </Button>
-              <Button fullWidth variant="outlined" sx={{borderColor:"#F70F19", color:"#F70F19"}} onClick={openYouTubeSearch} endIcon={<OpenInNewIcon />} >
-                YouTube
-              </Button>
-              <Button fullWidth variant="contained" onClick={copySongText}>
-                Copier
-              </Button>
-            </Box>
-            <Button fullWidth onClick={onClose} variant="contained" title="Fermer" sx={{marginTop: "20px"}}>Fermer</Button>
-          </CardContent>
-        </Card>
+  return (
+    <ClickAwayListener onClickAway={() => open && onClose?.()}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: 1,
+          width: "fit-content",
+          maxWidth: "100%",
+        }}
+      >
+        {open && song ? (
+          <Box
+            onClick={(event) => event.stopPropagation()}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              flexWrap: "wrap",
+              width: "fit-content",
+              maxWidth: "100%",
+            }}
+          >
+            {actions.map((action) => (
+              <ButtonBase
+                key={action.key}
+                aria-label={action.label}
+                title={action.label}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  action.onClick();
+                  onClose?.();
+                }}
+                sx={{
+                  minWidth: 0,
+                  width: 36,
+                  height: 36,
+                  p: 0,
+                  borderRadius: 0,
+                  backgroundColor: "transparent",
+                }}
+              >
+                {action.renderIcon()}
+              </ButtonBase>
+            ))}
+          </Box>
+        ) : null}
+
+        {children}
       </Box>
-    </Box>
+    </ClickAwayListener>
   );
 }
