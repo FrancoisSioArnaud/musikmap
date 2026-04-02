@@ -96,29 +96,7 @@ export function buildMuiTheme(clientTheme) {
           a: {},
         },
       },
-      
-      MuiPaper: {
-        defaultProps: {
-          elevation: 0,
-        },
-        styleOverrides: {
-          root: {
-            backgroundColor: clientTheme.colors.surface,
-            color: clientTheme.colors.text,
-            borderRadius: parseInt(clientTheme.radius.paper, 10) || parseInt(clientTheme.radius.md, 10) || 16,
-            boxShadow: "none",
-            padding: "16px",
-            gap:"8px",
-          },
-          rounded: {
-            borderRadius: parseInt(clientTheme.radius.paper, 10) || parseInt(clientTheme.radius.md, 10) || 16,
-          },
-          outlined: {
-            border: clientTheme.border?.paper || clientTheme.border?.default || `1px solid ${clientTheme.colors.divider}`,
-          },
-        },
-      },
-
+        
       MuiAppBar: {
         styleOverrides: {
           root: {
@@ -126,8 +104,6 @@ export function buildMuiTheme(clientTheme) {
             borderBottom: clientTheme.colors.appBarBorder,
             boxShadow: "none",
             height: "56px",
-            padding: 0,
-            borderRadius:0,
           },
         },
       },
