@@ -126,7 +126,7 @@ export default function PlayModal({ open, song, onClose, children }) {
             sx={{
               position: "absolute",
               left: 0,
-              bottom: "calc(100% + 8px)",
+              bottom: "calc(100% - 24px)",
               zIndex: 3,
               display: "flex",
               alignItems: "center",
@@ -154,7 +154,7 @@ export default function PlayModal({ open, song, onClose, children }) {
                   height: "42px",
                   width: "42px",
                   borderRadius: "var(--mm-radius-md)",
-                  
+                  boxShadow: "var(--m-shadow-high),
                 }}
               >
                 {action.renderIcon()}
