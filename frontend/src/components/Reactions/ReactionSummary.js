@@ -161,7 +161,7 @@ export default function ReactionSummary({
           borderTopRightRadius: "var(--mm-radius-xl)",
           maxHeight: "80vh",
           overflow: "hidden",
-          padding: "26px 20px;",
+          padding: "26px 20px 0px 20px ",
         },
       }}
     >
