@@ -75,13 +75,6 @@ export default function ArticleCard({ article, onOpenDrawer }) {
               src={article.favicon}
               alt=""
               aria-hidden="true"
-              sx={{
-                width: 16,
-                height: 16,
-                objectFit: "contain",
-                flexShrink: 0,
-                borderRadius: "4px",
-              }}
               className="favicon"
             />
           ) : null}
