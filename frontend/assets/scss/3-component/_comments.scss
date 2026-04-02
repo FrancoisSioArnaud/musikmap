@@ -26,3 +26,40 @@
   font-size: 16px
 }
 
+
+
+.comments_drawer_modal .deposit_comment_form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.comments_drawer_modal .deposit_comment_form .MuiTextField-root {
+  flex: 1;
+}
+
+.comments_drawer_modal .deposit_comment_form .MuiInputBase-root {
+  align-items: flex-start;
+}
+
+.comments_drawer_modal .deposit_comment_form textarea.MuiInputBase-inputMultiline {
+  overflow: hidden !important;
+}
+
+.comments_drawer_modal .comment_helper_text {
+  min-height: 20px;
+}
+
+.comments_drawer_modal .comment_helper_text.warning {
+  color: var(--mm-color-danger, #d32f2f);
+}
+
+.comments_drawer_modal .comment_submit_button {
+  color: var(--mm-color-text);
+  flex: 0 0 auto;
+  margin-bottom: 20px;
+}
+
+.comments_drawer_modal .comment_submit_button.Mui-disabled {
+  color: rgba(0, 0, 0, 0.26);
+}

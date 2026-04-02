@@ -20,6 +20,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 
 import { getCookie } from "../Security/TokensUtils";
 
@@ -265,8 +266,8 @@ export default function CommentsDrawer({
               <TextField
                 fullWidth
                 multiline
-                minRows={2}
-                maxRows={4}
+                minRows={1}
+                maxRows={6}
                 value={draft}
                 onChange={(event) => {
                   const nextValue = event.target.value || "";
@@ -275,11 +276,19 @@ export default function CommentsDrawer({
                   }
                 }}
                 label="Commenter"
-                helperText={`${remaining} caractère${remaining > 1 ? "s" : ""} restant`}
+                helperText={remaining < 10 ? `${remaining} caractère${remaining > 1 ? "s" : ""} restant` : " "}
+                FormHelperTextProps={{
+                  className: remaining < 10 ? "comment_helper_text warning" : "comment_helper_text",
+                }}
               />
-              <Button onClick={handleSubmit} disabled={submitting || !draft.trim()}>
-                Publier
-              </Button>
+              <IconButton
+                className="comment_submit_button"
+                onClick={handleSubmit}
+                disabled={submitting || !draft.trim()}
+                aria-label="Publier le commentaire"
+              >
+                <ArrowUpwardIcon />
+              </IconButton>
             </Box>
           ) : null}
         </Box>
