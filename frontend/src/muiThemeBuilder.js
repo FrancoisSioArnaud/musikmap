@@ -179,7 +179,7 @@ export function buildMuiTheme(clientTheme) {
               color: clientTheme.colors.primaryContrastText,
               fontWeight: 700,
               "&:hover": {
-                backgroundColor: "inherit",
+                backgroundColor: clientTheme.colors.primary,
                 boxShadow: "none",
                 border: "inherit",
               },
@@ -196,7 +196,7 @@ export function buildMuiTheme(clientTheme) {
               fontWeight: 600,
               color: clientTheme.colors.text,
               "&:hover": {
-                backgroundColor: "inherit",
+                backgroundColor: clientTheme.colors.white,
                 boxShadow: "none",
                 border: "inherit",
               },
