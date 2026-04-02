@@ -38,10 +38,8 @@ function toInputTime(value) {
 }
 
 function buildWindowSummary(form) {
-  const hasDate =
-    !!form.display_start_date || !!form.display_end_date;
-  const hasTime =
-    !!form.display_start_time || !!form.display_end_time;
+  const hasDate = !!form.display_start_date || !!form.display_end_date;
+  const hasTime = !!form.display_start_time || !!form.display_end_time;
 
   if (!hasDate && !hasTime) return "Aucune restriction d’affichage";
 
@@ -221,7 +219,7 @@ export default function ArticleEdit() {
 
     if (willOverwrite) {
       const confirmed = window.confirm(
-        "L’import va remplacer le titre, le texte court et l’image de couverture actuels. Continuer ?"
+        "L’import va remplacer le titre, le texte court, le favicon et l’image de couverture actuels. Continuer ?"
       );
       if (!confirmed) return;
     }
@@ -274,7 +272,12 @@ export default function ArticleEdit() {
         cover_image: data?.cover_image || "",
       }));
 
-      if (!data?.title && !data?.short_text && !data?.favicon && nextImages.length === 0) {
+      if (
+        !data?.title &&
+        !data?.short_text &&
+        !data?.favicon &&
+        nextImages.length === 0
+      ) {
         showSnackbar(
           "Import terminé, mais la page ne contient pas de métadonnées exploitables."
         );
@@ -308,18 +311,10 @@ export default function ArticleEdit() {
         favicon: form.favicon,
         cover_image: form.cover_image,
         status: nextStatus,
-        display_start_date: useDateRange
-          ? form.display_start_date || null
-          : null,
-        display_end_date: useDateRange
-          ? form.display_end_date || null
-          : null,
-        display_start_time: useTimeRange
-          ? form.display_start_time || null
-          : null,
-        display_end_time: useTimeRange
-          ? form.display_end_time || null
-          : null,
+        display_start_date: useDateRange ? form.display_start_date || null : null,
+        display_end_date: useDateRange ? form.display_end_date || null : null,
+        display_start_time: useTimeRange ? form.display_start_time || null : null,
+        display_end_time: useTimeRange ? form.display_end_time || null : null,
       };
 
       const method = isCreate ? "POST" : "PATCH";
@@ -452,7 +447,8 @@ export default function ArticleEdit() {
               {isCreate ? "Nouvel article" : "Modifier l’article"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Crée un article manuellement ou importe les informations depuis un lien externe.
+              Crée un article manuellement ou importe les informations depuis un
+              lien externe.
             </Typography>
           </Box>
 
@@ -515,7 +511,15 @@ export default function ArticleEdit() {
                 <Typography variant="body2" color="text.secondary">
                   Tu peux styliser le texte avec quelques règles simples.
                 </Typography>
-                <Box component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: "0.9rem" }}>
+                <Box
+                  component="pre"
+                  sx={{
+                    m: 0,
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "monospace",
+                    fontSize: "0.9rem",
+                  }}
+                >
 {`# Grand titre
 ## Sous-titre
 
@@ -529,13 +533,58 @@ export default function ArticleEdit() {
 2. second point
 
 > citation
-
 [Texte du lien](https://exemple.com)
-
-\`code\``}
+`}
                 </Box>
               </Stack>
             </Paper>
+
+            <TextField
+              label="Favicon"
+              value={form.favicon}
+              onChange={(e) => patchForm("favicon", e.target.value)}
+              fullWidth
+            />
+
+            {form.favicon ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Aperçu du favicon
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      bgcolor: "background.paper",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={form.favicon}
+                      alt="favicon preview"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        objectFit: "contain",
+                        display: "block",
+                      }}
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              </Paper>
+            ) : null}
 
             <TextField
               label="Image de couverture"
@@ -650,7 +699,8 @@ export default function ArticleEdit() {
                 Fenêtre d’affichage
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Les restrictions de date et d’heure sont indépendantes et optionnelles.
+                Les restrictions de date et d’heure sont indépendantes et
+                optionnelles.
               </Typography>
             </Box>
 
@@ -830,9 +880,7 @@ export default function ArticleEdit() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleModifyAfterPublish}>
-            Modifier
-          </Button>
+          <Button onClick={handleModifyAfterPublish}>Modifier</Button>
           <Button
             variant="contained"
             onClick={handleBackToArticlesAfterPublish}
