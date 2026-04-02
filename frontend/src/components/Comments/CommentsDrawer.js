@@ -172,118 +172,121 @@ export default function CommentsDrawer({
             maxHeight: "80vh",
             overflow: "hidden",
             padding: "26px 20px",
-          },
-        }}
-      >
-        <Box
-          sx={{
             width: "100%",
             maxWidth: 720,
             mx: "auto",
             display: "flex",
             flexDirection: "column",
-          }}
-        >
-          <Box className="comments_panel">
-            <Typography variant="subtitle1" sx={{ py: 2 }}>
+          },
+        }}
+      >
+
+        <Box className="comments_panel">
+          <Box className="intro_small"
+            <Typography variant="h3" component="h3">
+              Commentaires
+            </Typography>
+            <Typography variant="subtitle1" component="subtitle1">
               Sois sympa et respectueux.
             </Typography>
-            <Box className="reactions_list comments_list">
-              {!items.length ? (
-                <Typography variant="body1" sx={{ py: 2 }}>
-                  Sois le premier·e à commenter !
-                </Typography>
-              ) : (
-                items.map((comment) => {
-                  const commentUser = comment?.user || {};
-                  const canNavigate = Boolean(commentUser?.username && !commentUser?.is_guest);
+          </Box>    
+                
+          <Box className="reactions_list comments_list">
+            {!items.length ? (
+              <Typography variant="body1" sx={{ py: 2 }}>
+                Sois le premier·e à commenter !
+              </Typography>
+            ) : (
+              items.map((comment) => {
+                const commentUser = comment?.user || {};
+                const canNavigate = Boolean(commentUser?.username && !commentUser?.is_guest);
 
-                  return (
-                    <Box
-                      key={comment.id}
-                      className={`deposit_comment${canNavigate ? " hasUsername" : ""}`}
-                    >
-                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                        <Box
-                          className="comment_main"
-                          role={canNavigate ? "button" : undefined}
-                          tabIndex={canNavigate ? 0 : -1}
-                          onClick={() => {
-                            if (!canNavigate) return;
+                return (
+                  <Box
+                    key={comment.id}
+                    className={`deposit_comment${canNavigate ? " hasUsername" : ""}`}
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <Box
+                        className="comment_main"
+                        role={canNavigate ? "button" : undefined}
+                        tabIndex={canNavigate ? 0 : -1}
+                        onClick={() => {
+                          if (!canNavigate) return;
+                          onClose?.();
+                          navigate("/profile/" + commentUser.username);
+                        }}
+                        onKeyDown={(event) => {
+                          if (!canNavigate) return;
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
                             onClose?.();
                             navigate("/profile/" + commentUser.username);
-                          }}
-                          onKeyDown={(event) => {
-                            if (!canNavigate) return;
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              onClose?.();
-                              navigate("/profile/" + commentUser.username);
-                            }
-                          }}
-                        >
-                          <Box className="avatarbox">
-                            <Avatar
-                              src={commentUser?.profile_picture_url || ""}
-                              alt={commentUser?.display_name || commentUser?.username || "user"}
-                              className="avatar"
-                            />
-                          </Box>
-
-                          <Box className="texts">
-                            <Typography component="span" className="username" variant="subtitle1">
-                              {commentUser?.display_name || commentUser?.username || "anonyme"}
-                              {canNavigate ? <ArrowForwardIosIcon className="icon" /> : null}
-                            </Typography>
-                            <Typography variant="body2" className="text">
-                              {comment?.text || ""}
-                            </Typography>
-                          </Box>
+                          }
+                        }}
+                      >
+                        <Box className="avatarbox">
+                          <Avatar
+                            src={commentUser?.profile_picture_url || ""}
+                            alt={commentUser?.display_name || commentUser?.username || "user"}
+                            className="avatar"
+                          />
                         </Box>
 
-                        <IconButton
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setMenuAnchorEl(event.currentTarget);
-                            setActiveComment(comment || null);
-                          }}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </Stack>
-                    </Box>
-                  );
-                })
-              )}
-            </Box>
+                        <Box className="texts">
+                          <Typography component="span" className="username" variant="subtitle1">
+                            {commentUser?.display_name || commentUser?.username || "anonyme"}
+                            {canNavigate ? <ArrowForwardIosIcon className="icon" /> : null}
+                          </Typography>
+                          <Typography variant="body2" className="text">
+                            {comment?.text || ""}
+                          </Typography>
+                        </Box>
+                      </Box>
 
-            {notice ? <Typography variant="body2">{notice}</Typography> : null}
-            {error ? <Typography variant="body2">{error}</Typography> : null}
-
-            {canPost ? (
-              <Box className="deposit_comment_form">
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  maxRows={4}
-                  value={draft}
-                  onChange={(event) => {
-                    const nextValue = event.target.value || "";
-                    if (nextValue.length <= 100) {
-                      setDraft(nextValue);
-                    }
-                  }}
-                  label="Commenter"
-                  helperText={`${remaining} caractère${remaining > 1 ? "s" : ""} restant`}
-                />
-                <Button onClick={handleSubmit} disabled={submitting || !draft.trim()}>
-                  Publier
-                </Button>
-              </Box>
-            ) : null}
+                      <IconButton
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setMenuAnchorEl(event.currentTarget);
+                          setActiveComment(comment || null);
+                        }}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+                );
+              })
+            )}
           </Box>
+
+          {notice ? <Typography variant="body2">{notice}</Typography> : null}
+          {error ? <Typography variant="body2">{error}</Typography> : null}
+
+          {canPost ? (
+            <Box className="deposit_comment_form">
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                maxRows={4}
+                value={draft}
+                onChange={(event) => {
+                  const nextValue = event.target.value || "";
+                  if (nextValue.length <= 100) {
+                    setDraft(nextValue);
+                  }
+                }}
+                label="Commenter"
+                helperText={`${remaining} caractère${remaining > 1 ? "s" : ""} restant`}
+              />
+              <Button onClick={handleSubmit} disabled={submitting || !draft.trim()}>
+                Publier
+              </Button>
+            </Box>
+          ) : null}
         </Box>
+
       </Drawer>
 
       <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => closeMenu()}>
