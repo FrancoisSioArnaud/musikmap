@@ -185,10 +185,14 @@ export default function CommentsDrawer({
           }}
         >
           <Box className="comments_panel">
+            <Typography variant="body1" sx={{ py: 2 }}>
+              Sois sympa et respectueux.
+            </Typography>
+          Reste sympa et respectueux.
             <Box className="reactions_list comments_list">
               {!items.length ? (
                 <Typography variant="body1" sx={{ py: 2 }}>
-                  Aucun commentaire
+                  Sois le premier·e à commenter !
                 </Typography>
               ) : (
                 items.map((comment) => {
