@@ -13,14 +13,14 @@ import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import MusicNote from "@mui/icons-material/MusicNote";
+import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
+import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import AddReactionModal from "../Reactions/AddReactionModal";
 import ReactionSummary from "../Reactions/ReactionSummary";
-import DepositReactions from "./DepositReactions";
-import DepositComments from "./DepositComments";
 import CommentsDrawer from "../Comments/CommentsDrawer";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { formatRelativeTime } from "../Utils/time";
@@ -57,6 +57,53 @@ function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
   };
 
   return [myReaction, ...withoutMine];
+}
+
+function shuffleArray(list) {
+  const next = Array.isArray(list) ? [...list] : [];
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+
+  return next;
+}
+
+function getReactionPlacements(reactions) {
+  const list = Array.isArray(reactions) ? reactions : [];
+  const count = list.length;
+
+  if (!count) return [];
+
+  const cols = Math.max(2, Math.ceil(Math.sqrt(count * 1.15)));
+  const rows = Math.max(2, Math.ceil(count / cols));
+  const cellWidth = 100 / cols;
+  const cellHeight = 100 / rows;
+  const cells = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      cells.push({ row, col });
+    }
+  }
+
+  const orderedCells = shuffleArray(cells).slice(0, count);
+
+  return list.map((reaction, index) => {
+    const cell = orderedCells[index] || { row: 0, col: 0 };
+    const jitterX = (Math.random() - 0.5) * Math.min(12, cellWidth * 0.45);
+    const jitterY = (Math.random() - 0.5) * Math.min(12, cellHeight * 0.45);
+    const rotation = (Math.random() - 0.5) * 18;
+
+    return {
+      key: `${reaction?.user?.id || "guest"}-${reaction?.emoji || "emoji"}-${index}`,
+      emoji: reaction?.emoji || "",
+      left: (cell.col + 0.5) * cellWidth + jitterX,
+      top: (cell.row + 0.5) * cellHeight + jitterY,
+      rotation,
+    };
+  });
 }
 
 export default function Deposit({
@@ -101,14 +148,16 @@ export default function Deposit({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [snackOpen, setSnackOpen] = useState(false);
 
-  const viewerId = user?.id || null;
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
   const reactionsDetail = Array.isArray(localDep?.reactions)
     ? localDep.reactions
     : [];
-  const reactionsSummary = Array.isArray(localDep?.reactions_summary)
-    ? localDep.reactions_summary
-    : [];
+  const reactionPlacements = useMemo(
+    () => getReactionPlacements(reactionsDetail),
+    [reactionsDetail]
+  );
+  const reactionCount = reactionsDetail.length;
+  const commentsCount = Array.isArray(comments?.items) ? comments.items.length : 0;
 
   const updateDepositCollections = useCallback((transform) => {
     setDispDeposits?.((prev) => {
@@ -240,14 +289,6 @@ export default function Deposit({
     }
   };
 
-  const handleOpenAddReaction = () => {
-    if (!user?.id) {
-      window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
-      return;
-    }
-    setAddReactionOpen(true);
-  };
-
   const handleReactionApplied = (result) => {
     const nextReactions = upsertViewerReactionInList(
       localDep?.reactions || [],
@@ -316,32 +357,96 @@ export default function Deposit({
     );
   };
 
-  const reactionsBlock = allowReact ? (
-    <DepositReactions
-      items={reactionsSummary}
-      reactions={reactionsDetail}
-      myReactionEmoji={myReactionEmoji}
-      viewerId={viewerId}
-      onOpenReact={handleOpenAddReaction}
-      onOpenSummary={() => setReactionSummaryOpen(true)}
-    />
-  ) : null;
-
-  const commentsBlock = (
-    <DepositComments
-      comments={comments}
-      onOpen={() => setCommentsOpen(true)}
-    />
-  );
-
   const depositInfosBlock = showUser ? (
     <Box className="deposit_infos">{renderDepositUser(u)}</Box>
   ) : null;
 
   const depositInteractBlock = (
     <Box className="deposit_interact">
-      {reactionsBlock}
-      {commentsBlock}
+      {allowReact ? (
+        <Button
+          variant="depositInteract"
+          className="deposit_action_button addreaction_button"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!user?.id) {
+              window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+              return;
+            }
+            setAddReactionOpen(true);
+          }}
+          startIcon={<AddReactionOutlinedIcon />}
+        >
+          {`x${reactionCount}`}
+        </Button>
+      ) : null}
+
+      <Button
+        variant="depositInteract"
+        className="deposit_action_button comments_button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setCommentsOpen(true);
+        }}
+        startIcon={<ModeCommentOutlinedIcon />}
+      >
+        {`x${commentsCount}`}
+      </Button>
+    </Box>
+  );
+
+  const renderFloatingReactions = () => {
+    if (!reactionPlacements.length) return null;
+
+    return (
+      <Box className="emojis">
+        {reactionPlacements.map((placement) => (
+          <Box
+            key={placement.key}
+            className="reaction"
+            role="button"
+            tabIndex={0}
+            sx={{
+              left: `${placement.left}%`,
+              top: `${placement.top}%`,
+              transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              setReactionSummaryOpen(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                event.stopPropagation();
+                setReactionSummaryOpen(true);
+              }
+            }}
+          >
+            {[0, 1, 2].map((index) => (
+              <Typography key={`${placement.key}-${index}`} className="emoji" variant="h5">
+                {placement.emoji}
+              </Typography>
+            ))}
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
+  const renderCoverMedia = (blurred = false) => (
+    <Box className="cover_media">
+      <Box className="img_container">
+        {s?.image_url ? (
+          <Box
+            component="img"
+            src={s.image_url}
+            alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+            sx={{ filter: blurred ? "blur(6px)" : "none" }}
+          />
+        ) : null}
+      </Box>
+      {renderFloatingReactions()}
     </Box>
   );
 
@@ -358,15 +463,7 @@ export default function Deposit({
             {depositInfosBlock}
 
             <Box className="deposit_song">
-              <Box className="img_container">
-                {s?.image_url ? (
-                  <Box
-                    component="img"
-                    src={s.image_url}
-                    alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  />
-                ) : null}
-              </Box>
+              {renderCoverMedia(false)}
 
               <Box className="interact">
                 <Box className="texts">
@@ -440,16 +537,7 @@ export default function Deposit({
           {depositInfosBlock}
 
           <Box className="deposit_song">
-            <Box className="img_container">
-              {s?.image_url ? (
-                <Box
-                  component="img"
-                  src={s.image_url}
-                  alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
-                  sx={{ filter: isRevealed ? "none" : "blur(6px)" }}
-                />
-              ) : null}
-            </Box>
+            {renderCoverMedia(!isRevealed)}
 
             <Box className="interact">
               {isRevealed ? (
