@@ -157,8 +157,8 @@ export default function ReactionSummary({
       className="reaction_summary_modal"
       PaperProps={{
         sx: {
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          borderTopLeftRadius: "var(--mm-radius-xl)",
+          borderTopRightRadius: "var(--mm-radius-xl)",
           maxHeight: "80vh",
           overflow: "hidden",
           padding: "26px 20px;",
