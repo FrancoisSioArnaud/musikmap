@@ -172,7 +172,6 @@ export default function CommentsDrawer({
             maxHeight: "80vh",
             overflow: "hidden",
             padding: "26px 20px",
-            width: "100%",
             maxWidth: 720,
             mx: "auto",
             display: "flex",
