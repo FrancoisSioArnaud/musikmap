@@ -186,11 +186,11 @@ export default function CommentsDrawer({
               Commentaires
             </Typography>
             <Typography variant="subtitle1" component="subtitle1">
-              Sois sympa et respectueux.
+              Sois bienveillant et respectueux.
             </Typography>
           </Box>    
                 
-          <Box className="reactions_list comments_list">
+          <Box className="comments_list">
             {!items.length ? (
               <Typography variant="body1" sx={{ py: 2 }}>
                 Sois le premier·e à commenter !
