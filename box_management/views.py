@@ -316,16 +316,6 @@ class GetBox(APIView):
             "deposit_count": box.deposit_count,
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
-            "active_incitation": (
-                {
-                    "id": active_incitation.id,
-                    "text": active_incitation.text,
-                    "start_date": active_incitation.start_date.isoformat(),
-                    "end_date": active_incitation.end_date.isoformat(),
-                }
-                if active_incitation
-                else None
-            ),
             "search_incitation_text": (
                 active_incitation.text
                 if active_incitation
