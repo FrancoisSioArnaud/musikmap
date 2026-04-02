@@ -111,24 +111,30 @@ export default function PlayModal({ open, song, onClose, children }) {
     <ClickAwayListener onClickAway={() => open && onClose?.()}>
       <Box
         sx={{
-          display: "flex",
+          position: "relative",
+          display: "inline-flex",
           flexDirection: "column",
           alignItems: "flex-start",
-          gap: 1,
           width: "fit-content",
           maxWidth: "100%",
+          overflow: "visible",
         }}
       >
         {open && song ? (
           <Box
             onClick={(event) => event.stopPropagation()}
             sx={{
+              position: "absolute",
+              left: 0,
+              bottom: "calc(100% + 8px)",
+              zIndex: 3,
               display: "flex",
               alignItems: "center",
               gap: 1,
               flexWrap: "wrap",
-              width: "fit-content",
-              maxWidth: "100%",
+              width: "max-content",
+              maxWidth: "min(220px, calc(100vw - 32px))",
+              overflow: "visible",
             }}
           >
             {actions.map((action) => (
