@@ -330,7 +330,7 @@ export default function LiveSearch() {
                 <ListItem
                   key={id}
                   divider
-                  sx={{ overflow: "hidden", alignItems: "center", padding:"8px 20px 8px 20px" }}
+                  sx={{ overflow: "hidden", alignItems: "center" }}
                   secondaryAction={
                     <Button
                       variant="contained"
@@ -387,7 +387,6 @@ export default function LiveSearch() {
                       display: "flex",
                       flexDirection: "column",
                       minWidth: 0,
-                      mr: 2,
                       flex: 1,
                       overflow: "hidden",
                     }}
