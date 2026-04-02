@@ -304,19 +304,3 @@ color : var(--mm-color-secondary);
   }
 }
 
-.comments_drawer_modal .comments_panel{
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.comments_drawer_modal .deposit_comment{
-  padding: 8px 0;
-}
-
-.comments_drawer_modal .comment_main{
-  display: flex;
-  flex: 1;
-  gap: 12px;
-  min-width: 0;
-}
