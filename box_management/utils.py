@@ -189,7 +189,6 @@ def _get_comment_snapshot_user_payload(comment: Comment) -> Dict[str, Any]:
         "username": comment.author_username or None,
         "display_name": comment.author_display_name or comment.author_username or "anonyme",
         "profile_picture_url": comment.author_avatar_url or None,
-        "profile_pic_url": comment.author_avatar_url or None,
         "is_guest": False,
     }
 
@@ -868,7 +867,6 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
             "id": None,
             "username": None,
             "display_name": "anonyme",
-            "profile_pic_url": default_pic,
             "profile_picture_url": default_pic,
             "is_guest": False,
         }
@@ -883,7 +881,6 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
         "id": getattr(user, "id", None),
         "username": username,
         "display_name": display_name,
-        "profile_pic_url": profile_url,
         "profile_picture_url": profile_url,
         "is_guest": is_guest,
     }

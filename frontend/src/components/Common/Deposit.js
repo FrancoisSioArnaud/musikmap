@@ -51,7 +51,6 @@ function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
       display_name: viewer?.display_name || viewer?.username || "Invité",
       username: viewer?.is_guest ? null : viewer?.username || null,
       profile_picture_url: viewer?.profile_picture_url || null,
-      profile_pic_url: viewer?.profile_picture_url || null,
       is_guest: Boolean(viewer?.is_guest),
     },
   };
@@ -298,7 +297,7 @@ export default function Deposit({
         </Typography>
         <Box className="avatarbox">
           <Avatar
-            src={userObj?.profile_pic_url || userObj?.profile_picture_url || undefined}
+            src={userObj?.profile_picture_url || undefined}
             alt={userObj?.display_name || "anonyme"}
             className="avatar"
           />

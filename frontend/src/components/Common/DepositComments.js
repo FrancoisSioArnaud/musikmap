@@ -175,7 +175,7 @@ export default function DepositComments({
               <Box key={comment.id} className="deposit_comment">
                 <Stack direction="row" spacing={1.5} alignItems="flex-start">
                   <Avatar
-                    src={commentUser?.profile_picture_url || commentUser?.profile_pic_url || ""}
+                    src={commentUser?.profile_picture_url || ""}
                     alt={commentUser?.display_name || commentUser?.username || "user"}
                   />
 

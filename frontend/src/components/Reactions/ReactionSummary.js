@@ -20,8 +20,7 @@ function normalizeReactionUser(rawUser = {}) {
     id: rawUser?.id || null,
     username: username || "",
     displayName: displayName || "anonyme",
-    profile_picture_url:
-      rawUser?.profile_picture_url || rawUser?.profile_pic_url || null,
+    profile_picture_url: rawUser?.profile_picture_url || null,
     isGuest,
     isAnonymous:
       (!username && !rawUser?.id) || String(displayName).toLowerCase() === "anonyme",
