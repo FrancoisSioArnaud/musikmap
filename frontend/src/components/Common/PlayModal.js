@@ -125,7 +125,7 @@ export default function PlayModal({ open, song, onClose, children }) {
             onClick={(event) => event.stopPropagation()}
             sx={{
               position: "absolute",
-              left: "left: calc(50% - (52px + 12px));",
+              left: "calc(50% - (52px + 12px))",
               bottom: "calc(100% + 6px)",
               zIndex: 1000,
               gap: "12px",
