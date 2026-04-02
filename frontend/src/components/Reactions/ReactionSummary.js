@@ -161,7 +161,7 @@ export default function ReactionSummary({
           borderTopRightRadius: 20,
           maxHeight: "80vh",
           overflow: "hidden",
-          padding: "20px",
+          padding: "26px 20px;",
         },
       }}
     >
@@ -174,20 +174,6 @@ export default function ReactionSummary({
           flexDirection: "column",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 3,
-          }}
-        >
-          <Typography variant="h2">Réactions</Typography>
-          <IconButton aria-label="Fermer" onClick={onClose}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
         <Box className="reactions_list">
           {!orderedReactions.length ? (
             <Typography variant="body1" sx={{ py: 2 }}>
