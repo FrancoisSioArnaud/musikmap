@@ -242,6 +242,7 @@ color : var(--mm-color-secondary);
   will-change: transform;
   animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
+  text-shadow: rgba(0, 0, 0, .2) 0px 5px 3px;
 }
 
 @keyframes emojiFloat {
@@ -249,40 +250,35 @@ color : var(--mm-color-secondary);
     transform:
       translate(0px, 0px)
       rotate(calc(var(--rot-max, 5deg) * -0.45))
-      scale(var(--scale-min, 0.95))
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*0.95) 3px)
+      scale(var(--scale-min, 0.95));
   }
 
   20% {
     transform:
       translate(var(--x1, 6px), var(--y1, -4px))
       rotate(calc(var(--rot-max, 5deg) * 0.35))
-      scale(var(--scale-max, 1.05))
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*1.05) 3px)
+      scale(var(--scale-max, 1.05));
   }
 
   40% {
     transform:
       translate(var(--x2, -5px), var(--y2, 5px))
       rotate(calc(var(--rot-max, 5deg) * -0.25))
-      scale(1)
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*1) 3px)
+      scale(1);
   }
 
   60% {
     transform:
       translate(var(--x3, 4px), var(--y3, 8px))
       rotate(calc(var(--rot-max, 5deg) * 0.5))
-      scale(var(--scale-min, 0.95))
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*0.95) 3px)
+      scale(var(--scale-min, 0.95));
   }
 
   80% {
     transform:
       translate(var(--x4, -7px), var(--y4, -3px))
       rotate(calc(var(--rot-max, 5deg) * -0.2))
-      scale(var(--scale-max, 1.05))
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*1.05) 3px)
+      scale(var(--scale-max, 1.05));
   }
 
   100% {
@@ -290,7 +286,6 @@ color : var(--mm-color-secondary);
       translate(0px, 0px)
       rotate(calc(var(--rot-max, 5deg) * -0.45))
       scale(var(--scale-min, 0.95));
-      text-shadow(rgba(0,0,0,1) 0px calc(5px*0.95) 3px)
   }
 }
 
