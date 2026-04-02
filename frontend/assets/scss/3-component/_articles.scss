@@ -37,6 +37,16 @@
 
 .article .linkline{
   text-decoration: underline;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.article .linkline .favicon{
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .article .text{
