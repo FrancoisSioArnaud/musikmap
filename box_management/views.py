@@ -81,7 +81,6 @@ from .utils import (
     _build_incitation_overlap_counts,
     _get_incitation_overlap_queryset,
     _coerce_bool,
-    DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT,
     COMMENT_MAX_LENGTH,
     COMMENT_COOLDOWN_SECONDS,
     COMMENT_TARGET_USER_DAILY_LIMIT,
