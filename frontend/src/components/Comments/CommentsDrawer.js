@@ -182,9 +182,9 @@ export default function CommentsDrawer({
 
         <Box className="comments_panel">
           <Box className="intro_small">
-            <Typography variant="h3" component="h3">
+            /*<Typography variant="h3" component="h3">
               Commentaires
-            </Typography>
+            </Typography>*/
             <Typography variant="subtitle1" component="subtitle1">
               Sois bienveillant et respectueux.
             </Typography>
