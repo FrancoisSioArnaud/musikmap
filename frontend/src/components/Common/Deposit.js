@@ -70,26 +70,13 @@ function shuffleArray(list) {
   return next;
 }
 
-function randomBetween(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-function getFloatingEmojiItems(reactions) {
-  const reactionList = Array.isArray(reactions) ? reactions : [];
-  const emojiItems = reactionList.flatMap((reaction, reactionIndex) => {
-    const emoji = reaction?.emoji || "";
-
-    return [0, 1, 2].map((emojiIndex) => ({
-      key: `${reaction?.user?.id || "guest"}-${emoji || "emoji"}-${reactionIndex}-${emojiIndex}`,
-      emoji,
-    }));
-  });
-
-  const count = emojiItems.length;
+function getReactionPlacements(reactions) {
+  const list = Array.isArray(reactions) ? reactions : [];
+  const count = list.length;
 
   if (!count) return [];
 
-  const cols = Math.max(3, Math.ceil(Math.sqrt(count * 1.1)));
+  const cols = Math.max(2, Math.ceil(Math.sqrt(count * 1.15)));
   const rows = Math.max(2, Math.ceil(count / cols));
   const cellWidth = 100 / cols;
   const cellHeight = 100 / rows;
@@ -103,31 +90,18 @@ function getFloatingEmojiItems(reactions) {
 
   const orderedCells = shuffleArray(cells).slice(0, count);
 
-  return emojiItems.map((item, index) => {
+  return list.map((reaction, index) => {
     const cell = orderedCells[index] || { row: 0, col: 0 };
-    const jitterX = (Math.random() - 0.5) * Math.min(16, cellWidth * 0.5);
-    const jitterY = (Math.random() - 0.5) * Math.min(18, cellHeight * 0.5);
+    const jitterX = (Math.random() - 0.5) * Math.min(12, cellWidth * 0.45);
+    const jitterY = (Math.random() - 0.5) * Math.min(12, cellHeight * 0.45);
+    const rotation = (Math.random() - 0.5) * 18;
 
     return {
-      ...item,
-      left: (cell.col/* + 0.5*/) * cellWidth + jitterX,
-      top: (cell.row/* + 0.5*/) * cellHeight + jitterY,
-      fontSize: `${randomBetween(1.1, 1.75).toFixed(2)}rem`,
-      zIndex: Math.floor(randomBetween(1, 5)),
-      opacity: randomBetween(0.92, 1).toFixed(2),
-      floatDuration: `${randomBetween(4.8, 8.2).toFixed(2)}s`,
-      floatDelay: `${randomBetween(-0, -1.8).toFixed(2)}s`,
-      x1: `${randomBetween(-8, 8).toFixed(1)}px`,
-      y1: `${randomBetween(-8, 8).toFixed(1)}px`,
-      x2: `${randomBetween(-8, 8).toFixed(1)}px`,
-      y2: `${randomBetween(-8, 8).toFixed(1)}px`,
-      x3: `${randomBetween(-8, 8).toFixed(1)}px`,
-      y3: `${randomBetween(-8, 8).toFixed(1)}px`,
-      x4: `${randomBetween(-8, 8).toFixed(1)}px`,
-      y4: `${randomBetween(-8, 8).toFixed(1)}px`,
-      rotMax: `${randomBetween(5, 10).toFixed(1)}deg`,
-      scaleMin: randomBetween(0.93, 0.98).toFixed(3),
-      scaleMax: randomBetween(1.03, 1.1).toFixed(3),
+      key: `${reaction?.user?.id || "guest"}-${reaction?.emoji || "emoji"}-${index}`,
+      emoji: reaction?.emoji || "",
+      left: (cell.col + 0.5) * cellWidth + jitterX,
+      top: (cell.row + 0.5) * cellHeight + jitterY,
+      rotation,
     };
   });
 }
@@ -178,8 +152,8 @@ export default function Deposit({
   const reactionsDetail = Array.isArray(localDep?.reactions)
     ? localDep.reactions
     : [];
-  const floatingEmojiItems = useMemo(
-    () => getFloatingEmojiItems(reactionsDetail),
+  const reactionPlacements = useMemo(
+    () => getReactionPlacements(reactionsDetail),
     [reactionsDetail]
   );
   const reactionCount = reactionsDetail.length;
@@ -195,33 +169,33 @@ export default function Deposit({
     });
   }, [localDep?.public_key, setDispDeposits]);
 
-  const updateLocalStorageSnapshot = (revealedSong) => {
+  const updateLocalStorageSnapshot = (transformDeposit) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
       if (!snap) return;
 
       let changed = false;
       const next = { ...snap };
-      const isoNow = new Date().toISOString();
 
-      if (Array.isArray(snap.olderDeposits)) {
-        next.olderDeposits = snap.olderDeposits.map((d) => {
-          if (!d || d.public_key !== localDep.public_key) return d;
+      const applyTransform = (deposit) => {
+        if (!deposit || deposit.public_key !== localDep?.public_key) {
+          return deposit;
+        }
 
-          changed = true;
-          return {
-            ...d,
-            discovered_at: isoNow,
-            song: {
-              ...(d.song || {}),
-              title: revealedSong.title,
-              artist: revealedSong.artist,
-              spotify_url: revealedSong.spotify_url,
-              deezer_url: revealedSong.deezer_url,
-              image_url: revealedSong.image_url || d.song?.image_url,
-            },
-          };
-        });
+        changed = true;
+        return transformDeposit(deposit);
+      };
+
+      if (next.main) {
+        next.main = applyTransform(next.main);
+      }
+
+      if (Array.isArray(next.olderDeposits)) {
+        next.olderDeposits = next.olderDeposits.map(applyTransform);
+      }
+
+      if (next.myDeposit) {
+        next.myDeposit = applyTransform(next.myDeposit);
       }
 
       if (!changed) return;
@@ -303,7 +277,18 @@ export default function Deposit({
         },
       }));
 
-      updateLocalStorageSnapshot(revealed);
+      updateLocalStorageSnapshot((deposit) => ({
+        ...deposit,
+        discovered_at: isoNow,
+        song: {
+          ...(deposit?.song || {}),
+          title: revealed.title,
+          artist: revealed.artist,
+          spotify_url: revealed.spotify_url,
+          deezer_url: revealed.deezer_url,
+          image_url: revealed.image_url || deposit?.song?.image_url,
+        },
+      }));
 
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((prev) => ({ ...(prev || {}), points: payload.points_balance }));
@@ -316,32 +301,39 @@ export default function Deposit({
   };
 
   const handleReactionApplied = (result) => {
+    const nextMyReaction = result?.my_reaction || null;
+    const nextReactionsSummary = Array.isArray(result?.reactions_summary)
+      ? result.reactions_summary
+      : [];
     const nextReactions = upsertViewerReactionInList(
       localDep?.reactions || [],
-      result?.my_reaction?.emoji || null,
+      nextMyReaction?.emoji || null,
       user
     );
-
     const nextComments = Array.isArray(result?.comments?.items)
       ? result.comments
       : comments;
 
     setLocalDep((prev) => ({
       ...(prev || {}),
-      my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary)
-        ? result.reactions_summary
-        : [],
+      my_reaction: nextMyReaction,
+      reactions_summary: nextReactionsSummary,
       reactions: nextReactions,
       comments: nextComments,
     }));
 
     updateDepositCollections((item) => ({
       ...item,
-      my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary)
-        ? result.reactions_summary
-        : [],
+      my_reaction: nextMyReaction,
+      reactions_summary: nextReactionsSummary,
+      reactions: nextReactions,
+      comments: nextComments,
+    }));
+
+    updateLocalStorageSnapshot((deposit) => ({
+      ...(deposit || {}),
+      my_reaction: nextMyReaction,
+      reactions_summary: nextReactionsSummary,
       reactions: nextReactions,
       comments: nextComments,
     }));
@@ -422,36 +414,20 @@ export default function Deposit({
   );
 
   const renderFloatingReactions = () => {
-    if (!floatingEmojiItems.length) return null;
+    if (!reactionPlacements.length) return null;
 
     return (
       <Box className="emojis">
-        {floatingEmojiItems.map((item) => (
-          <Typography
-            key={item.key}
-            className="emoji"
-            component="span"
+        {reactionPlacements.map((placement) => (
+          <Box
+            key={placement.key}
+            className="reaction"
             role="button"
             tabIndex={0}
             sx={{
-              left: `${item.left}%`,
-              top: `${item.top}%`,
-              fontSize: item.fontSize,
-              zIndex: item.zIndex,
-              opacity: item.opacity,
-              "--float-duration": item.floatDuration,
-              "--float-delay": item.floatDelay,
-              "--x1": item.x1,
-              "--y1": item.y1,
-              "--x2": item.x2,
-              "--y2": item.y2,
-              "--x3": item.x3,
-              "--y3": item.y3,
-              "--x4": item.x4,
-              "--y4": item.y4,
-              "--rot-max": item.rotMax,
-              "--scale-min": item.scaleMin,
-              "--scale-max": item.scaleMax,
+              left: `${placement.left}%`,
+              top: `${placement.top}%`,
+              transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
             }}
             onClick={(event) => {
               event.stopPropagation();
@@ -465,8 +441,12 @@ export default function Deposit({
               }
             }}
           >
-            {item.emoji}
-          </Typography>
+            {[0, 1, 2].map((index) => (
+              <Typography key={`${placement.key}-${index}`} className="emoji" variant="h5">
+                {placement.emoji}
+              </Typography>
+            ))}
+          </Box>
         ))}
       </Box>
     );
