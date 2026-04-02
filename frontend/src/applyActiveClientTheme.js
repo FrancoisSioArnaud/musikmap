@@ -20,6 +20,7 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-font-body2", theme.fonts.body2);
 
   // radius
+  root.style.setProperty("--mm-radius-xs", theme.radius.xs);
   root.style.setProperty("--mm-radius-sm", theme.radius.sm);
   root.style.setProperty("--mm-radius-md", theme.radius.md);
   root.style.setProperty("--mm-radius-lg", theme.radius.lg);
