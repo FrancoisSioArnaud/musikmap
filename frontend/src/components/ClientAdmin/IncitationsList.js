@@ -923,7 +923,7 @@ export default function IncitationsList() {
                     }
                   }
                 }}
-                placeholder="C’est la semaine du carnaval, partage une chanson qui te donne envie de faire la fête"
+                placeholder="ex : C’est la semaine du carnaval, partage une chanson qui te donne envie de faire la fête"
                 inputProps={{ maxLength: 100 }}
                 helperText={`${editorForm.text.length}/100`}
                 fullWidth
