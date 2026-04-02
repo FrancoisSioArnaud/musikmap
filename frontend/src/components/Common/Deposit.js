@@ -390,23 +390,37 @@ export default function Deposit({
   const depositInteractBlock = (
     <Box className="deposit_interact">
       {allowReact ? (
-        <Button
-          variant="depositInteract"
-          className="deposit_action_button addreaction_button"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (!user?.id) {
-              window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
-              return;
-            }
-            setAddReactionOpen(true);
-          }}
-          startIcon={<AddReactionOutlinedIcon />}
-        >
-          {reactionCount > 0 ? `x${reactionCount}` : ""}
-        </Button>
+        <Box className="deposit_action_group reactions_group">
+          <Button
+            variant="depositInteract"
+            className="deposit_action_button addreaction_button addreaction_icon_button"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!user?.id) {
+                window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+                return;
+              }
+              setAddReactionOpen(true);
+            }}
+          >
+            <AddReactionOutlinedIcon />
+          </Button>
+
+          {reactionCount > 0 ? (
+            <Button
+              variant="depositInteract"
+              className="deposit_action_button reactionsummary_button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setReactionSummaryOpen(true);
+              }}
+            >
+              {`x${reactionCount}`}
+            </Button>
+          ) : null}
+        </Box>
       ) : null}
-  
+
       <Button
         variant="depositInteract"
         className="deposit_action_button comments_button"
