@@ -126,7 +126,7 @@ export default function PlayModal({ open, song, onClose, children }) {
             sx={{
               position: "absolute",
               left: "calc(50% - (52px + 12px))",
-              bottom: "calc(100% + 6px)",
+              bottom: "calc(100% + 12px)",
               zIndex: 1000,
               gap: "12px",
               width: "max-content",
