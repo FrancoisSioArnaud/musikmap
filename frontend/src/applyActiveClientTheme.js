@@ -60,5 +60,6 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-color-avatar-border", theme.colors.avatarBorder);
 
   root.style.setProperty("--mm-border-default", theme.border.default);
+  root.style.setProperty("--mm-shadow-high", theme.shadow.high);
   return theme;
 }
