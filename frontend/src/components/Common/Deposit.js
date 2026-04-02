@@ -70,9 +70,13 @@ function shuffleArray(list) {
   return next;
 }
 
-function getFloatingEmojis(reactions) {
-  const source = Array.isArray(reactions) ? reactions : [];
-  const list = source.flatMap((reaction, reactionIndex) => {
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function getFloatingEmojiItems(reactions) {
+  const reactionList = Array.isArray(reactions) ? reactions : [];
+  const emojiItems = reactionList.flatMap((reaction, reactionIndex) => {
     const emoji = reaction?.emoji || "";
 
     return [0, 1, 2].map((emojiIndex) => ({
@@ -81,7 +85,7 @@ function getFloatingEmojis(reactions) {
     }));
   });
 
-  const count = list.length;
+  const count = emojiItems.length;
 
   if (!count) return [];
 
@@ -99,17 +103,31 @@ function getFloatingEmojis(reactions) {
 
   const orderedCells = shuffleArray(cells).slice(0, count);
 
-  return list.map((item, index) => {
+  return emojiItems.map((item, index) => {
     const cell = orderedCells[index] || { row: 0, col: 0 };
-    const jitterX = (Math.random() - 0.5) * Math.min(10, cellWidth * 0.4);
-    const jitterY = (Math.random() - 0.5) * Math.min(10, cellHeight * 0.4);
-    const rotation = (Math.random() - 0.5) * 18;
+    const jitterX = (Math.random() - 0.5) * Math.min(16, cellWidth * 0.5);
+    const jitterY = (Math.random() - 0.5) * Math.min(18, cellHeight * 0.5);
 
     return {
       ...item,
       left: (cell.col + 0.5) * cellWidth + jitterX,
       top: (cell.row + 0.5) * cellHeight + jitterY,
-      rotation,
+      fontSize: `${randomBetween(1.1, 1.75).toFixed(2)}rem`,
+      zIndex: Math.floor(randomBetween(1, 5)),
+      opacity: randomBetween(0.92, 1).toFixed(2),
+      floatDuration: `${randomBetween(4.8, 8.2).toFixed(2)}s`,
+      floatDelay: `${randomBetween(0, 1.8).toFixed(2)}s`,
+      x1: `${randomBetween(-8, 8).toFixed(1)}px`,
+      y1: `${randomBetween(-8, 8).toFixed(1)}px`,
+      x2: `${randomBetween(-8, 8).toFixed(1)}px`,
+      y2: `${randomBetween(-8, 8).toFixed(1)}px`,
+      x3: `${randomBetween(-8, 8).toFixed(1)}px`,
+      y3: `${randomBetween(-8, 8).toFixed(1)}px`,
+      x4: `${randomBetween(-8, 8).toFixed(1)}px`,
+      y4: `${randomBetween(-8, 8).toFixed(1)}px`,
+      rotMax: `${randomBetween(3, 7).toFixed(1)}deg`,
+      scaleMin: randomBetween(0.93, 0.98).toFixed(3),
+      scaleMax: randomBetween(1.03, 1.1).toFixed(3),
     };
   });
 }
@@ -160,8 +178,8 @@ export default function Deposit({
   const reactionsDetail = Array.isArray(localDep?.reactions)
     ? localDep.reactions
     : [];
-  const floatingEmojis = useMemo(
-    () => getFloatingEmojis(reactionsDetail),
+  const floatingEmojiItems = useMemo(
+    () => getFloatingEmojiItems(reactionsDetail),
     [reactionsDetail]
   );
   const reactionCount = reactionsDetail.length;
@@ -404,21 +422,36 @@ export default function Deposit({
   );
 
   const renderFloatingReactions = () => {
-    if (!floatingEmojis.length) return null;
+    if (!floatingEmojiItems.length) return null;
 
     return (
       <Box className="emojis">
-        {floatingEmojis.map((item) => (
+        {floatingEmojiItems.map((item) => (
           <Typography
             key={item.key}
-            className="emoji floating_emoji"
-            variant="h5"
+            className="emoji"
+            component="span"
             role="button"
             tabIndex={0}
             sx={{
               left: `${item.left}%`,
               top: `${item.top}%`,
-              transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
+              fontSize: item.fontSize,
+              zIndex: item.zIndex,
+              opacity: item.opacity,
+              "--float-duration": item.floatDuration,
+              "--float-delay": item.floatDelay,
+              "--x1": item.x1,
+              "--y1": item.y1,
+              "--x2": item.x2,
+              "--y2": item.y2,
+              "--x3": item.x3,
+              "--y3": item.y3,
+              "--x4": item.x4,
+              "--y4": item.y4,
+              "--rot-max": item.rotMax,
+              "--scale-min": item.scaleMin,
+              "--scale-max": item.scaleMax,
             }}
             onClick={(event) => {
               event.stopPropagation();
