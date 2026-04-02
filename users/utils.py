@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 from social_django.models import UserSocialAuth
 
@@ -182,7 +183,6 @@ def apply_points_delta(user: CustomUser, delta: int):
 
     return True, {"status": "Points mis à jour avec succès.", "points_balance": user.points}, 200
 
-
 def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
     if not guest_user or not target_user:
         return {"merged": False, "reason": "missing_user"}
@@ -191,7 +191,20 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
     if not getattr(guest_user, "is_guest", False):
         return {"merged": False, "reason": "source_not_guest"}
 
-    from box_management.models import Deposit, DiscoveredSong, EmojiRight, Reaction
+    from box_management.models import (
+        Article,
+        Comment,
+        CommentAttemptLog,
+        CommentModerationDecision,
+        CommentReport,
+        CommentUserRestriction,
+        Deposit,
+        DiscoveredSong,
+        EmojiRight,
+        Reaction,
+    )
+    from spotify.models import SpotifyToken
+    from deezer.models import DeezerToken
 
     with transaction.atomic():
         guest = CustomUser.objects.select_for_update().get(pk=guest_user.pk)
@@ -200,25 +213,76 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         if not guest.is_guest:
             return {"merged": False, "reason": "source_not_guest"}
 
+        # -----------------------------
+        # 1) Fusion des champs du user
+        # -----------------------------
         points_added = int(guest.points or 0)
+        target_update_fields = ["last_seen_at"]
+        moved_profile_picture = False
+
         if points_added:
             target.points = int(target.points or 0) + points_added
+            target_update_fields.append("points")
+
+        if not target.preferred_platform and guest.preferred_platform:
+            target.preferred_platform = guest.preferred_platform
+            target_update_fields.append("preferred_platform")
+
+        if not target.profile_picture and guest.profile_picture:
+            target.profile_picture = guest.profile_picture
+            target_update_fields.append("profile_picture")
+            moved_profile_picture = True
 
         target.last_seen_at = _now()
-        target.save(update_fields=["points", "last_seen_at"])
+        target.save(update_fields=target_update_fields)
 
+        # Important :
+        # si on a déplacé la profile picture du guest vers le target,
+        # il faut vider le champ côté guest SANS passer par save(),
+        # sinon les signaux supprimeront physiquement le fichier.
+        if moved_profile_picture:
+            CustomUser.objects.filter(pk=guest.pk).update(profile_picture=None)
+            guest.profile_picture = None
+
+        try:
+            target_avatar_url = target.profile_picture.url if target.profile_picture else ""
+        except Exception:
+            target_avatar_url = ""
+
+        # -----------------------------
+        # 2) Dépôts
+        # -----------------------------
+        guest_deposit_ids = list(
+            Deposit.objects.filter(user=guest).values_list("id", flat=True)
+        )
         moved_deposits = Deposit.objects.filter(user=guest).update(user=target)
+
+        # -----------------------------
+        # 3) Emoji rights
+        # -----------------------------
+        emoji_rights_moved = 0
+        emoji_rights_deleted = 0
 
         for right in list(EmojiRight.objects.filter(user=guest).select_related("emoji")):
             exists = EmojiRight.objects.filter(user=target, emoji_id=right.emoji_id).exists()
             if exists:
                 right.delete()
+                emoji_rights_deleted += 1
             else:
                 right.user = target
                 right.save(update_fields=["user"])
+                emoji_rights_moved += 1
+
+        # -----------------------------
+        # 4) Discoveries
+        # -----------------------------
+        discoveries_moved = 0
+        discoveries_merged = 0
 
         guest_discoveries = list(
-            DiscoveredSong.objects.filter(user=guest).select_related("deposit").order_by("discovered_at", "id")
+            DiscoveredSong.objects.filter(user=guest)
+            .select_related("deposit")
+            .order_by("discovered_at", "id")
         )
         for discovery in guest_discoveries:
             existing = (
@@ -229,59 +293,329 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
             if not existing:
                 discovery.user = target
                 discovery.save(update_fields=["user"])
+                discoveries_moved += 1
                 continue
 
             update_fields = []
             if discovery.discovered_type == "main" and existing.discovered_type != "main":
                 existing.discovered_type = "main"
                 update_fields.append("discovered_type")
-            if discovery.discovered_at and existing.discovered_at and discovery.discovered_at < existing.discovered_at:
+            if (
+                discovery.discovered_at
+                and existing.discovered_at
+                and discovery.discovered_at < existing.discovered_at
+            ):
                 existing.discovered_at = discovery.discovered_at
                 update_fields.append("discovered_at")
             if update_fields:
                 existing.save(update_fields=update_fields)
             discovery.delete()
+            discoveries_merged += 1
+
+        # -----------------------------
+        # 5) Reactions
+        # -----------------------------
+        reactions_moved = 0
+        reactions_deleted = 0
+        reactions_updated = 0
 
         latest_guest_reaction_by_deposit = {}
         guest_reactions = list(
-            Reaction.objects.filter(user=guest).select_related("emoji", "deposit").order_by("-updated_at", "-created_at", "-id")
+            Reaction.objects.filter(user=guest)
+            .select_related("emoji", "deposit")
+            .order_by("-updated_at", "-created_at", "-id")
         )
         for reaction in guest_reactions:
             if reaction.deposit_id not in latest_guest_reaction_by_deposit:
                 latest_guest_reaction_by_deposit[reaction.deposit_id] = reaction
             else:
                 reaction.delete()
+                reactions_deleted += 1
 
         for deposit_id, guest_reaction in latest_guest_reaction_by_deposit.items():
             target_reactions = list(
-                Reaction.objects.filter(user=target, deposit_id=deposit_id).order_by("-updated_at", "-created_at", "-id")
+                Reaction.objects.filter(user=target, deposit_id=deposit_id)
+                .order_by("-updated_at", "-created_at", "-id")
             )
             target_reaction = target_reactions[0] if target_reactions else None
+
             for duplicate in target_reactions[1:]:
                 duplicate.delete()
+                reactions_deleted += 1
 
             if not target_reaction:
                 try:
                     guest_reaction.user = target
                     guest_reaction.save(update_fields=["user"])
+                    reactions_moved += 1
                 except IntegrityError:
                     Reaction.objects.filter(pk=guest_reaction.pk).delete()
+                    reactions_deleted += 1
                 continue
 
             guest_stamp = guest_reaction.updated_at or guest_reaction.created_at
             target_stamp = target_reaction.updated_at or target_reaction.created_at
+
             if guest_stamp and target_stamp and guest_stamp > target_stamp:
                 if target_reaction.emoji_id != guest_reaction.emoji_id:
                     target_reaction.emoji_id = guest_reaction.emoji_id
                     target_reaction.save(update_fields=["emoji", "updated_at"])
                 else:
                     target_reaction.save(update_fields=["updated_at"])
-            guest_reaction.delete()
+                reactions_updated += 1
 
+            guest_reaction.delete()
+            reactions_deleted += 1
+
+        # -----------------------------
+        # 6) Comments
+        # -----------------------------
+        # Règle en cas de collision :
+        # si le target a déjà un commentaire sur le même dépôt,
+        # on détache le commentaire guest (user=None) au lieu de le supprimer,
+        # pour éviter de perdre le texte et l’historique de modération.
+        comments_moved = 0
+        comments_detached = 0
+
+        guest_comments = list(
+            Comment.objects.filter(user=guest)
+            .select_related("deposit")
+            .order_by("created_at", "id")
+        )
+
+        for guest_comment in guest_comments:
+            target_comment = None
+            if guest_comment.deposit_id is not None:
+                target_comment = (
+                    Comment.objects.filter(
+                        user=target,
+                        deposit_id=guest_comment.deposit_id,
+                    )
+                    .exclude(pk=guest_comment.pk)
+                    .order_by("created_at", "id")
+                    .first()
+                )
+
+            if target_comment:
+                guest_comment.user = None
+                guest_comment.save(update_fields=["user"])
+                comments_detached += 1
+                continue
+
+            update_fields = ["user"]
+            guest_comment.user = target
+
+            new_author_username = target.username or guest_comment.author_username or ""
+            new_author_display_name = (
+                getattr(target, "display_name", None)
+                or target.username
+                or guest_comment.author_display_name
+                or guest_comment.author_username
+                or ""
+            )
+            new_author_email = target.email or guest_comment.author_email or ""
+
+            if guest_comment.author_username != new_author_username:
+                guest_comment.author_username = new_author_username
+                update_fields.append("author_username")
+
+            if guest_comment.author_display_name != new_author_display_name:
+                guest_comment.author_display_name = new_author_display_name
+                update_fields.append("author_display_name")
+
+            if guest_comment.author_email != new_author_email:
+                guest_comment.author_email = new_author_email
+                update_fields.append("author_email")
+
+            if target_avatar_url and guest_comment.author_avatar_url != target_avatar_url:
+                guest_comment.author_avatar_url = target_avatar_url
+                update_fields.append("author_avatar_url")
+
+            guest_comment.save(update_fields=update_fields)
+            comments_moved += 1
+
+        # -----------------------------
+        # 7) Comment reports
+        # -----------------------------
+        # Même logique :
+        # si le target a déjà report le même commentaire,
+        # on détache le report guest (reporter=None) au lieu de le supprimer.
+        reports_moved = 0
+        reports_detached = 0
+        touched_report_comment_ids = set()
+
+        guest_reports = list(
+            CommentReport.objects.filter(reporter=guest)
+            .select_related("comment")
+            .order_by("created_at", "id")
+        )
+
+        for report in guest_reports:
+            if report.comment_id:
+                touched_report_comment_ids.add(report.comment_id)
+
+            existing = None
+            if report.comment_id is not None:
+                existing = (
+                    CommentReport.objects.filter(
+                        comment_id=report.comment_id,
+                        reporter=target,
+                    )
+                    .exclude(pk=report.pk)
+                    .first()
+                )
+
+            if existing:
+                report.reporter = None
+                report.save(update_fields=["reporter"])
+                reports_detached += 1
+                continue
+
+            update_fields = ["reporter"]
+            report.reporter = target
+
+            new_reporter_username = target.username or report.reporter_username or ""
+            new_reporter_email = target.email or report.reporter_email or ""
+
+            if report.reporter_username != new_reporter_username:
+                report.reporter_username = new_reporter_username
+                update_fields.append("reporter_username")
+
+            if report.reporter_email != new_reporter_email:
+                report.reporter_email = new_reporter_email
+                update_fields.append("reporter_email")
+
+            report.save(update_fields=update_fields)
+            reports_moved += 1
+
+        for comment_id in touched_report_comment_ids:
+            reports_count = CommentReport.objects.filter(comment_id=comment_id).count()
+            Comment.objects.filter(pk=comment_id).update(reports_count=reports_count)
+
+        # -----------------------------
+        # 8) Comment moderation decisions
+        # -----------------------------
+        moderation_actions_moved = CommentModerationDecision.objects.filter(
+            acted_by=guest
+        ).update(acted_by=target)
+
+        # -----------------------------
+        # 9) Comment restrictions
+        # -----------------------------
+        restrictions_moved = CommentUserRestriction.objects.filter(
+            user=guest
+        ).update(user=target)
+
+        restrictions_created_by_moved = CommentUserRestriction.objects.filter(
+            created_by=guest
+        ).update(created_by=target)
+
+        # -----------------------------
+        # 10) Comment attempt logs
+        # -----------------------------
+        attempt_logs_moved = CommentAttemptLog.objects.filter(
+            user=guest
+        ).update(user=target)
+
+        # -----------------------------
+        # 11) Articles
+        # -----------------------------
+        articles_moved = Article.objects.filter(author=guest).update(author=target)
+
+        # -----------------------------
+        # 12) Spotify / Deezer tokens
+        # -----------------------------
+        spotify_tokens_moved = 0
+        spotify_tokens_deleted = 0
+
+        target_spotify_token = SpotifyToken.objects.filter(user=target).order_by("-created_at", "-id").first()
+        guest_spotify_tokens = list(
+            SpotifyToken.objects.filter(user=guest).order_by("-created_at", "-id")
+        )
+
+        if target_spotify_token:
+            for token in guest_spotify_tokens:
+                token.delete()
+                spotify_tokens_deleted += 1
+        else:
+            for index, token in enumerate(guest_spotify_tokens):
+                if index == 0:
+                    token.user = target
+                    token.save(update_fields=["user"])
+                    spotify_tokens_moved += 1
+                else:
+                    token.delete()
+                    spotify_tokens_deleted += 1
+
+        deezer_tokens_moved = 0
+        deezer_tokens_deleted = 0
+
+        target_deezer_token = DeezerToken.objects.filter(user=target).order_by("-created_at", "-id").first()
+        guest_deezer_tokens = list(
+            DeezerToken.objects.filter(user=guest).order_by("-created_at", "-id")
+        )
+
+        if target_deezer_token:
+            for token in guest_deezer_tokens:
+                token.delete()
+                deezer_tokens_deleted += 1
+        else:
+            for index, token in enumerate(guest_deezer_tokens):
+                if index == 0:
+                    token.user = target
+                    token.save(update_fields=["user"])
+                    deezer_tokens_moved += 1
+                else:
+                    token.delete()
+                    deezer_tokens_deleted += 1
+
+        # -----------------------------
+        # 13) Réécriture des snapshots historiques
+        # -----------------------------
+        comment_owner_snapshots_updated = Comment.objects.filter(
+            Q(deposit_id__in=guest_deposit_ids) | Q(deposit_owner_user_id=guest.id)
+        ).update(
+            deposit_owner_user_id=target.id,
+            deposit_owner_username=target.username or "",
+        )
+
+        attempt_owner_snapshots_updated = CommentAttemptLog.objects.filter(
+            Q(deposit_id__in=guest_deposit_ids) | Q(target_owner_user_id=guest.id)
+        ).update(
+            target_owner_user_id=target.id,
+            target_owner_username=target.username or "",
+        )
+
+        # -----------------------------
+        # 14) Suppression du guest
+        # -----------------------------
         guest.delete()
 
     return {
         "merged": True,
         "points_added": points_added,
         "moved_deposits": moved_deposits,
+        "emoji_rights_moved": emoji_rights_moved,
+        "emoji_rights_deleted": emoji_rights_deleted,
+        "discoveries_moved": discoveries_moved,
+        "discoveries_merged": discoveries_merged,
+        "reactions_moved": reactions_moved,
+        "reactions_updated": reactions_updated,
+        "reactions_deleted": reactions_deleted,
+        "comments_moved": comments_moved,
+        "comments_detached": comments_detached,
+        "reports_moved": reports_moved,
+        "reports_detached": reports_detached,
+        "moderation_actions_moved": moderation_actions_moved,
+        "restrictions_moved": restrictions_moved,
+        "restrictions_created_by_moved": restrictions_created_by_moved,
+        "attempt_logs_moved": attempt_logs_moved,
+        "articles_moved": articles_moved,
+        "spotify_tokens_moved": spotify_tokens_moved,
+        "spotify_tokens_deleted": spotify_tokens_deleted,
+        "deezer_tokens_moved": deezer_tokens_moved,
+        "deezer_tokens_deleted": deezer_tokens_deleted,
+        "comment_owner_snapshots_updated": comment_owner_snapshots_updated,
+        "attempt_owner_snapshots_updated": attempt_owner_snapshots_updated,
     }
+
