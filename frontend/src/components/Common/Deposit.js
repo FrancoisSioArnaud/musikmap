@@ -116,7 +116,7 @@ function getFloatingEmojiItems(reactions) {
       zIndex: Math.floor(randomBetween(1, 5)),
       opacity: randomBetween(0.92, 1).toFixed(2),
       floatDuration: `${randomBetween(4.8, 8.2).toFixed(2)}s`,
-      floatDelay: `${randomBetween(0, 1.8).toFixed(2)}s`,
+      floatDelay: `${randomBetween(-0, -1.8).toFixed(2)}s`,
       x1: `${randomBetween(-8, 8).toFixed(1)}px`,
       y1: `${randomBetween(-8, 8).toFixed(1)}px`,
       x2: `${randomBetween(-8, 8).toFixed(1)}px`,
