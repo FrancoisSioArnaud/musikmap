@@ -56,7 +56,8 @@ export const CLIENT_THEMES = {
       round: "999px",
     },
     border:{
-      default: "0.1rem solid #e6f0ea",
+      default: "1px solid #e6f0ea",
+      paper: "1px solid #e6f0ea",
     }
   },
 
