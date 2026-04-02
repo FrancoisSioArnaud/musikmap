@@ -1,7 +1,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import AddReactionIcon from "@mui/icons-material/AddReaction";
+import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
 
 export default function DepositReactions({
   items = [],
@@ -34,19 +34,12 @@ export default function DepositReactions({
       {orderedList.map((it, i) => {
         const isCurrent = Boolean(currentEmoji && it?.emoji === currentEmoji);
 
-        const handleClick = (e) => {
-          e.stopPropagation();
+        const handleClick = (event) => {
+          event.stopPropagation();
           if (isCurrent) {
             onOpenReact?.();
           } else {
             onOpenSummary?.();
-          }
-        };
-
-        const handleKeyDown = (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleClick(e);
           }
         };
 
@@ -57,7 +50,12 @@ export default function DepositReactions({
             role="button"
             tabIndex={0}
             onClick={handleClick}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleClick(event);
+              }
+            }}
           >
             <Typography variant="h4" component="span">
               {it?.emoji}
@@ -69,27 +67,27 @@ export default function DepositReactions({
         );
       })}
 
-      {!hasMyReaction && (
+      {!hasMyReaction ? (
         <Box
           className="icon_container"
           aria-label="Réagir"
           role="button"
           tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             onOpenReact?.();
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
               onOpenReact?.();
             }
           }}
         >
-          <AddReactionIcon color="primary" />
+          <AddReactionOutlinedIcon color="primary" />
         </Box>
-      )}
+      ) : null}
     </Box>
   );
 }

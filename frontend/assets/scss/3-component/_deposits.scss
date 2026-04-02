@@ -69,8 +69,18 @@ color : var(--mm-color-secondary);
   align-items: left;
   text-align: left;
   gap: 8px;
-  padding: 20px;
+  padding: 20px 20px 0 20px;
 }
+
+.deposit .deposit_interact{
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  text-align: left;
+  gap: 8px;
+  padding: 0 20px 20px 20px;
+}
+
 .deposit .deposit_date{
 
 }
@@ -226,4 +236,59 @@ color : var(--mm-color-secondary);
 
 .deposit_react .icon_container svg{
   color: var(--mm-color-primary-contrast-text);
+}
+
+.deposit .deposit_comments{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.deposit .deposit_comments .count{
+  opacity: 0.85;
+}
+
+.comments_drawer_modal .comments_panel{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comments_drawer_modal .deposit_comment{
+  padding: 8px 0;
+}
+
+.comments_drawer_modal .comment_main{
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+}
+
+.comments_drawer_modal .deposit_comment .texts{
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.comments_drawer_modal .deposit_comment .username{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  word-break: break-word;
+}
+
+.comments_drawer_modal .deposit_comment .text{
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comments_drawer_modal .deposit_comment_form{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

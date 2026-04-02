@@ -17,10 +17,11 @@ import MusicNote from "@mui/icons-material/MusicNote";
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import ReactionModal from "../Reactions/ReactionModal";
+import AddReactionModal from "../Reactions/AddReactionModal";
 import ReactionSummary from "../Reactions/ReactionSummary";
 import DepositReactions from "./DepositReactions";
 import DepositComments from "./DepositComments";
+import CommentsDrawer from "../Comments/CommentsDrawer";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { formatRelativeTime } from "../Utils/time";
 
@@ -95,17 +96,9 @@ export default function Deposit({
 
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
-  const openPlayFor = (song) => {
-    setPlaySong(song || null);
-    setPlayOpen(true);
-  };
-  const closePlay = () => {
-    setPlayOpen(false);
-    setPlaySong(null);
-  };
-
-  const [reactOpen, setReactOpen] = useState(false);
+  const [addReactionOpen, setAddReactionOpen] = useState(false);
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [snackOpen, setSnackOpen] = useState(false);
 
   const viewerId = user?.id || null;
@@ -161,6 +154,16 @@ export default function Deposit({
       next.timestamp = Date.now();
       setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
     } catch (error) {}
+  };
+
+  const openPlayFor = (song) => {
+    setPlaySong(song || null);
+    setPlayOpen(true);
+  };
+
+  const closePlay = () => {
+    setPlayOpen(false);
+    setPlaySong(null);
   };
 
   const revealDeposit = async () => {
@@ -237,12 +240,12 @@ export default function Deposit({
     }
   };
 
-  const handleOpenReactModal = () => {
+  const handleOpenAddReaction = () => {
     if (!user?.id) {
       window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
       return;
     }
-    setReactOpen(true);
+    setAddReactionOpen(true);
   };
 
   const handleReactionApplied = (result) => {
@@ -285,6 +288,7 @@ export default function Deposit({
 
   const renderDepositUser = (userObj) => {
     const canNavigate = Boolean(userObj?.username && !userObj?.is_guest);
+
     return (
       <Box
         onClick={() => {
@@ -304,9 +308,9 @@ export default function Deposit({
         </Box>
         <Typography component="span" className="username" variant="subtitle1">
           {userObj?.display_name || "anonyme"}
-          {canNavigate && (
+          {canNavigate ? (
             <ArrowForwardIosIcon className="icon" sx={{ height: "0.8em", width: "0.8em" }} />
-          )}
+          ) : null}
         </Typography>
       </Box>
     );
@@ -318,39 +322,50 @@ export default function Deposit({
       reactions={reactionsDetail}
       myReactionEmoji={myReactionEmoji}
       viewerId={viewerId}
-      onOpenReact={handleOpenReactModal}
+      onOpenReact={handleOpenAddReaction}
       onOpenSummary={() => setReactionSummaryOpen(true)}
     />
   ) : null;
 
   const commentsBlock = (
     <DepositComments
-      depPublicKey={localDep?.public_key}
       comments={comments}
-      viewer={user}
-      onCommentsChange={handleCommentsChange}
+      onOpen={() => setCommentsOpen(true)}
     />
+  );
+
+  const depositInfosBlock = showUser ? (
+    <Box className="deposit_infos">{renderDepositUser(u)}</Box>
+  ) : null;
+
+  const depositInteractBlock = (
+    <Box className="deposit_interact">
+      {reactionsBlock}
+      {commentsBlock}
+    </Box>
   );
 
   if (variant === "main") {
     return (
       <>
         <Box className="deposit_container">
-          {showDate && (
+          {showDate ? (
             <Typography className="deposit_date" variant="subtitle1" component="span">
               {"Chanson partagée " + (naturalDate || "")}
             </Typography>
-          )}
+          ) : null}
           <Card className="deposit deposit_main">
+            {depositInfosBlock}
+
             <Box className="deposit_song">
               <Box className="img_container">
-                {s?.image_url && (
+                {s?.image_url ? (
                   <Box
                     component="img"
                     src={s.image_url}
                     alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                   />
-                )}
+                ) : null}
               </Box>
 
               <Box className="interact">
@@ -377,20 +392,17 @@ export default function Deposit({
               </Box>
             </Box>
 
-            <Box className="deposit_infos">
-              {showUser && renderDepositUser(u)}
-              {reactionsBlock}
-              {commentsBlock}
-            </Box>
+            {depositInteractBlock}
           </Card>
         </Box>
 
-        <ReactionModal
-          open={reactOpen}
-          onClose={() => setReactOpen(false)}
+        <AddReactionModal
+          open={addReactionOpen}
+          onClose={() => setAddReactionOpen(false)}
           depPublicKey={localDep?.public_key}
           currentEmoji={myReactionEmoji}
           onApplied={handleReactionApplied}
+          setUser={setUser}
         />
 
         <ReactionSummary
@@ -402,6 +414,15 @@ export default function Deposit({
           onApplied={handleReactionApplied}
         />
 
+        <CommentsDrawer
+          open={commentsOpen}
+          onClose={() => setCommentsOpen(false)}
+          depPublicKey={localDep?.public_key}
+          comments={comments}
+          viewer={user}
+          onCommentsChange={handleCommentsChange}
+        />
+
         <PlayModal open={playOpen} song={playSong} onClose={closePlay} />
       </>
     );
@@ -410,22 +431,24 @@ export default function Deposit({
   return (
     <>
       <Box className="deposit_container">
-        {showDate && (
+        {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
             {naturalDate || ""}
           </Typography>
-        )}
+        ) : null}
         <Card className="deposit deposit_list">
+          {depositInfosBlock}
+
           <Box className="deposit_song">
             <Box className="img_container">
-              {s?.image_url && (
+              {s?.image_url ? (
                 <Box
                   component="img"
                   src={s.image_url}
                   alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
                   sx={{ filter: isRevealed ? "none" : "blur(6px)" }}
                 />
-              )}
+              ) : null}
             </Box>
 
             <Box className="interact">
@@ -440,7 +463,7 @@ export default function Deposit({
                     </Typography>
                   </Box>
 
-                  {showPlay && (
+                  {showPlay ? (
                     <Button
                       variant="depositInteract"
                       className="play playSecondary"
@@ -450,7 +473,7 @@ export default function Deposit({
                     >
                       Écouter
                     </Button>
-                  )}
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -473,11 +496,7 @@ export default function Deposit({
             </Box>
           </Box>
 
-          <Box className="deposit_infos">
-            {showUser && renderDepositUser(u)}
-            {reactionsBlock}
-            {commentsBlock}
-          </Box>
+          {depositInteractBlock}
         </Card>
       </Box>
 
@@ -527,12 +546,13 @@ export default function Deposit({
         />
       </Snackbar>
 
-      <ReactionModal
-        open={reactOpen}
-        onClose={() => setReactOpen(false)}
+      <AddReactionModal
+        open={addReactionOpen}
+        onClose={() => setAddReactionOpen(false)}
         depPublicKey={localDep?.public_key}
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
+        setUser={setUser}
       />
 
       <ReactionSummary
@@ -542,6 +562,15 @@ export default function Deposit({
         reactions={reactionsDetail}
         viewer={user}
         onApplied={handleReactionApplied}
+      />
+
+      <CommentsDrawer
+        open={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        depPublicKey={localDep?.public_key}
+        comments={comments}
+        viewer={user}
+        onCommentsChange={handleCommentsChange}
       />
     </>
   );
