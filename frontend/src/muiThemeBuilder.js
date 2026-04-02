@@ -108,7 +108,7 @@ export function buildMuiTheme(clientTheme) {
             borderRadius: parseInt(clientTheme.radius.paper, 10) || parseInt(clientTheme.radius.md, 10) || 16,
             boxShadow: "none",
             padding: "16px",
-            gap
+            gap:"8px";
           },
           rounded: {
             borderRadius: parseInt(clientTheme.radius.paper, 10) || parseInt(clientTheme.radius.md, 10) || 16,
