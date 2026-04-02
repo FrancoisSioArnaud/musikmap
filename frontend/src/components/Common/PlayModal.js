@@ -132,7 +132,7 @@ export default function PlayModal({ open, song, onClose, children }) {
               width: "max-content",
               overflow: "visible",
               display: "grid",
-              gridTemplateColumns: "1fr 1fr";
+              gridTemplateColumns: "1fr 1fr",
             }}
           >
             {actions.map((action) => (
