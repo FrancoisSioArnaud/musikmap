@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -7,11 +7,13 @@ import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import EnableLocation from "../Flowbox/EnableLocation";
+import { UserContext } from "../UserContext";
 
 export default function Onboarding() {
   const { boxSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentClient, setCurrentClient } = useContext(UserContext) || {};
 
   const [box, setBox] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,11 @@ export default function Onboarding() {
         const data = await res.json();
         if (!data || !data.name) throw new Error("Payload inattendu");
 
+        const nextClient = data?.client_slug || "default";
+        if (setCurrentClient && currentClient !== nextClient) {
+          setCurrentClient(nextClient);
+        }
+
         setBox(data);
       } catch {
         handleError(pageError || "Impossible de récupérer la boîte.");
@@ -55,7 +62,7 @@ export default function Onboarding() {
         setLoading(false);
       }
     })();
-  }, [boxSlug, handleError, pageError]);
+  }, [boxSlug, handleError, pageError, currentClient, setCurrentClient]);
 
   const requestLocationOnce = useCallback(() => {
     return new Promise((resolve, reject) => {
