@@ -172,6 +172,7 @@ export default function ReactionSummary({
           mx: "auto",
           display: "flex",
           flexDirection: "column",
+          gap: "16px",
         }}
       >
         <Box className="intro_small">
