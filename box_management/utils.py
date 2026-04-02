@@ -368,7 +368,7 @@ def _coerce_bool(value):
     return value in {"1", "true", "yes", "y", "on", "oui"}
 
 
-def _get_active_incitation_for_box(box, at_date=None):
+def _get_current_incitation_for_box(box, at_date=None):
     client_id = getattr(box, "client_id", None)
     if not client_id:
         return None
