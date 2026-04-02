@@ -166,6 +166,7 @@ export default function ReactionSummary({
       }}
     >
       <Box
+        className="reaction_summary_panel"
         sx={{
           width: "100%",
           maxWidth: 720,
@@ -173,6 +174,8 @@ export default function ReactionSummary({
           display: "flex",
           flexDirection: "column",
           gap: "16px",
+          minHeight: 0,
+          flex: 1,
         }}
       >
         <Box className="intro_small">

@@ -64,3 +64,20 @@
 .comments_drawer_modal .comment_submit_button.Mui-disabled {
   color: rgba(0, 0, 0, 0.26);
 }
+
+.comments_drawer_modal .MuiDrawer-paper {
+  display: flex;
+  flex-direction: column;
+}
+
+.comments_drawer_modal .comments_panel{
+  flex: 1;
+  min-height: 0;
+}
+
+.comments_drawer_modal .comments_list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}

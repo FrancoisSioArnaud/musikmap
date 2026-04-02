@@ -73,8 +73,19 @@
   opacity: 0.7;
 }
 
+.reaction_summary_modal .MuiDrawer-paper {
+  display: flex;
+  flex-direction: column;
+}
 
+.reaction_summary_modal .reaction_summary_panel {
+  flex: 1;
+  min-height: 0;
+}
 
-
-
-
+.reaction_summary_modal .reactions_list{
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
