@@ -403,10 +403,10 @@ export default function Deposit({
           }}
           startIcon={<AddReactionOutlinedIcon />}
         >
-          {`x${reactionCount}`}
+          {reactionCount > 0 ? `x${reactionCount}` : ""}
         </Button>
       ) : null}
-
+  
       <Button
         variant="depositInteract"
         className="deposit_action_button comments_button"
@@ -416,7 +416,7 @@ export default function Deposit({
         }}
         startIcon={<ModeCommentOutlinedIcon />}
       >
-        {`x${commentsCount}`}
+        {commentsCount > 0 ? `x${commentsCount}` : ""}
       </Button>
     </Box>
   );
