@@ -110,8 +110,8 @@ function getFloatingEmojiItems(reactions) {
 
     return {
       ...item,
-      left: (cell.col + 0.5) * cellWidth + jitterX,
-      top: (cell.row + 0.5) * cellHeight + jitterY,
+      left: (cell.col/* + 0.5*/) * cellWidth + jitterX,
+      top: (cell.row/* + 0.5*/) * cellHeight + jitterY,
       fontSize: `${randomBetween(1.1, 1.75).toFixed(2)}rem`,
       zIndex: Math.floor(randomBetween(1, 5)),
       opacity: randomBetween(0.92, 1).toFixed(2),
