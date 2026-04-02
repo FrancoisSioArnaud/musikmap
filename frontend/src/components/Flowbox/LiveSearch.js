@@ -38,11 +38,7 @@ function normalizeOptionToSong(option) {
   };
 }
 
-
-export default function LiveSearch({
-  isSpotifyAuthenticated,
-  isDeezerAuthenticated,
-}) {
+export default function LiveSearch() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
 
@@ -60,13 +56,12 @@ export default function LiveSearch({
   const [isSearching, setIsSearching] = useState(false);
 
   // dépôt (POST)
-  const [posting, setPosting] = useState(false); // disable tous les boutons
-  const [postingId, setPostingId] = useState(null); // loader sur le bouton cliqué
+  const [posting, setPosting] = useState(false);
+  const [postingId, setPostingId] = useState(null);
 
-  // ✅ focus search field on mount
   const searchInputRef = useRef(null);
+
   useEffect(() => {
-    // petit délai pour laisser MUI/Drawer finir l'anim si besoin
     const t = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 50);
@@ -93,9 +88,13 @@ export default function LiveSearch({
         if (cancelled) return;
 
         setIncitationText(
-          (data?.active_incitation?.text || data?.search_incitation_text || "").trim()
+          (
+            data?.active_incitation?.text ||
+            data?.search_incitation_text ||
+            ""
+          ).trim()
         );
-      } catch (error) {
+      } catch (_error) {
         if (cancelled) return;
       } finally {
         if (!cancelled) setIncitationLoading(false);
@@ -107,73 +106,59 @@ export default function LiveSearch({
     };
   }, [boxSlug]);
 
-  // Préférence utilisateur (quand UserContext se met à jour)
   useEffect(() => {
     if (effectiveUser?.preferred_platform) {
       setSelectedStreamingService(effectiveUser.preferred_platform);
     }
   }, [effectiveUser?.preferred_platform]);
 
-  // Recherche (debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
       const doFetch = async () => {
+        const trimmedSearch = searchValue.trim();
+
+        if (!trimmedSearch) {
+          setJsonResults([]);
+          setIsSearching(false);
+          return;
+        }
+
         try {
           setIsSearching(true);
 
+          const csrftoken = getCookie("csrftoken");
+
           if (selectedStreamingService === "spotify") {
-            if (searchValue === "") {
-              if (isSpotifyAuthenticated) {
-                const r = await fetch("/spotify/recent-tracks", {
-                  credentials: "same-origin",
-                });
-                const j = await r.json();
-                setJsonResults(Array.isArray(j) ? j : []);
-              } else {
-                setJsonResults([]);
-              }
-            } else {
-              const csrftoken = getCookie("csrftoken");
-              const r = await fetch("/spotify/search", {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRFToken": csrftoken,
-                },
-                body: JSON.stringify({ search_query: searchValue }),
-              });
-              const j = await r.json();
-              setJsonResults(Array.isArray(j) ? j : []);
-            }
+            const r = await fetch("/spotify/search", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken,
+              },
+              body: JSON.stringify({ search_query: trimmedSearch }),
+            });
+            const j = await r.json();
+            setJsonResults(Array.isArray(j) ? j : []);
+            return;
           }
 
           if (selectedStreamingService === "deezer") {
-            if (searchValue === "") {
-              if (isDeezerAuthenticated) {
-                const r = await fetch("/deezer/recent-tracks", {
-                  credentials: "same-origin",
-                });
-                const j = await r.json();
-                setJsonResults(Array.isArray(j) ? j : []);
-              } else {
-                setJsonResults([]);
-              }
-            } else {
-              const csrftoken = getCookie("csrftoken");
-              const r = await fetch("/deezer/search", {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRFToken": csrftoken,
-                },
-                body: JSON.stringify({ search_query: searchValue }),
-              });
-              const j = await r.json();
-              setJsonResults(Array.isArray(j) ? j : []);
-            }
+            const r = await fetch("/deezer/search", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken,
+              },
+              body: JSON.stringify({ search_query: trimmedSearch }),
+            });
+            const j = await r.json();
+            setJsonResults(Array.isArray(j) ? j : []);
+            return;
           }
+
+          setJsonResults([]);
         } catch {
           setJsonResults([]);
         } finally {
@@ -185,12 +170,7 @@ export default function LiveSearch({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [
-    searchValue,
-    selectedStreamingService,
-    isDeezerAuthenticated,
-    isSpotifyAuthenticated,
-  ]);
+  }, [searchValue, selectedStreamingService]);
 
   const handleStreamingServiceChange = (_e, value) => {
     if (!value) return;
@@ -250,14 +230,12 @@ export default function LiveSearch({
           }
         }
 
-        // myDeposit minimal (front-only)
         const isoNow = new Date().toISOString();
         const myDeposit = {
           song: normalizeOptionToSong(option),
           deposited_at: isoNow,
         };
 
-        // snapshot LS (TTL 20 min)
         const payload = {
           boxSlug,
           timestamp: Date.now(),
@@ -269,7 +247,6 @@ export default function LiveSearch({
 
         setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
 
-        // go Discover
         navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
           replace: true,
         });
@@ -284,7 +261,7 @@ export default function LiveSearch({
   );
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: "100%" ,height: "calc(100vh - 58px)"}} >
+    <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
       <Paper variant="outlined" sx={{ p: 4, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
@@ -338,7 +315,10 @@ export default function LiveSearch({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
+      <Paper
+        variant="outlined"
+        sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}
+      >
         {isSearching ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
             <CircularProgress size={28} />
@@ -348,7 +328,7 @@ export default function LiveSearch({
             {jsonResults.map((option) => {
               const id = option?.id ?? "__posting__";
               const isThisPosting = posting && postingId === id;
-      
+
               return (
                 <ListItem
                   key={id}
@@ -404,7 +384,7 @@ export default function LiveSearch({
                       />
                     ) : null}
                   </Box>
-      
+
                   <Box
                     sx={{
                       display: "flex",
@@ -455,17 +435,19 @@ export default function LiveSearch({
             <CircularProgress size={28} />
           </Box>
         ) : incitationText ? (
-          <Box sx={{ 
-            margin: "0px 16px",
-            backgroundColor: "var(--mm-color-secondary-light)",
-            padding: "16px 20px",
-            borderRadius: "2rem",
-            display: "flex",
-            gap:"12px",
-            alignItems: "center",
-          }}>
+          <Box
+            sx={{
+              margin: "0px 16px",
+              backgroundColor: "var(--mm-color-secondary-light)",
+              padding: "16px 20px",
+              borderRadius: "2rem",
+              display: "flex",
+              gap: "12px",
+              alignItems: "center",
+            }}
+          >
             <CampaignRoundedIcon />
-            <Typography variant="subtitle1" sx={{}}>{incitationText}</Typography>
+            <Typography variant="subtitle1">{incitationText}</Typography>
           </Box>
         ) : null}
       </Paper>
