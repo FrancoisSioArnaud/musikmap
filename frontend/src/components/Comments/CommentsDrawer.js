@@ -181,7 +181,7 @@ export default function CommentsDrawer({
       >
 
         <Box className="comments_panel">
-          <Box className="intro_small">oygfz'ç!èntyàç!r
+          <Box className="intro_small">
         
             <Typography variant="subtitle1" component="subtitle1">
               Sois bienveillant et respectueux.
