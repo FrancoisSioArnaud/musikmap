@@ -154,7 +154,7 @@ export default function PlayModal({ open, song, onClose, children }) {
                   height: "42px",
                   width: "42px",
                   borderRadius: "var(--mm-radius-md)",
-                  boxShadow: "var(--m-shadow-high),
+                  boxShadow: "var(--m-shadow-high)",
                 }}
               >
                 {action.renderIcon()}
