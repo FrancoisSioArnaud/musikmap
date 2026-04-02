@@ -243,6 +243,7 @@ color : var(--mm-color-secondary);
   animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
   text-shadow: rgba(0, 0, 0, .2) 0px 5px 3px;
+  font-size:2rem;
 }
 
 @keyframes emojiFloat {
