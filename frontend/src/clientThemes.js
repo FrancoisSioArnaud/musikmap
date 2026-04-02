@@ -47,6 +47,7 @@ export const CLIENT_THEMES = {
       avatarBorder: "2px solid rgba(0,0,0,0.04)",
     },
     radius: {
+      xs: "8px",
       sm: "8px",
       md: "16px",
       lg: "24px",
