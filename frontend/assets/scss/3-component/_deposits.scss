@@ -80,8 +80,17 @@ color : var(--mm-color-secondary);
   align-items: center;
   justify-content: flex-start;
   text-align: left;
-  gap: 8px;
-  padding: 0 20px 20px 20px;
+  gap: 4px;
+  padding: 4px 16px 4px 16px;
+}
+
+.deposit .deposit_action_button {
+  min-width: auto;
+  width: auto;
+  padding: 8px 12px;
+  background: none;
+  color: var(--mm-color-black);
+  font-size: 1em;
 }
 
 .deposit .deposit_date{
@@ -217,12 +226,6 @@ color : var(--mm-color-secondary);
 
 .deposit_list .points_container{
  margin:0;
-}
-
-.deposit .deposit_action_button{
-  min-width: auto;
-  width: auto;
-  padding: 8px 12px;
 }
 
 .deposit .emojis{
