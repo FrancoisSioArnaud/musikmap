@@ -125,16 +125,14 @@ export default function PlayModal({ open, song, onClose, children }) {
             onClick={(event) => event.stopPropagation()}
             sx={{
               position: "absolute",
-              left: "-24px",
+              left: "-9px",
               bottom: "calc(100% + 6px)",
-              zIndex: 3,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              flexWrap: "wrap",
+              zIndex: 1000,
+              gap: "12px",,
               width: "max-content",
-              maxWidth: "min(220px, calc(100vw - 32px))",
               overflow: "visible",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr";
             }}
           >
             {actions.map((action) => (
@@ -151,8 +149,8 @@ export default function PlayModal({ open, song, onClose, children }) {
                   minWidth: 0,
                   backgroundColor: "transparent",
                   backgroundColor: "var(--mm-color-surface)",
-                  height: "42px",
-                  width: "42px",
+                  height: "52px",
+                  width: "52px",
                   borderRadius: "var(--mm-radius-md)",
                   boxShadow: "var(--mm-shadow-high)",
                 }}
