@@ -235,7 +235,7 @@ export default function CommentsDrawer({
                             {commentUser?.display_name || commentUser?.username || "anonyme"}
                             {canNavigate ? <ArrowForwardIosIcon className="icon" /> : null}
                           </Typography>
-                          <Typography variant="body2" className="text">
+                          <Typography variant="body1" className="text">
                             {comment?.text || ""}
                           </Typography>
                         </Box>
