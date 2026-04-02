@@ -146,6 +146,11 @@ export function buildMuiTheme(clientTheme) {
               boxShadow: "none",
               border: "inherit",
             },
+            "&:active": {
+              backgroundColor: "inherit",
+              boxShadow: "none",
+              border: "inherit",
+            }
           },
 
           outlinedPrimary: {
