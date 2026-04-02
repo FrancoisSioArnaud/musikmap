@@ -82,6 +82,7 @@ export default function ArticleCard({ article, onOpenDrawer }) {
                 flexShrink: 0,
                 borderRadius: "4px",
               }}
+              className="favicon"
             />
           ) : null}
 
