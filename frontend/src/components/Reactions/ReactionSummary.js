@@ -174,6 +174,12 @@ export default function ReactionSummary({
           flexDirection: "column",
         }}
       >
+        <Box className="intro_small">
+          <Typography variant="h3" component="h3">
+            Réactions
+          </Typography>
+        </Box>  
+        
         <Box className="reactions_list">
           {!orderedReactions.length ? (
             <Typography variant="body1" sx={{ py: 2 }}>
