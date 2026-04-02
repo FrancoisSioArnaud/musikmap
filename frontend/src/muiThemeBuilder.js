@@ -126,6 +126,8 @@ export function buildMuiTheme(clientTheme) {
             borderBottom: clientTheme.colors.appBarBorder,
             boxShadow: "none",
             height: "56px",
+            padding: 0,
+            borderRadius:0,
           },
         },
       },
