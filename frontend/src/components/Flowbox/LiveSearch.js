@@ -262,7 +262,7 @@ export default function LiveSearch() {
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
-      <Box sx={{ p: 4, pb: 2 }}>
+      <Box sx={{ p: 5, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis une chanson à partager
@@ -330,7 +330,7 @@ export default function LiveSearch() {
                 <ListItem
                   key={id}
                   divider
-                  sx={{ overflow: "hidden", alignItems: "center" }}
+                  sx={{ overflow: "hidden", alignItems: "center", padding:"8px 20px 8px 20px" }}
                   secondaryAction={
                     <Button
                       variant="contained"
@@ -434,7 +434,7 @@ export default function LiveSearch() {
         ) : incitationText ? (
           <Box
             sx={{
-              margin: "0px 16px",
+              margin: "0px 20px",
               backgroundColor: "var(--mm-color-secondary-light)",
               padding: "16px 20px",
               borderRadius: "var(--mm-radius-lg)",
