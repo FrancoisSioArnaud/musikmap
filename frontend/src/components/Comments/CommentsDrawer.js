@@ -31,6 +31,24 @@ const REPORT_REASONS = [
   { value: "other", label: "Autre" },
 ];
 
+function getCommentPromptCopy(viewer) {
+  if (viewer?.is_guest) {
+    return {
+      title: "Finalise ton compte",
+      message: "Finalise la création de ton compte pour pouvoir commenter.",
+      target: "/register?merge_guest=1",
+      actionLabel: "Finaliser",
+    };
+  }
+
+  return {
+    title: "Crée ton compte",
+    message: "Crée ton compte pour pouvoir commenter.",
+    target: "/register",
+    actionLabel: "Créer mon compte",
+  };
+}
+
 export default function CommentsDrawer({
   open,
   onClose,
@@ -50,17 +68,23 @@ export default function CommentsDrawer({
   const [reportReason, setReportReason] = useState("harassment");
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   const items = Array.isArray(comments?.items) ? comments.items : [];
   const viewerState = comments?.viewer_state || {};
   const isFullUser = Boolean(viewer?.id && !viewer?.is_guest);
   const canPost = Boolean(isFullUser && viewerState?.can_post);
+  const showCommentPrompt = !isFullUser;
   const notice = viewerState?.notice || "";
   const remaining = 100 - draft.trim().length;
 
   const closeMenu = (clearActive = true) => {
     setMenuAnchorEl(null);
     if (clearActive) setActiveComment(null);
+  };
+
+  const openAuthPrompt = () => {
+    setAuthPromptOpen(true);
   };
 
   const handleSubmit = async () => {
@@ -159,6 +183,8 @@ export default function CommentsDrawer({
     }
   };
 
+  const commentPromptCopy = getCommentPromptCopy(viewer);
+
   return (
     <>
       <Drawer
@@ -180,7 +206,6 @@ export default function CommentsDrawer({
           },
         }}
       >
-
         <Box className="comments_panel">
           <Box className="intro_small">
             <Typography variant="h3" component="h3">
@@ -189,8 +214,8 @@ export default function CommentsDrawer({
             <Typography variant="subtitle1" component="subtitle1">
               Sois bienveillant et respectueux.
             </Typography>
-          </Box>    
-                
+          </Box>
+
           <Box className="comments_list">
             {!items.length ? (
               <Typography variant="body1" sx={{ py: 2 }}>
@@ -293,8 +318,40 @@ export default function CommentsDrawer({
               </IconButton>
             </Box>
           ) : null}
-        </Box>
 
+          {showCommentPrompt ? (
+            <Box
+              className="deposit_comment_form deposit_comment_form_prompt"
+              onClick={openAuthPrompt}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openAuthPrompt();
+                }
+              }}
+            >
+              <TextField
+                fullWidth
+                multiline
+                minRows={1}
+                maxRows={6}
+                value=""
+                label="Commenter"
+                helperText=" "
+                InputProps={{ readOnly: true }}
+              />
+              <IconButton
+                className="comment_submit_button"
+                aria-label="Publier le commentaire"
+                tabIndex={-1}
+              >
+                <ArrowUpwardIcon />
+              </IconButton>
+            </Box>
+          ) : null}
+        </Box>
       </Drawer>
 
       <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => closeMenu()}>
@@ -343,6 +400,24 @@ export default function CommentsDrawer({
           </Button>
           <Button onClick={handleReport} disabled={reporting}>
             Signaler
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={authPromptOpen} onClose={() => setAuthPromptOpen(false)}>
+        <DialogTitle>{commentPromptCopy.title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">{commentPromptCopy.message}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAuthPromptOpen(false)}>Annuler</Button>
+          <Button
+            onClick={() => {
+              setAuthPromptOpen(false);
+              navigate(commentPromptCopy.target);
+            }}
+          >
+            {commentPromptCopy.actionLabel}
           </Button>
         </DialogActions>
       </Dialog>

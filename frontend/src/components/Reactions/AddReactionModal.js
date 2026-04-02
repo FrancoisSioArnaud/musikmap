@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -6,10 +7,31 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
-import PurchaseEmojiModal from "./PurchaseEmojiModal";
+
+function getPurchasePromptCopy(viewer) {
+  if (viewer?.is_guest) {
+    return {
+      title: "Finalise ton compte",
+      message: "Finalise la création de ton compte pour utiliser tes points.",
+      target: "/register?merge_guest=1",
+      actionLabel: "Finaliser",
+    };
+  }
+
+  return {
+    title: "Crée ton compte",
+    message: "Crée ton compte pour débloquer des réactions.",
+    target: "/register",
+    actionLabel: "Créer mon compte",
+  };
+}
 
 export default function AddReactionModal({
   open,
@@ -18,15 +40,19 @@ export default function AddReactionModal({
   currentEmoji = null,
   onApplied,
   setUser,
+  viewer,
 }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [submittingPurchase, setSubmittingPurchase] = useState(false);
   const [catalog, setCatalog] = useState({
     actives_paid: [],
     owned_ids: [],
     current_reaction: null,
   });
   const [selected, setSelected] = useState(currentEmoji);
-  const [purchaseTarget, setPurchaseTarget] = useState(null);
+  const [unlockTargetId, setUnlockTargetId] = useState(null);
+  const [purchasePromptOpen, setPurchasePromptOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +62,10 @@ export default function AddReactionModal({
     const loadCatalog = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/box-management/emojis/catalog", {
+        const query = depPublicKey
+          ? `?dep_public_key=${encodeURIComponent(depPublicKey)}`
+          : "";
+        const res = await fetch(`/box-management/emojis/catalog${query}`, {
           credentials: "same-origin",
         });
         const data = await res.json();
@@ -60,7 +89,15 @@ export default function AddReactionModal({
     return () => {
       cancelled = true;
     };
-  }, [open, currentEmoji]);
+  }, [open, currentEmoji, depPublicKey]);
+
+  useEffect(() => {
+    if (!open) {
+      setUnlockTargetId(null);
+      setPurchasePromptOpen(false);
+      setSubmittingPurchase(false);
+    }
+  }, [open]);
 
   const initialEmoji = useMemo(
     () => currentEmoji ?? catalog.current_reaction?.emoji ?? null,
@@ -74,14 +111,24 @@ export default function AddReactionModal({
   const isOwned = (emoji) =>
     emoji?.cost === 0 || (emoji?.id && catalog.owned_ids.includes(emoji.id));
 
+  const openPurchasePrompt = () => {
+    setUnlockTargetId(null);
+    setPurchasePromptOpen(true);
+  };
+
   const onClickEmoji = (emoji) => {
     const alreadyOwned = isOwned(emoji);
 
     if (!alreadyOwned) {
-      setPurchaseTarget(emoji);
+      if (!viewer?.id || viewer?.is_guest) {
+        openPurchasePrompt();
+        return;
+      }
+      setUnlockTargetId((prev) => (prev === emoji.id ? prev : emoji.id));
       return;
     }
 
+    setUnlockTargetId(null);
     setSelected((prev) => (prev === emoji.char ? null : emoji.char));
   };
 
@@ -94,10 +141,45 @@ export default function AddReactionModal({
         ...prev,
         owned_ids: [...new Set([...(prev.owned_ids || []), emoji.id])],
       }));
-      setPurchaseTarget(null);
+      setUnlockTargetId(null);
       setSelected(emoji.char);
     } else {
-      setPurchaseTarget(null);
+      setUnlockTargetId(null);
+    }
+  };
+
+  const unlockEmoji = async (emoji) => {
+    if (!emoji?.id || submittingPurchase) return;
+
+    if (!viewer?.id || viewer?.is_guest) {
+      openPurchasePrompt();
+      return;
+    }
+
+    setSubmittingPurchase(true);
+    try {
+      const res = await fetch("/box-management/emojis/purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ emoji_id: emoji.id }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          data?.detail || data?.message || "Impossible de débloquer cet emoji."
+        );
+      }
+
+      onPurchaseSuccess({ emoji, points_balance: data?.points_balance });
+    } catch (error) {
+      alert(error?.message || "Impossible de débloquer cet emoji.");
+    } finally {
+      setSubmittingPurchase(false);
     }
   };
 
@@ -133,9 +215,9 @@ export default function AddReactionModal({
 
     if (!res.ok) {
       if (data?.error === "forbidden") {
-        alert("Tu n’as pas débloqué cet emoji.");
+        alert(data?.message || "Tu n’as pas débloqué cet emoji.");
       } else {
-        alert("Oops, impossible d’appliquer ta réaction.");
+        alert(data?.detail || data?.message || "Oops, impossible d’appliquer ta réaction.");
       }
       return;
     }
@@ -146,99 +228,143 @@ export default function AddReactionModal({
       current_reaction: data?.my_reaction || null,
     }));
     setSelected(data?.my_reaction?.emoji || null);
+    setUnlockTargetId(null);
     onClose();
   };
 
+  const purchasePromptCopy = getPurchasePromptCopy(viewer);
+
   return (
-    <Box
-      onClick={onClose}
-      sx={{
-        position: "fixed",
-        inset: 0,
-        bgcolor: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 5,
-        zIndex: 1300,
-      }}
-    >
+    <>
       <Box
-        onClick={(e) => e.stopPropagation()}
-        sx={{ width: "100%", maxWidth: 560 }}
+        onClick={onClose}
+        sx={{
+          position: "fixed",
+          inset: 0,
+          bgcolor: "rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 5,
+          zIndex: 1300,
+        }}
       >
-        <Card sx={{ borderRadius: 4 }} className="modal">
-          <CardContent>
-            <Box className="intro_small">
-              <Typography component="h1" variant="h1">
-                Réagir
-              </Typography>
-              <Typography variant="body1">
-                Choisis un emoji pour dire ce que tu as pensé de la chanson.
-              </Typography>
-            </Box>
-            {loading ? (
-              <Box>
-                <CircularProgress />
+        <Box
+          onClick={(e) => e.stopPropagation()}
+          sx={{ width: "100%", maxWidth: 560 }}
+        >
+          <Card
+            sx={{ borderRadius: 4 }}
+            className="modal"
+            onClick={() => {
+              if (unlockTargetId) setUnlockTargetId(null);
+            }}
+          >
+            <CardContent>
+              <Box className="intro_small">
+                <Typography component="h1" variant="h1">
+                  Réagir
+                </Typography>
+                <Typography variant="body1">
+                  Choisis un emoji pour dire ce que tu as pensé de la chanson.
+                </Typography>
               </Box>
-            ) : (
-              <>
-                <Box className="react_list">
-                  {catalog.actives_paid.map((emoji) => {
-                    const owned = isOwned(emoji);
-                    const isSelected = selected === emoji.char;
-
-                    const buttonClass = `react_item ${
-                      isSelected ? "selected" : ""
-                    } ${!owned ? "react_notOwned" : ""} ${
-                      emoji.cost === 0 ? "react_free" : ""
-                    }`;
-
-                    return (
-                      <Button
-                        key={emoji.id}
-                        onClick={() => onClickEmoji(emoji)}
-                        aria-label={`Emoji ${emoji.char}`}
-                        className={buttonClass}
-                      >
-                        <span className="react_emoji">{emoji.char}</span>
-
-                        {!owned && emoji.cost > 0 && (
-                          <Box className="points_container">
-                            <Typography variant="body2" component="span">
-                              {emoji.cost}
-                            </Typography>
-                            <MusicNote />
-                          </Box>
-                        )}
-                      </Button>
-                    );
-                  })}
-                </Box>
-
+              {loading ? (
                 <Box>
-                  <Button
-                    variant={hasChanged ? "contained" : "outlined"}
-                    fullWidth
-                    onClick={hasChanged ? validate : onClose}
-                  >
-                    {hasChanged ? "Valider" : "Sortir"}
-                  </Button>
+                  <CircularProgress />
                 </Box>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              ) : (
+                <>
+                  <Box className="react_list">
+                    {catalog.actives_paid.map((emoji) => {
+                      const owned = isOwned(emoji);
+                      const isSelected = selected === emoji.char;
+                      const isUnlockOpen = unlockTargetId === emoji.id;
+
+                      const itemClass = `react_item_wrap ${
+                        isSelected ? "selected" : ""
+                      } ${!owned ? "react_notOwned" : ""} ${
+                        emoji.cost === 0 ? "react_free" : ""
+                      } ${isUnlockOpen ? "unlock_open" : ""}`;
+
+                      return (
+                        <Box key={emoji.id} className={itemClass}>
+                          <Button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onClickEmoji(emoji);
+                            }}
+                            aria-label={`Emoji ${emoji.char}`}
+                            className="react_item"
+                          >
+                            <span className="react_emoji">{emoji.char}</span>
+
+                            {!owned && emoji.cost > 0 && (
+                              <Box className="points_container">
+                                <Typography variant="body2" component="span">
+                                  {emoji.cost}
+                                </Typography>
+                                <MusicNote />
+                              </Box>
+                            )}
+                          </Button>
+
+                          {isUnlockOpen ? (
+                            <Box
+                              className="unlock_cta"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <Button
+                                className="unlock_cta_button"
+                                variant="contained"
+                                disabled={submittingPurchase}
+                                onClick={() => unlockEmoji(emoji)}
+                              >
+                                Débloquer
+                              </Button>
+                            </Box>
+                          ) : null}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+
+                  <Box>
+                    <Button
+                      variant={hasChanged ? "contained" : "outlined"}
+                      fullWidth
+                      onClick={hasChanged ? validate : onClose}
+                    >
+                      {hasChanged ? "Valider" : "Sortir"}
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
       </Box>
 
-      {purchaseTarget && (
-        <PurchaseEmojiModal
-          open={!!purchaseTarget}
-          emoji={purchaseTarget}
-          onCancel={() => setPurchaseTarget(null)}
-          onUnlocked={onPurchaseSuccess}
-        />
-      )}
-    </Box>
+      <Dialog
+        open={purchasePromptOpen}
+        onClose={() => setPurchasePromptOpen(false)}
+      >
+        <DialogTitle>{purchasePromptCopy.title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">{purchasePromptCopy.message}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPurchasePromptOpen(false)}>Annuler</Button>
+          <Button
+            onClick={() => {
+              setPurchasePromptOpen(false);
+              navigate(purchasePromptCopy.target);
+            }}
+          >
+            {purchasePromptCopy.actionLabel}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

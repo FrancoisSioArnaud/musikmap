@@ -1226,6 +1226,8 @@ class PurchaseEmojiView(APIView):
         current_user = get_current_app_user(request)
         if not current_user:
             return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+        if getattr(current_user, "is_guest", False):
+            return Response({"detail": "Compte complet requis."}, status=status.HTTP_403_FORBIDDEN)
         touch_last_seen(current_user)
 
         emoji_id = request.data.get("emoji_id")
@@ -1280,6 +1282,16 @@ class ReactionView(APIView):
             return Response(
                 {"detail": "Dépôt introuvable"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_revealed_for_user = bool(
+            getattr(deposit, "user_id", None) == getattr(current_user, "id", None)
+            or DiscoveredSong.objects.filter(user=current_user, deposit=deposit).exists()
+        )
+        if not is_revealed_for_user:
+            return Response(
+                {"detail": "Écoute la chanson avant de réagir"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         if emoji_id in (None, "", 0, "none"):

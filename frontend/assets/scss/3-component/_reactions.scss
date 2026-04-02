@@ -1,39 +1,39 @@
 @use '../0-init/color' as *;
 
-.react_list{ 
+.react_list{
   display: flex;
   flex-wrap: wrap;
   padding: 26px 0;
 }
 
+.react_item_wrap{
+  position: relative;
+  width: calc(25% - 8px);
+  margin: 4px;
+}
+
+.react_item_wrap.react_free{
+  width: calc(33.3% - 8px);
+}
 
 .react_item{
   display: flex;
   flex-direction: column;
-  width: calc(25% - 8px);
+  width: 100%;
   padding: 0;
-  margin: 4px;
   border-radius: var(--mm-radius-md);
   aspect-ratio: 1 / 1;
-  height: calc(25% - 8px);
-}
-.react_free{
-  width: calc(33.3% - 8px);
+  height: auto;
 }
 
-.react_item.selected{
+.react_item_wrap.selected .react_item{
   border: dotted 3px var(--mm-color-primary);
   background-color: var(--mm-color-primary-light);
-} 
+}
 
 .react_item .points_container{
   margin: 0;
   margin-top: -15px;
-}
-
-.react_none svg{
- // height: 2em;
- // width: 2em;
 }
 
 .react_emoji{
@@ -44,9 +44,34 @@
   font-size: 1.5em;
 }
 
+.unlock_cta{
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.unlock_cta::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--mm-color-text);
+}
+
+.unlock_cta_button{
+  white-space: nowrap;
+  min-width: 0;
+}
 
 .reaction_summary_modal{
-  
+
 }
 
 .reaction_summary_modal .reactions_list{
@@ -56,14 +81,12 @@
 }
 
 .reaction_summary_modal .reaction{
-  
+
 }
 
 .reaction_summary_modal .reaction .emoji{
   padding: 0 8px;
 }
-
-
 
 .reaction_summary_modal .reaction .username{
   display: flex;

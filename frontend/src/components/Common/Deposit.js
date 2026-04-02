@@ -396,6 +396,10 @@ export default function Deposit({
             className="deposit_action_button addreaction_button addreaction_icon_button"
             onClick={(event) => {
               event.stopPropagation();
+              if (!isRevealed) {
+                window.alert("Écoute la chanson avant de réagir");
+                return;
+              }
               if (!user?.id) {
                 window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
                 return;
@@ -552,6 +556,7 @@ export default function Deposit({
           currentEmoji={myReactionEmoji}
           onApplied={handleReactionApplied}
           setUser={setUser}
+          viewer={user}
         />
 
         <ReactionSummary
@@ -693,6 +698,7 @@ export default function Deposit({
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
         setUser={setUser}
+        viewer={user}
       />
 
       <ReactionSummary
