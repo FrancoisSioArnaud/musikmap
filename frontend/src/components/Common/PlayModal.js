@@ -149,11 +149,12 @@ export default function PlayModal({ open, song, onClose, children }) {
                 }}
                 sx={{
                   minWidth: 0,
-                  width: 36,
-                  height: 36,
-                  p: 0,
-                  borderRadius: 0,
                   backgroundColor: "transparent",
+                  backgroundColor: "var(--mm-color-surface)",
+                  height: "42px",
+                  width: "42px",
+                  borderRadius: "var(--mm-radius-md)",
+                  
                 }}
               >
                 {action.renderIcon()}
