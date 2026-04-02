@@ -77,7 +77,7 @@ from .utils import (
     _looks_like_noise_text,
     _pick_best_short_text,
     _extract_import_preview_from_url,
-    _get_active_incitation_for_box,
+    _get_current_incitation_for_box,
     _build_incitation_overlap_counts,
     _get_incitation_overlap_queryset,
     _coerce_bool,
@@ -307,7 +307,7 @@ class GetBox(APIView):
             else None
         )
 
-        active_incitation = _get_active_incitation_for_box(box)
+        current_incitation = _get_current_incitation_for_box(box)
 
         data = {
             "name": box.name,
@@ -316,9 +316,8 @@ class GetBox(APIView):
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
             "search_incitation_text": (
-                active_incitation.text
-                if active_incitation
-                else DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT
+                current_incitation.text
+                if current_incitation
             ),
         }
 
