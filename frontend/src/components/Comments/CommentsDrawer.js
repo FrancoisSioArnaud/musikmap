@@ -188,7 +188,6 @@ export default function CommentsDrawer({
             <Typography variant="subtitle1" sx={{ py: 2 }}>
               Sois sympa et respectueux.
             </Typography>
-          Reste sympa et respectueux.
             <Box className="reactions_list comments_list">
               {!items.length ? (
                 <Typography variant="body1" sx={{ py: 2 }}>
