@@ -125,7 +125,7 @@ function getFloatingEmojiItems(reactions) {
       y3: `${randomBetween(-8, 8).toFixed(1)}px`,
       x4: `${randomBetween(-8, 8).toFixed(1)}px`,
       y4: `${randomBetween(-8, 8).toFixed(1)}px`,
-      rotMax: `${randomBetween(3, 7).toFixed(1)}deg`,
+      rotMax: `${randomBetween(5, 10).toFixed(1)}deg`,
       scaleMin: randomBetween(0.93, 0.98).toFixed(3),
       scaleMax: randomBetween(1.03, 1.1).toFixed(3),
     };
