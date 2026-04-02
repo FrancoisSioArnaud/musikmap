@@ -262,7 +262,7 @@ export default function LiveSearch() {
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
-      <Paper sx={{ p: 4, pb: 2 }}>
+      <Box sx={{ p: 4, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis une chanson à partager
@@ -313,9 +313,9 @@ export default function LiveSearch() {
             }}
           />
         </Stack>
-      </Paper>
+      </Box>
 
-      <Paper sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
+      <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
         {isSearching ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
             <CircularProgress size={28} />
@@ -447,7 +447,7 @@ export default function LiveSearch() {
             <Typography variant="subtitle1">{incitationText}</Typography>
           </Box>
         ) : null}
-      </Paper>
+      </Box>
     </Stack>
   );
 }
