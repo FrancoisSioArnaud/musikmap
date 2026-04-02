@@ -316,8 +316,7 @@ class GetBox(APIView):
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
             "search_incitation_text": (
-                current_incitation.text
-                if current_incitation
+                current_incitation.text if current_incitation else None
             ),
         }
 
