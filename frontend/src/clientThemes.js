@@ -60,7 +60,7 @@ export const CLIENT_THEMES = {
       paper: "1px solid #e6f0ea",
     },
     shadow: {
-      high: "rgba(0, 0, 0, .2) 0px 5px 3px",
+      high: "rgba(0, 0, 0, 0.2) 0px 5px 3px",
     }
   },
 
