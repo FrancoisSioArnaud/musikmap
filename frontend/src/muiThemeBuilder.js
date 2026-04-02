@@ -275,7 +275,7 @@ export function buildMuiTheme(clientTheme) {
           },
 
           multiline: {
-            padding: "14px 16px",
+            
           },
         },
       },
