@@ -58,6 +58,9 @@ export const CLIENT_THEMES = {
     border:{
       default: "1px solid #e6f0ea",
       paper: "1px solid #e6f0ea",
+    },
+    shadow: {
+      high: "rgba(0, 0, 0, .2) 0px 5px 3px",
     }
   },
 
