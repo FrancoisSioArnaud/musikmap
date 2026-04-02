@@ -228,18 +228,12 @@ color : var(--mm-color-secondary);
   pointer-events: none;
 }
 
-.deposit .emojis .reaction{
+.deposit .emojis .emoji{
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  width: fit-content;
+  line-height: 1;
   pointer-events: auto;
   cursor: pointer;
-}
-
-.deposit .emojis .emoji{
-  line-height: 1;
+  user-select: none;
 }
 
 .comments_drawer_modal .comments_panel{

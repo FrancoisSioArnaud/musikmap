@@ -70,13 +70,22 @@ function shuffleArray(list) {
   return next;
 }
 
-function getReactionPlacements(reactions) {
-  const list = Array.isArray(reactions) ? reactions : [];
+function getFloatingEmojis(reactions) {
+  const source = Array.isArray(reactions) ? reactions : [];
+  const list = source.flatMap((reaction, reactionIndex) => {
+    const emoji = reaction?.emoji || "";
+
+    return [0, 1, 2].map((emojiIndex) => ({
+      key: `${reaction?.user?.id || "guest"}-${emoji || "emoji"}-${reactionIndex}-${emojiIndex}`,
+      emoji,
+    }));
+  });
+
   const count = list.length;
 
   if (!count) return [];
 
-  const cols = Math.max(2, Math.ceil(Math.sqrt(count * 1.15)));
+  const cols = Math.max(3, Math.ceil(Math.sqrt(count * 1.1)));
   const rows = Math.max(2, Math.ceil(count / cols));
   const cellWidth = 100 / cols;
   const cellHeight = 100 / rows;
@@ -90,15 +99,14 @@ function getReactionPlacements(reactions) {
 
   const orderedCells = shuffleArray(cells).slice(0, count);
 
-  return list.map((reaction, index) => {
+  return list.map((item, index) => {
     const cell = orderedCells[index] || { row: 0, col: 0 };
-    const jitterX = (Math.random() - 0.5) * Math.min(12, cellWidth * 0.45);
-    const jitterY = (Math.random() - 0.5) * Math.min(12, cellHeight * 0.45);
+    const jitterX = (Math.random() - 0.5) * Math.min(10, cellWidth * 0.4);
+    const jitterY = (Math.random() - 0.5) * Math.min(10, cellHeight * 0.4);
     const rotation = (Math.random() - 0.5) * 18;
 
     return {
-      key: `${reaction?.user?.id || "guest"}-${reaction?.emoji || "emoji"}-${index}`,
-      emoji: reaction?.emoji || "",
+      ...item,
       left: (cell.col + 0.5) * cellWidth + jitterX,
       top: (cell.row + 0.5) * cellHeight + jitterY,
       rotation,
@@ -152,8 +160,8 @@ export default function Deposit({
   const reactionsDetail = Array.isArray(localDep?.reactions)
     ? localDep.reactions
     : [];
-  const reactionPlacements = useMemo(
-    () => getReactionPlacements(reactionsDetail),
+  const floatingEmojis = useMemo(
+    () => getFloatingEmojis(reactionsDetail),
     [reactionsDetail]
   );
   const reactionCount = reactionsDetail.length;
@@ -396,20 +404,21 @@ export default function Deposit({
   );
 
   const renderFloatingReactions = () => {
-    if (!reactionPlacements.length) return null;
+    if (!floatingEmojis.length) return null;
 
     return (
       <Box className="emojis">
-        {reactionPlacements.map((placement) => (
-          <Box
-            key={placement.key}
-            className="reaction"
+        {floatingEmojis.map((item) => (
+          <Typography
+            key={item.key}
+            className="emoji floating_emoji"
+            variant="h5"
             role="button"
             tabIndex={0}
             sx={{
-              left: `${placement.left}%`,
-              top: `${placement.top}%`,
-              transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
+              left: `${item.left}%`,
+              top: `${item.top}%`,
+              transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
             }}
             onClick={(event) => {
               event.stopPropagation();
@@ -423,12 +432,8 @@ export default function Deposit({
               }
             }}
           >
-            {[0, 1, 2].map((index) => (
-              <Typography key={`${placement.key}-${index}`} className="emoji" variant="h5">
-                {placement.emoji}
-              </Typography>
-            ))}
-          </Box>
+            {item.emoji}
+          </Typography>
         ))}
       </Box>
     );
