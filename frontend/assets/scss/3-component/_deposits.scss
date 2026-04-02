@@ -270,7 +270,7 @@ color : var(--mm-color-secondary);
   will-change: transform;
   animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
-  text-shadow: var(--m-shadow-high);
+  text-shadow: var(--mm-shadow-high);
   font-size:2rem;
 }
 .deposit_main .emojis .emoji{
