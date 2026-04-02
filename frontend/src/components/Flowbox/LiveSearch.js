@@ -308,7 +308,7 @@ export default function LiveSearch() {
               ),
             }}
             sx={{
-              borderRadius: "100px",
+              borderRadius: "var(--mm-radius-round);",
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
@@ -363,7 +363,7 @@ export default function LiveSearch() {
                     sx={{
                       width: 64,
                       height: 64,
-                      borderRadius: 1,
+                      borderRadius: "var(--mm-radius-xs)",
                       overflow: "hidden",
                       flexShrink: 0,
                       bgcolor: "action.hover",
@@ -440,7 +440,7 @@ export default function LiveSearch() {
               margin: "0px 16px",
               backgroundColor: "var(--mm-color-secondary-light)",
               padding: "16px 20px",
-              borderRadius: "2rem",
+              borderRadius: "var(--mm-radius-lg)",
               display: "flex",
               gap: "12px",
               alignItems: "center",
