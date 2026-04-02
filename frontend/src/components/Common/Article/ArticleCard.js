@@ -67,20 +67,35 @@ export default function ArticleCard({ article, onOpenDrawer }) {
         </Box>
       ) : null}
 
-      <Box className="content">  
+      <Box className="content">
         <Box className="linkline">
+          {article?.favicon ? (
+            <Box
+              component="img"
+              src={article.favicon}
+              alt=""
+              aria-hidden="true"
+              sx={{
+                width: 16,
+                height: 16,
+                objectFit: "contain",
+                flexShrink: 0,
+                borderRadius: "4px",
+              }}
+            />
+          ) : null}
+
           <Typography component="span" variant="body2" className="domain">
             {domainLabel || fallbackLinkLabel}
           </Typography>
+
           {domainLabel ? <OpenInNewIcon className="external_icon" fontSize="inherit" /> : null}
         </Box>
-  
-  
-  
-        <Typography component="h3" variant="h3" className="title">
+
+        <Typography component="h4" variant="h4" className="title">
           {article?.title || ""}
         </Typography>
-  
+
         {previewText ? (
           <Typography variant="body1" className="text">
             {previewText}
