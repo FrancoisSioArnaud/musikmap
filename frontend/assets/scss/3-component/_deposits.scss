@@ -98,6 +98,23 @@ color : var(--mm-color-secondary);
 }
 
 
+.deposit .deposit_action_group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.deposit .addreaction_icon_button {
+  min-width: auto;
+  padding-right: 4px;
+}
+
+.deposit .reactionsummary_button {
+  min-width: auto;
+  padding-left: 0;
+}
+
+
 .deposit .deposit_date{
 
 }
