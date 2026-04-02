@@ -128,7 +128,7 @@ export default function PlayModal({ open, song, onClose, children }) {
               left: "-9px",
               bottom: "calc(100% + 6px)",
               zIndex: 1000,
-              gap: "12px",,
+              gap: "12px",
               width: "max-content",
               overflow: "visible",
               display: "grid",
