@@ -147,7 +147,7 @@ export function buildMuiTheme(clientTheme) {
               border: "inherit",
             },
             "&:active": {
-
+               backgroundColor: clientTheme.colors.primary,
             }
           },
 
