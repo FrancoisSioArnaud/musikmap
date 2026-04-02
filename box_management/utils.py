@@ -42,13 +42,6 @@ from utils import (
     COST_REVEAL_BOX,
 )
 
-
-
-DEFAULT_FLOWBOX_SEARCH_INCITATION_TEXT = (
-    "Besoin d’inspiration ? Partage une chanson qui colle à l’ambiance du moment."
-)
-
-
 COMMENT_MAX_LENGTH = 100
 COMMENT_COOLDOWN_SECONDS = 120
 COMMENT_TARGET_USER_DAILY_LIMIT = 2
