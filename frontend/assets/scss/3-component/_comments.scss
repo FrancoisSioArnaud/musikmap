@@ -51,7 +51,8 @@
 }
 
 .comments_drawer_modal .comment_helper_text.warning {
-  color: var(--mm-color-danger, #d32f2f);
+  color: var(--mm-color-text);
+  opacity:0.7;
 }
 
 .comments_drawer_modal .comment_submit_button {
