@@ -5,9 +5,9 @@ import ClickAwayListener from "@mui/material/ClickAwayListener";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 
 const logoByPlatform = {
-  spotify: "/static/images/spotify_logo.svg",
-  deezer: "/static/images/deezer_logo.svg",
-  youtube: "/static/images/youtube_logo.svg",
+  spotify: "/static/images/spotify_logo_icon.svg",
+  deezer: "/static/images/deezer_logo_icon.svg",
+  youtube: "/static/images/youtube_logo_icon.svg",
 };
 
 export default function PlayModal({ open, song, onClose, children }) {
