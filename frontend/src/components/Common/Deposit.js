@@ -423,10 +423,24 @@ export default function Deposit({
                 setReactionRevealPromptOpen(true);
                 return;
               }
+              if (!user?.id) {
+                window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+                return;
+              }
               setAddReactionOpen(true);
             }}
           >
-            <AddReactionOutlinedIcon />
+            {myReactionEmoji ? (
+              <Typography
+                component="span"
+                className="current_reaction_emoji"
+                sx={{ fontSize: "1.35rem", lineHeight: 1 }}
+              >
+                {myReactionEmoji}
+              </Typography>
+            ) : (
+              <AddReactionOutlinedIcon />
+            )}
           </Button>
 
           {reactionCount > 0 ? (
@@ -456,21 +470,6 @@ export default function Deposit({
         {commentsCount > 0 ? `x${commentsCount}` : ""}
       </Button>
     </Box>
-  );
-
-  const reactionRevealPrompt = (
-    <Dialog
-      open={reactionRevealPromptOpen}
-      onClose={() => setReactionRevealPromptOpen(false)}
-    >
-      <DialogTitle>Réaction indisponible</DialogTitle>
-      <DialogContent>
-        <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-      </DialogActions>
-    </Dialog>
   );
 
   const renderFloatingReactions = () => {
@@ -610,7 +609,18 @@ export default function Deposit({
           viewer={user}
           onCommentsChange={handleCommentsChange}
         />
-        {reactionRevealPrompt}
+        <Dialog
+          open={reactionRevealPromptOpen}
+          onClose={() => setReactionRevealPromptOpen(false)}
+        >
+          <DialogTitle>Réaction indisponible</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
+          </DialogActions>
+        </Dialog>
 
 
       </>
@@ -753,7 +763,18 @@ export default function Deposit({
         viewer={user}
         onCommentsChange={handleCommentsChange}
       />
-      {reactionRevealPrompt}
+        <Dialog
+          open={reactionRevealPromptOpen}
+          onClose={() => setReactionRevealPromptOpen(false)}
+        >
+          <DialogTitle>Réaction indisponible</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
+          </DialogActions>
+        </Dialog>
 
     </>
   );
