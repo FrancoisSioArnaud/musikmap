@@ -423,10 +423,6 @@ export default function Deposit({
                 setReactionRevealPromptOpen(true);
                 return;
               }
-              if (!user?.id) {
-                window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
-                return;
-              }
               setAddReactionOpen(true);
             }}
           >
@@ -460,6 +456,21 @@ export default function Deposit({
         {commentsCount > 0 ? `x${commentsCount}` : ""}
       </Button>
     </Box>
+  );
+
+  const reactionRevealPrompt = (
+    <Dialog
+      open={reactionRevealPromptOpen}
+      onClose={() => setReactionRevealPromptOpen(false)}
+    >
+      <DialogTitle>Réaction indisponible</DialogTitle>
+      <DialogContent>
+        <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
+      </DialogActions>
+    </Dialog>
   );
 
   const renderFloatingReactions = () => {
@@ -599,18 +610,7 @@ export default function Deposit({
           viewer={user}
           onCommentsChange={handleCommentsChange}
         />
-        <Dialog
-          open={reactionRevealPromptOpen}
-          onClose={() => setReactionRevealPromptOpen(false)}
-        >
-          <DialogTitle>Réaction indisponible</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-          </DialogActions>
-        </Dialog>
+        {reactionRevealPrompt}
 
 
       </>
@@ -753,18 +753,7 @@ export default function Deposit({
         viewer={user}
         onCommentsChange={handleCommentsChange}
       />
-        <Dialog
-          open={reactionRevealPromptOpen}
-          onClose={() => setReactionRevealPromptOpen(false)}
-        >
-          <DialogTitle>Réaction indisponible</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-          </DialogActions>
-        </Dialog>
+      {reactionRevealPrompt}
 
     </>
   );
