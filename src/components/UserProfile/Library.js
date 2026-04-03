@@ -190,6 +190,7 @@ export default function Library() {
                       showDate={false}
                       showUser={true}
                       fitContainer={true}
+                      allowReact={true}
                       context={sessionType === "profile" ? "profile" : "box"}
                     />
                   );

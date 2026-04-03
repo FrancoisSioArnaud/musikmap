@@ -118,6 +118,7 @@ export default function Deposit({
   showDate = true,
   showUser = true,
   fitContainer = true,
+  allowReact = true,
   showPlay = true,
   context = "box",
 }) {
@@ -401,49 +402,51 @@ export default function Deposit({
 
   const depositInteractBlock = (
     <Box className="deposit_interact">
-      <Box className="deposit_action_group reactions_group">
-        <Button
-          variant="depositInteract"
-          className="deposit_action_button addreaction_button addreaction_icon_button"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (!isRevealed) {
-              setReactionRevealPromptOpen(true);
-              return;
-            }
-            if (!user?.id) {
-              window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
-              return;
-            }
-            setAddReactionOpen(true);
-          }}
-        >
-          {myReactionEmoji ? (
-            <Typography
-              component="span"
-              className="current_reaction_emoji"
-              sx={{ fontSize: "1.35rem", lineHeight: 1 }}
-            >
-              {myReactionEmoji}
-            </Typography>
-          ) : (
-            <AddReactionOutlinedIcon />
-          )}
-        </Button>
-
-        {reactionCount > 0 ? (
+      {allowReact ? (
+        <Box className="deposit_action_group reactions_group">
           <Button
             variant="depositInteract"
-            className="deposit_action_button reactionsummary_button"
+            className="deposit_action_button addreaction_button addreaction_icon_button"
             onClick={(event) => {
               event.stopPropagation();
-              setReactionSummaryOpen(true);
+              if (!isRevealed) {
+                setReactionRevealPromptOpen(true);
+                return;
+              }
+              if (!user?.id) {
+                window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+                return;
+              }
+              setAddReactionOpen(true);
             }}
           >
-            {`x${reactionCount}`}
+            {myReactionEmoji ? (
+              <Typography
+                component="span"
+                className="current_reaction_emoji"
+                sx={{ fontSize: "1.35rem", lineHeight: 1 }}
+              >
+                {myReactionEmoji}
+              </Typography>
+            ) : (
+              <AddReactionOutlinedIcon />
+            )}
           </Button>
-        ) : null}
-      </Box>
+
+          {reactionCount > 0 ? (
+            <Button
+              variant="depositInteract"
+              className="deposit_action_button reactionsummary_button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setReactionSummaryOpen(true);
+              }}
+            >
+              {`x${reactionCount}`}
+            </Button>
+          ) : null}
+        </Box>
+      ) : null}
 
       <Button
         variant="depositInteract"
