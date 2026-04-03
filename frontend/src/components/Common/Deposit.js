@@ -200,41 +200,54 @@ export default function Deposit({
     });
   }, [localDep?.public_key, setDispDeposits]);
 
-  const updateLocalStorageSnapshot = (revealedSong) => {
+  const updateLocalStorageSnapshot = useCallback((transform) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
       if (!snap) return;
 
+      const applyTransform = (item) => {
+        if (!item || item.public_key !== localDep?.public_key) return item;
+        return transform(item);
+      };
+
       let changed = false;
       const next = { ...snap };
-      const isoNow = new Date().toISOString();
 
-      if (Array.isArray(snap.olderDeposits)) {
-        next.olderDeposits = snap.olderDeposits.map((d) => {
-          if (!d || d.public_key !== localDep.public_key) return d;
+      const updateField = (fieldName) => {
+        if (!(fieldName in snap)) return;
+        const currentValue = snap[fieldName];
 
+        if (Array.isArray(currentValue)) {
+          let fieldChanged = false;
+          const nextValue = currentValue.map((item) => {
+            if (!item || item.public_key !== localDep?.public_key) return item;
+            fieldChanged = true;
+            return applyTransform(item);
+          });
+          if (fieldChanged) {
+            next[fieldName] = nextValue;
+            changed = true;
+          }
+          return;
+        }
+
+        if (currentValue && currentValue.public_key === localDep?.public_key) {
+          next[fieldName] = applyTransform(currentValue);
           changed = true;
-          return {
-            ...d,
-            discovered_at: isoNow,
-            song: {
-              ...(d.song || {}),
-              title: revealedSong.title,
-              artist: revealedSong.artist,
-              spotify_url: revealedSong.spotify_url,
-              deezer_url: revealedSong.deezer_url,
-              image_url: revealedSong.image_url || d.song?.image_url,
-            },
-          };
-        });
-      }
+        }
+      };
+
+      updateField("main");
+      updateField("myDeposit");
+      updateField("older");
+      updateField("olderDeposits");
 
       if (!changed) return;
 
       next.timestamp = Date.now();
       setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
     } catch (error) {}
-  };
+  }, [localDep?.public_key]);
 
   const getPlaySongKey = (song) => {
     if (!song) return "";
@@ -326,7 +339,18 @@ export default function Deposit({
         },
       }));
 
-      updateLocalStorageSnapshot(revealed);
+      updateLocalStorageSnapshot((item) => ({
+        ...item,
+        discovered_at: isoNow,
+        song: {
+          ...(item?.song || {}),
+          title: revealed.title,
+          artist: revealed.artist,
+          spotify_url: revealed.spotify_url,
+          deezer_url: revealed.deezer_url,
+          image_url: revealed.image_url || item?.song?.image_url,
+        },
+      }));
 
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((prev) => ({ ...(prev || {}), points: payload.points_balance }));
@@ -360,6 +384,16 @@ export default function Deposit({
     }));
 
     updateDepositCollections((item) => ({
+      ...item,
+      my_reaction: result?.my_reaction || null,
+      reactions_summary: Array.isArray(result?.reactions_summary)
+        ? result.reactions_summary
+        : [],
+      reactions: nextReactions,
+      comments: nextComments,
+    }));
+
+    updateLocalStorageSnapshot((item) => ({
       ...item,
       my_reaction: result?.my_reaction || null,
       reactions_summary: Array.isArray(result?.reactions_summary)
@@ -430,17 +464,7 @@ export default function Deposit({
               setAddReactionOpen(true);
             }}
           >
-            {myReactionEmoji ? (
-              <Typography
-                component="span"
-                className="current_reaction_emoji"
-                sx={{ fontSize: "1.35rem", lineHeight: 1 }}
-              >
-                {myReactionEmoji}
-              </Typography>
-            ) : (
-              <AddReactionOutlinedIcon />
-            )}
+            <AddReactionOutlinedIcon />
           </Button>
 
           {reactionCount > 0 ? (
