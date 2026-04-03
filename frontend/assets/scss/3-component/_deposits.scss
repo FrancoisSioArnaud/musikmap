@@ -273,10 +273,6 @@ color : var(--mm-color-secondary);
   text-shadow: var(--mm-shadow-high);
   font-size:2rem;
 }
-.react_list .react_item_wrap.selected, .reaction_summary_panel .reactions_list .emoji{
-  animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
-  animation-delay: var(--float-delay, 0s);  
-}
 
 .deposit_main .emojis .emoji{
     font-size: 4rem;
