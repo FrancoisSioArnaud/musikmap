@@ -66,6 +66,7 @@ from .utils import (
     _build_song_from_instance,
     _get_prev_head_and_older,
     _build_reactions_from_instance,
+    _build_user_from_instance,
     _get_active_client_user_or_response,
     _ArticleImportHTMLParser,
     _collapse_article_text,
@@ -628,6 +629,15 @@ class ManageDiscoveredSongs(APIView):
         if discovered_type not in ("main", "revealed"):
             discovered_type = "revealed"
 
+        context = request.data.get("context")
+        if context in (None, ""):
+            context = "box"
+        if context not in ("box", "profile"):
+            return Response(
+                {"error": "Contexte invalide."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             deposit = (
                 Deposit.objects
@@ -650,6 +660,7 @@ class ManageDiscoveredSongs(APIView):
             user=user,
             deposit=deposit,
             discovered_type=discovered_type,
+            context=context,
         )
 
         return Response({"success": True}, status=status.HTTP_200_OK)
@@ -731,94 +742,155 @@ class ManageDiscoveredSongs(APIView):
             return {
                 **base,
                 "type": ds_obj.discovered_type,
+                "context": ds_obj.context or "box",
                 "discovered_at": ds_obj.discovered_at.isoformat(),
                 "deposit_id": dep.pk,
             }
 
-        main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
-
         sessions_all = []
         consumed = [False] * len(events)
 
-        for idx, mi in enumerate(main_indices):
-            main_ds = events[mi]
+        box_main_indices = [
+            i
+            for i, event in enumerate(events)
+            if (event.context or "box") == "box" and event.discovered_type == "main"
+        ]
+
+        for idx, main_index in enumerate(box_main_indices):
+            main_ds = events[main_index]
             box = main_ds.deposit.box
-            start = main_ds.discovered_at
-            deadline = start + timedelta(seconds=3600)
-            end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
+            if not box:
+                consumed[main_index] = True
+                continue
+
+            next_main_index = (
+                box_main_indices[idx + 1]
+                if (idx + 1) < len(box_main_indices)
+                else len(events)
+            )
 
             deposits_list = [deposit_payload(main_ds)]
-            consumed[mi] = True
+            consumed[main_index] = True
 
-            for j in range(mi + 1, end):
-                ds = events[j]
+            for event_index in range(main_index + 1, next_main_index):
+                ds = events[event_index]
+                if consumed[event_index]:
+                    continue
+                if (ds.context or "box") != "box":
+                    continue
                 if ds.discovered_type != "revealed":
                     continue
                 if ds.deposit.box_id != box.id:
                     continue
-                if ds.discovered_at <= deadline:
-                    deposits_list.append(deposit_payload(ds))
-                    consumed[j] = True
+
+                deposits_list.append(deposit_payload(ds))
+                consumed[event_index] = True
 
             sessions_all.append({
-                "session_id": str(main_ds.id),
+                "session_id": f"box-{main_ds.id}",
+                "session_type": "box",
                 "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": start.isoformat(),
+                "started_at": main_ds.discovered_at.isoformat(),
                 "deposits": deposits_list,
             })
 
-        next_main_pos_from = [None] * len(events)
-        next_idx = None
-        for i in range(len(events) - 1, -1, -1):
-            next_main_pos_from[i] = next_idx
-            if events[i].discovered_type == "main":
-                next_idx = i
+        next_box_main_pos_from = [None] * len(events)
+        next_box_main_idx = None
+        for index in range(len(events) - 1, -1, -1):
+            next_box_main_pos_from[index] = next_box_main_idx
+            event = events[index]
+            if (event.context or "box") == "box" and event.discovered_type == "main":
+                next_box_main_idx = index
 
-        orph_counter = 0
-        i = 0
-        while i < len(events):
-            if consumed[i] or events[i].discovered_type != "revealed":
-                i += 1
+        orphan_counter = 0
+        index = 0
+        while index < len(events):
+            event = events[index]
+
+            if consumed[index]:
+                index += 1
                 continue
 
-            start_ds = events[i]
-            box = start_ds.deposit.box
-            start = start_ds.discovered_at
-            deadline = start + timedelta(seconds=3600)
-            stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
+            event_context = event.context or "box"
 
-            deposits_list = [deposit_payload(start_ds)]
-            consumed[i] = True
+            if event_context == "profile":
+                owner = event.deposit.user
+                owner_id = getattr(owner, "id", None)
+                deposits_list = []
+                start = event.discovered_at
+                session_indices = []
 
-            j = i + 1
-            while j is not None and j < stop_at:
-                if consumed[j]:
-                    j += 1
-                    continue
-                ds2 = events[j]
-                if (
-                    ds2.discovered_type == "revealed"
-                    and ds2.deposit.box_id == box.id
-                    and ds2.discovered_at <= deadline
-                ):
-                    deposits_list.append(deposit_payload(ds2))
-                    consumed[j] = True
-                    j += 1
-                    continue
-                if ds2.discovered_type == "main":
-                    break
-                j += 1
+                cursor = index
+                while cursor < len(events):
+                    current = events[cursor]
+                    current_context = current.context or "box"
+                    current_owner_id = getattr(current.deposit.user, "id", None)
+                    if current_context != "profile" or current_owner_id != owner_id:
+                        break
 
-            sessions_all.append({
-                "session_id": f"orph-{orph_counter}",
-                "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": start.isoformat(),
-                "deposits": deposits_list,
-            })
-            orph_counter += 1
-            i = j if j is not None else (i + 1)
+                    deposits_list.append(deposit_payload(current))
+                    session_indices.append(cursor)
+                    cursor += 1
 
-        sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
+                for consumed_index in session_indices:
+                    consumed[consumed_index] = True
+
+                sessions_all.append({
+                    "session_id": f"profile-{event.id}",
+                    "session_type": "profile",
+                    "profile_user": _build_user_from_instance(owner),
+                    "started_at": start.isoformat(),
+                    "deposits": deposits_list,
+                })
+                index = cursor
+                continue
+
+            if event.discovered_type == "revealed":
+                box = event.deposit.box
+                if box:
+                    stop_at = (
+                        next_box_main_pos_from[index]
+                        if next_box_main_pos_from[index] is not None
+                        else len(events)
+                    )
+
+                    deposits_list = [deposit_payload(event)]
+                    consumed[index] = True
+
+                    cursor = index + 1
+                    while cursor < stop_at:
+                        current = events[cursor]
+                        if consumed[cursor]:
+                            cursor += 1
+                            continue
+                        if (current.context or "box") != "box":
+                            cursor += 1
+                            continue
+                        if current.discovered_type != "revealed":
+                            if current.discovered_type == "main":
+                                break
+                            cursor += 1
+                            continue
+                        if current.deposit.box_id != box.id:
+                            cursor += 1
+                            continue
+
+                        deposits_list.append(deposit_payload(current))
+                        consumed[cursor] = True
+                        cursor += 1
+
+                    sessions_all.append({
+                        "session_id": f"orph-{orphan_counter}",
+                        "session_type": "box",
+                        "box": {"id": box.id, "name": box.name, "url": box.url},
+                        "started_at": event.discovered_at.isoformat(),
+                        "deposits": deposits_list,
+                    })
+                    orphan_counter += 1
+
+            index += 1
+
+        sessions_all.sort(key=lambda session: session["started_at"], reverse=True)
 
         total_sessions = len(sessions_all)
         slice_start = offset

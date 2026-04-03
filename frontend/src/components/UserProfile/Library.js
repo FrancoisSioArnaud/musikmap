@@ -6,6 +6,7 @@ import React, {
   useContext,
   useCallback,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
@@ -16,6 +17,7 @@ import Deposit from "../Common/Deposit";
 import { formatRelativeTime } from "../Utils/time";
 
 export default function Library() {
+  const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
   const [sessions, setSessions] = useState([]);
@@ -101,34 +103,74 @@ export default function Library() {
   return (
     <Box sx={{display: "grid", gap: 5, p: 5}}>
       {sessions.map((sess) => {
+        const sessionType = sess?.session_type === "profile" ? "profile" : "box";
+        const profileUser = sess?.profile_user || null;
+        const profileLabel = profileUser?.display_name || profileUser?.username || "profil inconnu";
+        const canOpenProfile = Boolean(profileUser?.username);
+
         return (
-          <Box key={sess.session_id} sx={{ display: "grid"}}>
-            {/* Header de session */}
+          <Box key={sess.session_id} sx={{ display: "grid" }}>
             <Box
               sx={{
                 display: "flex",
                 flexDirection: "column",
                 m: "16px",
+                gap: 0.5,
               }}
             >
               <Typography
                 variant="h5"
                 component="h2"
-                sx={{ textAlign: "center"}}
+                sx={{ textAlign: "center" }}
               >
                 Découverte {formatRelativeTime(sess?.started_at)}
               </Typography>
-              <Typography
-                variant="h5"
-                component="h2"
-                sx={{ textAlign: "center" }}
-              >
-                à {sess?.box?.name ?? "Inconnue"}
-              </Typography>
 
+              {sessionType === "profile" ? (
+                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                  <Typography variant="h5" component="h2">
+                    sur le profil de
+                  </Typography>
+                  <Box
+                    role={canOpenProfile ? "button" : undefined}
+                    tabIndex={canOpenProfile ? 0 : undefined}
+                    onClick={() => {
+                      if (!canOpenProfile) return;
+                      navigate(`/profile/${profileUser.username}`);
+                    }}
+                    onKeyDown={(event) => {
+                      if (!canOpenProfile) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate(`/profile/${profileUser.username}`);
+                      }
+                    }}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      cursor: canOpenProfile ? "pointer" : "default",
+                    }}
+                  >
+                    <Typography variant="h5" component="h2">
+                      {profileLabel}
+                    </Typography>
+                    <Typography component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
+                      →
+                    </Typography>
+                  </Box>
+                </Box>
+              ) : (
+                <Typography
+                  variant="h5"
+                  component="h2"
+                  sx={{ textAlign: "center" }}
+                >
+                  à {sess?.box?.name ?? "Inconnue"}
+                </Typography>
+              )}
             </Box>
 
-            {/* Dépôts de la session */}
             <Box sx={{ display: "grid", gap: 4 }}>
               {Array.isArray(sess?.deposits) &&
                 sess.deposits.map((d, idx) => {
@@ -145,7 +187,7 @@ export default function Library() {
                       showUser={true}
                       fitContainer={true}
                       allowReact={true}
-                      context="profile"
+                      context={sessionType === "profile" ? "profile" : "box"}
                     />
                   );
                 })}
