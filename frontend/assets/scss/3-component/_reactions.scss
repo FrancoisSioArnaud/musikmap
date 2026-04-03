@@ -15,7 +15,9 @@
 .react_item_wrap.react_free{
   width: calc(33.3% - 8px);
 }
-
+.react_item_wrap:not(.react_notOwned, .react_free) .react_emoji{
+  line-height: 1;
+}
 .react_item{
   display: flex;
   flex-direction: column;
