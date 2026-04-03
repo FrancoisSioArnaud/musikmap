@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
 import Box from "@mui/material/Box";
@@ -16,6 +16,13 @@ import TextField from "@mui/material/TextField";
 
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
+import {
+  getProfilePageStateKey,
+  readPageState,
+  restoreScrollWhenReady,
+  savePageScroll,
+  saveProfileTabState,
+} from "./Utils/pageStateStorage";
 
 function TabPanel({ index, value, children }) {
   if (value !== index) return null;
@@ -45,14 +52,19 @@ async function fetchUserInfo(username, signal) {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const { user } = useContext(UserContext) || {};
 
   const routeUsername = (params?.username || "").trim();
+  const pageStateKey = getProfilePageStateKey(location);
   const isOwner = !routeUsername && Boolean(user?.id);
   const isGuestOwner = Boolean(isOwner && user?.is_guest);
 
-  const [tab, setTab] = useState(0);
+  const initialProfileState = readPageState(pageStateKey);
+  const [tab, setTab] = useState(
+    typeof initialProfileState?.tab === "number" ? initialProfileState.tab : 0
+  );
   const [guestUsernameDraft, setGuestUsernameDraft] = useState("");
   const [header, setHeader] = useState({
     status: "loading",
@@ -61,12 +73,36 @@ export default function UserProfilePage() {
   const headerAbortRef = useRef(null);
 
   useEffect(() => {
-    setTab(0);
-  }, [routeUsername, user?.id]);
+    const savedState = readPageState(pageStateKey);
+    setTab(typeof savedState?.tab === "number" ? savedState.tab : 0);
+  }, [pageStateKey]);
 
   useEffect(() => {
     setGuestUsernameDraft("");
   }, [user?.id]);
+
+  useEffect(() => {
+    saveProfileTabState(pageStateKey, tab);
+  }, [pageStateKey, tab]);
+
+  useEffect(() => {
+    let timeoutId = null;
+
+    const onScroll = () => {
+      if (timeoutId) return;
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null;
+        savePageScroll(pageStateKey, window.scrollY);
+      }, 150);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+      savePageScroll(pageStateKey, window.scrollY);
+    };
+  }, [pageStateKey]);
 
   useEffect(() => {
     if (headerAbortRef.current) headerAbortRef.current.abort();
@@ -95,11 +131,17 @@ export default function UserProfilePage() {
         return;
       }
 
-      const { ok, status, data } = await fetchUserInfo(routeUsername, controller.signal);
+      const { ok, status, data } = await fetchUserInfo(
+        routeUsername,
+        controller.signal
+      );
       if (controller.signal.aborted) return;
 
       if (!ok) {
-        setHeader({ status: status === 404 ? "not_found" : "error", user: null });
+        setHeader({
+          status: status === 404 ? "not_found" : "error",
+          user: null,
+        });
         return;
       }
 
@@ -109,7 +151,8 @@ export default function UserProfilePage() {
           username: data?.username || routeUsername,
           display_name: data?.display_name || data?.username || routeUsername,
           profile_picture_url: data?.profile_picture_url || null,
-          total_deposits: typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+          total_deposits:
+            typeof data?.total_deposits === "number" ? data.total_deposits : 0,
           is_guest: false,
         },
       });
@@ -119,10 +162,23 @@ export default function UserProfilePage() {
     return () => controller.abort();
   }, [routeUsername, isOwner, user]);
 
+  useEffect(() => {
+    const isReady =
+      header.status === "ready" ||
+      header.status === "not_found" ||
+      header.status === "error";
+
+    return restoreScrollWhenReady(pageStateKey, isReady);
+  }, [pageStateKey, header.status, tab]);
+
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();
     if (!nextUsername) return;
-    navigate(`/register?merge_guest=1&prefill_username=${encodeURIComponent(nextUsername)}`);
+    navigate(
+      `/register?merge_guest=1&prefill_username=${encodeURIComponent(
+        nextUsername
+      )}`
+    );
   };
 
   if (header.status === "loading") {
@@ -146,14 +202,18 @@ export default function UserProfilePage() {
   if (header.status === "error") {
     return (
       <Box sx={{ pb: 8, p: 2 }}>
-        <Typography>Une erreur s&apos;est produite, veuillez réessayer ulterieurement</Typography>
+        <Typography>
+          Une erreur s&apos;est produite, veuillez réessayer ulterieurement
+        </Typography>
       </Box>
     );
   }
 
   const headerUser = header.user || {};
   const totalDeposits = headerUser?.total_deposits ?? 0;
-  const depositsLabel = `${totalDeposits} partage${totalDeposits > 1 ? "s" : ""}`;
+  const depositsLabel = `${totalDeposits} partage${
+    totalDeposits > 1 ? "s" : ""
+  }`;
   const trimmedGuestUsername = guestUsernameDraft.trim();
 
   return (
@@ -168,7 +228,10 @@ export default function UserProfilePage() {
         }}
       >
         {isOwner && !isGuestOwner && (
-          <IconButton aria-label="Réglages" onClick={() => navigate("/profile/settings")}>
+          <IconButton
+            aria-label="Réglages"
+            onClick={() => navigate("/profile/settings")}
+          >
             <SettingsIcon size="large" />
           </IconButton>
         )}
@@ -188,10 +251,10 @@ export default function UserProfilePage() {
           alt={headerUser?.display_name || ""}
           sx={{ width: 64, height: 64 }}
         />
-        
+
         {isGuestOwner ? (
           <>
-            <Box sx={{ display: "flex", flexDirection:"column", gap:"4px" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
                 <TextField
                   fullWidth
@@ -200,7 +263,7 @@ export default function UserProfilePage() {
                   onChange={(event) => setGuestUsernameDraft(event.target.value)}
                   inputProps={{ maxLength: 150 }}
                   autoFocus
-                  sx={{width:"auto"}}
+                  sx={{ width: "auto" }}
                 />
                 <Button
                   variant="contained"
@@ -211,21 +274,26 @@ export default function UserProfilePage() {
                   Valider
                 </Button>
               </Box>
-              <Typography variant="body2" sx={{ opacity:"0.7", padding: "0 6px"}}>
-                  {user.username}     
+              <Typography variant="body2" sx={{ opacity: "0.7", padding: "0 6px" }}>
+                {user.username}
               </Typography>
             </Box>
           </>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <Box
+            sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+          >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
             {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
         )}
 
-
         {isOwner && !isGuestOwner && (
-          <IconButton aria-label="Modifier" onClick={() => navigate("/profile/edit")} size="small">
+          <IconButton
+            aria-label="Modifier"
+            onClick={() => navigate("/profile/edit")}
+            size="small"
+          >
             <EditIcon />
           </IconButton>
         )}

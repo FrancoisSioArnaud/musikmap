@@ -1,6 +1,6 @@
 // frontend/src/components/Flowbox/Discover.js
-import React, { useEffect, useState, useContext, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -14,6 +14,11 @@ import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { UserContext } from "../UserContext";
 import { getValid } from "../Utils/mmStorage";
+import {
+  getDiscoverPageStateKey,
+  restoreScrollWhenReady,
+  savePageScroll,
+} from "../Utils/pageStateStorage";
 import ArticleCard from "../Common/Article/ArticleCard";
 import ArticleDrawer from "../Common/Article/ArticleDrawer";
 
@@ -22,6 +27,7 @@ const MAX_VISIBLE_ARTICLES = 5;
 
 export default function Discover() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
 
@@ -29,6 +35,9 @@ export default function Discover() {
   const [openAchievements, setOpenAchievements] = useState(false);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
+
+  const pageStateKey = getDiscoverPageStateKey(location);
+  const scrollSaveTimeoutRef = useRef(null);
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
@@ -79,6 +88,29 @@ export default function Discover() {
       cancelled = true;
     };
   }, [boxSlug]);
+
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (scrollSaveTimeoutRef.current) return;
+      scrollSaveTimeoutRef.current = window.setTimeout(() => {
+        scrollSaveTimeoutRef.current = null;
+        savePageScroll(pageStateKey, window.scrollY);
+      }, 150);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+        scrollSaveTimeoutRef.current = null;
+      }
+      savePageScroll(pageStateKey, window.scrollY);
+    };
+  }, [pageStateKey]);
+
+  useEffect(() => restoreScrollWhenReady(pageStateKey, Boolean(boxContent)), [pageStateKey, boxContent]);
 
   const myDeposit = boxContent?.myDeposit || null;
   const mySong = myDeposit?.song || null;
