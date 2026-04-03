@@ -55,18 +55,6 @@ function writeRaw(key, payload) {
   } catch {}
 }
 
-function getDocumentScrollHeight() {
-  const body = document.body;
-  const docEl = document.documentElement;
-  return Math.max(
-    body?.scrollHeight || 0,
-    body?.offsetHeight || 0,
-    docEl?.clientHeight || 0,
-    docEl?.scrollHeight || 0,
-    docEl?.offsetHeight || 0
-  );
-}
-
 export function getDiscoverPageStateKey(locationLike) {
   const pathname = locationLike?.pathname || "";
   const search = locationLike?.search || "";
@@ -99,63 +87,33 @@ export function saveProfileTabState(key, tab) {
   });
 }
 
-export function restoreScrollWhenReady(key, isReady, options = {}) {
+export function restoreScrollWhenReady(key, isReady) {
   if (!isReady) return () => {};
 
   const state = readRaw(key);
   const targetY = typeof state?.scrollY === "number" ? state.scrollY : null;
   if (targetY === null) return () => {};
 
-  const maxWaitMs =
-    typeof options?.maxWaitMs === "number" ? options.maxWaitMs : 5000;
-  const settleFrames =
-    typeof options?.settleFrames === "number" ? options.settleFrames : 10;
-  const tolerance =
-    typeof options?.tolerance === "number" ? options.tolerance : 4;
-
-  let cancelled = false;
-  let rafId = null;
+  let attempts = 0;
   let timeoutId = null;
-  let stableFrames = 0;
-  const startedAt = Date.now();
+  let cancelled = false;
 
   const tryRestore = () => {
     if (cancelled) return;
+    window.scrollTo(0, targetY);
+    attempts += 1;
 
-    const scrollHeight = getDocumentScrollHeight();
-    const maxScrollableY = Math.max(0, scrollHeight - window.innerHeight);
-    const targetWithinPage = maxScrollableY >= targetY;
-    const nextY = Math.min(targetY, maxScrollableY);
-
-    window.scrollTo(0, nextY);
-
-    const reachedTarget = Math.abs(window.scrollY - nextY) <= tolerance;
-    const expired = Date.now() - startedAt >= maxWaitMs;
-
-    if ((targetWithinPage && reachedTarget) || expired) {
-      stableFrames += 1;
-    } else {
-      stableFrames = 0;
+    if (attempts < 10) {
+      timeoutId = window.setTimeout(tryRestore, 120);
     }
-
-    if (stableFrames >= settleFrames) {
-      return;
-    }
-
-    rafId = window.requestAnimationFrame(tryRestore);
   };
 
-  timeoutId = window.setTimeout(() => {
-    rafId = window.requestAnimationFrame(tryRestore);
-  }, 0);
+  timeoutId = window.setTimeout(tryRestore, 0);
 
   return () => {
     cancelled = true;
     if (timeoutId) {
       window.clearTimeout(timeoutId);
-    }
-    if (rafId) {
-      window.cancelAnimationFrame(rafId);
     }
   };
 }

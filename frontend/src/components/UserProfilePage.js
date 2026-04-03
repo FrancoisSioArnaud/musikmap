@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef, useCallback } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
@@ -70,15 +70,11 @@ export default function UserProfilePage() {
     status: "loading",
     user: null,
   });
-  const [libraryReady, setLibraryReady] = useState(false);
-  const [sharesReady, setSharesReady] = useState(false);
   const headerAbortRef = useRef(null);
 
   useEffect(() => {
     const savedState = readPageState(pageStateKey);
     setTab(typeof savedState?.tab === "number" ? savedState.tab : 0);
-    setLibraryReady(false);
-    setSharesReady(false);
   }, [pageStateKey]);
 
   useEffect(() => {
@@ -109,9 +105,6 @@ export default function UserProfilePage() {
   }, [pageStateKey]);
 
   useEffect(() => {
-    setLibraryReady(false);
-    setSharesReady(false);
-
     if (headerAbortRef.current) headerAbortRef.current.abort();
     const controller = new AbortController();
     headerAbortRef.current = controller;
@@ -169,26 +162,14 @@ export default function UserProfilePage() {
     return () => controller.abort();
   }, [routeUsername, isOwner, user]);
 
-  const handleLibraryInitialLoadComplete = useCallback(() => {
-    setLibraryReady(true);
-  }, []);
-
-  const handleSharesInitialLoadComplete = useCallback(() => {
-    setSharesReady(true);
-  }, []);
-
-  const isHeaderResolved =
-    header.status === "ready" ||
-    header.status === "not_found" ||
-    header.status === "error";
-
-  const isProfilePageReady = isOwner
-    ? isHeaderResolved && (tab === 0 ? libraryReady : sharesReady)
-    : isHeaderResolved && sharesReady;
-
   useEffect(() => {
-    return restoreScrollWhenReady(pageStateKey, isProfilePageReady);
-  }, [pageStateKey, isProfilePageReady]);
+    const isReady =
+      header.status === "ready" ||
+      header.status === "not_found" ||
+      header.status === "error";
+
+    return restoreScrollWhenReady(pageStateKey, isReady);
+  }, [pageStateKey, header.status, tab]);
 
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();
@@ -326,26 +307,15 @@ export default function UserProfilePage() {
           </Tabs>
 
           <TabPanel value={tab} index={0}>
-            <Library onInitialLoadComplete={handleLibraryInitialLoadComplete} />
+            <Library />
           </TabPanel>
 
           <TabPanel value={tab} index={1}>
-            <Shares
-              me={true}
-              user={user}
-              autoLoad={true}
-              onInitialLoadComplete={handleSharesInitialLoadComplete}
-            />
+            <Shares me={true} user={user} autoLoad={true} />
           </TabPanel>
         </>
       ) : (
-        <Shares
-          username={routeUsername}
-          me={false}
-          user={user}
-          autoLoad={true}
-          onInitialLoadComplete={handleSharesInitialLoadComplete}
-        />
+        <Shares username={routeUsername} me={false} user={user} autoLoad={true} />
       )}
     </Box>
   );

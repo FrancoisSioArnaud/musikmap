@@ -34,7 +34,6 @@ export default function Discover() {
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
   const [articles, setArticles] = useState([]);
-  const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   const pageStateKey = getDiscoverPageStateKey(location);
@@ -58,7 +57,6 @@ export default function Discover() {
 
   useEffect(() => {
     let cancelled = false;
-    setArticlesLoaded(false);
 
     (async () => {
       try {
@@ -79,11 +77,9 @@ export default function Discover() {
         if (cancelled) return;
 
         setArticles(Array.isArray(data) ? data : []);
-        setArticlesLoaded(true);
       } catch {
         if (!cancelled) {
           setArticles([]);
-          setArticlesLoaded(true);
         }
       }
     })();
@@ -92,6 +88,7 @@ export default function Discover() {
       cancelled = true;
     };
   }, [boxSlug]);
+
 
   useEffect(() => {
     const onScroll = () => {
@@ -113,11 +110,7 @@ export default function Discover() {
     };
   }, [pageStateKey]);
 
-  const isDiscoverPageReady = Boolean(boxContent) && articlesLoaded;
-
-  useEffect(() => {
-    return restoreScrollWhenReady(pageStateKey, isDiscoverPageReady);
-  }, [pageStateKey, isDiscoverPageReady]);
+  useEffect(() => restoreScrollWhenReady(pageStateKey, Boolean(boxContent)), [pageStateKey, boxContent]);
 
   const myDeposit = boxContent?.myDeposit || null;
   const mySong = myDeposit?.song || null;
@@ -176,7 +169,7 @@ export default function Discover() {
 
       <Box className="my_deposit_notif">
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
-          <CheckCircleIcon fontSize="medium" sx={{}} />
+          <CheckCircleIcon fontSize="medium" sx={{ }} />
           <Typography component="h2" variant="h5">
             Chanson déposée avec succès
           </Typography>
@@ -229,37 +222,77 @@ export default function Discover() {
           <Typography component="span" variant="body1">
             +{totalPoints}
           </Typography>
-          <MusicNote fontSize="small" />
+          <MusicNote />
+          <Typography component="span" variant="body1" sx={{ paddingRight: "6px" }}>
+            Voir le détail
+          </Typography>
         </Box>
       </Box>
 
-      {mainDep ? (
-        <Deposit dep={mainDep} user={user} variant="main" fitContainer={true} />
-      ) : null}
+      <Box className="intro">
+        <Typography component="h2" variant="h1">
+          Bonne écoute !
+        </Typography>
+        <Typography component="span" variant="body1">
+          Découvre la chanson déposée par le passant·e précédent
+        </Typography>
+      </Box>
 
-      {articles.length ? (
-        <Box sx={{ display: "grid", gap: 2, p: 5 }}>
-          {articles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              onClick={() => handleOpenArticleDrawer(article)}
-            />
-          ))}
+      {mainDep ? (
+        <Box sx={{ margin: "0 20px" }}>
+          <Deposit
+            dep={mainDep}
+            user={user}
+            variant="main"
+            allowReact={true}
+            showPlay={true}
+            showUser={true}
+          />
         </Box>
       ) : null}
 
-      {olderDeposits.length ? (
-        <Box sx={{ display: "grid", gap: 5, p: 5 }}>
-          {olderDeposits.map((dep) => (
-            <Deposit
-              key={dep.public_key || dep.id}
-              dep={dep}
-              user={user}
-              variant="list"
-              fitContainer={true}
-            />
-          ))}
+      {articles.length > 0 ? (
+        <Box className="articles_section">
+          <Box className="articles_list">
+            {articles.map((article, idx) => (
+              <ArticleCard
+                key={article?.id || `${article?.link || article?.title || "article"}-${idx}`}
+                article={article}
+                onOpenDrawer={handleOpenArticleDrawer}
+              />
+            ))}
+          </Box>
+        </Box>
+      ) : null}
+
+      {olderDeposits.length > 0 ? (
+        <Box id="older_deposits">
+          <Box className="intro" sx={{ p: 4 }}>
+            <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
+              Quelques partages plus anciens
+            </Typography>
+            <Typography component="p" variant="body1">
+              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les
+              révéler.
+            </Typography>
+          </Box>
+
+          <Box id="older_deposits_list">
+            {olderDeposits.map((d, idx) => (
+              <Deposit
+                key={d.public_key || idx}
+                dep={d}
+                user={user}
+                variant="list"
+                allowReact={true}
+                showPlay={true}
+                showUser={true}
+              />
+            ))}
+            <Typography component="p" variant="body1" sx={{ textAlign: "center" }}>
+              Reviens nous voir bientôt, de nouvelles chansons auront été partagées
+            </Typography>
+          </Box>
         </Box>
       ) : null}
     </Box>

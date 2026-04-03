@@ -16,7 +16,7 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import Deposit from "../Common/Deposit";
 import { formatRelativeTime } from "../Utils/time";
 
-export default function Library({ onInitialLoadComplete = null }) {
+export default function Library() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
@@ -25,7 +25,6 @@ export default function Library({ onInitialLoadComplete = null }) {
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
   const [limit] = useState(10);
-  const [loadedOnce, setLoadedOnce] = useState(false);
 
   const loadingRef = useRef(false);
 
@@ -55,10 +54,8 @@ export default function Library({ onInitialLoadComplete = null }) {
       } else {
         console.error("HTTP", res.status, data);
       }
-      setLoadedOnce(true);
     } catch (e) {
       console.error(e);
-      setLoadedOnce(true);
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -69,7 +66,6 @@ export default function Library({ onInitialLoadComplete = null }) {
     setSessions([]);
     setHasMore(true);
     setNextOffset(0);
-    setLoadedOnce(false);
   }, []);
 
   useEffect(() => {
@@ -77,12 +73,6 @@ export default function Library({ onInitialLoadComplete = null }) {
       fetchSessions();
     }
   }, [sessions.length, hasMore, fetchSessions]);
-
-  useEffect(() => {
-    if (!onInitialLoadComplete) return;
-    if (!loadedOnce || loading) return;
-    onInitialLoadComplete();
-  }, [onInitialLoadComplete, loadedOnce, loading]);
 
   useEffect(() => {
     function onScroll() {
