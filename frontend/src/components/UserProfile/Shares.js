@@ -148,6 +148,7 @@ export default function Shares({ username, me = false, user, autoLoad }) {
             key={it?.public_key ?? it?.id ?? JSON.stringify(it)}
             dep={it}
             user={user}
+            setDispDeposits={setItems}
             variant="list"
             fitContainer={true}
             showUser={false}

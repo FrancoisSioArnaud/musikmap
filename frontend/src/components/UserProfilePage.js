@@ -87,23 +87,23 @@ export default function UserProfilePage() {
     const controller = new AbortController();
     headerAbortRef.current = controller;
 
+    if (isOwner && user?.id) {
+      setHeader({
+        status: "ready",
+        user: {
+          username: user?.is_guest ? null : user?.username || null,
+          display_name: user?.display_name || user?.username || "Invité",
+          profile_picture_url: user?.profile_picture_url || null,
+          total_deposits: null,
+          is_guest: Boolean(user?.is_guest),
+        },
+      });
+      return () => controller.abort();
+    }
+
     setHeader({ status: "loading", user: null });
 
     async function load() {
-      if (isOwner && user?.id) {
-        setHeader({
-          status: "ready",
-          user: {
-            username: user?.is_guest ? null : user?.username || null,
-            display_name: user?.display_name || user?.username || "Invité",
-            profile_picture_url: user?.profile_picture_url || null,
-            total_deposits: null,
-            is_guest: Boolean(user?.is_guest),
-          },
-        });
-        return;
-      }
-
       if (!routeUsername) {
         setHeader({ status: "error", user: null });
         return;
@@ -138,7 +138,15 @@ export default function UserProfilePage() {
 
     load();
     return () => controller.abort();
-  }, [routeUsername, isOwner, user]);
+  }, [
+    routeUsername,
+    isOwner,
+    user?.id,
+    user?.username,
+    user?.display_name,
+    user?.profile_picture_url,
+    user?.is_guest,
+  ]);
 
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();

@@ -320,7 +320,9 @@ export default function Deposit({
         setUser((prev) => ({ ...(prev || {}), points: payload.points_balance }));
       }
 
-      setSnackOpen((prev) => !prev);
+      if (context !== "profile") {
+        setSnackOpen((prev) => !prev);
+      }
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
     }
