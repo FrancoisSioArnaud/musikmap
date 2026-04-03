@@ -152,6 +152,7 @@ export default function Shares({ username, me = false, user, autoLoad }) {
             fitContainer={true}
             showUser={false}
             allowReact={false}
+            context="profile"
           />
         ))}
 

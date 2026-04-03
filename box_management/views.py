@@ -66,7 +66,6 @@ from .utils import (
     _build_song_from_instance,
     _get_prev_head_and_older,
     _build_reactions_from_instance,
-    _build_user_from_instance,
     _get_active_client_user_or_response,
     _ArticleImportHTMLParser,
     _collapse_article_text,
@@ -547,6 +546,15 @@ class RevealSong(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        context = request.data.get("context")
+        if context in (None, ""):
+            context = "box"
+        if context not in ("box", "profile"):
+            return Response(
+                {"detail": "Contexte invalide."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             deposit = (
                 Deposit.objects
@@ -577,7 +585,7 @@ class RevealSong(APIView):
             DiscoveredSong.objects.get_or_create(
                 user=user,
                 deposit=deposit,
-                defaults={"discovered_type": "revealed"},
+                defaults={"discovered_type": "revealed", "context": context},
             )
         except Exception:
             return Response(
@@ -597,7 +605,7 @@ class RevealSong(APIView):
 class ManageDiscoveredSongs(APIView):
     """
     POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
-    GET : renvoie des sessions de découvertes, groupées en sessions box ou profil.
+    GET : renvoie des sessions de découvertes, groupées par connexion à une boîte.
     """
 
     def post(self, request, format=None):
@@ -723,133 +731,92 @@ class ManageDiscoveredSongs(APIView):
             return {
                 **base,
                 "type": ds_obj.discovered_type,
-                "context": ds_obj.context,
                 "discovered_at": ds_obj.discovered_at.isoformat(),
                 "deposit_id": dep.pk,
             }
 
+        main_indices = [i for i, e in enumerate(events) if e.discovered_type == "main"]
+
         sessions_all = []
         consumed = [False] * len(events)
 
-        box_main_indices = [
-            i for i, e in enumerate(events)
-            if e.context == "box" and e.discovered_type == "main"
-        ]
-
-        for idx, main_index in enumerate(box_main_indices):
-            main_ds = events[main_index]
+        for idx, mi in enumerate(main_indices):
+            main_ds = events[mi]
             box = main_ds.deposit.box
-            end = box_main_indices[idx + 1] if (idx + 1) < len(box_main_indices) else len(events)
+            start = main_ds.discovered_at
+            deadline = start + timedelta(seconds=3600)
+            end = main_indices[idx + 1] if (idx + 1) < len(main_indices) else len(events)
 
             deposits_list = [deposit_payload(main_ds)]
-            consumed[main_index] = True
+            consumed[mi] = True
 
-            for j in range(main_index + 1, end):
+            for j in range(mi + 1, end):
                 ds = events[j]
-                if ds.context != "box":
-                    continue
                 if ds.discovered_type != "revealed":
                     continue
                 if ds.deposit.box_id != box.id:
                     continue
-                deposits_list.append(deposit_payload(ds))
-                consumed[j] = True
+                if ds.discovered_at <= deadline:
+                    deposits_list.append(deposit_payload(ds))
+                    consumed[j] = True
 
             sessions_all.append({
-                "session_id": f"box-main-{main_ds.id}",
-                "session_type": "box",
+                "session_id": str(main_ds.id),
                 "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": main_ds.discovered_at.isoformat(),
+                "started_at": start.isoformat(),
                 "deposits": deposits_list,
             })
 
-        next_box_main_pos_from = [None] * len(events)
+        next_main_pos_from = [None] * len(events)
         next_idx = None
         for i in range(len(events) - 1, -1, -1):
-            next_box_main_pos_from[i] = next_idx
-            if events[i].context == "box" and events[i].discovered_type == "main":
+            next_main_pos_from[i] = next_idx
+            if events[i].discovered_type == "main":
                 next_idx = i
 
         orph_counter = 0
         i = 0
         while i < len(events):
-            if consumed[i] or events[i].context != "box" or events[i].discovered_type != "revealed":
+            if consumed[i] or events[i].discovered_type != "revealed":
                 i += 1
                 continue
 
             start_ds = events[i]
             box = start_ds.deposit.box
-            stop_at = next_box_main_pos_from[i] if next_box_main_pos_from[i] is not None else len(events)
+            start = start_ds.discovered_at
+            deadline = start + timedelta(seconds=3600)
+            stop_at = next_main_pos_from[i] if next_main_pos_from[i] is not None else len(events)
 
             deposits_list = [deposit_payload(start_ds)]
             consumed[i] = True
 
             j = i + 1
             while j is not None and j < stop_at:
-                ds2 = events[j]
                 if consumed[j]:
                     j += 1
                     continue
-                if ds2.context == "box" and ds2.discovered_type == "revealed" and ds2.deposit.box_id == box.id:
+                ds2 = events[j]
+                if (
+                    ds2.discovered_type == "revealed"
+                    and ds2.deposit.box_id == box.id
+                    and ds2.discovered_at <= deadline
+                ):
                     deposits_list.append(deposit_payload(ds2))
                     consumed[j] = True
                     j += 1
                     continue
-                if ds2.context == "box" and ds2.discovered_type == "main":
+                if ds2.discovered_type == "main":
                     break
                 j += 1
 
             sessions_all.append({
-                "session_id": f"box-orph-{orph_counter}",
-                "session_type": "box",
+                "session_id": f"orph-{orph_counter}",
                 "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": start_ds.discovered_at.isoformat(),
+                "started_at": start.isoformat(),
                 "deposits": deposits_list,
             })
             orph_counter += 1
             i = j if j is not None else (i + 1)
-
-        profile_counter = 0
-        i = 0
-        while i < len(events):
-            ds = events[i]
-            profile_owner = getattr(getattr(ds, "deposit", None), "user", None)
-            profile_owner_id = getattr(profile_owner, "id", None)
-
-            if (
-                consumed[i]
-                or ds.context != "profile"
-                or profile_owner_id is None
-            ):
-                i += 1
-                continue
-
-            deposits_list = [deposit_payload(ds)]
-            consumed[i] = True
-
-            j = i + 1
-            while j < len(events):
-                next_ds = events[j]
-                next_owner_id = getattr(getattr(next_ds, "deposit", None), "user_id", None)
-                if consumed[j]:
-                    break
-                if next_ds.context != "profile":
-                    break
-                if next_owner_id != profile_owner_id:
-                    break
-                deposits_list.append(deposit_payload(next_ds))
-                consumed[j] = True
-                j += 1
-
-            sessions_all.append({
-                "session_id": f"profile-{profile_counter}",
-                "session_type": "profile",
-                "profile_user": _build_user_from_instance(profile_owner),
-                "started_at": ds.discovered_at.isoformat(),
-                "deposits": deposits_list,
-            })
-            profile_counter += 1
-            i = j
 
         sessions_all.sort(key=lambda s: s["started_at"], reverse=True)
 

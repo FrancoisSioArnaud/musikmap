@@ -120,6 +120,7 @@ export default function Deposit({
   fitContainer = true,
   allowReact = true,
   showPlay = true,
+  context = "box",
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -254,7 +255,10 @@ export default function Deposit({
           "Content-Type": "application/json",
           "X-CSRFToken": csrftoken,
         },
-        body: JSON.stringify({ dep_public_key: localDep.public_key }),
+        body: JSON.stringify({
+          dep_public_key: localDep.public_key,
+          context: context || "box",
+        }),
         credentials: "same-origin",
       });
 

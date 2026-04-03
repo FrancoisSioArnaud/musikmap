@@ -6,19 +6,17 @@ import React, {
   useContext,
   useCallback,
 } from "react";
-import { useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
+/** Nouveau: on réutilise le composant générique */
 import Deposit from "../Common/Deposit";
 import { formatRelativeTime } from "../Utils/time";
 
 export default function Library() {
   const { user } = useContext(UserContext);
-  const navigate = useNavigate();
 
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +41,8 @@ export default function Library() {
       const data = await res.json();
       if (res.ok) {
         const rawSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+
+        // ✅ le back renvoie déjà la bonne shape (via _build_deposits_payload)
         setSessions((prev) => [...prev, ...rawSessions]);
         setHasMore(Boolean(data?.has_more));
         setNextOffset(
@@ -61,18 +61,21 @@ export default function Library() {
     }
   }, [limit, nextOffset, hasMore]);
 
+  // Reset quand le composant est monté (utile si on revient plusieurs fois)
   useEffect(() => {
     setSessions([]);
     setHasMore(true);
     setNextOffset(0);
   }, []);
 
+  // Premier chargement
   useEffect(() => {
     if (sessions.length === 0 && hasMore && !loadingRef.current) {
       fetchSessions();
     }
   }, [sessions.length, hasMore, fetchSessions]);
 
+  // Infinite scroll
   useEffect(() => {
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
@@ -87,72 +90,6 @@ export default function Library() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [fetchSessions, hasMore]);
 
-  const renderSessionHeader = (sess) => {
-    const isProfileSession = sess?.session_type === "profile";
-    const profileUser = sess?.profile_user || null;
-    const canNavigateToProfile = Boolean(profileUser?.username);
-
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          m: "16px",
-          gap: 0.5,
-        }}
-      >
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{ textAlign: "center" }}
-        >
-          Découverte {formatRelativeTime(sess?.started_at)}
-        </Typography>
-
-        {isProfileSession ? (
-          <Box
-            component="button"
-            type="button"
-            onClick={() => {
-              if (!canNavigateToProfile) return;
-              navigate("/profile/" + profileUser.username);
-            }}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 0.5,
-              margin: "0 auto",
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              cursor: canNavigateToProfile ? "pointer" : "default",
-              color: "var(--mm-color-text)",
-              font: "inherit",
-            }}
-          >
-            <Typography
-              variant="h5"
-              component="h2"
-              sx={{ textAlign: "center" }}
-            >
-              sur le profil de {profileUser?.display_name || "anonyme"}
-            </Typography>
-            <ArrowForwardIosIcon sx={{ height: "0.8em", width: "0.8em" }} />
-          </Box>
-        ) : (
-          <Typography
-            variant="h5"
-            component="h2"
-            sx={{ textAlign: "center" }}
-          >
-            à {sess?.box?.name ?? "Inconnue"}
-          </Typography>
-        )}
-      </Box>
-    );
-  };
-
   if (!sessions.length && !hasMore && !loading) {
     return (
       <Box sx={{ p: 2 }}>
@@ -162,12 +99,36 @@ export default function Library() {
   }
 
   return (
-    <Box sx={{ display: "grid", gap: 5, p: 5 }}>
+    <Box sx={{display: "grid", gap: 5, p: 5}}>
       {sessions.map((sess) => {
         return (
-          <Box key={sess.session_id} sx={{ display: "grid" }}>
-            {renderSessionHeader(sess)}
+          <Box key={sess.session_id} sx={{ display: "grid"}}>
+            {/* Header de session */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                m: "16px",
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ textAlign: "center"}}
+              >
+                Découverte {formatRelativeTime(sess?.started_at)}
+              </Typography>
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ textAlign: "center" }}
+              >
+                à {sess?.box?.name ?? "Inconnue"}
+              </Typography>
 
+            </Box>
+
+            {/* Dépôts de la session */}
             <Box sx={{ display: "grid", gap: 4 }}>
               {Array.isArray(sess?.deposits) &&
                 sess.deposits.map((d, idx) => {
@@ -184,6 +145,7 @@ export default function Library() {
                       showUser={true}
                       fitContainer={true}
                       allowReact={true}
+                      context="profile"
                     />
                   );
                 })}
@@ -192,6 +154,7 @@ export default function Library() {
         );
       })}
 
+      {/* Loader simple */}
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
