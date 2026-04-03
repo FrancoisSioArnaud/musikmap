@@ -570,6 +570,7 @@ export default function Deposit({
           currentEmoji={myReactionEmoji}
           onApplied={handleReactionApplied}
           setUser={setUser}
+          viewer={user}
         />
 
         <ReactionSummary
@@ -710,6 +711,7 @@ export default function Deposit({
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
         setUser={setUser}
+        viewer={user}
       />
 
       <ReactionSummary

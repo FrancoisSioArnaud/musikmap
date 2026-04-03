@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -14,9 +14,10 @@ import DialogActions from "@mui/material/DialogActions";
 import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
 
 function getPurchasePromptCopy(viewer) {
-  if (viewer?.is_guest) {
+  if (effectiveViewer?.is_guest) {
     return {
       title: "Finalise ton compte",
       message: "Finalise la création de ton compte pour utiliser tes points.",
@@ -43,6 +44,8 @@ export default function AddReactionModal({
   viewer,
 }) {
   const navigate = useNavigate();
+  const userContext = useContext(UserContext) || {};
+  const effectiveViewer = viewer || userContext.user || null;
   const [loading, setLoading] = useState(false);
   const [submittingPurchase, setSubmittingPurchase] = useState(false);
   const [catalog, setCatalog] = useState({
@@ -120,7 +123,7 @@ export default function AddReactionModal({
     const alreadyOwned = isOwned(emoji);
 
     if (!alreadyOwned) {
-      if (!viewer?.id || viewer?.is_guest) {
+      if (!effectiveViewer?.id || effectiveViewer?.is_guest) {
         openPurchasePrompt();
         return;
       }
@@ -151,7 +154,7 @@ export default function AddReactionModal({
   const unlockEmoji = async (emoji) => {
     if (!emoji?.id || submittingPurchase) return;
 
-    if (!viewer?.id || viewer?.is_guest) {
+    if (!effectiveViewer?.id || effectiveViewer?.is_guest) {
       openPurchasePrompt();
       return;
     }
@@ -232,7 +235,7 @@ export default function AddReactionModal({
     onClose();
   };
 
-  const purchasePromptCopy = getPurchasePromptCopy(viewer);
+  const purchasePromptCopy = getPurchasePromptCopy(effectiveViewer);
 
   return (
     <>
