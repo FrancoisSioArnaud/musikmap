@@ -52,6 +52,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 4;
+  box-shadow: var(--mm-shadow-high);
 }
 
 .unlock_cta::before{
@@ -64,7 +65,7 @@
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-bottom: 8px solid var(--mm-color-text);
+  border-bottom: 8px solid var(--mm-color-primary);
 }
 
 .unlock_cta_button{
