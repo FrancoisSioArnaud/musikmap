@@ -835,6 +835,14 @@ class ManageDiscoveredSongs(APIView):
                 for consumed_index in session_indices:
                     consumed[consumed_index] = True
 
+                deposits_list.sort(
+                    key=lambda deposit: (
+                        deposit.get("discovered_at") or "",
+                        deposit.get("deposit_id") or 0,
+                    ),
+                    reverse=True,
+                )
+
                 sessions_all.append({
                     "session_id": f"profile-{event.id}",
                     "session_type": "profile",
