@@ -139,7 +139,7 @@ export default function Library() {
                   }}
                 >
                   <Typography variant="h5" component="h2">
-                    sur le profil de
+                    sur le profil de 
                   </Typography>
 
                   <Box
