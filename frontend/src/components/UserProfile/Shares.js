@@ -37,7 +37,13 @@ async function fetchUserShares({ username, me, limit, offset }, signal) {
   };
 }
 
-export default function Shares({ username, me = false, user, autoLoad }) {
+export default function Shares({
+  username,
+  me = false,
+  user,
+  autoLoad,
+  onInitialLoadComplete = null,
+}) {
   const LIMIT = 20;
 
   const [items, setItems] = useState([]);
@@ -110,6 +116,12 @@ export default function Shares({ username, me = false, user, autoLoad }) {
     if (loadedOnce) return;
     loadMore();
   }, [autoLoad, loadedOnce, loadMore]);
+
+  useEffect(() => {
+    if (!onInitialLoadComplete) return;
+    if (!loadedOnce || loading) return;
+    onInitialLoadComplete();
+  }, [onInitialLoadComplete, loadedOnce, loading]);
 
   useEffect(() => {
     if (!autoLoad) return;
