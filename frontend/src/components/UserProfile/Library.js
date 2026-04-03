@@ -11,8 +11,8 @@ import { UserContext } from "../UserContext";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
-/** Nouveau: on réutilise le composant générique */
 import Deposit from "../Common/Deposit";
 import { formatRelativeTime } from "../Utils/time";
 
@@ -44,7 +44,6 @@ export default function Library() {
       if (res.ok) {
         const rawSessions = Array.isArray(data?.sessions) ? data.sessions : [];
 
-        // ✅ le back renvoie déjà la bonne shape (via _build_deposits_payload)
         setSessions((prev) => [...prev, ...rawSessions]);
         setHasMore(Boolean(data?.has_more));
         setNextOffset(
@@ -63,21 +62,18 @@ export default function Library() {
     }
   }, [limit, nextOffset, hasMore]);
 
-  // Reset quand le composant est monté (utile si on revient plusieurs fois)
   useEffect(() => {
     setSessions([]);
     setHasMore(true);
     setNextOffset(0);
   }, []);
 
-  // Premier chargement
   useEffect(() => {
     if (sessions.length === 0 && hasMore && !loadingRef.current) {
       fetchSessions();
     }
   }, [sessions.length, hasMore, fetchSessions]);
 
-  // Infinite scroll
   useEffect(() => {
     function onScroll() {
       if (loadingRef.current || !hasMore) return;
@@ -95,17 +91,23 @@ export default function Library() {
   if (!sessions.length && !hasMore && !loading) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>Vous n&apos;avez pas encore découvert de chansons.</Typography>
+        <Typography>
+          Vous n&apos;avez pas encore découvert de chansons.
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{display: "grid", gap: 5, p: 5}}>
+    <Box sx={{ display: "grid", gap: 5, p: 5 }}>
       {sessions.map((sess) => {
-        const sessionType = sess?.session_type === "profile" ? "profile" : "box";
+        const sessionType =
+          sess?.session_type === "profile" ? "profile" : "box";
         const profileUser = sess?.profile_user || null;
-        const profileLabel = profileUser?.display_name || profileUser?.username || "profil inconnu";
+        const profileLabel =
+          profileUser?.display_name ||
+          profileUser?.username ||
+          "profil inconnu";
         const canOpenProfile = Boolean(profileUser?.username);
 
         return (
@@ -127,10 +129,19 @@ export default function Library() {
               </Typography>
 
               {sessionType === "profile" ? (
-                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 0.5,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <Typography variant="h5" component="h2">
                     sur le profil de
                   </Typography>
+
                   <Box
                     role={canOpenProfile ? "button" : undefined}
                     tabIndex={canOpenProfile ? 0 : undefined}
@@ -155,9 +166,7 @@ export default function Library() {
                     <Typography variant="h5" component="h2">
                       {profileLabel}
                     </Typography>
-                    <Typography component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
-                      →
-                    </Typography>
+                    <ArrowForwardIosIcon sx={{ fontSize: "0.9em" }} />
                   </Box>
                 </Box>
               ) : (
@@ -196,7 +205,6 @@ export default function Library() {
         );
       })}
 
-      {/* Loader simple */}
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
