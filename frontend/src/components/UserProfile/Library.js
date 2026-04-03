@@ -129,18 +129,16 @@ export default function Library() {
               </Typography>
 
               {sessionType === "profile" ? (
-                <Box
+                <Typography
+                  variant="h5"
+                  component="h2"
                   sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 0.5,
-                    flexWrap: "wrap",
+                    textAlign: "center",
                   }}
                 >
-                  <Typography variant="h5" component="h2">sur le profil de </Typography>
-
+                  sur le profil de{" "}
                   <Box
+                    component="span"
                     role={canOpenProfile ? "button" : undefined}
                     tabIndex={canOpenProfile ? 0 : undefined}
                     onClick={() => {
@@ -159,14 +157,13 @@ export default function Library() {
                       alignItems: "center",
                       gap: 0.5,
                       cursor: canOpenProfile ? "pointer" : "default",
+                      verticalAlign: "middle",
                     }}
                   >
-                    <Typography variant="h5" component="h2">
-                      {profileLabel}
-                    </Typography>
+                    <Box component="span">{profileLabel}</Box>
                     <ArrowForwardIosIcon sx={{ fontSize: "0.9em" }} />
                   </Box>
-                </Box>
+                </Typography>
               ) : (
                 <Typography
                   variant="h5"
