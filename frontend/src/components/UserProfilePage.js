@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
 import Box from "@mui/material/Box";
@@ -19,8 +19,6 @@ import Shares from "./UserProfile/Shares";
 import {
   getProfilePageStateKey,
   readPageState,
-  restoreScrollWhenReady,
-  savePageScroll,
   saveProfileTabState,
 } from "./Utils/pageStateStorage";
 
@@ -52,12 +50,11 @@ async function fetchUserInfo(username, signal) {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const params = useParams();
   const { user } = useContext(UserContext) || {};
 
   const routeUsername = (params?.username || "").trim();
-  const pageStateKey = getProfilePageStateKey(location);
+  const pageStateKey = getProfilePageStateKey({ pathname: routeUsername ? `/profile/${routeUsername}` : "/profile", search: "" });
   const isOwner = !routeUsername && Boolean(user?.id);
   const isGuestOwner = Boolean(isOwner && user?.is_guest);
 
@@ -84,25 +81,6 @@ export default function UserProfilePage() {
   useEffect(() => {
     saveProfileTabState(pageStateKey, tab);
   }, [pageStateKey, tab]);
-
-  useEffect(() => {
-    let timeoutId = null;
-
-    const onScroll = () => {
-      if (timeoutId) return;
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        savePageScroll(pageStateKey, window.scrollY);
-      }, 150);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (timeoutId) clearTimeout(timeoutId);
-      savePageScroll(pageStateKey, window.scrollY);
-    };
-  }, [pageStateKey]);
 
   useEffect(() => {
     if (headerAbortRef.current) headerAbortRef.current.abort();
@@ -161,15 +139,6 @@ export default function UserProfilePage() {
     load();
     return () => controller.abort();
   }, [routeUsername, isOwner, user]);
-
-  useEffect(() => {
-    const isReady =
-      header.status === "ready" ||
-      header.status === "not_found" ||
-      header.status === "error";
-
-    return restoreScrollWhenReady(pageStateKey, isReady);
-  }, [pageStateKey, header.status, tab]);
 
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();

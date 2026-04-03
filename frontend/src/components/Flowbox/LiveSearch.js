@@ -25,7 +25,6 @@ import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
-import { clearStoredDiscoverAndProfilePageStates } from "../Utils/pageStateStorage";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
@@ -246,7 +245,6 @@ export default function LiveSearch() {
           myDeposit,
         };
 
-        clearStoredDiscoverAndProfilePageStates();
         setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
 
         navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {

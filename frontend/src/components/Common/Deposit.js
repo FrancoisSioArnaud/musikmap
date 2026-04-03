@@ -118,7 +118,6 @@ export default function Deposit({
   showDate = true,
   showUser = true,
   fitContainer = true,
-  allowReact = true,
   showPlay = true,
   context = "box",
 }) {
@@ -402,8 +401,7 @@ export default function Deposit({
 
   const depositInteractBlock = (
     <Box className="deposit_interact">
-      {allowReact ? (
-        <Box className="deposit_action_group reactions_group">
+      <Box className="deposit_action_group reactions_group">
           <Button
             variant="depositInteract"
             className="deposit_action_button addreaction_button addreaction_icon_button"
@@ -446,7 +444,6 @@ export default function Deposit({
             </Button>
           ) : null}
         </Box>
-      ) : null}
 
       <Button
         variant="depositInteract"
