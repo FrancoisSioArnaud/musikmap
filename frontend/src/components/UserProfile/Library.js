@@ -138,9 +138,7 @@ export default function Library() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <Typography variant="h5" component="h2">
-                    sur le profil de 
-                  </Typography>
+                  <Typography variant="h5" component="h2">sur le profil de </Typography>
 
                   <Box
                     role={canOpenProfile ? "button" : undefined}
