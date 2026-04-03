@@ -65,7 +65,7 @@ from .utils import (
     _build_deposits_payload,
     _build_song_from_instance,
     _get_prev_head_and_older,
-    _reactions_summary_for_deposits,
+    _build_reactions_from_instance,
     _get_active_client_user_or_response,
     _ArticleImportHTMLParser,
     _collapse_article_text,
@@ -1296,11 +1296,20 @@ class ReactionView(APIView):
 
         if emoji_id in (None, "", 0, "none"):
             Reaction.objects.filter(user=current_user, deposit=deposit).delete()
-            summary = _reactions_summary_for_deposits([deposit.id]).get(
-                deposit.id, []
+            deposit = (
+                Deposit.objects.filter(pk=deposit.pk)
+                .prefetch_related(
+                    Prefetch(
+                        "reactions",
+                        queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                        to_attr="prefetched_reactions",
+                    )
+                )
+                .first()
             )
+            rx = _build_reactions_from_instance(deposit, current_user=current_user)
             return Response(
-                {"my_reaction": None, "reactions_summary": summary},
+                {"my_reaction": None, "reactions": rx["detail"]},
                 status=status.HTTP_200_OK,
             )
 
@@ -1330,12 +1339,20 @@ class ReactionView(APIView):
             obj.emoji = emoji
             obj.save(update_fields=["emoji", "updated_at"])
 
-        summary = _reactions_summary_for_deposits([deposit.id]).get(
-            deposit.id, []
+        deposit = (
+            Deposit.objects.filter(pk=deposit.pk)
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+            .first()
         )
-        my = {"emoji": emoji.char, "reacted_at": obj.created_at.isoformat()}
+        rx = _build_reactions_from_instance(deposit, current_user=current_user)
         return Response(
-            {"my_reaction": my, "reactions_summary": summary},
+            {"my_reaction": rx["mine"], "reactions": rx["detail"]},
             status=status.HTTP_200_OK,
         )
 

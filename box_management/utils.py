@@ -3,7 +3,6 @@
 import html
 import json
 import re
-from collections import Counter
 from datetime import date, timedelta, timezone as dt_timezone
 from html.parser import HTMLParser
 from math import radians, sin, cos, sqrt, atan2
@@ -401,30 +400,6 @@ def _build_incitation_overlap_counts(phrases):
     for phrase in phrases:
         counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
     return counts
-
-# --- Helper pour réactions ---
-def _reactions_summary_for_deposits(dep_ids):
-    """Retourne {deposit_id: [{'emoji': '🔥', 'count': 3}, ...]}"""
-    summary = {d: [] for d in dep_ids}
-    if not dep_ids:
-        return summary
-
-    qs = (
-        Reaction.objects
-        .filter(deposit_id__in=dep_ids)
-        .values("deposit_id", "emoji__char")
-        .annotate(count=Count("id"))
-    )
-    for row in qs:
-        did = row["deposit_id"]
-        emoji_char = row["emoji__char"]
-        cnt = row["count"]
-        summary.setdefault(did, []).append({"emoji": emoji_char, "count": cnt})
-
-    for did in summary:
-        summary[did].sort(key=lambda x: x["count"], reverse=True)
-    return summary
-
 
 def _get_active_client_user_or_response(request):
     user = request.user
@@ -916,23 +891,19 @@ def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUs
 
     detail: List[Dict[str, Any]] = []
     mine: Optional[Dict[str, Any]] = None
-    counts: Counter = Counter()
 
     for r in _iter_reactions_from_instance(dep):
         if not getattr(r.emoji, "active", True):
             continue
-        payload = {"user": _build_user_from_instance(getattr(r, "user", None)), "emoji": r.emoji.char}
-        counts[r.emoji.char] += 1
+        payload = {
+            "user": _build_user_from_instance(getattr(r, "user", None)),
+            "emoji": r.emoji.char,
+        }
         if current_user_id is not None and r.user_id == current_user_id:
-            mine = payload
-        else:
-            detail.append(payload)
+            mine = {"emoji": r.emoji.char}
+        detail.append(payload)
 
-    if mine:
-        detail = [mine] + detail
-
-    summary = [{"emoji": e, "count": c} for e, c in sorted(counts.items(), key=lambda x: (-x[1], x[0]))]
-    return {"detail": detail, "summary": summary}
+    return {"detail": detail, "mine": mine}
 
 def _build_deposit_from_instance(
     dep: Deposit,
@@ -961,7 +932,7 @@ def _build_deposit_from_instance(
 
     rx = _build_reactions_from_instance(dep, current_user=current_user)
     payload["reactions"] = rx["detail"]
-    payload["reactions_summary"] = rx["summary"]
+    payload["my_reaction"] = rx["mine"]
     payload["comments"] = comments_context or {"items": [], "viewer_state": {}}
 
     return payload

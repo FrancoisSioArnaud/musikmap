@@ -36,33 +36,6 @@ function SlideDownTransition(props) {
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
 
-function upsertViewerReactionInList(reactions, nextEmoji, viewer) {
-  const list = Array.isArray(reactions) ? [...reactions] : [];
-  const viewerId = viewer?.id || null;
-
-  if (!viewerId) return list;
-
-  const withoutMine = list.filter((r) => (r?.user?.id || null) !== viewerId);
-
-  if (!nextEmoji) {
-    return withoutMine;
-  }
-
-  const myReaction = {
-    emoji: nextEmoji,
-    user: {
-      id: viewerId,
-      name: viewer?.display_name || viewer?.username || "Invité",
-      display_name: viewer?.display_name || viewer?.username || "Invité",
-      username: viewer?.is_guest ? null : viewer?.username || null,
-      profile_picture_url: viewer?.profile_picture_url || null,
-      is_guest: Boolean(viewer?.is_guest),
-    },
-  };
-
-  return [myReaction, ...withoutMine];
-}
-
 function shuffleArray(list) {
   const next = Array.isArray(list) ? [...list] : [];
 
@@ -200,47 +173,35 @@ export default function Deposit({
     });
   }, [localDep?.public_key, setDispDeposits]);
 
-  const updateLocalStorageSnapshot = useCallback((transform) => {
+  const updateStorageSnapshot = useCallback((transform) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
       if (!snap) return;
 
-      const applyTransform = (item) => {
+      let changed = false;
+      const applyToDeposit = (item) => {
         if (!item || item.public_key !== localDep?.public_key) return item;
+        changed = true;
         return transform(item);
       };
 
-      let changed = false;
       const next = { ...snap };
 
-      const updateField = (fieldName) => {
-        if (!(fieldName in snap)) return;
-        const currentValue = snap[fieldName];
+      if (next.main) {
+        next.main = applyToDeposit(next.main);
+      }
 
-        if (Array.isArray(currentValue)) {
-          let fieldChanged = false;
-          const nextValue = currentValue.map((item) => {
-            if (!item || item.public_key !== localDep?.public_key) return item;
-            fieldChanged = true;
-            return applyTransform(item);
-          });
-          if (fieldChanged) {
-            next[fieldName] = nextValue;
-            changed = true;
-          }
-          return;
-        }
+      if (next.myDeposit) {
+        next.myDeposit = applyToDeposit(next.myDeposit);
+      }
 
-        if (currentValue && currentValue.public_key === localDep?.public_key) {
-          next[fieldName] = applyTransform(currentValue);
-          changed = true;
-        }
-      };
+      if (Array.isArray(next.older)) {
+        next.older = next.older.map(applyToDeposit);
+      }
 
-      updateField("main");
-      updateField("myDeposit");
-      updateField("older");
-      updateField("olderDeposits");
+      if (Array.isArray(next.olderDeposits)) {
+        next.olderDeposits = next.olderDeposits.map(applyToDeposit);
+      }
 
       if (!changed) return;
 
@@ -339,7 +300,7 @@ export default function Deposit({
         },
       }));
 
-      updateLocalStorageSnapshot((item) => ({
+      updateStorageSnapshot((item) => ({
         ...item,
         discovered_at: isoNow,
         song: {
@@ -363,44 +324,35 @@ export default function Deposit({
   };
 
   const handleReactionApplied = (result) => {
-    const nextReactions = upsertViewerReactionInList(
-      localDep?.reactions || [],
-      result?.my_reaction?.emoji || null,
-      user
-    );
+    const nextReactions = Array.isArray(result?.reactions)
+      ? result.reactions
+      : Array.isArray(localDep?.reactions)
+        ? localDep.reactions
+        : [];
 
     const nextComments = Array.isArray(result?.comments?.items)
       ? result.comments
       : comments;
 
-    setLocalDep((prev) => ({
-      ...(prev || {}),
+    const nextDepPatch = {
       my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary)
-        ? result.reactions_summary
-        : [],
       reactions: nextReactions,
       comments: nextComments,
+    };
+
+    setLocalDep((prev) => ({
+      ...(prev || {}),
+      ...nextDepPatch,
     }));
 
     updateDepositCollections((item) => ({
-      ...item,
-      my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary)
-        ? result.reactions_summary
-        : [],
-      reactions: nextReactions,
-      comments: nextComments,
+      ...(item || {}),
+      ...nextDepPatch,
     }));
 
-    updateLocalStorageSnapshot((item) => ({
-      ...item,
-      my_reaction: result?.my_reaction || null,
-      reactions_summary: Array.isArray(result?.reactions_summary)
-        ? result.reactions_summary
-        : [],
-      reactions: nextReactions,
-      comments: nextComments,
+    updateStorageSnapshot((item) => ({
+      ...(item || {}),
+      ...nextDepPatch,
     }));
   };
 
@@ -464,7 +416,17 @@ export default function Deposit({
               setAddReactionOpen(true);
             }}
           >
-            <AddReactionOutlinedIcon />
+            {myReactionEmoji ? (
+              <Typography
+                component="span"
+                className="current_reaction_emoji"
+                sx={{ fontSize: "1.35rem", lineHeight: 1 }}
+              >
+                {myReactionEmoji}
+              </Typography>
+            ) : (
+              <AddReactionOutlinedIcon />
+            )}
           </Button>
 
           {reactionCount > 0 ? (
