@@ -156,27 +156,32 @@ export default function Onboarding() {
             component="img"
             src={box.last_deposit_song_image_url}
             alt=""
-            className="lastSongImg"
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: "blur(18px)",
-              transform: "scale(1.1)",
-              opacity: 0.55,
-            }}
+            className="last_song_img bg"
           />
         ) : null}
 
-        <Box
-          sx={{
-            display: "grid",
-            position: "fixed",
-            bottom: 0,
-            left: "-50vw",
-            right: "-50vw",
-          }}
-        >
+        <Box className="page_container">
+  
+          {box?.last_deposit_song_image_url ? (
+            <Box className="pochette_container">
+              <Box
+                component="img"
+                src={box.last_deposit_song_image_url}
+                alt=""
+                className="last_song_img pochette"
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: "blur(18px)",
+                  transform: "scale(1.1)",
+                  opacity: 0.55,
+                }}
+              />
+            </Box>
+          ) : null}
+
+          
           <Box className="info_box">
             <Typography className="box_name" component="h1" variant="h5">
               {box?.name}
