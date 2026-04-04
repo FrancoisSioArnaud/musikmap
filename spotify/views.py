@@ -237,18 +237,27 @@ class Search(APIView):
         # Extract the track data from the results and create a list of tracks
         tracks = []
         for item in results['tracks']['items']:
+            images = item['album'].get('images', [])
+        
+            image_url = images[0]['url'] if images else None
+        
+            image_64 = next((img for img in images if img.get('height') == 64), None)
+            image_url_small = image_64['url'] if image_64 else (images[-1]['url'] if images else None)
+        
             track = {
                 'id': item['id'],
                 'name': item['name'],
                 'artist': item['artists'][0]['name'],
                 'album': item['album']['name'],
-                'image_url': item['album']['images'][0]['url'],
+                'image_url': image_url,
+                'image_url_small': image_url_small,
                 'duration': item['duration_ms'] // 1000,
                 'platform_id': 1,
                 'url': item['external_urls']['spotify'],
             }
             tracks.append(track)
+
         # Return the list of tracks as a response
-        return Response(results, status=status.HTTP_200_OK)
+        return Response(tracks, status=status.HTTP_200_OK)
 
 
