@@ -176,7 +176,7 @@ export default function Onboarding() {
               </Box>
               <Box
                 component="img"
-                src="/static/images/vinyl.png"
+                src="/static/images/vinyl.svg"
                 alt="vinyl"
                 className="vinyl"
               />
