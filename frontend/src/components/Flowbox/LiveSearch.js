@@ -401,7 +401,7 @@ export default function LiveSearch() {
                       bgcolor: "var(--mm-color-primary-light)",
                       transitionProperty: "width",
                       transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
-                      transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+                      transitionTimingFunction: "cubic-bezier(.17,.49,.88,.61)",
                       pointerEvents: "none",
                     }}
                   />
