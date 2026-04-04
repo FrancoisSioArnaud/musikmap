@@ -8,6 +8,7 @@ import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import EnableLocation from "../Flowbox/EnableLocation";
 import { UserContext } from "../UserContext";
+import LockIcon from '@mui/icons-material/Lock';
 
 export default function Onboarding() {
   const { boxSlug } = useParams();
@@ -169,15 +170,8 @@ export default function Onboarding() {
                 src={box.last_deposit_song_image_url}
                 alt=""
                 className="last_song_img pochette"
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  filter: "blur(18px)",
-                  transform: "scale(1.1)",
-                  opacity: 0.55,
-                }}
               />
+              <LockIcon className="icon" />
             </Box>
           ) : null}
 
