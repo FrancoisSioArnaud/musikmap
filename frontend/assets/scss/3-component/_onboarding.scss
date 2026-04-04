@@ -51,9 +51,11 @@
 @keyframes blurPulse {
   from {
     filter: blur(4px);
+    transform: scale(1.2) rotate(3deg);
   }
   to {
-    filter: blur(10px);
+    filter: blur(8px);
+    transform: scale(1.1) rotate(-3deg);
   }
 }
 
