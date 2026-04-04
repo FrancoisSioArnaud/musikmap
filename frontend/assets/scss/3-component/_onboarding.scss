@@ -45,6 +45,16 @@
   filter: blur(5px);
   height: 100%;
   transform: scale(1.1);
+  animation: blurPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes blurPulse {
+  from {
+    filter: blur(4px);
+  }
+  to {
+    filter: blur(10px);
+  }
 }
 
 .pochette_container .icon{
