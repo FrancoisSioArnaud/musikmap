@@ -5,11 +5,49 @@
   background : var(--mm-color-primary-dark);
 }
 
+.onBoarding .page_container{
+  display: flex;
+  position: fixed;
+  bottom: 0px;
+  left: -50vw;
+  right: -50vw;
+  flex-direction: column;
+  align-items: center;
+  top: 56px;
+}
 
-.onBoarding .box_infos{
-  box-shadow: none;
-  border: var(--mm-border-default);
-  border-radius: var(--mm-radius-xl);
+.last_song_img.bg{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(18px);
+  transform: scale(1.1);
+  opacity: 0.40;
+}
+
+.last_song_img.pochette_container{
+  min-height: 0;
+  border-radius: var(--mm-radius-md);
+  flex: 1;
+  overflow: hidden;
+  margin: 20px;
+  box-shadow: var(--mm-shadow-high);
+  border: solid 10px white;
+}
+
+.last_song_img.pochette{
+  filter: blur(11px);
+  height: 100%;
+  transform: scale(1.2);
+}
+
+.onBoarding .info_box{
+  
 }
 
 .onBoarding .container{
@@ -56,7 +94,6 @@
   text-align: center;
   line-height: 36px;
   font-weight : bold;
-  
 }
 
 
