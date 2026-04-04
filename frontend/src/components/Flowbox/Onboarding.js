@@ -164,21 +164,18 @@ export default function Onboarding() {
         <Box className="page_container">
   
           {box?.last_deposit_song_image_url ? (
-            <>
-              <Box className="pochette">
-                <Box className="cover">
-                  <Box
-                    component="img"
-                    src={box.last_deposit_song_image_url}
-                    alt="pochette"
-                    className="last_song_img"
-                  />
-                  <LockIcon className="icon" />
-                </Box>
-                <Box className="vinyl"/>
-                </Box>
+            <Box className="pochette">
+              <Box className="cover">
+                <Box
+                  component="img"
+                  src={box.last_deposit_song_image_url}
+                  alt="pochette"
+                  className="last_song_img"
+                />
+                <LockIcon className="icon" />
               </Box>
-            <>
+                
+            </Box>
           ) : null}
 
           
