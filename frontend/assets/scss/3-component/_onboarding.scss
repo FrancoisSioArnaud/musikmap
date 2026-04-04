@@ -30,22 +30,38 @@
   opacity: 0.40;
 }
 
-.pochette_container{
-  min-height: 0;
-  border-radius: var(--mm-radius-xs);
+.pochette{
+  display: flex;
   flex: 1;
-  overflow: hidden;
-  margin: 26px;
-  box-shadow: rgba(0, 0, 0, 0.2) 0px 13px 11px 0px;
-  border: solid 4px white;
-  position:relative;
+  min-height: 0;
+  padding: 26px;
+  justify-content: center;
 }
 
-.last_song_img.pochette{
+.cover{
+  min-height: 0;
+  border-radius: var(--mm-radius-md);
+  overflow: hidden;
+  box-shadow: rgba(0, 0, 0, .2) 0 13px 11px 0;
+  border: solid 4px #fff;
+  position: relative;
+  z-index: 100;
+}
+
+.cover img{
   filter: blur(5px);
   height: 100%;
   transform: scale(1.1);
   animation: blurPulse 2s ease-in-out infinite alternate;
+}
+
+.pochette .vinyl{
+  height: 100%;
+  border-radius: var(--mm-radius-round);
+  aspect-ratio: 1 / 1;
+  background-color: white;
+  transform: scale(0.9);
+  margin-left: -20%;
 }
 
 @keyframes blurPulse {
