@@ -174,12 +174,7 @@ export default function Onboarding() {
                 />
                 <LockIcon className="icon" />
               </Box>
-              <Box
-                component="img"
-                src="/static/images/vinyl.svg"
-                alt="vinyl"
-                className="vinyl"
-              />
+              <Box className="vinyl"/></Box>
             </Box>
           ) : null}
 
