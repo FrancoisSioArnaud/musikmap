@@ -9,7 +9,6 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import Paper from "@mui/material/Paper";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import ToggleButton from "@mui/material/ToggleButton";
 import TextField from "@mui/material/TextField";
@@ -29,6 +28,12 @@ import { setWithTTL } from "../Utils/mmStorage";
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
 
+const SLOW_PROGRESS_TARGET = 78;
+const SLOW_PROGRESS_DURATION_MS = 1800;
+const FAST_PROGRESS_DURATION_MS = 500;
+const MIN_VISUAL_DURATION_MS = 400;
+const SUCCESS_HOLD_MS = 120;
+
 function normalizeOptionToSong(option) {
   if (!option) return null;
   return {
@@ -36,6 +41,12 @@ function normalizeOptionToSong(option) {
     artist: option.artist || null,
     image_url: option.image_url || null,
   };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 export default function LiveSearch() {
@@ -58,8 +69,17 @@ export default function LiveSearch() {
   // dépôt (POST)
   const [posting, setPosting] = useState(false);
   const [postingId, setPostingId] = useState(null);
+  const [postingProgress, setPostingProgress] = useState(0);
+  const [postingTransitionMs, setPostingTransitionMs] = useState(0);
 
   const searchInputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -188,12 +208,31 @@ export default function LiveSearch() {
     [navigate, boxSlug]
   );
 
+  const resetPostingState = useCallback(() => {
+    if (!isMountedRef.current) return;
+    setPosting(false);
+    setPostingId(null);
+    setPostingProgress(0);
+    setPostingTransitionMs(0);
+  }, []);
+
   const handleDeposit = useCallback(
     async (option) => {
       if (posting) return;
 
+      const id = option?.id ?? "__posting__";
+      const startedAt = Date.now();
+
       setPosting(true);
-      setPostingId(option?.id ?? "__posting__");
+      setPostingId(id);
+      setPostingProgress(0);
+      setPostingTransitionMs(0);
+
+      requestAnimationFrame(() => {
+        if (!isMountedRef.current) return;
+        setPostingTransitionMs(SLOW_PROGRESS_DURATION_MS);
+        setPostingProgress(SLOW_PROGRESS_TARGET);
+      });
 
       try {
         const csrftoken = getCookie("csrftoken");
@@ -247,17 +286,31 @@ export default function LiveSearch() {
 
         setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
 
+        const elapsed = Date.now() - startedAt;
+        const remainingMinVisual = Math.max(0, MIN_VISUAL_DURATION_MS - elapsed);
+
+        if (remainingMinVisual > 0) {
+          await sleep(remainingMinVisual);
+        }
+
+        if (!isMountedRef.current) return;
+
+        setPostingTransitionMs(FAST_PROGRESS_DURATION_MS);
+        setPostingProgress(100);
+
+        await sleep(FAST_PROGRESS_DURATION_MS + SUCCESS_HOLD_MS);
+
+        if (!isMountedRef.current) return;
+
         navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
           replace: true,
         });
       } catch {
+        resetPostingState();
         goOnboardingWithError("Erreur pendant le dépôt");
-      } finally {
-        setPosting(false);
-        setPostingId(null);
       }
     },
-    [posting, boxSlug, navigate, setUser, goOnboardingWithError]
+    [posting, boxSlug, navigate, setUser, goOnboardingWithError, resetPostingState]
   );
 
   return (
@@ -329,98 +382,131 @@ export default function LiveSearch() {
               return (
                 <ListItem
                   key={id}
-                  divider
-                  sx={{ overflow: "hidden", alignItems: "center" }}
-                  secondaryAction={
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={posting}
-                      onClick={() => handleDeposit(option)}
-                      sx={{ minWidth: 0 }}
-                    >
-                      {isThisPosting ? (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                          }}
-                        >
-                          <CircularProgress size={16} />
-                          Déposer
-                        </Box>
-                      ) : (
-                        "Déposer"
-                      )}
-                    </Button>
-                  }
+                  sx={{
+                    position: "relative",
+                    overflow: "hidden",
+                    alignItems: "center",
+                    px: 2,
+                    py: 1.5,
+                  }}
                 >
                   <Box
+                    aria-hidden="true"
                     sx={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: "var(--mm-radius-xs)",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      bgcolor: "action.hover",
-                      mr: 2,
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      width: isThisPosting ? `${postingProgress}%` : "0%",
+                      bgcolor: "var(--mm-color-primary-light)",
+                      transitionProperty: "width",
+                      transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
+                      transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+                      pointerEvents: "none",
                     }}
-                  >
-                    {option?.image_url ? (
-                      <Box
-                        component="img"
-                        src={option.image_url}
-                        alt={option.name || "Cover"}
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    ) : null}
-                  </Box>
+                  />
 
                   <Box
                     sx={{
+                      position: "relative",
+                      zIndex: 1,
                       display: "flex",
-                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2,
+                      width: "100%",
                       minWidth: 0,
-                      flex: 1,
-                      overflow: "hidden",
                     }}
                   >
-                    <Typography
-                      component="h3"
-                      variant="h6"
-                      noWrap
+                    <Box
                       sx={{
-                        fontWeight: 700,
-                        textAlign: "left",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "100%",
+                        width: 64,
+                        height: 64,
+                        borderRadius: "var(--mm-radius-xs)",
+                        overflow: "hidden",
+                        flexShrink: 0,
+                        bgcolor: "action.hover",
                       }}
-                      title={option?.name || ""}
                     >
-                      {option?.name || ""}
-                    </Typography>
-                    <Typography
-                      component="p"
-                      variant="body2"
-                      color="text.secondary"
-                      noWrap
+                      {option?.image_url ? (
+                        <Box
+                          component="img"
+                          src={option.image_url}
+                          alt={option.name || "Cover"}
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            display: "block",
+                          }}
+                        />
+                      ) : null}
+                    </Box>
+
+                    <Box
                       sx={{
-                        textAlign: "left",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                        flex: 1,
+                        overflow: "hidden",
                       }}
-                      title={option?.artist || ""}
                     >
-                      {option?.artist || ""}
-                    </Typography>
+                      <Typography
+                        component="h3"
+                        variant="h6"
+                        noWrap
+                        sx={{
+                          fontWeight: 700,
+                          textAlign: "left",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: "100%",
+                        }}
+                        title={option?.name || ""}
+                      >
+                        {option?.name || ""}
+                      </Typography>
+                      <Typography
+                        component="p"
+                        variant="body2"
+                        color="text.secondary"
+                        noWrap
+                        sx={{
+                          textAlign: "left",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: "100%",
+                        }}
+                        title={option?.artist || ""}
+                      >
+                        {option?.artist || ""}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ flexShrink: 0 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={posting}
+                        onClick={() => handleDeposit(option)}
+                        sx={{ minWidth: 0 }}
+                      >
+                        {isThisPosting ? (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CircularProgress size={16} />
+                            Déposer
+                          </Box>
+                        ) : (
+                          "Déposer"
+                        )}
+                      </Button>
+                    </Box>
                   </Box>
                 </ListItem>
               );
