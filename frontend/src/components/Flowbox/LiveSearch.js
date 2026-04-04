@@ -435,10 +435,10 @@ export default function LiveSearch() {
                         bgcolor: "action.hover",
                       }}
                     >
-                      {resultImagesEnabled && option?.image_url ? (
+                      {resultImagesEnabled && option?.image_url_small ? (
                         <Box
                           component="img"
-                          src={option.image_url}
+                          src={option.image_url_small}
                           alt={option.name || "Cover"}
                           sx={{
                             width: "100%",
