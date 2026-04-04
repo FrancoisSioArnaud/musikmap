@@ -37,7 +37,7 @@
   overflow: hidden;
   margin: 26px;
   box-shadow: rgba(0, 0, 0, 0.2) 0px 13px 11px 0px;
-  border: solid 10px white;
+  border: solid 4px white;
   position:relative;
 }
 
@@ -52,8 +52,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  height: 70%;
-  width: 70%;
+  height: 47%;
+  width: 47%;
   transform: translate(-50%, -50%);
   color: var(--mm-color-surface);
 }
