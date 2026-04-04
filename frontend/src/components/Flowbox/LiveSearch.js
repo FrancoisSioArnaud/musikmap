@@ -71,7 +71,6 @@ export default function LiveSearch() {
   const [postingId, setPostingId] = useState(null);
   const [postingProgress, setPostingProgress] = useState(0);
   const [postingTransitionMs, setPostingTransitionMs] = useState(0);
-  const [resultImagesEnabled, setResultImagesEnabled] = useState(true);
 
   const searchInputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -122,13 +121,11 @@ export default function LiveSearch() {
         if (!trimmedSearch) {
           setJsonResults([]);
           setIsSearching(false);
-          setResultImagesEnabled(true);
           return;
         }
 
         try {
           setIsSearching(true);
-          setResultImagesEnabled(true);
 
           const csrftoken = getCookie("csrftoken");
 
@@ -180,7 +177,6 @@ export default function LiveSearch() {
     if (!value) return;
     setSelectedStreamingService(value);
     setJsonResults([]);
-    setResultImagesEnabled(true);
   };
 
   const goOnboardingWithError = useCallback(
@@ -236,10 +232,6 @@ export default function LiveSearch() {
 
         if (!res.ok) {
           throw new Error("Erreur pendant le dépôt");
-        }
-
-        if (isMountedRef.current) {
-          setResultImagesEnabled(false);
         }
 
         const data = (await res.json().catch(() => null)) || {};
@@ -416,7 +408,7 @@ export default function LiveSearch() {
                         bgcolor: "action.hover",
                       }}
                     >
-                      {resultImagesEnabled && option?.image_url_small ? (
+                      {option?.image_url_small ? (
                         <Box
                           component="img"
                           src={option.image_url_small}
