@@ -174,7 +174,7 @@ export default function Onboarding() {
                 />
                 <LockIcon className="icon" />
               </Box>
-                
+              <Box className="vinyl" />
             </Box>
           ) : null}
 
