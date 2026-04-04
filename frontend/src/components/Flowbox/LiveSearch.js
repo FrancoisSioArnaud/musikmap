@@ -480,7 +480,7 @@ export default function LiveSearch() {
                               gap: 1,
                             }}
                           >
-                            <CircularProgress size={16} />
+                            <CircularProgress size={16} color={clientTheme.colors.primaryContrastText}/>
                             Déposer
                           </Box>
                         ) : (
