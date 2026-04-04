@@ -207,7 +207,7 @@ export default function LiveSearch() {
       };
 
       doFetch();
-    }, 400);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [searchValue, selectedStreamingService]);
