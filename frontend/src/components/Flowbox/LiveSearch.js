@@ -32,7 +32,7 @@ const SLOW_PROGRESS_TARGET = 78;
 const SLOW_PROGRESS_DURATION_MS = 2400;
 const FAST_PROGRESS_DURATION_MS = 500;
 const MIN_VISUAL_DURATION_MS = 800;
-const SUCCESS_HOLD_MS = 120;
+const SUCCESS_HOLD_MS = 100;
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
@@ -414,7 +414,7 @@ export default function LiveSearch() {
               const isThisPosting = posting && postingId === id;
               const progressTimingFunction =
                 postingProgressMode === "fast"
-                  ? "cubic-bezier(0.22, 1, 0.36, 1)"
+                  ? "cubic-bezier(.5,.14,.23,.98)"
                   : "linear";
 
               return (
