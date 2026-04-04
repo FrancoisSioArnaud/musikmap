@@ -64,6 +64,16 @@
   transform: scale(0.9);
   margin-left: -20%;
   background: radial-gradient(circle closest-side, rgba(115, 115, 115, 0) 3%, #0F0F0F 4%, #131313 10%, #0D0D0D 11%, #141414 12%, #2A2A2A 37%, #0D0D0D 38%, #0D0D0D 53%, #444444 54%, #0D0D0D 55%, #0D0D0D 70%, #444444 71%, #0D0D0D 72%, #0d0d0d 84%, #444 85%, #0D0D0D 86%, #0d0d0d 95%, #373737 96%);
+  animation: vinyl_open 500ms ease-in-out;
+}
+
+@keyframes vinyl_open {
+  from {
+    margin-left: -50%;
+  }
+  to {
+    margin-left: -20%;
+  }
 }
 
 @keyframes blurPulse {
