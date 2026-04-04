@@ -190,7 +190,7 @@ export default function LiveSearch() {
       };
 
       doFetch();
-    }, 600);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchValue, selectedStreamingService]);
