@@ -90,41 +90,22 @@ export default function LiveSearch() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    setIncitationLoading(true);
 
-    (async () => {
-      try {
-        setIncitationLoading(true);
-        const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
-        const response = await fetch(url, {
-          credentials: "same-origin",
-          headers: { Accept: "application/json" },
-        });
+    try {
+      const raw = localStorage.getItem("mm_current_box");
+      const storedBox = raw ? JSON.parse(raw) : null;
 
-        if (!response.ok) {
-          throw new Error("Impossible de charger la phrase d’incitation.");
-        }
-
-        const data = await response.json().catch(() => ({}));
-        if (cancelled) return;
-
-        setIncitationText(
-          (
-            data?.active_incitation?.text ||
-            data?.search_incitation_text ||
-            ""
-          ).trim()
-        );
-      } catch (_error) {
-        if (cancelled) return;
-      } finally {
-        if (!cancelled) setIncitationLoading(false);
+      if (storedBox?.box_slug === boxSlug) {
+        setIncitationText((storedBox?.search_incitation_text || "").trim());
+      } else {
+        setIncitationText("");
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    } catch {
+      setIncitationText("");
+    } finally {
+      setIncitationLoading(false);
+    }
   }, [boxSlug]);
 
   useEffect(() => {

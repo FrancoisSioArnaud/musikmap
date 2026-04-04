@@ -52,6 +52,16 @@ export default function Onboarding() {
         if (!data || !data.name) throw new Error("Payload inattendu");
 
         const nextClient = data?.client_slug || "default";
+
+        try {
+          localStorage.setItem(
+            "mm_current_box",
+            JSON.stringify({
+              box_slug: boxSlug,
+              search_incitation_text: (data?.search_incitation_text || "").trim(),
+            })
+          );
+        } catch {}
         if (setCurrentClient && currentClient !== nextClient) {
           setCurrentClient(nextClient);
         }
