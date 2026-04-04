@@ -32,7 +32,7 @@
 
 .pochette_container{
   min-height: 0;
-  border-radius: var(--mm-radius-md);
+  border-radius: var(--mm-radius-xs);
   flex: 1;
   overflow: hidden;
   margin: 26px;
@@ -60,7 +60,7 @@
 }
 
 .pochette_container .icon{
-  position: absolute;
+  display:none; ////
   position: absolute;
   left: 50%;
   top: 50%;
