@@ -29,9 +29,9 @@ const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
 
 const SLOW_PROGRESS_TARGET = 78;
-const SLOW_PROGRESS_DURATION_MS = 5800;
-const FAST_PROGRESS_DURATION_MS = 700;
-const MIN_VISUAL_DURATION_MS = 600;
+const SLOW_PROGRESS_DURATION_MS = 2400;
+const FAST_PROGRESS_DURATION_MS = 500;
+const MIN_VISUAL_DURATION_MS = 800;
 const SUCCESS_HOLD_MS = 120;
 
 function normalizeOptionToSong(option) {
@@ -71,13 +71,17 @@ export default function LiveSearch() {
   const [postingId, setPostingId] = useState(null);
   const [postingProgress, setPostingProgress] = useState(0);
   const [postingTransitionMs, setPostingTransitionMs] = useState(0);
+  const [postingProgressMode, setPostingProgressMode] = useState("idle");
+  const [stopResultImages, setStopResultImages] = useState(false);
 
   const searchInputRef = useRef(null);
   const isMountedRef = useRef(true);
+  const searchAbortControllerRef = useRef(null);
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      searchAbortControllerRef.current?.abort?.();
     };
   }, []);
 
@@ -138,6 +142,8 @@ export default function LiveSearch() {
         const trimmedSearch = searchValue.trim();
 
         if (!trimmedSearch) {
+          searchAbortControllerRef.current?.abort?.();
+          searchAbortControllerRef.current = null;
           setJsonResults([]);
           setIsSearching(false);
           return;
@@ -145,6 +151,10 @@ export default function LiveSearch() {
 
         try {
           setIsSearching(true);
+
+          searchAbortControllerRef.current?.abort?.();
+          const controller = new AbortController();
+          searchAbortControllerRef.current = controller;
 
           const csrftoken = getCookie("csrftoken");
 
@@ -157,8 +167,10 @@ export default function LiveSearch() {
                 "X-CSRFToken": csrftoken,
               },
               body: JSON.stringify({ search_query: trimmedSearch }),
+              signal: controller.signal,
             });
             const j = await r.json();
+            if (controller.signal.aborted) return;
             setJsonResults(Array.isArray(j) ? j : []);
             return;
           }
@@ -172,17 +184,25 @@ export default function LiveSearch() {
                 "X-CSRFToken": csrftoken,
               },
               body: JSON.stringify({ search_query: trimmedSearch }),
+              signal: controller.signal,
             });
             const j = await r.json();
+            if (controller.signal.aborted) return;
             setJsonResults(Array.isArray(j) ? j : []);
             return;
           }
 
           setJsonResults([]);
-        } catch {
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            return;
+          }
           setJsonResults([]);
         } finally {
-          setIsSearching(false);
+          if (searchAbortControllerRef.current === controller) {
+            setIsSearching(false);
+            searchAbortControllerRef.current = null;
+          }
         }
       };
 
@@ -214,6 +234,8 @@ export default function LiveSearch() {
     setPostingId(null);
     setPostingProgress(0);
     setPostingTransitionMs(0);
+    setPostingProgressMode("idle");
+    setStopResultImages(false);
   }, []);
 
   const handleDeposit = useCallback(
@@ -227,9 +249,12 @@ export default function LiveSearch() {
       setPostingId(id);
       setPostingProgress(0);
       setPostingTransitionMs(0);
+      setPostingProgressMode("idle");
+      setStopResultImages(false);
 
       requestAnimationFrame(() => {
         if (!isMountedRef.current) return;
+        setPostingProgressMode("slow");
         setPostingTransitionMs(SLOW_PROGRESS_DURATION_MS);
         setPostingProgress(SLOW_PROGRESS_TARGET);
       });
@@ -260,6 +285,14 @@ export default function LiveSearch() {
           older_deposits = [],
           main = null,
         } = data;
+
+        searchAbortControllerRef.current?.abort?.();
+        searchAbortControllerRef.current = null;
+
+        if (isMountedRef.current) {
+          setStopResultImages(true);
+          setIsSearching(false);
+        }
 
         if (setUser) {
           if (data?.current_user) {
@@ -295,6 +328,7 @@ export default function LiveSearch() {
 
         if (!isMountedRef.current) return;
 
+        setPostingProgressMode("fast");
         setPostingTransitionMs(FAST_PROGRESS_DURATION_MS);
         setPostingProgress(100);
 
@@ -378,6 +412,10 @@ export default function LiveSearch() {
             {jsonResults.map((option) => {
               const id = option?.id ?? "__posting__";
               const isThisPosting = posting && postingId === id;
+              const progressTimingFunction =
+                postingProgressMode === "fast"
+                  ? "cubic-bezier(0.22, 1, 0.36, 1)"
+                  : "linear";
 
               return (
                 <ListItem
@@ -401,7 +439,7 @@ export default function LiveSearch() {
                       bgcolor: "var(--mm-color-primary-light)",
                       transitionProperty: "width",
                       transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
-                      transitionTimingFunction: "cubic-bezier(.17,.49,.88,.61)",
+                      transitionTimingFunction: progressTimingFunction,
                       pointerEvents: "none",
                     }}
                   />
@@ -427,11 +465,12 @@ export default function LiveSearch() {
                         bgcolor: "action.hover",
                       }}
                     >
-                      {option?.image_url ? (
+                      {option?.image_url && !stopResultImages ? (
                         <Box
                           component="img"
                           src={option.image_url}
                           alt={option.name || "Cover"}
+                          loading="eager"
                           sx={{
                             width: "100%",
                             height: "100%",
@@ -519,17 +558,16 @@ export default function LiveSearch() {
         ) : incitationText ? (
           <Box
             sx={{
-              margin: "0px 20px",
-              backgroundColor: "var(--mm-color-secondary-light)",
-              padding: "16px 20px",
-              borderRadius: "var(--mm-radius-lg)",
+              px: 5,
+              py: 1,
+              color: "var(--mm-color-text-secondary)",
               display: "flex",
-              gap: "12px",
-              alignItems: "center",
+              alignItems: "flex-start",
+              gap: 1.5,
             }}
           >
-            <CampaignRoundedIcon />
-            <Typography variant="subtitle1">{incitationText}</Typography>
+            <CampaignRoundedIcon sx={{ mt: "2px", flexShrink: 0 }} />
+            <Typography variant="body2">{incitationText}</Typography>
           </Box>
         ) : null}
       </Box>
