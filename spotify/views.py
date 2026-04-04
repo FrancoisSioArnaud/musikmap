@@ -249,6 +249,6 @@ class Search(APIView):
             }
             tracks.append(track)
         # Return the list of tracks as a response
-        return Response(tracks, status=status.HTTP_200_OK)
+        return Response(results, status=status.HTTP_200_OK)
 
 
