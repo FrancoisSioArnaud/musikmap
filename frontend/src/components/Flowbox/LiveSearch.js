@@ -379,7 +379,7 @@ export default function LiveSearch() {
                       left: 0,
                       bottom: 0,
                       width: isThisPosting ? `${postingProgress}%` : "0%",
-                      bgcolor: "var(--mm-color-primary)",
+                      bgcolor: "var(--mm-color-primary-light)",
                       transitionProperty: "width",
                       transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
                       transitionTimingFunction: "cubic-bezier(.17,.49,.88,.61)",
