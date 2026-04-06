@@ -36,10 +36,13 @@
 }
 
 .article .linkline{
-  text-decoration: underline;
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.article .linkline .domain{
+  text-decoration: underline;
 }
 
 .article .linkline .favicon{
