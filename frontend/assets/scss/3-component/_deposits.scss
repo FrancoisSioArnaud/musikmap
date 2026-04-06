@@ -144,10 +144,10 @@ color : var(--mm-color-secondary);
 
 .deposit_main .deposit_song{
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   background : var(--mm-color-primary-dark);
   padding: 30px;
-  padding-bottom: 26px;
+  padding-bottom: 36px;
 }
 
 .deposit_list .deposit_song, .deposit_list.deposit_song{
@@ -203,6 +203,9 @@ color : var(--mm-color-secondary);
   display: flex;
   gap: 8px;
   flex-direction: column;
+}
+.deposit_main .interact{
+  gap: 12px;
 }
 
 .deposit_main .interact{
