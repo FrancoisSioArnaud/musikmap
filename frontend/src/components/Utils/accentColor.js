@@ -3,11 +3,23 @@ const EDGE_RATIO = 0.1;
 const MIN_ALPHA = 128;
 const MIN_SATURATION_STRICT = 0.18;
 const MIN_SATURATION_FALLBACK = 0.08;
-const MIN_LIGHTNESS_STRICT = 0.12;
+const MIN_LIGHTNESS_STRICT = 0.18;
 const MAX_LIGHTNESS_STRICT = 0.92;
-const MIN_LIGHTNESS_FALLBACK = 0.08;
+const MIN_LIGHTNESS_FALLBACK = 0.14;
 const MAX_LIGHTNESS_FALLBACK = 0.96;
 const QUANTIZATION_STEP = 32;
+
+const IDEAL_LIGHTNESS = 0.58;
+
+const SATURATION_SCORE_WEIGHT = 1000;
+const COUNT_SCORE_WEIGHT = 12;
+const LIGHTNESS_SCORE_WEIGHT = 36;
+
+const BROWN_HUE_MIN = 18 / 360;
+const BROWN_HUE_MAX = 50 / 360;
+const BROWN_MAX_LIGHTNESS = 0.5;
+const BROWN_MIN_SATURATION = 0.18;
+const BROWN_PENALTY_WEIGHT = 240;
 
 /*
   Réglages par défaut pour l'affichage de la couleur dans le front.
@@ -24,6 +36,30 @@ export const DEPOSIT_ACCENT_SATURATION_DELTA = -0.15;
 const SATURATION_SCORE_WEIGHT = 1000;
 const COUNT_SCORE_WEIGHT = 14;
 const LIGHTNESS_SCORE_WEIGHT = 8;
+
+function getBrownPenalty(h, s, l) {
+  const isBrownHue = h >= BROWN_HUE_MIN && h <= BROWN_HUE_MAX;
+  const isBrownCandidate =
+    isBrownHue &&
+    s >= BROWN_MIN_SATURATION &&
+    l <= BROWN_MAX_LIGHTNESS;
+
+  if (!isBrownCandidate) return 0;
+
+  const hueCenter = (BROWN_HUE_MIN + BROWN_HUE_MAX) / 2;
+  const hueHalfRange = (BROWN_HUE_MAX - BROWN_HUE_MIN) / 2;
+
+  const hueDistance = Math.abs(h - hueCenter);
+  const hueFactor = 1 - clamp(hueDistance / hueHalfRange, 0, 1);
+
+  const darknessFactor = clamp(
+    (BROWN_MAX_LIGHTNESS - l) / BROWN_MAX_LIGHTNESS,
+    0,
+    1
+  );
+
+  return BROWN_PENALTY_WEIGHT * hueFactor * darknessFactor;
+}
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -197,14 +233,18 @@ function scoreBucket(bucket) {
   const avgR = bucket.rSum / bucket.count;
   const avgG = bucket.gSum / bucket.count;
   const avgB = bucket.bSum / bucket.count;
-  const { s, l } = rgbToHsl(avgR, avgG, avgB);
+
+  const { h, s, l } = rgbToHsl(avgR, avgG, avgB);
 
   const saturationScore = s * SATURATION_SCORE_WEIGHT;
   const countScore = Math.log2(bucket.count + 1) * COUNT_SCORE_WEIGHT;
-  const lightnessScore =
-    (1 - Math.abs(l - 0.5) * 2) * LIGHTNESS_SCORE_WEIGHT;
 
-  return saturationScore + countScore + lightnessScore;
+  const lightnessScore =
+    (1 - Math.abs(l - IDEAL_LIGHTNESS) * 2) * LIGHTNESS_SCORE_WEIGHT;
+
+  const brownPenalty = getBrownPenalty(h, s, l);
+
+  return saturationScore + countScore + lightnessScore - brownPenalty;
 }
 
 function pickAccentColor(imageData, width, height, mode) {
