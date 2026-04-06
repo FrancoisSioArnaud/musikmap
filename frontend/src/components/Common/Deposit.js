@@ -535,7 +535,7 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Box className="deposit_main">
+        <Box className="deposit_main deposit">
           {showDate ? (
             <Typography className="deposit_date" variant="subtitle1" component="span">
               {"Chanson partagée " + (naturalDate || "")}
@@ -625,7 +625,7 @@ export default function Deposit({
 
   return (
     <>
-      <Box className="deposit_list">
+      <Box className="deposit_list deposit">
         {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
             {naturalDate || ""}
