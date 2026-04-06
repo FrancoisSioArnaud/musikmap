@@ -39,7 +39,7 @@ color : var(--mm-color-success);
   align-items: center;
 }
 
-#older_deposits_list .deposit_container::after{
+#older_deposits_list .deposit::after{
   content: "...";
   transform: rotate(90deg) translate(0, -15px);
   padding: 16px;
