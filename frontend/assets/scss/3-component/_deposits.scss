@@ -94,7 +94,7 @@ color : var(--mm-color-success);
   padding: 4px 16px 4px 16px;
 }
 
-.deposit_card.deposit_action_button {
+.deposit_card .deposit_action_button {
   min-width: auto;
   width: auto;
   padding: 8px 12px;
@@ -103,57 +103,57 @@ color : var(--mm-color-success);
   font-size: 1em;
 }
 
-.deposit_card.deposit_action_button svg{
+.deposit_card .deposit_action_button svg{
   font-size: 26px;
 }
 
 
-.deposit_card.deposit_action_group {
+.deposit_card .deposit_action_group {
   display: flex;
   align-items: center;
   gap: 0;
 }
 
-.deposit_card.addreaction_icon_button {
+.deposit_card .addreaction_icon_button {
   min-width: auto;
   padding-right: 4px;
 }
 
-.deposit_card.reactionsummary_button {
+.deposit_card .reactionsummary_button {
   min-width: auto;
   padding-left: 0;
 }
 
 
-.deposit_card.deposit_date{
+.deposit_card .deposit_date{
 
 }
 
-.deposit_card.deposit_user{
+.deposit_card .deposit_user{
   display: flex;
   align-items: center;
   gap: 6px;
   justify-content:center;
 }
 
-.deposit_card.deposit_user span{
+.deposit_card .deposit_user span{
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.deposit_card.avatar {
+.deposit_card .avatar {
   width : 26px;
   height : 26px;
 }
 
-.deposit_card.deposit_song,
+.deposit_card .deposit_song,
 .deposit_song{
   background-color: var(--mm-color-primary-light);
   display: flex;
 }
 
-.deposit_card.deposit_song.has_accent_color,
+.deposit_card .deposit_song.has_accent_color,
 .deposit_song.has_accent_color{
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
@@ -178,21 +178,21 @@ color : var(--mm-color-success);
   align-items:center;
   padding:16px;
 }
-.my_deposit.deposit_song{
+.my_deposit .deposit_song{
   border-radius: var(--mm-radius-md);
 }
 .my_deposit{
   background-color: var(--mm-color-surface);
 }
 
-.deposit_card.cover_media{
+.deposit_card .cover_media{
   position: relative;
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
 }
 
-.deposit_card.img_container{
+.deposit_card .img_container{
   position: relative;
   border-radius: var(--mm-radius-sm);
   aspect-ratio: 1 / 1;
@@ -221,7 +221,7 @@ color : var(--mm-color-success);
 
 
 
-.deposit_card.interact{
+.deposit_card .interact{
   display: flex;
   gap: 8px;
   flex-direction: column;
@@ -238,7 +238,7 @@ color : var(--mm-color-success);
   justify-content: left;
 }
 
-.deposit_card.texts{
+.deposit_card .texts{
   display: flex;
   flex-direction: column;
   padding:6px 0;
@@ -274,14 +274,14 @@ color : var(--mm-color-success);
  margin:0;
 }
 
-.deposit_card.emojis{
+.deposit_card .emojis{
   position: absolute;
   inset: 0;
   overflow: visible;
   pointer-events: none;
 }
 
-.deposit_card.emojis .emoji{
+.deposit_card .emojis .emoji{
   position: absolute;
   display: inline-flex;
   align-items: center;
