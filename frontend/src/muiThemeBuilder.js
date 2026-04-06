@@ -140,7 +140,7 @@ export function buildMuiTheme(clientTheme) {
             height: 48,
             backgroundColor: clientTheme.colors.primary,
             color: clientTheme.colors.primaryContrastText,
-            fontWeight: 400,
+            fontWeight: 700,
             "&:hover": {
               backgroundColor: clientTheme.colors.primary,
               boxShadow: "none",
@@ -157,7 +157,7 @@ export function buildMuiTheme(clientTheme) {
             height: 48,
             backgroundColor: clientTheme.colors.white,
             color: clientTheme.colors.primary,
-            fontWeight: 400,
+            fontWeight: 700,
             border: `solid inset 2px ${clientTheme.colors.primary}`,
             borderWidth: 2,
             "&:hover": {
@@ -177,7 +177,7 @@ export function buildMuiTheme(clientTheme) {
               height: 48,
               backgroundColor: clientTheme.colors.primary,
               color: clientTheme.colors.primaryContrastText,
-              fontWeight: 400,
+              fontWeight: 700,
               "&:hover": {
                 backgroundColor: clientTheme.colors.primary,
                 boxShadow: "none",
@@ -193,7 +193,7 @@ export function buildMuiTheme(clientTheme) {
               border: `solid ${clientTheme.colors.primary} 2px`,
               backgroundColor: clientTheme.colors.white,
               fontSize: "16px",
-              fontWeight: 400,
+              fontWeight: 700,
               color: clientTheme.colors.text,
               "&:hover": {
                 backgroundColor: clientTheme.colors.white,
