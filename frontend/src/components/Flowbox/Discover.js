@@ -147,8 +147,14 @@ export default function Discover() {
 
         {mySong ? (
           <Box
-            className="my_deposit deposit deposit_list deposit_song"
-            sx={myDepositAccentColor ? { backgroundColor: myDepositAccentColor } : undefined}
+            className={`my_deposit deposit deposit_list deposit_song${
+              myDepositAccentColor ? " has_accent_color" : ""
+            }`}
+            style={
+              myDepositAccentColor
+                ? { "--deposit-accent": myDepositAccentColor }
+                : undefined
+            }
           >
             <Box className="img_container">
               {mySong?.image_url ? (
