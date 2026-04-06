@@ -125,7 +125,7 @@ export function buildMuiTheme(clientTheme) {
         styleOverrides: {
           root: {
             height: 48,
-            fontSize: "20px",
+            fontSize: "16px",
             textTransform: "none",
             "&:hover": {
               backgroundColor: "inherit",
@@ -140,7 +140,7 @@ export function buildMuiTheme(clientTheme) {
             height: 48,
             backgroundColor: clientTheme.colors.primary,
             color: clientTheme.colors.primaryContrastText,
-            fontWeight: 700,
+            fontWeight: 400,
             "&:hover": {
               backgroundColor: clientTheme.colors.primary,
               boxShadow: "none",
@@ -157,7 +157,7 @@ export function buildMuiTheme(clientTheme) {
             height: 48,
             backgroundColor: clientTheme.colors.white,
             color: clientTheme.colors.primary,
-            fontWeight: 700,
+            fontWeight: 400,
             border: `solid inset 2px ${clientTheme.colors.primary}`,
             borderWidth: 2,
             "&:hover": {
@@ -177,7 +177,7 @@ export function buildMuiTheme(clientTheme) {
               height: 48,
               backgroundColor: clientTheme.colors.primary,
               color: clientTheme.colors.primaryContrastText,
-              fontWeight: 700,
+              fontWeight: 400,
               "&:hover": {
                 backgroundColor: clientTheme.colors.primary,
                 boxShadow: "none",
@@ -193,7 +193,7 @@ export function buildMuiTheme(clientTheme) {
               border: `solid ${clientTheme.colors.primary} 2px`,
               backgroundColor: clientTheme.colors.white,
               fontSize: "16px",
-              fontWeight: 600,
+              fontWeight: 400,
               color: clientTheme.colors.text,
               "&:hover": {
                 backgroundColor: clientTheme.colors.white,
