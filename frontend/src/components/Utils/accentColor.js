@@ -9,19 +9,44 @@ const MIN_LIGHTNESS_FALLBACK = 0.08;
 const MAX_LIGHTNESS_FALLBACK = 0.96;
 const QUANTIZATION_STEP = 32;
 
+/*
+  Réglages par défaut pour l'affichage de la couleur dans le front.
+  Change ces deux valeurs pour tuner rapidement le rendu de .deposit_song.
+*/
+export const DEPOSIT_ACCENT_LIGHTNESS_DELTA = 0.2;
+export const DEPOSIT_ACCENT_SATURATION_DELTA = 0.1;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function clampByte(value) {
-  return Math.max(0, Math.min(255, Math.round(value || 0)));
+  return clamp(Math.round(value || 0), 0, 255);
 }
 
 function toHex(value) {
   return clampByte(value).toString(16).padStart(2, "0");
 }
 
-function rgbToHex(r, g, b) {
+export function rgbToHex(r, g, b) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
-function rgbToHsl(r, g, b) {
+export function hexToRgb(hex) {
+  const value = String(hex || "").replace("#", "").trim();
+
+  if (value.length !== 6) return null;
+
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+
+  if ([r, g, b].some(Number.isNaN)) return null;
+
+  return { r, g, b };
+}
+
+export function rgbToHsl(r, g, b) {
   const rn = clampByte(r) / 255;
   const gn = clampByte(g) / 255;
   const bn = clampByte(b) / 255;
@@ -38,6 +63,7 @@ function rgbToHsl(r, g, b) {
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
 
   let h = 0;
+
   switch (max) {
     case rn:
       h = (gn - bn) / d + (gn < bn ? 6 : 0);
@@ -51,7 +77,83 @@ function rgbToHsl(r, g, b) {
   }
 
   h /= 6;
+
   return { h, s, l };
+}
+
+export function hslToRgb(h, s, l) {
+  const hh = ((h % 1) + 1) % 1;
+  const ss = clamp(s, 0, 1);
+  const ll = clamp(l, 0, 1);
+
+  if (ss === 0) {
+    const gray = ll * 255;
+    return { r: gray, g: gray, b: gray };
+  }
+
+  const hueToRgb = (p, q, t) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+
+  const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss;
+  const p = 2 * ll - q;
+
+  return {
+    r: hueToRgb(p, q, hh + 1 / 3) * 255,
+    g: hueToRgb(p, q, hh) * 255,
+    b: hueToRgb(p, q, hh - 1 / 3) * 255,
+  };
+}
+
+export function adjustHexColor(
+  hex,
+  { lightness = 0, saturation = 0 } = {}
+) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return undefined;
+
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+  const nextRgb = hslToRgb(
+    hsl.h,
+    clamp(hsl.s + saturation, 0, 1),
+    clamp(hsl.l + lightness, 0, 1)
+  );
+
+  return rgbToHex(nextRgb.r, nextRgb.g, nextRgb.b);
+}
+
+/*
+  Handler principal pour le rendu front des accents.
+  Tu peux :
+  - changer les constantes DEPOSIT_ACCENT_* en haut du fichier
+  - ou passer des overrides ici depuis un composant
+
+  Exemples :
+  getDepositAccentColor(color)
+  getDepositAccentColor(color, { lightness: 0.14 })
+  getDepositAccentColor(color, { saturation: 0.2 })
+  getDepositAccentColor(color, { lightness: 0.06, saturation: 0.18 })
+*/
+export function getDepositAccentColor(
+  hex,
+  {
+    lightness = DEPOSIT_ACCENT_LIGHTNESS_DELTA,
+    saturation = DEPOSIT_ACCENT_SATURATION_DELTA,
+  } = {}
+) {
+  if (!hex) return undefined;
+
+  return adjustHexColor(hex, {
+    lightness,
+    saturation,
+  });
 }
 
 function isPixelEligible(r, g, b, a, mode) {
@@ -75,7 +177,8 @@ function isPixelEligible(r, g, b, a, mode) {
 }
 
 function quantizeChannel(value) {
-  const quantized = Math.floor(clampByte(value) / QUANTIZATION_STEP) * QUANTIZATION_STEP;
+  const quantized =
+    Math.floor(clampByte(value) / QUANTIZATION_STEP) * QUANTIZATION_STEP;
   const centered = quantized + QUANTIZATION_STEP / 2;
   return clampByte(centered);
 }
@@ -109,7 +212,13 @@ function pickAccentColor(imageData, width, height, mode) {
       if (!isPixelEligible(r, g, b, a, mode)) continue;
 
       const key = makeBucketKey(r, g, b);
-      const current = buckets.get(key) || { count: 0, rSum: 0, gSum: 0, bSum: 0 };
+      const current = buckets.get(key) || {
+        count: 0,
+        rSum: 0,
+        gSum: 0,
+        bSum: 0,
+      };
+
       current.count += 1;
       current.rSum += r;
       current.gSum += g;
