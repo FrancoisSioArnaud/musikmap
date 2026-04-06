@@ -41,7 +41,7 @@ color : var(--mm-color-success);
 
 #older_deposits_list .deposit_container::after{
   content: "...";
-  transform: rotate(90deg) translate(0px, -11px);
+  transform: rotate(90deg) translate(0px, -15px);
   padding: 20px;
   line-height: 0;
   font-size: 26px;
