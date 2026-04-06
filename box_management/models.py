@@ -524,7 +524,7 @@ class Article(models.Model):
 
 
 class Song(models.Model):
-    song_id = models.CharField(max_length=15, unique=True, db_index=True)
+    song_id = models.CharField(max_length=25, unique=True, db_index=True)
 
     title = models.CharField(max_length=50, db_index=True)
     artist = models.CharField(max_length=50, db_index=True)
