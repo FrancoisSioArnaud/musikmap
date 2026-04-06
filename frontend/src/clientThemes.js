@@ -82,9 +82,11 @@ export const CLIENT_THEMES = {
       primaryLight: "#e6f0ea",
       primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
 
-      
       secondary: "#73beff",
       secondaryLight: "#e3f2ff",
+
+      success: "#78d700",
+
     },
     radius: {
 
