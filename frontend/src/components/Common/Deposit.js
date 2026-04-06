@@ -541,7 +541,7 @@ export default function Deposit({
               {"Chanson partagée " + (naturalDate || "")}
             </Typography>
           ) : null}
-          <Card className="deposit deposit_main_card">
+          <Card className="deposit_card deposit_main_card">
             {depositInfosBlock}
 
             <Box
@@ -631,7 +631,7 @@ export default function Deposit({
             {naturalDate || ""}
           </Typography>
         ) : null}
-        <Card className="deposit deposit_list_card">
+        <Card className="deposit_card deposit_list_card">
           {depositInfosBlock}
 
           <Box
