@@ -32,7 +32,7 @@ color : var(--mm-color-success);
   text-align: left;
 }
 
-.deposit_container{
+.deposit{
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -49,14 +49,14 @@ color : var(--mm-color-success);
   padding-right: 16px;
 }
 
-.deposit{
+.deposit_card{
   display: flex;
   flex-direction: column;
   box-shadow: none;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
 }
-.deposit_main{
+.deposit_main_card{
 
 
 }
@@ -72,11 +72,11 @@ color : var(--mm-color-success);
   
 }
 
-#older_deposits_list .deposit{
+#older_deposits_list .deposit_card{
   
 }
 
-.deposit .deposit_infos{
+.deposit_card.deposit_infos{
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -84,7 +84,7 @@ color : var(--mm-color-success);
   padding: 12px 16px;
 }
 
-.deposit .deposit_interact{
+.deposit_card.deposit_interact{
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -94,7 +94,7 @@ color : var(--mm-color-success);
   padding: 4px 16px 4px 16px;
 }
 
-.deposit .deposit_action_button {
+.deposit_card.deposit_action_button {
   min-width: auto;
   width: auto;
   padding: 8px 12px;
@@ -103,68 +103,68 @@ color : var(--mm-color-success);
   font-size: 1em;
 }
 
-.deposit .deposit_action_button svg{
+.deposit_card.deposit_action_button svg{
   font-size: 26px;
 }
 
 
-.deposit .deposit_action_group {
+.deposit_card.deposit_action_group {
   display: flex;
   align-items: center;
   gap: 0;
 }
 
-.deposit .addreaction_icon_button {
+.deposit_card.addreaction_icon_button {
   min-width: auto;
   padding-right: 4px;
 }
 
-.deposit .reactionsummary_button {
+.deposit_card.reactionsummary_button {
   min-width: auto;
   padding-left: 0;
 }
 
 
-.deposit .deposit_date{
+.deposit_card.deposit_date{
 
 }
 
-.deposit .deposit_user{
+.deposit_card.deposit_user{
   display: flex;
   align-items: center;
   gap: 6px;
   justify-content:center;
 }
 
-.deposit .deposit_user span{
+.deposit_card.deposit_user span{
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.deposit .avatar {
+.deposit_card.avatar {
   width : 26px;
   height : 26px;
 }
 
-.deposit .deposit_song,
+.deposit_card.deposit_song,
 .deposit_song{
   background-color: var(--mm-color-primary-light);
   display: flex;
 }
 
-.deposit .deposit_song.has_accent_color,
+.deposit_card.deposit_song.has_accent_color,
 .deposit_song.has_accent_color{
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main .deposit_song.has_accent_color,
+.deposit_main_card .deposit_song.has_accent_color,
 .deposit_song.has_accent_color{
  background-color: color-mix(in srgb, var(--deposit-accent) 60%, #000 40%);
 }
 
 
-.deposit_main .deposit_song{
+.deposit_main_card .deposit_song{
   flex-direction: column;
   gap: 16px;
 //  background : var(--mm-color-primary-dark);
@@ -172,7 +172,7 @@ color : var(--mm-color-success);
   padding-bottom: 32px;
 }
 
-.deposit_list .deposit_song, .deposit_list.deposit_song{
+.deposit_list_card .deposit_song, .deposit_list_card.deposit_song{
   flex-direction: row;
   gap: 16px;
   align-items:center;
@@ -185,14 +185,14 @@ color : var(--mm-color-success);
   background-color: var(--mm-color-surface);
 }
 
-.deposit .cover_media{
+.deposit_card.cover_media{
   position: relative;
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
 }
 
-.deposit .img_container{
+.deposit_card.img_container{
   position: relative;
   border-radius: var(--mm-radius-sm);
   aspect-ratio: 1 / 1;
@@ -210,58 +210,58 @@ color : var(--mm-color-success);
   display: block;
 }
 
-.deposit_main .cover_media{
+.deposit_main_card .cover_media{
   width : 66%;
   margin : auto;
 }
 
-.deposit_list .cover_media{
+.deposit_list_card .cover_media{
   width : 33%;
 }
 
 
 
-.deposit .interact{
+.deposit_card.interact{
   display: flex;
   gap: 8px;
   flex-direction: column;
 }
-.deposit_main .interact{
+.deposit_main_card .interact{
   gap: 12px;
 }
 
-.deposit_main .interact{
+.deposit_main_card .interact{
   align-items: center;
 }
 
-.deposit_list .interact{
+.deposit_list_card .interact{
   justify-content: left;
 }
 
-.deposit .texts{
+.deposit_card.texts{
   display: flex;
   flex-direction: column;
   padding:6px 0;
 }
 
-.deposit_main .texts{
+.deposit_main_card .texts{
   flex-direction: column;
   align-items: center;
   text-align:center;
 }
 
-.deposit_main .titre{
+.deposit_main_card .titre{
   color: var(--mm-color-primary);
 }
-.deposit_main .artist{
+.deposit_main_card .artist{
   color : var(--mm-color-white);
 }
 
-.deposit_list .texts{
+.deposit_list_card .texts{
   text-align:left;
 }
 
-.deposit_list .decouvrir{
+.deposit_list_card .decouvrir{
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -270,18 +270,18 @@ color : var(--mm-color-success);
   height: auto;
 }
 
-.deposit_list .points_container{
+.deposit_list_card .points_container{
  margin:0;
 }
 
-.deposit .emojis{
+.deposit_card.emojis{
   position: absolute;
   inset: 0;
   overflow: visible;
   pointer-events: none;
 }
 
-.deposit .emojis .emoji{
+.deposit_card.emojis .emoji{
   position: absolute;
   display: inline-flex;
   align-items: center;
@@ -298,7 +298,7 @@ color : var(--mm-color-success);
   font-size:2rem;
 }
 
-.deposit_main .emojis .emoji{
+.deposit_main_card .emojis .emoji{
     font-size: 4rem;
 }
 
