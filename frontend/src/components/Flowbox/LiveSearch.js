@@ -24,7 +24,6 @@ import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
-import { extractAccentColorFromImageUrl } from "../Utils/accentColor";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
@@ -217,15 +216,12 @@ export default function LiveSearch() {
       });
 
       try {
-        const accentColor = await extractAccentColorFromImageUrl(
-          option?.image_url_small || option?.image_url || null
-        );
-
         const csrftoken = getCookie("csrftoken");
         const body = {
           option: {
             ...option,
-            accent_color: accentColor || null,
+            image_url: option?.image_url || null,
+            image_url_small: option?.image_url_small || null,
           },
           boxSlug,
         };
