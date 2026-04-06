@@ -14,7 +14,7 @@ const QUANTIZATION_STEP = 32;
   Change ces deux valeurs pour tuner rapidement le rendu de .deposit_song.
 */
 export const DEPOSIT_ACCENT_LIGHTNESS_DELTA = 0.2;
-export const DEPOSIT_ACCENT_SATURATION_DELTA = 0.1;
+export const DEPOSIT_ACCENT_SATURATION_DELTA = -0.15;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
