@@ -1,5 +1,6 @@
 # ===== Standard library =====
 import json
+import re
 from datetime import timedelta
 
 import requests
@@ -360,6 +361,9 @@ class GetBox(APIView):
             song_platform_id = None
 
         incoming_url = option.get("url")
+        incoming_accent_color = (option.get("accent_color") or "").strip()
+        if incoming_accent_color and not re.fullmatch(r"#[0-9A-Fa-f]{6}", incoming_accent_color):
+            incoming_accent_color = ""
         if not song_name or not song_author:
             return Response({"detail": "Titre ou artiste manquant"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -381,8 +385,12 @@ class GetBox(APIView):
                     title=song_name,
                     artist=song_author,
                     image_url=option.get("image_url") or "",
+                    accent_color=incoming_accent_color,
                     duration=option.get("duration") or 0,
                 )
+
+            if incoming_accent_color and not (song.accent_color or "").strip():
+                song.accent_color = incoming_accent_color
 
             if song_platform_id == 1 and incoming_url:
                 song.spotify_url = incoming_url
