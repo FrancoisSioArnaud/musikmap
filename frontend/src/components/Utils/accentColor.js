@@ -16,6 +16,15 @@ const QUANTIZATION_STEP = 32;
 export const DEPOSIT_ACCENT_LIGHTNESS_DELTA = 0.2;
 export const DEPOSIT_ACCENT_SATURATION_DELTA = -0.15;
 
+/*
+  Réglages de sélection de la couleur extraite.
+  Ici on privilégie fortement la saturation.
+  COUNT et LIGHTNESS servent seulement à départager des couleurs proches.
+*/
+const SATURATION_SCORE_WEIGHT = 1000;
+const COUNT_SCORE_WEIGHT = 14;
+const LIGHTNESS_SCORE_WEIGHT = 8;
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -131,15 +140,6 @@ export function adjustHexColor(
 
 /*
   Handler principal pour le rendu front des accents.
-  Tu peux :
-  - changer les constantes DEPOSIT_ACCENT_* en haut du fichier
-  - ou passer des overrides ici depuis un composant
-
-  Exemples :
-  getDepositAccentColor(color)
-  getDepositAccentColor(color, { lightness: 0.14 })
-  getDepositAccentColor(color, { saturation: 0.2 })
-  getDepositAccentColor(color, { lightness: 0.06, saturation: 0.18 })
 */
 export function getDepositAccentColor(
   hex,
@@ -187,13 +187,24 @@ function makeBucketKey(r, g, b) {
   return `${quantizeChannel(r)}|${quantizeChannel(g)}|${quantizeChannel(b)}`;
 }
 
+/*
+  Nouvelle logique :
+  - saturation très prioritaire
+  - nombre de pixels en bonus léger
+  - légère préférence pour une luminosité exploitable
+*/
 function scoreBucket(bucket) {
   const avgR = bucket.rSum / bucket.count;
   const avgG = bucket.gSum / bucket.count;
   const avgB = bucket.bSum / bucket.count;
   const { s, l } = rgbToHsl(avgR, avgG, avgB);
 
-  return bucket.count * (1 + s * 1.5) * (1 - Math.abs(l - 0.5) * 0.7);
+  const saturationScore = s * SATURATION_SCORE_WEIGHT;
+  const countScore = Math.log2(bucket.count + 1) * COUNT_SCORE_WEIGHT;
+  const lightnessScore =
+    (1 - Math.abs(l - 0.5) * 2) * LIGHTNESS_SCORE_WEIGHT;
+
+  return saturationScore + countScore + lightnessScore;
 }
 
 function pickAccentColor(imageData, width, height, mode) {
