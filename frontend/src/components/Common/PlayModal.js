@@ -125,7 +125,7 @@ export default function PlayModal({ open, song, onClose, children }) {
             onClick={(event) => event.stopPropagation()}
             sx={{
               position: "absolute",
-              left: "calc(50% - 58px)",
+              left: "calc(50% - 61px)",
               bottom: "calc(100% + 12px)",
               zIndex: 1000,
               gap: "12px",
@@ -149,8 +149,8 @@ export default function PlayModal({ open, song, onClose, children }) {
                   minWidth: 0,
                   backgroundColor: "transparent",
                   backgroundColor: "var(--mm-color-surface)",
-                  height: "52px",
-                  width: "52px",
+                  height: "56px",
+                  width: "56px",
                   borderRadius: "var(--mm-radius-md)",
                   boxShadow: "var(--mm-shadow-high)",
                 }}
