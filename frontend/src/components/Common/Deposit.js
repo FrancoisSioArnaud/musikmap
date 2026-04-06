@@ -625,7 +625,7 @@ export default function Deposit({
 
   return (
     <>
-      <Box className="deposit_list deposit">
+      <Box className="deposit_main deposit">
         {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
             {naturalDate || ""}
