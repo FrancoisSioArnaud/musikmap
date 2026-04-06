@@ -150,38 +150,48 @@ def clear_guest_cookie(response):
     return response
 
 
-def apply_points_delta(user: CustomUser, delta: int):
+def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
     try:
         delta = int(delta)
     except (TypeError, ValueError):
         return False, {"errors": "Nombre de points invalide."}, 400
 
-    try:
-        user.refresh_from_db(fields=["points"])
-    except Exception:
-        user.refresh_from_db()
+    with transaction.atomic():
+        working_user = user
 
-    current = getattr(user, "points", 0)
-    new_balance = current + delta
-    if new_balance < 0:
-        return (
-            False,
-            {
-                "error": "insufficient_funds",
-                "message": "Pas assez de points pour effectuer cette action.",
-                "points_balance": current,
-            },
-            400,
-        )
+        if lock_user:
+            working_user = CustomUser.objects.select_for_update().get(pk=user.pk)
+        else:
+            try:
+                working_user.refresh_from_db(fields=["points", "last_seen_at"])
+            except Exception:
+                working_user.refresh_from_db()
 
-    user.points = new_balance
-    user.last_seen_at = _now()
-    try:
-        user.save(update_fields=["points", "last_seen_at"])
-    except Exception:
-        user.save()
+        current = int(getattr(working_user, "points", 0) or 0)
+        new_balance = current + delta
+        if new_balance < 0:
+            return (
+                False,
+                {
+                    "error": "insufficient_funds",
+                    "message": "Pas assez de points pour effectuer cette action.",
+                    "points_balance": current,
+                },
+                400,
+            )
 
-    return True, {"status": "Points mis à jour avec succès.", "points_balance": user.points}, 200
+        working_user.points = new_balance
+        working_user.last_seen_at = _now()
+        try:
+            working_user.save(update_fields=["points", "last_seen_at"])
+        except Exception:
+            working_user.save()
+
+        if working_user.pk == getattr(user, "pk", None):
+            user.points = working_user.points
+            user.last_seen_at = working_user.last_seen_at
+
+        return True, {"status": "Points mis à jour avec succès.", "points_balance": working_user.points}, 200
 
 def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
     if not guest_user or not target_user:

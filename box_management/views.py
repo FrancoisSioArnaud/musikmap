@@ -392,7 +392,10 @@ class GetBox(APIView):
 
         prev_head, older_list = _get_prev_head_and_older(box, limit=15)
 
+        points_balance = None
         with transaction.atomic():
+            user = CustomUser.objects.select_for_update().get(pk=user.pk)
+
             try:
                 song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
                 song.n_deposits = (song.n_deposits or 0) + 1
@@ -456,20 +459,23 @@ class GetBox(APIView):
 
             Deposit.objects.create(song=song, box=box, user=user)
 
-        if prev_head is not None:
-            try:
-                DiscoveredSong.objects.get_or_create(
-                    user=user,
-                    deposit=prev_head,
-                    defaults={"discovered_type": "main"},
-                )
-            except Exception:
-                pass
+            if prev_head is not None:
+                try:
+                    DiscoveredSong.objects.get_or_create(
+                        user=user,
+                        deposit_id=prev_head.pk,
+                        defaults={"discovered_type": "main"},
+                    )
+                except Exception:
+                    pass
 
-        points_balance = None
-        ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add)
-        if ok_points:
-            points_balance = points_payload.get("points_balance")
+            ok_points, points_payload, _points_code = apply_points_delta(
+                user,
+                points_to_add,
+                lock_user=False,
+            )
+            if ok_points:
+                points_balance = points_payload.get("points_balance")
 
         deps_to_serialize = []
         if prev_head is not None:
@@ -586,43 +592,52 @@ class RevealSong(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            deposit = (
-                Deposit.objects
-                .select_related("song")
-                .get(public_key=public_key)
-            )
-        except Deposit.DoesNotExist:
-            return Response(
-                {"detail": "Dépôt introuvable"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        with transaction.atomic():
+            user = CustomUser.objects.select_for_update().get(pk=user.pk)
 
-        song = deposit.song
-        if not song:
-            return Response(
-                {"detail": "Chanson introuvable pour ce dépôt"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            try:
+                deposit = (
+                    Deposit.objects
+                    .select_related("song")
+                    .get(public_key=public_key)
+                )
+            except Deposit.DoesNotExist:
+                return Response(
+                    {"detail": "Dépôt introuvable"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
-        cost = int(COST_REVEAL_BOX)
-        ok_points, points_payload, points_status = apply_points_delta(user, -cost)
-        if not ok_points:
-            return Response(points_payload, status=points_status)
+            song = deposit.song
+            if not song:
+                return Response(
+                    {"detail": "Chanson introuvable pour ce dépôt"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
-        points_balance = points_payload.get("points_balance")
+            discovery = DiscoveredSong.objects.filter(user=user, deposit=deposit).first()
+            points_balance = int(getattr(user, "points", 0) or 0)
 
-        try:
-            DiscoveredSong.objects.get_or_create(
-                user=user,
-                deposit=deposit,
-                defaults={"discovered_type": "revealed", "context": context},
-            )
-        except Exception:
-            return Response(
-                {"detail": "Erreur lors de l’enregistrement de la découverte."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            if discovery is None:
+                cost = int(COST_REVEAL_BOX)
+                ok_points, points_payload, points_status = apply_points_delta(
+                    user,
+                    -cost,
+                    lock_user=False,
+                )
+                if not ok_points:
+                    return Response(points_payload, status=points_status)
+
+                points_balance = points_payload.get("points_balance")
+
+                try:
+                    DiscoveredSong.objects.create(
+                        user=user,
+                        deposit=deposit,
+                        discovered_type="revealed",
+                        context=context,
+                    )
+                except IntegrityError:
+                    pass
 
         song_payload = _build_song_from_instance(song, hidden=False)
 
@@ -945,29 +960,6 @@ class ManageDiscoveredSongs(APIView):
             "next_offset": next_offset,
         }
         return Response(payload, status=status.HTTP_200_OK)
-
-
-class AddUserPoints(APIView):
-    """
-    Class goal : add (or delete) points to the connected user.
-    """
-    def post(self, request, format=None):
-        user = get_current_app_user(request)
-        if not user:
-            return Response(
-                {"errors": "Utilisateur non connecté."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        points = request.data.get("points")
-        if points is None:
-            return Response(
-                {"errors": "Nombre de points invalide."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        ok, payload, code = apply_points_delta(user, points)
-        return Response(payload, status=code)
 
 
 class UserDepositsView(APIView):
@@ -1356,22 +1348,51 @@ class PurchaseEmojiView(APIView):
         emoji = Emoji.objects.filter(id=emoji_id).first()
         if not emoji or not emoji.active:
             return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
-        if emoji.cost == 0:
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
-
-        if EmojiRight.objects.filter(user=current_user, emoji=emoji).exists():
-            return Response({"ok": True, "owned": True}, status=status.HTTP_200_OK)
 
         cost = int(emoji.cost or 0)
-        ok_points, payload_points, code_points = apply_points_delta(current_user, -cost)
-        if not ok_points:
-            return Response(payload_points, status=code_points)
 
-        EmojiRight.objects.create(user=current_user, emoji=emoji)
-        return Response(
-            {"ok": True, "owned": True, "points_balance": payload_points.get("points_balance")},
-            status=status.HTTP_200_OK,
-        )
+        with transaction.atomic():
+            current_user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
+
+            if cost == 0:
+                _, created = EmojiRight.objects.get_or_create(user=current_user, emoji=emoji)
+                return Response(
+                    {
+                        "ok": True,
+                        "owned": True,
+                        "created": bool(created),
+                        "points_balance": current_user.points,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            if EmojiRight.objects.filter(user=current_user, emoji=emoji).exists():
+                return Response(
+                    {
+                        "ok": True,
+                        "owned": True,
+                        "points_balance": current_user.points,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            ok_points, payload_points, code_points = apply_points_delta(
+                current_user,
+                -cost,
+                lock_user=False,
+            )
+            if not ok_points:
+                return Response(payload_points, status=code_points)
+
+            EmojiRight.objects.create(user=current_user, emoji=emoji)
+            return Response(
+                {
+                    "ok": True,
+                    "owned": True,
+                    "points_balance": payload_points.get("points_balance"),
+                },
+                status=status.HTTP_200_OK,
+            )
 
 
 class ReactionView(APIView):

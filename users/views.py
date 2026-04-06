@@ -20,7 +20,6 @@ from .forms import RegisterUserForm
 from .models import CustomUser
 from .serializer import CustomUserSerializer
 from .utils import (
-    apply_points_delta,
     build_current_user_payload,
     clear_guest_cookie,
     get_current_app_user,
@@ -276,20 +275,6 @@ class CheckAuthentication(APIView):
 
         touch_last_seen(user)
         return Response(_build_authenticated_user_payload(user), status=status.HTTP_200_OK)
-
-
-class AddUserPoints(APIView):
-    def post(self, request, format=None):
-        user = get_current_app_user(request)
-        if not user:
-            return Response({"errors": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        points = request.data.get("points")
-        if points is None:
-            return Response({"errors": "Nombre de points invalide."}, status=status.HTTP_400_BAD_REQUEST)
-
-        ok, payload, code = apply_points_delta(user, points)
-        return Response(payload, status=code)
 
 
 class GetUserPoints(APIView):

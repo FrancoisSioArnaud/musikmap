@@ -113,7 +113,7 @@ export default function Deposit({
   dep,
   user: viewer,
   setDispDeposits,
-  cost = 40,
+  cost = 100,
   variant = "list",
   showDate = true,
   showUser = true,
