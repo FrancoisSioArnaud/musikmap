@@ -68,7 +68,7 @@ export default function EnableLocation({
           >
             {loading ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-                <CircularProgress size={18} />
+                <CircularProgress size={18} color={clientTheme.colors.primaryContrastText} />
                 Vérification...
               </Box>
             ) : (
