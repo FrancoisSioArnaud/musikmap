@@ -87,8 +87,8 @@ function getFloatingEmojiItems(reactions) {
 
     return {
       ...item,
-      left: (cell.col/* + 0.5*/) * cellWidth + jitterX,
-      top: (cell.row/* + 0.5*/) * cellHeight + jitterY,
+      left: cell.col * cellWidth + jitterX,
+      top: cell.row * cellHeight + jitterY,
       fontSize: `${randomBetween(1.1, 1.75).toFixed(2)}rem`,
       zIndex: Math.floor(randomBetween(1, 5)),
       opacity: randomBetween(0.92, 1).toFixed(2),
@@ -111,14 +111,13 @@ function getFloatingEmojiItems(reactions) {
 
 export default function Deposit({
   dep,
-  user,
+  user: viewer,
   setDispDeposits,
   cost = 40,
   variant = "list",
   showDate = true,
   showUser = true,
   fitContainer = true,
-  showPlay = true,
   context = "box",
 }) {
   const navigate = useNavigate();
@@ -129,17 +128,16 @@ export default function Deposit({
     setLocalDep(dep || {});
   }, [dep]);
 
-  const s = localDep?.song || {};
-  const accentColor = localDep?.accent_color || undefined;
-  const depositSongClassName = accentColor
-    ? "deposit_song has_accent_color"
-    : "deposit_song";
-  const u = localDep?.user || {};
+  const song = localDep?.song || {};
+  const user = localDep?.user || {};
   const comments = localDep?.comments || { items: [], viewer_state: {} };
+  const accentColor = localDep?.accent_color || undefined;
+  const rootClassName = `deposit deposit_${variant}`;
+  const cardClassName = `deposit_card deposit_${variant}_card`;
 
   const isRevealed = useMemo(
-    () => Boolean(s?.title && s?.artist),
-    [s?.title, s?.artist]
+    () => Boolean(song?.title && song?.artist),
+    [song?.title, song?.artist]
   );
 
   const depositedAt = localDep?.deposited_at || null;
@@ -214,17 +212,17 @@ export default function Deposit({
     } catch (error) {}
   }, [localDep?.public_key]);
 
-  const getPlaySongKey = (song) => {
-    if (!song) return "";
+  const getPlaySongKey = (currentSong) => {
+    if (!currentSong) return "";
 
-    return [song?.spotify_url, song?.deezer_url, song?.title, song?.artist]
+    return [currentSong?.spotify_url, currentSong?.deezer_url, currentSong?.title, currentSong?.artist]
       .filter(Boolean)
       .join("|");
   };
 
-  const openPlayFor = (song) => {
-    const nextSong = song || null;
-    const nextKey = getPlaySongKey(nextSong);
+  const openPlayFor = (nextSong) => {
+    const songToPlay = nextSong || null;
+    const nextKey = getPlaySongKey(songToPlay);
     const currentKey = getPlaySongKey(playSong);
 
     if (playOpen && nextKey && nextKey === currentKey) {
@@ -233,8 +231,8 @@ export default function Deposit({
       return;
     }
 
-    setPlaySong(nextSong);
-    setPlayOpen(Boolean(nextSong));
+    setPlaySong(songToPlay);
+    setPlayOpen(Boolean(songToPlay));
   };
 
   const closePlay = () => {
@@ -244,7 +242,7 @@ export default function Deposit({
 
   const revealDeposit = async () => {
     try {
-      if (!user?.id) {
+      if (!viewer?.id) {
         window.alert(
           "Dépose d’abord une chanson pour commencer à cumuler des points et révéler des morceaux."
         );
@@ -371,13 +369,13 @@ export default function Deposit({
     updateDepositCollections((item) => ({ ...(item || {}), comments: safeComments }));
   };
 
-  const renderDepositUser = (userObj) => {
-    const canNavigate = Boolean(userObj?.username && !userObj?.is_guest);
+  const renderDepositUser = (currentUser) => {
+    const canNavigate = Boolean(currentUser?.username && !currentUser?.is_guest);
 
     return (
       <Box
         onClick={() => {
-          if (canNavigate) navigate("/profile/" + userObj.username);
+          if (canNavigate) navigate("/profile/" + currentUser.username);
         }}
         className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
       >
@@ -386,13 +384,13 @@ export default function Deposit({
         </Typography>
         <Box className="avatarbox">
           <Avatar
-            src={userObj?.profile_picture_url || undefined}
-            alt={userObj?.display_name || "anonyme"}
+            src={currentUser?.profile_picture_url || undefined}
+            alt={currentUser?.display_name || "anonyme"}
             className="avatar"
           />
         </Box>
         <Typography component="span" className="username" variant="subtitle1">
-          {userObj?.display_name || "anonyme"}
+          {currentUser?.display_name || "anonyme"}
           {canNavigate ? (
             <ArrowForwardIosIcon className="icon" sx={{ height: "0.8em", width: "0.8em" }} />
           ) : null}
@@ -402,54 +400,54 @@ export default function Deposit({
   };
 
   const depositInfosBlock = showUser ? (
-    <Box className="deposit_infos">{renderDepositUser(u)}</Box>
+    <Box className="deposit_infos">{renderDepositUser(user)}</Box>
   ) : null;
 
   const depositInteractBlock = (
     <Box className="deposit_interact">
       <Box className="deposit_action_group reactions_group">
+        <Button
+          variant="depositInteract"
+          className="deposit_action_button addreaction_button addreaction_icon_button"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!isRevealed) {
+              setReactionRevealPromptOpen(true);
+              return;
+            }
+            if (!viewer?.id) {
+              window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+              return;
+            }
+            setAddReactionOpen(true);
+          }}
+        >
+          {myReactionEmoji ? (
+            <Typography
+              component="span"
+              className="current_reaction_emoji"
+              sx={{ fontSize: "1.35rem", lineHeight: 1 }}
+            >
+              {myReactionEmoji}
+            </Typography>
+          ) : (
+            <AddReactionOutlinedIcon />
+          )}
+        </Button>
+
+        {reactionCount > 0 ? (
           <Button
             variant="depositInteract"
-            className="deposit_action_button addreaction_button addreaction_icon_button"
+            className="deposit_action_button reactionsummary_button"
             onClick={(event) => {
               event.stopPropagation();
-              if (!isRevealed) {
-                setReactionRevealPromptOpen(true);
-                return;
-              }
-              if (!user?.id) {
-                window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
-                return;
-              }
-              setAddReactionOpen(true);
+              setReactionSummaryOpen(true);
             }}
           >
-            {myReactionEmoji ? (
-              <Typography
-                component="span"
-                className="current_reaction_emoji"
-                sx={{ fontSize: "1.35rem", lineHeight: 1 }}
-              >
-                {myReactionEmoji}
-              </Typography>
-            ) : (
-              <AddReactionOutlinedIcon />
-            )}
+            {`x${reactionCount}`}
           </Button>
-
-          {reactionCount > 0 ? (
-            <Button
-              variant="depositInteract"
-              className="deposit_action_button reactionsummary_button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setReactionSummaryOpen(true);
-              }}
-            >
-              {`x${reactionCount}`}
-            </Button>
-          ) : null}
-        </Box>
+        ) : null}
+      </Box>
 
       <Button
         variant="depositInteract"
@@ -519,11 +517,11 @@ export default function Deposit({
   const renderCoverMedia = (blurred = false) => (
     <Box className="cover_media">
       <Box className="img_container">
-        {s?.image_url ? (
+        {song?.image_url ? (
           <Box
             component="img"
-            src={s.image_url}
-            alt={isRevealed ? `${s.title} - ${s.artist}` : "Cover"}
+            src={song.image_url}
+            alt={isRevealed ? `${song.title} - ${song.artist}` : "Cover"}
             sx={{ filter: blurred ? "blur(6px)" : "none" }}
           />
         ) : null}
@@ -532,157 +530,63 @@ export default function Deposit({
     </Box>
   );
 
-  if (variant === "main") {
-    return (
-      <>
-        <Box className="deposit_main deposit">
-          {showDate ? (
-            <Typography className="deposit_date" variant="subtitle1" component="span">
-              {"Chanson partagée " + (naturalDate || "")}
-            </Typography>
-          ) : null}
-          <Card className="deposit_card deposit_main_card">
-            {depositInfosBlock}
-
-            <Box
-              className={depositSongClassName}
-              style={accentColor ? { "--deposit-accent": accentColor } : undefined}
-            >
-              {renderCoverMedia(false)}
-
-              <Box className="interact">
-                <Box className="texts">
-                  <Typography component="span" className="titre" variant="h4">
-                    {s.title}
-                  </Typography>
-                  <Typography component="span" className="artist" variant="body1">
-                    {s.artist}
-                  </Typography>
-                </Box>
-
-                <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
-                  <Button
-                    variant="depositInteract"
-                    className="play playMain"
-                    size="large"
-                    onClick={() => openPlayFor(s)}
-                    startIcon={<PlayArrowIcon />}
-                  >
-                    Écouter la chanson
-                  </Button>
-                </PlayModal>
-              </Box>
-            </Box>
-
-            {depositInteractBlock}
-          </Card>
-        </Box>
-
-        <AddReactionModal
-          open={addReactionOpen}
-          onClose={() => setAddReactionOpen(false)}
-          depPublicKey={localDep?.public_key}
-          currentEmoji={myReactionEmoji}
-          onApplied={handleReactionApplied}
-          setUser={setUser}
-          viewer={user}
-        />
-
-        <ReactionSummary
-          open={reactionSummaryOpen}
-          onClose={() => setReactionSummaryOpen(false)}
-          depPublicKey={localDep?.public_key}
-          reactions={reactionsDetail}
-          viewer={user}
-          onApplied={handleReactionApplied}
-        />
-
-        <CommentsDrawer
-          open={commentsOpen}
-          onClose={() => setCommentsOpen(false)}
-          depPublicKey={localDep?.public_key}
-          comments={comments}
-          viewer={user}
-          onCommentsChange={handleCommentsChange}
-        />
-        <Dialog
-          open={reactionRevealPromptOpen}
-          onClose={() => setReactionRevealPromptOpen(false)}
-        >
-          <DialogTitle>Réaction indisponible</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-          </DialogActions>
-        </Dialog>
-
-
-      </>
-    );
-  }
-
   return (
     <>
-      <Box className="deposit_main deposit">
+      <Box className={rootClassName}>
         {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
             {naturalDate || ""}
           </Typography>
         ) : null}
-        <Card className="deposit_card deposit_main_card">
+        <Card className={cardClassName}>
           {depositInfosBlock}
 
           <Box
-            className={depositSongClassName}
+            className={`deposit_song${accentColor ? " has_accent_color" : ""}`}
             style={accentColor ? { "--deposit-accent": accentColor } : undefined}
           >
             {renderCoverMedia(!isRevealed)}
 
             <Box className="interact">
-              {isRevealed ? (
-                <>
-                  <Box className="texts">
-                    <Typography component="span" className="titre" variant="h5">
-                      {s.title}
+              <Box className="texts">
+                {isRevealed ? (
+                  <>
+                    <Typography component="span" className="titre" variant={variant === "main" ? "h4" : "h5"}>
+                      {song.title}
                     </Typography>
                     <Typography component="span" className="artist" variant="body1">
-                      {s.artist}
+                      {song.artist}
                     </Typography>
-                  </Box>
+                  </>
+                ) : (
+                  <Typography component="span" className="titre" variant="body1">
+                    Utilise tes points pour révéler cette chanson
+                  </Typography>
+                )}
+              </Box>
 
-                  {showPlay ? (
-                    <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
-                      <Button
-                        variant="depositInteract"
-                        className="play playSecondary"
-                        size="large"
-                        onClick={() => openPlayFor(s)}
-                        startIcon={<PlayArrowIcon />}
-                      >
-                        Écouter
-                      </Button>
-                    </PlayModal>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <Box className="texts">
-                    <Typography component="span" className="titre" variant="body1">
-                      Utilise tes points pour révéler cette chanson
-                    </Typography>
-                  </Box>
-                  <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
-                    Découvrir
-                    <Box className="points_container" sx={{ ml: "12px" }}>
-                      <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
-                        {cost}
-                      </Typography>
-                      <MusicNote />
-                    </Box>
+              {isRevealed ? (
+                <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
+                  <Button
+                    variant="depositInteract"
+                    className={variant === "main" ? "play playMain" : "play playSecondary"}
+                    size="large"
+                    onClick={() => openPlayFor(song)}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Écouter
                   </Button>
-                </>
+                </PlayModal>
+              ) : (
+                <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
+                  Découvrir
+                  <Box className="points_container" sx={{ ml: "12px" }}>
+                    <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                      {cost}
+                    </Typography>
+                    <MusicNote />
+                  </Box>
+                </Button>
               )}
             </Box>
           </Box>
@@ -742,7 +646,7 @@ export default function Deposit({
         currentEmoji={myReactionEmoji}
         onApplied={handleReactionApplied}
         setUser={setUser}
-        viewer={user}
+        viewer={viewer}
       />
 
       <ReactionSummary
@@ -750,7 +654,7 @@ export default function Deposit({
         onClose={() => setReactionSummaryOpen(false)}
         depPublicKey={localDep?.public_key}
         reactions={reactionsDetail}
-        viewer={user}
+        viewer={viewer}
         onApplied={handleReactionApplied}
       />
 
@@ -759,22 +663,22 @@ export default function Deposit({
         onClose={() => setCommentsOpen(false)}
         depPublicKey={localDep?.public_key}
         comments={comments}
-        viewer={user}
+        viewer={viewer}
         onCommentsChange={handleCommentsChange}
       />
-        <Dialog
-          open={reactionRevealPromptOpen}
-          onClose={() => setReactionRevealPromptOpen(false)}
-        >
-          <DialogTitle>Réaction indisponible</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-          </DialogActions>
-        </Dialog>
 
+      <Dialog
+        open={reactionRevealPromptOpen}
+        onClose={() => setReactionRevealPromptOpen(false)}
+      >
+        <DialogTitle>Réaction indisponible</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
