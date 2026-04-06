@@ -92,7 +92,7 @@ export const CLIENT_THEMES = {
       sm: "8px",
       md: "16px",
       lg: "25px",
-      xl: "64px",
+      xl: "32px",
       button: "14px",
       round: "999px",
  
