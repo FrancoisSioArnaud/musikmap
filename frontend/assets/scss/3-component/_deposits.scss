@@ -138,7 +138,7 @@ color : var(--mm-color-success);
 }
 
 .deposit .deposit_song{
-//  background-color: var(--mm-color-primary-light);
+  background-color: color-mix(in srgb, var(--deposit-accent) 70%, white 30%);
   display: flex;
 }
 
