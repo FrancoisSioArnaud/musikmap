@@ -137,9 +137,15 @@ color : var(--mm-color-success);
   height : 26px;
 }
 
-.deposit .deposit_song{
-  background-color: color-mix(in srgb, var(--deposit-accent) 70%, white 30%);
+.deposit .deposit_song,
+.deposit_song{
+  background-color: var(--mm-color-primary-light);
   display: flex;
+}
+
+.deposit .deposit_song.has_accent_color,
+.deposit_song.has_accent_color{
+  background-color: color-mix(in srgb, var(--deposit-accent) 70%, white 30%);
 }
 
 .deposit_main .deposit_song{
