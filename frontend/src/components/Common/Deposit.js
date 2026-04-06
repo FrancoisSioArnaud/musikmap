@@ -535,13 +535,13 @@ export default function Deposit({
   if (variant === "main") {
     return (
       <>
-        <Box className="deposit_container">
+        <Box className="deposit_main">
           {showDate ? (
             <Typography className="deposit_date" variant="subtitle1" component="span">
               {"Chanson partagée " + (naturalDate || "")}
             </Typography>
           ) : null}
-          <Card className="deposit deposit_main">
+          <Card className="deposit deposit_main_card">
             {depositInfosBlock}
 
             <Box
@@ -625,13 +625,13 @@ export default function Deposit({
 
   return (
     <>
-      <Box className="deposit_container">
+      <Box className="deposit_list">
         {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
             {naturalDate || ""}
           </Typography>
         ) : null}
-        <Card className="deposit deposit_list">
+        <Card className="deposit deposit_list_card">
           {depositInfosBlock}
 
           <Box
