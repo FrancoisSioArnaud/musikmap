@@ -19,7 +19,7 @@ random_datetime_within_last_48h = seed_siohome.random_datetime_within_last_48h
 
 BOX_SLUG = "chantier-naval"
 DEPOSITS_PER_USER = 5
-REACTIONS_PER_USER = 20
+REACTIONS_PER_USER = 10
 COMMENTS_PER_USER = 3
 COMMENT_REASON_CODE = "seed_chantier_comment"
 REACTION_USER_AGENT = "seed_chantier_script"
