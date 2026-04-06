@@ -77,9 +77,11 @@ export const CLIENT_THEMES = {
     
     },
     colors: {
+      primaryContrastText: "#000",
       primary: "#78d700",
       primaryLight: "#e6f0ea",
       primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
+
       
       secondary: "#73beff",
       secondaryLight: "#e3f2ff",
