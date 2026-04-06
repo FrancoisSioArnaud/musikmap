@@ -83,6 +83,7 @@ export default function Discover() {
 
   const myDeposit = boxContent?.myDeposit || null;
   const mySong = myDeposit?.song || null;
+  const myDepositAccentColor = myDeposit?.accent_color || undefined;
 
   const mainDep = boxContent?.main || null;
   const successes = Array.isArray(boxContent?.successes) ? boxContent.successes : [];
@@ -145,7 +146,10 @@ export default function Discover() {
         </Box>
 
         {mySong ? (
-          <Box className="my_deposit deposit deposit_list deposit_song">
+          <Box
+            className="my_deposit deposit deposit_list deposit_song"
+            sx={myDepositAccentColor ? { backgroundColor: myDepositAccentColor } : undefined}
+          >
             <Box className="img_container">
               {mySong?.image_url ? (
                 <Box

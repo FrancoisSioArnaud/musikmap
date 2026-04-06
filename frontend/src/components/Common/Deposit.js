@@ -130,6 +130,7 @@ export default function Deposit({
   }, [dep]);
 
   const s = localDep?.song || {};
+  const accentColor = localDep?.accent_color || undefined;
   const u = localDep?.user || {};
   const comments = localDep?.comments || { items: [], viewer_state: {} };
 
@@ -540,7 +541,7 @@ export default function Deposit({
           <Card className="deposit deposit_main">
             {depositInfosBlock}
 
-            <Box className="deposit_song">
+            <Box className="deposit_song" sx={accentColor ? { backgroundColor: accentColor } : undefined}>
               {renderCoverMedia(false)}
 
               <Box className="interact">
@@ -627,7 +628,7 @@ export default function Deposit({
         <Card className="deposit deposit_list">
           {depositInfosBlock}
 
-          <Box className="deposit_song">
+          <Box className="deposit_song" sx={accentColor ? { backgroundColor: accentColor } : undefined}>
             {renderCoverMedia(!isRevealed)}
 
             <Box className="interact">

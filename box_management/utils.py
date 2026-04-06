@@ -919,6 +919,7 @@ def _build_deposit_from_instance(
     payload: Dict[str, Any] = {
         "public_key": dep.public_key,
         "song": _build_song_from_instance(dep.song, hidden),
+        "accent_color": (getattr(dep.song, "accent_color", "") or "") or None,
     }
 
     if include_deposit_time:
