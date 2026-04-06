@@ -533,6 +533,7 @@ class Song(models.Model):
     deezer_url = models.URLField(max_length=255, blank=True)
 
     image_url = models.URLField(max_length=200, blank=True)
+    image_url_small = models.URLField(max_length=200, blank=True, default="")
     accent_color = models.CharField(max_length=7, blank=True, default="")
     duration = models.PositiveIntegerField(default=0)
     n_deposits = models.PositiveIntegerField(default=0, editable=False)

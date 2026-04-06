@@ -322,7 +322,7 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
-    list_display = ("title", "artist", "song_id", "accent_color", "n_deposits", "duration")
+    list_display = ("title", "artist", "song_id", "accent_color", "image_url_small", "n_deposits", "duration")
     search_fields = ("title", "artist", "song_id")
     ordering = ("title", "artist")
 

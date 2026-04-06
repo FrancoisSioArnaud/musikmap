@@ -107,6 +107,7 @@ from .utils import (
     _get_profile_picture_url,
     _get_active_comment_restrictions_for_clients,
     _log_blocked_comment_attempt,
+    extract_accent_color_from_urls,
 )
 
 # Barèmes & coûts (importés depuis ton module utils global)
@@ -360,12 +361,28 @@ class GetBox(APIView):
         except (TypeError, ValueError):
             song_platform_id = None
 
-        incoming_url = option.get("url")
-        incoming_accent_color = (option.get("accent_color") or "").strip()
-        if incoming_accent_color and not re.fullmatch(r"#[0-9A-Fa-f]{6}", incoming_accent_color):
-            incoming_accent_color = ""
+        incoming_url = (option.get("url") or "").strip()
+        incoming_image_url = (option.get("image_url") or "").strip()
+        incoming_image_url_small = (option.get("image_url_small") or "").strip()
         if not song_name or not song_author:
             return Response({"detail": "Titre ou artiste manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_song = (
+            Song.objects.filter(title__iexact=song_name, artist__iexact=song_author)
+            .only("id", "accent_color", "image_url", "image_url_small")
+            .first()
+        )
+
+        accent_color_to_apply = ""
+        should_compute_accent = existing_song is None or not (existing_song.accent_color or "").strip()
+        if should_compute_accent:
+            accent_color_to_apply = (
+                extract_accent_color_from_urls(
+                    image_url_small=(getattr(existing_song, "image_url_small", "") or incoming_image_url_small or ""),
+                    image_url=(getattr(existing_song, "image_url", "") or incoming_image_url or ""),
+                )
+                or ""
+            )
 
         user = get_current_app_user(request)
         guest_created = False
@@ -384,13 +401,18 @@ class GetBox(APIView):
                     song_id=option.get("id"),
                     title=song_name,
                     artist=song_author,
-                    image_url=option.get("image_url") or "",
-                    accent_color=incoming_accent_color,
+                    image_url=incoming_image_url,
+                    image_url_small=incoming_image_url_small,
+                    accent_color=accent_color_to_apply,
                     duration=option.get("duration") or 0,
                 )
 
-            if incoming_accent_color and not (song.accent_color or "").strip():
-                song.accent_color = incoming_accent_color
+            if incoming_image_url and not (song.image_url or "").strip():
+                song.image_url = incoming_image_url
+            if incoming_image_url_small and not (song.image_url_small or "").strip():
+                song.image_url_small = incoming_image_url_small
+            if accent_color_to_apply and not (song.accent_color or "").strip():
+                song.accent_color = accent_color_to_apply
 
             if song_platform_id == 1 and incoming_url:
                 song.spotify_url = incoming_url
