@@ -541,7 +541,7 @@ export default function Deposit({
           <Card className="deposit deposit_main">
             {depositInfosBlock}
 
-            <Box className="deposit_song" sx={accentColor ? { backgroundColor: accentColor } : undefined}>
+            <Box className="deposit_song" sx={accentColor ? { backgroundColor: accentColor } : { backgroundColor: var(--mm-color-primary-light) }}>
               {renderCoverMedia(false)}
 
               <Box className="interact">
