@@ -148,6 +148,12 @@ color : var(--mm-color-success);
   background-color: color-mix(in srgb, var(--deposit-accent) 13%, #fff 87%);
 }
 
+.deposit_main .deposit_song.has_accent_color,
+.deposit_song.has_accent_color{
+  background-color: color-mix(in srgb, var(--deposit-accent) 70%, #000 30%);
+}
+
+
 .deposit_main .deposit_song{
   flex-direction: column;
   gap: 16px;
