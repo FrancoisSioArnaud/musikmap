@@ -145,7 +145,7 @@ color : var(--mm-color-success);
 
 .deposit .deposit_song.has_accent_color,
 .deposit_song.has_accent_color{
-  background-color: color-mix(in srgb, var(--deposit-accent) 70%, white 30%);
+  background-color: color-mix(in srgb, var(--deposit-accent) 13%, #fff 87%);
 }
 
 .deposit_main .deposit_song{
