@@ -39,6 +39,16 @@ color : var(--mm-color-success);
   align-items: center;
 }
 
+#older_deposits_list .deposit_container::after{
+  content: "...";
+  transform: rotate(90deg) translate(0px, -11px);
+  padding: 20px;
+  line-height: 0;
+  font-size: 26px;
+  opacity: 0.7;
+  padding-right: 16px;
+}
+
 .deposit{
   display: flex;
   flex-direction: column;
