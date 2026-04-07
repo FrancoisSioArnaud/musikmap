@@ -204,7 +204,7 @@ export default function Discover() {
             </Box>
           </>
         ) : null}
-
+      </Box>
         
       <Box className="intro">
         <Typography component="h2" variant="h1">
