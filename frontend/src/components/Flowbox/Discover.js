@@ -146,62 +146,63 @@ export default function Discover() {
         </Box>
 
         {mySong ? (
-          <Box
-            className={`my_deposit deposit_card deposit_song${
-              myDepositAccentColor ? " has_accent_color" : ""
-            }`}
-            style={
-              myDepositAccentColor
-                ? { "--deposit-accent": myDepositAccentColor }
-                : undefined
-            }
-          >
-            <Box className="img_container">
-              {mySong?.image_url ? (
-                <Box
-                  component="img"
-                  src={mySong.image_url}
-                  alt={mySong?.title || "Cover"}
-                  sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              ) : null}
-            </Box>
-
-            <Box className="texts">
-              <Typography
-                variant="h5"
-                component="span"
-                title={mySong?.title || ""}
-                className="titre"
-              >
-                {mySong?.title || ""}
-              </Typography>
-              <Typography
-                variant="body1"
-                component="span"
-                title={mySong?.artist || ""}
-                className="artist"
-              >
-                {mySong?.artist || ""}
-              </Typography>
-            </Box>
+          <>
             <Box
-              className="points_container vertical"
-              style={{ margin: "0 auto" }}
-              onClick={handleOpenAchievements}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
-              }}
+              className={`my_deposit deposit_card deposit_song${
+                myDepositAccentColor ? " has_accent_color" : ""
+              }`}
+              style={
+                myDepositAccentColor
+                  ? { "--deposit-accent": myDepositAccentColor }
+                  : undefined
+              }
             >
-              <MusicNote />
-              <Typography component="span" variant="body1">
-                +{totalPoints}
-              </Typography>
+              <Box className="img_container">
+                {mySong?.image_url ? (
+                  <Box
+                    component="img"
+                    src={mySong.image_url}
+                    alt={mySong?.title || "Cover"}
+                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : null}
+              </Box>
+  
+              <Box className="texts">
+                <Typography
+                  variant="h5"
+                  component="span"
+                  title={mySong?.title || ""}
+                  className="titre"
+                >
+                  {mySong?.title || ""}
+                </Typography>
+                <Typography
+                  variant="body1"
+                  component="span"
+                  title={mySong?.artist || ""}
+                  className="artist"
+                >
+                  {mySong?.artist || ""}
+                </Typography>
+              </Box>
+              <Box
+                className="points_container vertical"
+                style={{ margin: "0 auto" }}
+                onClick={handleOpenAchievements}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+                }}
+              >
+                <MusicNote />
+                <Typography component="span" variant="body1">
+                  +{totalPoints}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-        </Box>
+          </>
         ) : null}
 
         
