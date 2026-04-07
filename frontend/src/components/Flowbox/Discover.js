@@ -185,29 +185,25 @@ export default function Discover() {
                 {mySong?.artist || ""}
               </Typography>
             </Box>
+            <Box
+              className="points_container vertical"
+              style={{ margin: "0 auto" }}
+              onClick={handleOpenAchievements}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+              }}
+            >
+              <MusicNote />
+              <Typography component="span" variant="body1">
+                +{totalPoints}
+              </Typography>
+            </Box>
           </Box>
         ) : null}
 
-        <Box
-          className="points_container"
-          style={{ margin: "0 auto" }}
-          onClick={handleOpenAchievements}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
-          }}
-        >
-          <Typography component="span" variant="body1">
-            +{totalPoints}
-          </Typography>
-          <MusicNote />
-          <Typography component="span" variant="body1" sx={{ paddingRight: "6px" }}>
-            Voir le détail
-          </Typography>
-        </Box>
-      </Box>
-
+        
       <Box className="intro">
         <Typography component="h2" variant="h1">
           Bonne écoute !
