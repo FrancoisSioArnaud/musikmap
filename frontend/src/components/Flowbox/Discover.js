@@ -201,6 +201,7 @@ export default function Discover() {
               </Typography>
             </Box>
           </Box>
+        </Box>
         ) : null}
 
         
