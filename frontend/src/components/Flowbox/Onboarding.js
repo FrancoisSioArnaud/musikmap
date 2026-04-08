@@ -157,10 +157,6 @@ export default function Onboarding() {
       <Paper
         elevation={3}
         className="onBoarding"
-        sx={{
-          position: "fixed",
-          inset: 0,
-        }}
       >
         {box?.last_deposit_song_image_url ? (
           <Box
