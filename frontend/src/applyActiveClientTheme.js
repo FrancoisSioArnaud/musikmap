@@ -28,6 +28,9 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-radius-button", theme.radius.button);
   root.style.setProperty("--mm-radius-round", theme.radius.round);
 
+  // paddings
+  root.style.setProperty("--mm-padding-page-side", theme.padding.pageSide);
+
   // colors
   root.style.setProperty("--mm-color-black", theme.colors.black);
   root.style.setProperty("--mm-color-white", theme.colors.white);
