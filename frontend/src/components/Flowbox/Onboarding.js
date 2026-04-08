@@ -197,40 +197,24 @@ export default function Onboarding() {
 
           <Box className="container">
             <Box className="intro">
-              <Typography component="h1" variant="h1">
-                Bienvenue !
-              </Typography>
               <Typography variant="body1">
                 Chanson deposée ici {box?.last_deposit_date || 0}
               </Typography>
             </Box>
 
-            <Box className="steps_container">
-              <Box className="step">
-                <Typography component="span" variant="body1">
-                  1
-                </Typography>
-                <Typography component="p" variant="body1">
-                  Dépose une chanson
-                </Typography>
-              </Box>
-              <Box className="step">
-                <Typography component="span" variant="body1">
-                  2
-                </Typography>
-                <Typography component="p" variant="body1">
-                  Découvre la chanson précédente
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                onClick={openSheet}
-              >
-                Commencer
-              </Button>
-            </Box>
+            <Typography variant="h3">
+              Partage une chanson et découvre celle partagée par le passant précédent
+            </Typography>
+
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              onClick={openSheet}
+            >
+              Commencer
+            </Button>
+      
           </Box>
         </Box>
       </Paper>
