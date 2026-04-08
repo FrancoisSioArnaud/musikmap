@@ -1,141 +1,334 @@
 @use '../0-init/color' as *;
 
-
-.onBoarding{
-  background: var(--mm-color-primary-dark);
+.onBoarding {
+  background: var(--mm-color-primary-dark, #111111);
   position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.onBoarding .page_container{
+@supports (height: 100dvh) {
+  .onBoarding {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+.onBoarding .page_container {
+  display: -webkit-box;
+  display: -ms-flexbox;
   display: flex;
   position: fixed;
-  inset:0;
   top: 56px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  inset: 0;
+  top: 56px;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
   flex-direction: column;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
   align-items: center;
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-
-.last_song{
+.last_song {
+  display: -webkit-box;
+  display: -ms-flexbox;
   display: flex;
   position: relative;
+  -webkit-box-flex: 1;
+  -ms-flex: 1 1 auto;
   flex: 1;
   min-height: 0;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
   flex-direction: column;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
   align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
   justify-content: center;
   gap: 20px;
+  width: 100%;
 }
 
-.last_song p{
-  color: var(--mm-color-white);
+.last_song p {
+  color: var(--mm-color-white, #ffffff);
   padding: 20px;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
-
-.onBoarding img.bg{
+.onBoarding img.bg {
   position: absolute;
-  left: 0;
+  top: 0;
   right: 0;
   bottom: -6px;
-  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  -o-object-fit: cover;
+  object-fit: cover;
+  -webkit-transform: scale(1.3);
+  transform: scale(1.3);
+  opacity: 0.4;
+  -webkit-filter: blur(2px);
+  filter: blur(2px);
+  will-change: transform, filter;
+}
+
+.pochette {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  height: clamp(120px, 38vw, 260px);
+  max-height: 40vh;
+}
+
+.cover,
+.pochette .vinyl {
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.cover {
+  position: relative;
+  z-index: 100;
+  margin-left: 16px;
+  overflow: hidden;
+  border: 4px solid #ffffff;
+  border-radius: var(--mm-radius-md, 12px);
+  background-color: #ffffff;
+  -webkit-box-shadow: rgba(0, 0, 0, 0.2) 0 13px 11px 0;
+  box-shadow: rgba(0, 0, 0, 0.2) 0 13px 11px 0;
+  aspect-ratio: 1 / 1;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.cover img {
+  display: block;
   width: 100%;
   height: 100%;
   -o-object-fit: cover;
   object-fit: cover;
-  transform: scale(1.3);
-  opacity: .4;
-  filter: blur(2px);
-}
-
-.pochette{
-  display: flex;
-  max-width: 100vw;
-  justify-content: center;
-  height: auto;
-  aspect-ratio: 2.6/1;
-}
-
-.cover{
-  border-radius: var(--mm-radius-md);
-  overflow: hidden;
-  box-shadow: rgba(0, 0, 0, .2) 0 13px 11px 0;
-  border: solid 4px #fff;
-  position: relative;
-  z-index: 100;
-  margin-left: 16px;
-  aspect-ratio: 1/1;
-  height: auto;
-}
-
-.cover img{
+  -webkit-filter: blur(5px);
   filter: blur(5px);
-  height: 100%;
+  -webkit-transform: scale(1.1);
   transform: scale(1.1);
+  -webkit-animation: blurPulse 2s ease-in-out infinite alternate;
   animation: blurPulse 2s ease-in-out infinite alternate;
+  will-change: transform, filter;
 }
 
-@keyframes blurPulse {
+@-webkit-keyframes blurPulse {
   from {
+    -webkit-filter: blur(5px);
     filter: blur(5px);
+    -webkit-transform: scale(1.3) rotate(4deg) translateX(0%);
     transform: scale(1.3) rotate(4deg) translateX(0%);
   }
+
   to {
+    -webkit-filter: blur(8px);
     filter: blur(8px);
+    -webkit-transform: scale(1.1) rotate(-2deg) translateX(3%);
     transform: scale(1.1) rotate(-2deg) translateX(3%);
   }
 }
 
-.pochette .vinyl{
-  border-radius: var(--mm-radius-round);
-  aspect-ratio: 1 / 1;
-  transform: scale(0.9);
+@keyframes blurPulse {
+  from {
+    -webkit-filter: blur(5px);
+    filter: blur(5px);
+    -webkit-transform: scale(1.3) rotate(4deg) translateX(0%);
+    transform: scale(1.3) rotate(4deg) translateX(0%);
+  }
+
+  to {
+    -webkit-filter: blur(8px);
+    filter: blur(8px);
+    -webkit-transform: scale(1.1) rotate(-2deg) translateX(3%);
+    transform: scale(1.1) rotate(-2deg) translateX(3%);
+  }
+}
+
+.pochette .vinyl {
   margin-left: -23%;
-  background: radial-gradient(circle closest-side, rgba(115, 115, 115, 0) 3%, #0F0F0F 4%, #131313 10%, #0D0D0D 11%, #141414 12%, #2A2A2A 37%, #0D0D0D 38%, #0D0D0D 53%, #444444 54%, #0D0D0D 55%, #0D0D0D 70%, #444444 71%, #0D0D0D 72%, #0d0d0d 84%, #444 85%, #0D0D0D 86%, #0d0d0d 95%, #373737 96%);
+  border-radius: var(--mm-radius-round, 9999px);
+  background-color: #0f0f0f;
+  background-image: radial-gradient(
+    circle closest-side,
+    rgba(115, 115, 115, 0) 3%,
+    #0f0f0f 4%,
+    #131313 10%,
+    #0d0d0d 11%,
+    #141414 12%,
+    #2a2a2a 37%,
+    #0d0d0d 38%,
+    #0d0d0d 53%,
+    #444444 54%,
+    #0d0d0d 55%,
+    #0d0d0d 70%,
+    #444444 71%,
+    #0d0d0d 72%,
+    #0d0d0d 84%,
+    #444444 85%,
+    #0d0d0d 86%,
+    #0d0d0d 95%,
+    #373737 96%
+  );
+  aspect-ratio: 1 / 1;
+  -webkit-transform: scale(0.9) translateZ(0);
+  transform: scale(0.9) translateZ(0);
+  -webkit-animation: vinyl_open 1s ease-in-out;
   animation: vinyl_open 1s ease-in-out;
-  box-shadow: 0px 7px 6px #00000033;
+  -webkit-box-shadow: 0 7px 6px #00000033;
+  box-shadow: 0 7px 6px #00000033;
+  backface-visibility: hidden;
+  will-change: margin-left, transform;
+}
+
+@-webkit-keyframes vinyl_open {
+  from {
+    margin-left: -50%;
+  }
+
+  to {
+    margin-left: -23%;
+  }
 }
 
 @keyframes vinyl_open {
   from {
     margin-left: -50%;
   }
+
   to {
     margin-left: -23%;
   }
 }
 
-
-
-.pochette .icon{
-  display:none; ////
+.pochette .icon {
+  display: none;
   position: absolute;
   left: 50%;
   top: 50%;
-  height: 47%;
   width: 47%;
+  height: 47%;
+  -webkit-transform: translate(-50%, -50%);
   transform: translate(-50%, -50%);
-  color: var(--mm-color-surface);
+  color: var(--mm-color-surface, #ffffff);
 }
 
-.onBoarding .info_box{
-  
+.onBoarding .info_box {
 }
 
-.onBoarding .container{
-  flex-direction: column;
-  padding: 26px;
-  gap: 16px;
+.onBoarding .container {
+  display: -webkit-box;
+  display: -ms-flexbox;
   display: flex;
-  background-color: white;
-  z-index:2;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  padding: 26px;
+  background-color: #ffffff;
+  z-index: 2;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-
-.onBoarding h1{
+.onBoarding h1 {
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
+/* Fallback si aspect-ratio n'est pas supporté */
+@supports not (aspect-ratio: 1 / 1) {
+  .cover,
+  .pochette .vinyl {
+    width: clamp(120px, 38vw, 260px);
+  }
+}
 
+/* Fallback si object-fit n'est pas supporté */
+@supports not ((-o-object-fit: cover) or (object-fit: cover)) {
+  .onBoarding img.bg,
+  .cover img {
+    width: auto;
+    min-width: 100%;
+    min-height: 100%;
+    height: auto;
+  }
+}
+
+/* Réduction des animations si l'utilisateur l'a demandé */
+@media (prefers-reduced-motion: reduce) {
+  .cover img,
+  .pochette .vinyl {
+    -webkit-animation: none;
+    animation: none;
+  }
+}
+
+/* Ajustements petits écrans */
+@media (max-width: 480px) {
+  .onBoarding .page_container {
+    top: 56px;
+  }
+
+  .pochette {
+    height: clamp(110px, 42vw, 220px);
+  }
+
+  .onBoarding .container {
+    padding: 20px;
+  }
+
+  .last_song {
+    gap: 16px;
+  }
+
+  .last_song p {
+    padding: 16px;
+  }
+}
