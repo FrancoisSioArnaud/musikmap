@@ -195,14 +195,14 @@ export default function Onboarding() {
 
           
           <Box className="info_box">
-            <Typography className="box_name" component="h1" variant="h5">
+            <Typography className="box_name" component="h5" variant="h5">
               {box?.name}
             </Typography>
           </Box>
 
           <Box className="container">
 
-            <Typography variant="h4">
+            <Typography variant="h4" component="h1">
               Dépose une chanson pour découvrir celle déposée par le passant précédent
             </Typography>
 
