@@ -174,7 +174,7 @@ export default function Onboarding() {
         <Box className="page_container">
   
           {box?.last_deposit_song_image_url ? (
-            <Box className="prev_song">
+            <Box className="last_song">
               <Box className="pochette">
                 <Box className="cover">
                   <Box
