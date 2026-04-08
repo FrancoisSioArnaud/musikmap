@@ -202,7 +202,7 @@ export default function Onboarding() {
               </Typography>
             </Box>
 
-            <Typography variant="h3">
+            <Typography variant="h4">
               Partage une chanson et découvre celle partagée par le passant précédent
             </Typography>
 
