@@ -176,7 +176,6 @@ export default function Onboarding() {
                 src="https://naolib.fr/medias/photo/homepage_1770126469211-png"
                 className="last_song_img"
               />              
-              <img class="last_song_img bg MuiBox-root css-0" src="https://naolib.fr/medias/photo/homepage_1770126469211-png" alt="">
               <Box className="pochette">
                 <Box className="cover">
                   <Box
