@@ -19,6 +19,7 @@
 
 .last_song{
   display: flex;
+  position: relative;
   flex: 1;
   min-height: 0;
   flex-direction: column;
@@ -35,17 +36,18 @@
 
 
 .last_song_img.bg{
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: -6px;
   top: 0;
   width: 100%;
   height: 100%;
+  -o-object-fit: cover;
   object-fit: cover;
-  filter: blur(18px);
-  transform: scale(1.1);
-  opacity: 0.40;
+  transform: scale(1.3);
+  opacity: .4;
+  filter: blur(2px);
 }
 
 .pochette{
@@ -53,7 +55,7 @@
   max-width: 100vw;
   justify-content: center;
   height: auto;
-  aspect-ratio: 2/1;
+  aspect-ratio: 2.6/1;
 }
 
 .cover{
