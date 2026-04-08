@@ -183,7 +183,7 @@ export default function Onboarding() {
                 </Box>
                 <Box className="vinyl" />
               </Box>
-              <Typography variant="subtitle1">
+              <Typography variant="subtitle1" component="p">
                 Chanson deposée ici {box?.last_deposit_date || 0}
               </Typography>
             </Box>
