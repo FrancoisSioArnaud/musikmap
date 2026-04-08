@@ -174,7 +174,7 @@ export default function Onboarding() {
               <Box
                 component="img"
                 src="https://naolib.fr/medias/photo/homepage_1770126469211-png"
-                className="last_song_img"
+                className="bg"
               />              
               <Box className="pochette">
                 <Box className="cover">
