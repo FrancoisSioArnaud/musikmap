@@ -195,7 +195,7 @@ export default function Onboarding() {
           <Box className="container">
 
             <Typography variant="h4" component="h1" className="intro_small">
-              Dépose une chanson pour découvrir celle déposée par le passant précédent
+              Dépose une chanson puis découvre celle déposée par le passant précédent
             </Typography>
 
             <Button
