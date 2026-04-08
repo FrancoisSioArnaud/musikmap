@@ -24,6 +24,8 @@
   flex-direction: column;
   align-items: center;
   padding: 20px;
+  justify-content: center;
+  gap: 20px;
 }
 
 .last_song p{
@@ -51,10 +53,14 @@
   min-height: 0;
   padding: 5.5%;
   justify-content: center;
+  min-width: 0;
+  max-width: 100vw;
+  justify-content: center;
+  height: auto;
+  aspect-ratio: 2/1;
 }
 
 .cover{
-  min-height: 0;
   border-radius: var(--mm-radius-md);
   overflow: hidden;
   box-shadow: rgba(0, 0, 0, .2) 0 13px 11px 0;
@@ -62,6 +68,8 @@
   position: relative;
   z-index: 100;
   margin-left: 16px;
+  aspect-ratio: 1/1;
+  height: auto;
 }
 
 .cover img{
@@ -83,7 +91,6 @@
 }
 
 .pochette .vinyl{
-  height: 100%;
   border-radius: var(--mm-radius-round);
   aspect-ratio: 1 / 1;
   background-color: white;
@@ -129,8 +136,8 @@
 }
 
 
-
-
-.onBoarding .step p{
-  font-weight : bold;
+.onBoarding h1{
+  text-align: center;
 }
+
+
