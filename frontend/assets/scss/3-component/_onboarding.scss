@@ -18,8 +18,18 @@
 
 
 .last_song{
-  
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
 }
+
+.last_song p{
+  color: var(--mm-color-white);
+}
+
 
 .last_song_img.bg{
   position: fixed;
