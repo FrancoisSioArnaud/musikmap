@@ -171,6 +171,11 @@ export default function Onboarding() {
   
           {box?.last_deposit_song_image_url ? (
             <Box className="last_song">
+              <Box
+                component="img"
+                src="https://naolib.fr/medias/photo/homepage_1770126469211-png"
+                className="last_song_img"
+              />              
               <img class="last_song_img bg MuiBox-root css-0" src="https://naolib.fr/medias/photo/homepage_1770126469211-png" alt="">
               <Box className="pochette">
                 <Box className="cover">
