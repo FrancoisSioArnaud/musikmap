@@ -2,7 +2,9 @@
 
 
 .onBoarding{
-  background : var(--mm-color-primary-dark);
+  background: var(--mm-color-primary-dark);
+  position: fixed;
+  inset: 0;
 }
 
 .onBoarding .page_container{
