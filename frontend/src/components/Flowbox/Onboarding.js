@@ -174,17 +174,22 @@ export default function Onboarding() {
         <Box className="page_container">
   
           {box?.last_deposit_song_image_url ? (
-            <Box className="pochette">
-              <Box className="cover">
-                <Box
-                  component="img"
-                  src={box.last_deposit_song_image_url}
-                  alt="pochette"
-                  className="last_song_img"
-                />
-                <LockIcon className="icon" />
+            <Box className="prev_song>
+              <Box className="pochette">
+                <Box className="cover">
+                  <Box
+                    component="img"
+                    src={box.last_deposit_song_image_url}
+                    alt="pochette"
+                    className="last_song_img"
+                  />
+                  <LockIcon className="icon" />
+                </Box>
+                <Box className="vinyl" />
               </Box>
-              <Box className="vinyl" />
+              <Typography variant="body1">
+                Chanson deposée ici {box?.last_deposit_date || 0}
+              </Typography>
             </Box>
           ) : null}
 
@@ -196,13 +201,8 @@ export default function Onboarding() {
           </Box>
 
           <Box className="container">
-            <Box className="intro">
-              <Typography variant="body1">
-                Chanson deposée ici {box?.last_deposit_date || 0}
-              </Typography>
-            </Box>
 
-            <Typography variant="h5">
+            <Typography variant="h4">
               Dépose une chanson pour découvrir celle déposée par le passant précédent
             </Typography>
 
