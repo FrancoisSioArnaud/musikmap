@@ -158,15 +158,6 @@ export default function Onboarding() {
         elevation={3}
         className="onBoarding"
       >
-        {box?.last_deposit_song_image_url ? (
-          <Box
-            component="img"
-            src={box.last_deposit_song_image_url}
-            alt=""
-            className="last_song_img bg"
-          />
-        ) : null}
-
         <Box className="page_container">
   
           {box?.last_deposit_song_image_url ? (
