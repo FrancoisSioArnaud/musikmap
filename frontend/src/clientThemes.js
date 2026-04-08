@@ -61,6 +61,9 @@ export const CLIENT_THEMES = {
     },
     shadow: {
       high: "rgba(0, 0, 0, 0.2) 0px 5px 3px",
+    },
+    padding:{
+      pageSide: "26px",
     }
   },
 
