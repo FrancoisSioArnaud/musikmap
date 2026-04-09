@@ -200,7 +200,7 @@ export default function UserProfilePage() {
   const userStatusName = String(headerUser?.status?.name || "").trim();
 
   return (
-    <Box>
+    <Box className="profile">
       <Box
         sx={{
           display: "flex",
@@ -261,14 +261,7 @@ export default function UserProfilePage() {
                 {user.username}
               </Typography>
               {userStatusName && (
-                <Box
-                  sx={{
-                    backgroundColor: "var(--mm-color-primary-light)",
-                    padding: "16px 20px",
-                  }}
-                >
-                  <Typography variant="body1">{userStatusName}</Typography>
-                </Box>
+                <Typography className="status" variant="body1">{userStatusName}</Typography>
               )}
             </Box>
           </>
@@ -278,14 +271,7 @@ export default function UserProfilePage() {
           >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
             {userStatusName && (
-              <Box
-                sx={{
-                  backgroundColor: "var(--mm-color-primary-light)",
-                  padding: "16px 20px",
-                }}
-              >
-                <Typography variant="body1">{userStatusName}</Typography>
-              </Box>
+                <Typography className="status" variant="body1">{userStatusName}</Typography>
             )}
             {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
