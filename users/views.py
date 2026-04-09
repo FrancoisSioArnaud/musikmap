@@ -21,6 +21,7 @@ from .models import CustomUser
 from .serializer import CustomUserSerializer
 from .utils import (
     build_current_user_payload,
+    get_user_status,
     clear_guest_cookie,
     get_current_app_user,
     get_guest_user_from_request,
@@ -308,6 +309,7 @@ class GetUserInfo(APIView):
             "display_name": user.display_name,
             "profile_picture_url": profile_picture_url,
             "total_deposits": total_deposits,
+            "status": get_user_status(user),
         }
         return Response(data, status=status.HTTP_200_OK)
 

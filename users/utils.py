@@ -1,4 +1,6 @@
+import json
 import secrets
+from pathlib import Path
 from typing import Optional, Tuple
 
 from django.conf import settings
@@ -12,6 +14,60 @@ from .models import CustomUser
 GUEST_COOKIE_NAME = "mm_guest"
 GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5
 GUEST_USERNAME_PREFIX = "guest_"
+
+
+USER_STATUSES_PATH = Path(__file__).resolve().parent / "data" / "user_statuses.json"
+
+
+def _get_user_total_deposits(user: Optional[CustomUser]) -> int:
+    if not user or not getattr(user, "pk", None):
+        return 0
+
+    from box_management.models import Deposit
+
+    return Deposit.objects.filter(user=user).count()
+
+
+def _load_user_statuses() -> list[dict]:
+    try:
+        raw_statuses = json.loads(USER_STATUSES_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    valid_statuses = []
+    for item in raw_statuses if isinstance(raw_statuses, list) else []:
+        if not isinstance(item, dict):
+            continue
+
+        name = str(item.get("name") or "").strip()
+        try:
+            min_deposits = int(item.get("min_deposits"))
+        except (TypeError, ValueError):
+            continue
+
+        if not name or min_deposits < 0:
+            continue
+
+        valid_statuses.append({
+            "name": name,
+            "min_deposits": min_deposits,
+        })
+
+    valid_statuses.sort(key=lambda status: status["min_deposits"])
+    return valid_statuses
+
+
+def get_user_status(user: Optional[CustomUser]) -> Optional[dict]:
+    total_deposits = _get_user_total_deposits(user)
+    current_status = None
+
+    for candidate in _load_user_statuses():
+        if total_deposits >= candidate["min_deposits"]:
+            current_status = candidate
+        else:
+            break
+
+    return current_status
 
 
 def _now():
@@ -67,6 +123,8 @@ def touch_last_seen(user: Optional[CustomUser]) -> Optional[CustomUser]:
 
 def build_current_user_payload(user: CustomUser):
     profile_picture_url = None
+    user_status = get_user_status(user)
+
     if getattr(user, "profile_picture", None):
         try:
             profile_picture_url = user.profile_picture.url
@@ -105,6 +163,7 @@ def build_current_user_payload(user: CustomUser):
             if client
             else None
         ),
+        "status": user_status,
     }
 
 
