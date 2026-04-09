@@ -9,7 +9,7 @@ import Button from "@mui/material/Button";
 
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MusicNote from "@mui/icons-material/MusicNote";
-import ArrowDownwardIosIcon from "@mui/icons-material/ArrowDownwardIos";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
@@ -30,7 +30,6 @@ export default function Discover() {
   const [openAchievements, setOpenAchievements] = useState(false);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
-
 
   const redirectOnboardingExpired = useCallback(() => {
     navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
@@ -88,7 +87,9 @@ export default function Discover() {
 
   const mainDep = boxContent?.main || null;
   const successes = Array.isArray(boxContent?.successes) ? boxContent.successes : [];
-  const olderDeposits = Array.isArray(boxContent?.olderDeposits) ? boxContent.olderDeposits : [];
+  const olderDeposits = Array.isArray(boxContent?.olderDeposits)
+    ? boxContent.olderDeposits
+    : [];
 
   const totalPoints =
     successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
@@ -149,7 +150,9 @@ export default function Discover() {
       />
 
       <Box className="my_deposit_notif">
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}
+        >
           <CheckCircleIcon fontSize="medium" />
           <Typography component="h2" variant="h5">
             Chanson déposée avec succès
@@ -157,66 +160,70 @@ export default function Discover() {
         </Box>
 
         {mySong ? (
-          <>
-            <Box
-              className={`my_deposit deposit_card deposit_song${
-                myDepositAccentColor ? " has_accent_color" : ""
-              }`}
-              style={
-                myDepositAccentColor
-                  ? { "--deposit-accent": myDepositAccentColor }
-                  : undefined
-              }
-            >
-              <Box className="img_container">
-                {mySong?.image_url ? (
-                  <Box
-                    component="img"
-                    src={mySong.image_url}
-                    alt={mySong?.title || "Cover"}
-                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
-                ) : null}
-              </Box>
-  
-              <Box className="texts">
-                <Typography
-                  variant="h5"
-                  component="span"
-                  title={mySong?.title || ""}
-                  className="titre"
-                >
-                  {mySong?.title || ""}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  component="span"
-                  title={mySong?.artist || ""}
-                  className="artist"
-                >
-                  {mySong?.artist || ""}
-                </Typography>
-              </Box>
-              <Box
-                className="points_container vertical"
-                style={{ margin: "0 auto" }}
-                onClick={handleOpenAchievements}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
-                }}
-              >
-                <MusicNote />
-                <Typography component="span" variant="body1">
-                  +{totalPoints}
-                </Typography>
-              </Box>
+          <Box
+            className={`my_deposit deposit_card deposit_song${
+              myDepositAccentColor ? " has_accent_color" : ""
+            }`}
+            style={
+              myDepositAccentColor
+                ? { "--deposit-accent": myDepositAccentColor }
+                : undefined
+            }
+          >
+            <Box className="img_container">
+              {mySong?.image_url ? (
+                <Box
+                  component="img"
+                  src={mySong.image_url}
+                  alt={mySong?.title || "Cover"}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              ) : null}
             </Box>
-          </>
+
+            <Box className="texts">
+              <Typography
+                variant="h5"
+                component="span"
+                title={mySong?.title || ""}
+                className="titre"
+              >
+                {mySong?.title || ""}
+              </Typography>
+              <Typography
+                variant="body1"
+                component="span"
+                title={mySong?.artist || ""}
+                className="artist"
+              >
+                {mySong?.artist || ""}
+              </Typography>
+            </Box>
+
+            <Box
+              className="points_container vertical"
+              style={{ margin: "0 auto" }}
+              onClick={handleOpenAchievements}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+              }}
+            >
+              <MusicNote />
+              <Typography component="span" variant="body1">
+                +{totalPoints}
+              </Typography>
+            </Box>
+          </Box>
         ) : null}
       </Box>
-        
+
       <Box className="intro">
         <Typography component="h2" variant="h1">
           Bonne écoute !
@@ -239,7 +246,7 @@ export default function Discover() {
           {olderDeposits.length > 0 ? (
             <Button
               variant="outlined"
-              startIcon={<ArrowDownwardIosIcon fontSize="inherit" />}
+              startIcon={<KeyboardArrowDownIcon />}
               onClick={handleScrollToOlderDeposits}
               sx={{ mt: 2, width: "100%" }}
             >
@@ -270,8 +277,8 @@ export default function Discover() {
               Partages précédents
             </Typography>
             <Typography component="p" variant="body1">
-              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes points pour les
-              révéler.
+              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes
+              points pour les révéler.
             </Typography>
           </Box>
 
@@ -282,7 +289,7 @@ export default function Discover() {
                 dep={d}
                 user={user}
                 variant="list"
-                    showPlay={true}
+                showPlay={true}
                 showUser={true}
               />
             ))}
