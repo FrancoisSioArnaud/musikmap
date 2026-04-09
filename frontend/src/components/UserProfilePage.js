@@ -95,6 +95,7 @@ export default function UserProfilePage() {
           display_name: user?.display_name || user?.username || "Invité",
           profile_picture_url: user?.profile_picture_url || null,
           total_deposits: null,
+          status: user?.status || null,
           is_guest: Boolean(user?.is_guest),
         },
       });
@@ -131,6 +132,7 @@ export default function UserProfilePage() {
           profile_picture_url: data?.profile_picture_url || null,
           total_deposits:
             typeof data?.total_deposits === "number" ? data.total_deposits : 0,
+          status: data?.status || null,
           is_guest: false,
         },
       });
@@ -146,6 +148,8 @@ export default function UserProfilePage() {
     user?.display_name,
     user?.profile_picture_url,
     user?.is_guest,
+    user?.status?.name,
+    user?.status?.min_deposits,
   ]);
 
   const handleGuestContinue = () => {
@@ -193,6 +197,8 @@ export default function UserProfilePage() {
   }`;
   const trimmedGuestUsername = guestUsernameDraft.trim();
 
+  const userStatusName = String(headerUser?.status?.name || "").trim();
+
   return (
     <Box>
       <Box
@@ -231,7 +237,7 @@ export default function UserProfilePage() {
 
         {isGuestOwner ? (
           <>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
                 <TextField
                   fullWidth
@@ -254,13 +260,33 @@ export default function UserProfilePage() {
               <Typography variant="body2" sx={{ opacity: "0.7", padding: "0 6px" }}>
                 {user.username}
               </Typography>
+              {userStatusName && (
+                <Box
+                  sx={{
+                    backgroundColor: "var(--mm-color-primary-light)",
+                    padding: "16px 20px",
+                  }}
+                >
+                  <Typography variant="body1">{userStatusName}</Typography>
+                </Box>
+              )}
             </Box>
           </>
         ) : (
           <Box
-            sx={{ display: "flex", flexDirection: "column", alignItems: "left" }}
+            sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "8px" }}
           >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
+            {userStatusName && (
+              <Box
+                sx={{
+                  backgroundColor: "var(--mm-color-primary-light)",
+                  padding: "16px 20px",
+                }}
+              >
+                <Typography variant="body1">{userStatusName}</Typography>
+              </Box>
+            )}
             {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
         )}
