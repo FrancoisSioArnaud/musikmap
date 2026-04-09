@@ -9,6 +9,7 @@ import Button from "@mui/material/Button";
 
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MusicNote from "@mui/icons-material/MusicNote";
+import ArrowDownwardIosIcon from "@mui/icons-material/ArrowDownwardIos";
 
 import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
@@ -98,6 +99,16 @@ export default function Discover() {
   const handleCloseAchievements = () => setOpenAchievements(false);
   const handleOpenArticleDrawer = (article) => setSelectedArticle(article || null);
   const handleCloseArticleDrawer = () => setSelectedArticle(null);
+
+  const handleScrollToOlderDeposits = () => {
+    const target = document.getElementById("older_deposit");
+    if (!target) return;
+
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
   return (
     <Box>
@@ -224,6 +235,17 @@ export default function Discover() {
             showPlay={true}
             showUser={true}
           />
+
+          {olderDeposits.length > 0 ? (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowDownwardIosIcon fontSize="inherit" />}
+              onClick={handleScrollToOlderDeposits}
+              sx={{ mt: 2, width: "100%" }}
+            >
+              Découvrir plus de chansons
+            </Button>
+          ) : null}
         </Box>
       ) : null}
 
@@ -242,7 +264,7 @@ export default function Discover() {
       ) : null}
 
       {olderDeposits.length > 0 ? (
-        <Box id="older_deposits">
+        <Box id="older_deposit">
           <Box className="intro" sx={{ p: 4 }}>
             <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
               Partages précédents
