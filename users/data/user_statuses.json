@@ -1,0 +1,10 @@
+[
+  { "name": "Passant.e", "min_deposits": 1 },
+  { "name": "Voyageur.euse", "min_deposits": 3 },
+  { "name": "Initié.e", "min_deposits": 6 },
+  { "name": "Audiophile", "min_deposits": 9 },
+  { "name": "Sound addict", "min_deposits": 13 },
+  { "name": "Collectionneur.euse", "min_deposits": 18 },
+  { "name": "Infuenceur.euse", "min_deposits": 26 },
+  { "name": "curateur.trice", "min_deposits": 35 }
+]
