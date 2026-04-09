@@ -1,690 +1,1529 @@
+# box_management/utils.py
+
+import html
 import json
-import secrets
-from pathlib import Path
-from typing import Optional, Tuple
+import re
+from io import BytesIO
+from datetime import date, timedelta, timezone as dt_timezone
+from html.parser import HTMLParser
+from math import radians, sin, cos, sqrt, atan2, log2
+from typing import Any, Dict, List, Optional, Union, Iterable, Sequence, Tuple
+from urllib.parse import urljoin, urlparse
 
+import requests
+from PIL import Image
 from django.conf import settings
-from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import QuerySet, Prefetch, Q, Count
 from django.utils import timezone
-from social_django.models import UserSocialAuth
+from django.utils.timezone import localtime, localdate
+from rest_framework import status
+from rest_framework.response import Response
 
-from .models import CustomUser
+from users.models import CustomUser
+from .models import (
+    Client,
+    Deposit,
+    Reaction,
+    DiscoveredSong,
+    Song,
+    IncitationPhrase,
+    Comment,
+    CommentReport,
+    CommentUserRestriction,
+    CommentAttemptLog,
+)
 
-GUEST_COOKIE_NAME = "mm_guest"
-GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5
-GUEST_USERNAME_PREFIX = "guest_"
+# Barèmes & coûts (importés depuis ton module utils global)
+from utils import (
+    NB_POINTS_ADD_SONG,
+    NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
+    NB_POINTS_CONSECUTIVE_DAYS_BOX,
+    COST_REVEAL_BOX,
+)
+
+COMMENT_MAX_LENGTH = 100
+COMMENT_COOLDOWN_SECONDS = 120
+COMMENT_TARGET_USER_DAILY_LIMIT = 2
+
+COMMENT_REASON_ALREADY_COMMENTED = "already_commented"
+COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED = "target_user_daily_comment_limit_reached"
+COMMENT_REASON_RATE_LIMIT = "rate_limit"
+COMMENT_REASON_LINK_FORBIDDEN = "link_forbidden"
+COMMENT_REASON_EMAIL_FORBIDDEN = "email_forbidden"
+COMMENT_REASON_PHONE_FORBIDDEN = "phone_forbidden"
+COMMENT_REASON_EMPTY = "empty"
+COMMENT_REASON_TOO_LONG = "too_long"
+COMMENT_REASON_RESTRICTED = "restricted"
+COMMENT_REASON_REPORT_THRESHOLD = "report_threshold"
+COMMENT_REASON_RISK_QUARANTINE = "risk_quarantine"
+COMMENT_REASON_SPAM = "spam"
+COMMENT_REASON_HARASSMENT = "harassment"
+COMMENT_REASON_DOXXING = "doxxing"
+COMMENT_REASON_DELETE_BY_AUTHOR = "deleted_by_author"
+COMMENT_REASON_REMOVE_BY_MODERATION = "removed_by_moderation"
 
 
-USER_STATUSES_PATH = Path(__file__).resolve().parent / "data" / "user_statuses.json"
+ACCENT_COLOR_TARGET_SIZE = 64
+ACCENT_COLOR_EDGE_RATIO = 0.1
+ACCENT_COLOR_MIN_ALPHA = 128
+ACCENT_COLOR_MIN_SATURATION_STRICT = 0.18
+ACCENT_COLOR_MIN_SATURATION_FALLBACK = 0.08
+ACCENT_COLOR_MIN_LIGHTNESS_STRICT = 0.18
+ACCENT_COLOR_MAX_LIGHTNESS_STRICT = 0.92
+ACCENT_COLOR_MIN_LIGHTNESS_FALLBACK = 0.14
+ACCENT_COLOR_MAX_LIGHTNESS_FALLBACK = 0.96
+ACCENT_COLOR_QUANTIZATION_STEP = 32
+ACCENT_COLOR_IDEAL_LIGHTNESS = 0.58
+ACCENT_COLOR_BROWN_HUE_MIN = 18 / 360
+ACCENT_COLOR_BROWN_HUE_MAX = 50 / 360
+ACCENT_COLOR_BROWN_MAX_LIGHTNESS = 0.5
+ACCENT_COLOR_BROWN_MIN_SATURATION = 0.18
+ACCENT_COLOR_BROWN_PENALTY_WEIGHT = 240
+ACCENT_COLOR_SATURATION_SCORE_WEIGHT = 1000
+ACCENT_COLOR_COUNT_SCORE_WEIGHT = 14
+ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT = 8
+ACCENT_COLOR_REQUEST_TIMEOUT = 8
 
 
-def _get_user_total_deposits(user: Optional[CustomUser]) -> int:
-    if not user or not getattr(user, "pk", None):
-        return 0
-
-    from box_management.models import Deposit
-
-    return Deposit.objects.filter(user=user).count()
+def _accent_clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
 
 
-def _load_user_statuses() -> list[dict]:
+def _accent_clamp_byte(value: float) -> int:
+    return int(_accent_clamp(round(value or 0), 0, 255))
+
+
+def _accent_rgb_to_hex(r: float, g: float, b: float) -> str:
+    return f"#{_accent_clamp_byte(r):02X}{_accent_clamp_byte(g):02X}{_accent_clamp_byte(b):02X}"
+
+
+def _accent_rgb_to_hsl(r: float, g: float, b: float) -> Tuple[float, float, float]:
+    rn = _accent_clamp_byte(r) / 255.0
+    gn = _accent_clamp_byte(g) / 255.0
+    bn = _accent_clamp_byte(b) / 255.0
+
+    max_value = max(rn, gn, bn)
+    min_value = min(rn, gn, bn)
+    lightness = (max_value + min_value) / 2.0
+
+    if max_value == min_value:
+        return 0.0, 0.0, lightness
+
+    delta = max_value - min_value
+    saturation = (
+        delta / (2.0 - max_value - min_value)
+        if lightness > 0.5
+        else delta / (max_value + min_value)
+    )
+
+    if max_value == rn:
+        hue = (gn - bn) / delta + (6 if gn < bn else 0)
+    elif max_value == gn:
+        hue = (bn - rn) / delta + 2
+    else:
+        hue = (rn - gn) / delta + 4
+
+    hue /= 6.0
+    return hue, saturation, lightness
+
+
+def _accent_get_brown_penalty(hue: float, saturation: float, lightness: float) -> float:
+    is_brown_hue = ACCENT_COLOR_BROWN_HUE_MIN <= hue <= ACCENT_COLOR_BROWN_HUE_MAX
+    is_brown_candidate = (
+        is_brown_hue
+        and saturation >= ACCENT_COLOR_BROWN_MIN_SATURATION
+        and lightness <= ACCENT_COLOR_BROWN_MAX_LIGHTNESS
+    )
+    if not is_brown_candidate:
+        return 0.0
+
+    hue_center = (ACCENT_COLOR_BROWN_HUE_MIN + ACCENT_COLOR_BROWN_HUE_MAX) / 2.0
+    hue_half_range = (ACCENT_COLOR_BROWN_HUE_MAX - ACCENT_COLOR_BROWN_HUE_MIN) / 2.0
+    hue_distance = abs(hue - hue_center)
+    hue_factor = 1 - _accent_clamp(hue_distance / hue_half_range, 0.0, 1.0)
+    darkness_factor = _accent_clamp(
+        (ACCENT_COLOR_BROWN_MAX_LIGHTNESS - lightness) / ACCENT_COLOR_BROWN_MAX_LIGHTNESS,
+        0.0,
+        1.0,
+    )
+    return ACCENT_COLOR_BROWN_PENALTY_WEIGHT * hue_factor * darkness_factor
+
+
+def _accent_is_pixel_eligible(r: int, g: int, b: int, a: int, mode: str) -> bool:
+    if a < ACCENT_COLOR_MIN_ALPHA:
+        return False
+
+    _h, saturation, lightness = _accent_rgb_to_hsl(r, g, b)
+
+    if mode == "strict":
+        return (
+            saturation >= ACCENT_COLOR_MIN_SATURATION_STRICT
+            and lightness >= ACCENT_COLOR_MIN_LIGHTNESS_STRICT
+            and lightness <= ACCENT_COLOR_MAX_LIGHTNESS_STRICT
+        )
+
+    return (
+        saturation >= ACCENT_COLOR_MIN_SATURATION_FALLBACK
+        and lightness >= ACCENT_COLOR_MIN_LIGHTNESS_FALLBACK
+        and lightness <= ACCENT_COLOR_MAX_LIGHTNESS_FALLBACK
+    )
+
+
+def _accent_quantize_channel(value: int) -> int:
+    quantized = int(_accent_clamp_byte(value) / ACCENT_COLOR_QUANTIZATION_STEP) * ACCENT_COLOR_QUANTIZATION_STEP
+    centered = quantized + (ACCENT_COLOR_QUANTIZATION_STEP / 2)
+    return _accent_clamp_byte(centered)
+
+
+def _accent_bucket_key(r: int, g: int, b: int) -> Tuple[int, int, int]:
+    return (
+        _accent_quantize_channel(r),
+        _accent_quantize_channel(g),
+        _accent_quantize_channel(b),
+    )
+
+
+def _accent_score_bucket(bucket: Dict[str, float]) -> float:
+    avg_r = bucket["r_sum"] / bucket["count"]
+    avg_g = bucket["g_sum"] / bucket["count"]
+    avg_b = bucket["b_sum"] / bucket["count"]
+    hue, saturation, lightness = _accent_rgb_to_hsl(avg_r, avg_g, avg_b)
+
+    saturation_score = saturation * ACCENT_COLOR_SATURATION_SCORE_WEIGHT
+    count_score = log2(bucket["count"] + 1) * ACCENT_COLOR_COUNT_SCORE_WEIGHT
+    lightness_score = (
+        1 - abs(lightness - ACCENT_COLOR_IDEAL_LIGHTNESS) * 2
+    ) * ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT
+    brown_penalty = _accent_get_brown_penalty(hue, saturation, lightness)
+
+    return saturation_score + count_score + lightness_score - brown_penalty
+
+
+def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> Optional[str]:
+    width, height = image.size
+    edge_x = int(width * ACCENT_COLOR_EDGE_RATIO)
+    edge_y = int(height * ACCENT_COLOR_EDGE_RATIO)
+
+    if width - (edge_x * 2) <= 0 or height - (edge_y * 2) <= 0:
+        edge_x = 0
+        edge_y = 0
+
+    pixels = image.load()
+    buckets: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+
+    for y in range(edge_y, height - edge_y):
+        for x in range(edge_x, width - edge_x):
+            r, g, b, a = pixels[x, y]
+            if not _accent_is_pixel_eligible(r, g, b, a, mode):
+                continue
+
+            key = _accent_bucket_key(r, g, b)
+            bucket = buckets.setdefault(
+                key,
+                {"count": 0, "r_sum": 0.0, "g_sum": 0.0, "b_sum": 0.0},
+            )
+            bucket["count"] += 1
+            bucket["r_sum"] += r
+            bucket["g_sum"] += g
+            bucket["b_sum"] += b
+
+    best_bucket = None
+    best_score = float("-inf")
+
+    for bucket in buckets.values():
+        if bucket["count"] <= 0:
+            continue
+        score = _accent_score_bucket(bucket)
+        if score > best_score:
+            best_bucket = bucket
+            best_score = score
+
+    if not best_bucket:
+        return None
+
+    return _accent_rgb_to_hex(
+        best_bucket["r_sum"] / best_bucket["count"],
+        best_bucket["g_sum"] / best_bucket["count"],
+        best_bucket["b_sum"] / best_bucket["count"],
+    )
+
+
+def _fetch_remote_image_for_accent(image_url: str) -> Optional[Image.Image]:
+    if not image_url:
+        return None
+
     try:
-        raw_statuses = json.loads(USER_STATUSES_PATH.read_text(encoding="utf-8"))
+        response = requests.get(
+            image_url,
+            timeout=ACCENT_COLOR_REQUEST_TIMEOUT,
+            headers={"User-Agent": "musikmap-accent-color/1.0"},
+        )
+        response.raise_for_status()
+        with Image.open(BytesIO(response.content)) as raw_image:
+            rgba_image = raw_image.convert("RGBA")
+            try:
+                resample = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample = Image.LANCZOS
+            return rgba_image.resize(
+                (ACCENT_COLOR_TARGET_SIZE, ACCENT_COLOR_TARGET_SIZE),
+                resample=resample,
+            )
     except Exception:
-        return []
-
-    valid_statuses = []
-    for item in raw_statuses if isinstance(raw_statuses, list) else []:
-        if not isinstance(item, dict):
-            continue
-
-        name = str(item.get("name") or "").strip()
-        try:
-            min_deposits = int(item.get("min_deposits"))
-        except (TypeError, ValueError):
-            continue
-
-        if not name or min_deposits < 0:
-            continue
-
-        valid_statuses.append({
-            "name": name,
-            "min_deposits": min_deposits,
-        })
-
-    valid_statuses.sort(key=lambda status: status["min_deposits"])
-    return valid_statuses
+        return None
 
 
-def get_user_status(user: Optional[CustomUser]) -> Optional[dict]:
-    total_deposits = _get_user_total_deposits(user)
-    current_status = None
+def extract_accent_color_from_urls(
+    image_url_small: Optional[str] = None,
+    image_url: Optional[str] = None,
+) -> Optional[str]:
+    source_url = (image_url_small or image_url or "").strip()
+    if not source_url:
+        return None
 
-    for candidate in _load_user_statuses():
-        if total_deposits >= candidate["min_deposits"]:
-            current_status = candidate
-        else:
-            break
-
-    return current_status
-
-
-def _now():
-    return timezone.now()
-
-
-def generate_guest_device_token() -> str:
-    return secrets.token_urlsafe(32)
-
-
-def generate_guest_username() -> str:
-    while True:
-        candidate = f"{GUEST_USERNAME_PREFIX}{secrets.token_hex(4)}"
-        if not CustomUser.objects.filter(username__iexact=candidate).exists():
-            return candidate
-
-
-def get_guest_user_from_request(request) -> Optional[CustomUser]:
-    token = (request.COOKIES.get(GUEST_COOKIE_NAME) or "").strip()
-    if not token:
+    image = _fetch_remote_image_for_accent(source_url)
+    if image is None:
         return None
 
     return (
-        CustomUser.objects.select_related("client")
-        .filter(is_guest=True, guest_device_token=token, is_active=True)
+        _extract_accent_color_from_rgba_image(image, mode="strict")
+        or _extract_accent_color_from_rgba_image(image, mode="fallback")
+        or None
+    )
+
+
+def refresh_song_accent_color(song: Song, force: bool = False) -> Optional[str]:
+    if not force and (getattr(song, "accent_color", "") or "").strip():
+        return song.accent_color
+
+    accent_color = extract_accent_color_from_urls(
+        image_url_small=getattr(song, "image_url_small", "") or "",
+        image_url=getattr(song, "image_url", "") or "",
+    )
+
+    if accent_color:
+        song.accent_color = accent_color
+
+    return accent_color
+
+
+COMMENT_REPORT_REASON_CHOICES = {
+    "harassment",
+    "personal_info",
+    "spam",
+    "other",
+}
+
+_COMMENT_URL_RE = re.compile(
+    r"(?:https?://|www\.|\b[a-z0-9.-]+\.(?:fr|com|net|org|io|gg|be|de|es|co|app|ly)\b)",
+    re.IGNORECASE,
+)
+_COMMENT_EMAIL_RE = re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")
+_COMMENT_PHONE_RE = re.compile(r"(?:\+?\d[\d\s().-]{7,}\d)")
+_COMMENT_SPAM_REPEAT_RE = re.compile(r"(.)\1{5,}")
+_COMMENT_SYMBOL_RE = re.compile(r"[^\w\sÀ-ÿ]")
+_COMMENT_INSULT_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bconnard(?:e)?s?\b",
+        r"\bfdp\b",
+        r"\bencul[ée]s?\b",
+        r"\bta gueule\b",
+        r"\bnique ta m[èe]re\b",
+        r"\bsale con(?:ne)?\b",
+        r"\bsalope\b",
+        r"\bb[âa]tard\b",
+    ]
+]
+_COMMENT_DOXX_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bon sait o[uù] tu habites\b",
+        r"\bton adresse\b",
+        r"\bton num[ée]ro\b",
+        r"\bje vais venir chez toi\b",
+        r"\bon va venir chez toi\b",
+    ]
+]
+
+
+def _is_full_comment_user(user: Optional[CustomUser]) -> bool:
+    return bool(user and getattr(user, "id", None) and not getattr(user, "is_guest", False))
+
+
+def _get_profile_picture_url(user: Optional[CustomUser]) -> Optional[str]:
+    if not user or not getattr(user, "profile_picture", None):
+        return None
+    try:
+        return user.profile_picture.url
+    except Exception:
+        return None
+
+
+def _normalize_comment_text(value: Optional[str]) -> str:
+    value = str(value or "")
+    value = value.replace("​", "").replace("‌", "").replace("‍", "")
+    value = re.sub(r"\s+", " ", value).strip()
+    value = value.lower()
+    return value
+
+
+def _extract_digits_count(value: Optional[str]) -> int:
+    return len(re.sub(r"\D", "", str(value or "")))
+
+
+def _contains_forbidden_phone(value: Optional[str]) -> bool:
+    text = str(value or "")
+    if not _COMMENT_PHONE_RE.search(text):
+        return False
+    return _extract_digits_count(text) >= 8
+
+
+def _detect_comment_pre_creation_error(text: str):
+    if not text:
+        return COMMENT_REASON_EMPTY
+    if len(text) > COMMENT_MAX_LENGTH:
+        return COMMENT_REASON_TOO_LONG
+    if _COMMENT_URL_RE.search(text):
+        return COMMENT_REASON_LINK_FORBIDDEN
+    if _COMMENT_EMAIL_RE.search(text):
+        return COMMENT_REASON_EMAIL_FORBIDDEN
+    if _contains_forbidden_phone(text):
+        return COMMENT_REASON_PHONE_FORBIDDEN
+    return None
+
+
+def _score_comment_risk(*, text: str, normalized_text: str):
+    score = 0
+    flags = []
+
+    if _COMMENT_SPAM_REPEAT_RE.search(normalized_text):
+        score += 50
+        flags.append(COMMENT_REASON_SPAM)
+
+    if len(normalized_text) >= 24 and len(set(normalized_text)) <= 4:
+        score += 30
+        flags.append("low_variation")
+
+    if _COMMENT_SYMBOL_RE.findall(text) and len(_COMMENT_SYMBOL_RE.findall(text)) >= 8:
+        score += 15
+        flags.append("symbol_noise")
+
+    for pattern in _COMMENT_INSULT_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 70
+            flags.append(COMMENT_REASON_HARASSMENT)
+            break
+
+    for pattern in _COMMENT_DOXX_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 95
+            flags.append(COMMENT_REASON_DOXXING)
+            break
+
+    return min(score, 100), list(dict.fromkeys(flags))
+
+
+def _get_comment_snapshot_user_payload(comment: Comment) -> Dict[str, Any]:
+    user = getattr(comment, "user", None)
+    if user and not getattr(user, "is_guest", False):
+        return _build_user_from_instance(user)
+    return {
+        "id": getattr(comment, "user_id", None),
+        "username": comment.author_username or None,
+        "display_name": comment.author_display_name or comment.author_username or "anonyme",
+        "profile_picture_url": comment.author_avatar_url or None,
+        "is_guest": False,
+    }
+
+
+def _build_comment_item_from_instance(comment: Comment, *, viewer_id: Optional[int] = None) -> Dict[str, Any]:
+    payload = {
+        "id": comment.id,
+        "text": comment.text,
+        "created_at": comment.created_at.astimezone(dt_timezone.utc).isoformat(),
+        "user": _get_comment_snapshot_user_payload(comment),
+        "is_mine": bool(viewer_id and comment.user_id == viewer_id),
+    }
+    return payload
+
+
+def _get_active_comment_restrictions_for_clients(user: Optional[CustomUser], client_ids: Iterable[int]):
+    if not _is_full_comment_user(user):
+        return {}
+
+    clean_client_ids = [cid for cid in set(client_ids or []) if cid]
+    if not clean_client_ids:
+        return {}
+
+    now_dt = timezone.now()
+    restrictions = (
+        CommentUserRestriction.objects
+        .filter(user_id=user.id, client_id__in=clean_client_ids, starts_at__lte=now_dt)
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now_dt))
+        .order_by("client_id", "-created_at", "-id")
+    )
+
+    by_client = {}
+    for restriction in restrictions:
+        by_client.setdefault(restriction.client_id, restriction)
+    return by_client
+
+
+def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, existing_comment: Optional[Comment], restriction: Optional[CommentUserRestriction]):
+    if not _is_full_comment_user(viewer):
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": None,
+            "restriction": None,
+        }
+
+    restriction_payload = None
+    if restriction:
+        restriction_payload = {
+            "restriction_type": restriction.restriction_type,
+            "reason_code": restriction.reason_code or "",
+            "ends_at": restriction.ends_at.astimezone(dt_timezone.utc).isoformat() if restriction.ends_at else None,
+        }
+
+    if existing_comment:
+        notice = None
+        if existing_comment.status == Comment.STATUS_QUARANTINED:
+            notice = "Votre commentaire est en cours de vérification."
+        return {
+            "can_post": False,
+            "has_spent_right": True,
+            "status": existing_comment.status,
+            "comment_id": existing_comment.id,
+            "notice": notice,
+            "restriction": restriction_payload,
+        }
+
+    if restriction:
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": "Vous ne pouvez pas commenter pour le moment.",
+            "restriction": restriction_payload,
+        }
+
+    return {
+        "can_post": True,
+        "has_spent_right": False,
+        "status": None,
+        "comment_id": None,
+        "notice": None,
+        "restriction": restriction_payload,
+    }
+
+
+def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: Optional[CustomUser] = None):
+    deps = list(deposits or [])
+    if not deps:
+        return {}
+
+    dep_ids = [dep.id for dep in deps if getattr(dep, "id", None)]
+    if not dep_ids:
+        return {}
+
+    viewer_id = getattr(viewer, "id", None) if _is_full_comment_user(viewer) else None
+    comments_by_dep = {dep_id: [] for dep_id in dep_ids}
+    viewer_comments = {}
+
+    comments_qs = Comment.objects.filter(deposit_id__in=dep_ids).select_related("user").order_by("created_at", "id")
+    if viewer_id:
+        comments_qs = comments_qs.filter(Q(status=Comment.STATUS_PUBLISHED) | Q(user_id=viewer_id))
+    else:
+        comments_qs = comments_qs.filter(status=Comment.STATUS_PUBLISHED)
+
+    for comment in comments_qs:
+        if comment.status == Comment.STATUS_PUBLISHED:
+            comments_by_dep.setdefault(comment.deposit_id, []).append(
+                _build_comment_item_from_instance(comment, viewer_id=viewer_id)
+            )
+        if viewer_id and comment.user_id == viewer_id and comment.deposit_id not in viewer_comments:
+            viewer_comments[comment.deposit_id] = comment
+
+    client_id_by_dep_id = {}
+    missing_dep_ids = []
+    for dep in deps:
+        cached_box = getattr(getattr(dep, "_state", None), "fields_cache", {}).get("box")
+        if cached_box is not None:
+            client_id_by_dep_id[dep.id] = getattr(cached_box, "client_id", None)
+        else:
+            missing_dep_ids.append(dep.id)
+
+    if missing_dep_ids:
+        client_id_by_dep_id.update({
+            deposit_id: client_id
+            for deposit_id, client_id in Deposit.objects.filter(id__in=missing_dep_ids).values_list("id", "box__client_id")
+        })
+
+    restriction_by_client = _get_active_comment_restrictions_for_clients(
+        viewer,
+        [client_id for client_id in client_id_by_dep_id.values() if client_id],
+    )
+
+    payload = {}
+    for dep in deps:
+        restriction = restriction_by_client.get(client_id_by_dep_id.get(dep.id))
+        existing_comment = viewer_comments.get(dep.id)
+        payload[dep.id] = {
+            "items": comments_by_dep.get(dep.id, []),
+            "viewer_state": _build_comment_viewer_state(
+                viewer=viewer,
+                dep=dep,
+                existing_comment=existing_comment,
+                restriction=restriction,
+            ),
+        }
+    return payload
+
+
+def _log_blocked_comment_attempt(*, client: Optional[Client], deposit: Optional[Deposit], user: Optional[CustomUser], text: str, normalized_text: str, reason_code: str, author_ip: Optional[str] = None, author_user_agent: str = "", meta: Optional[Dict[str, Any]] = None):
+    target_owner = getattr(deposit, "user", None) if deposit else None
+    CommentAttemptLog.objects.create(
+        client=client,
+        deposit=deposit,
+        user=user,
+        deposit_public_key=getattr(deposit, "public_key", "") or "",
+        target_owner_user_id=getattr(target_owner, "id", None),
+        target_owner_username=getattr(target_owner, "username", "") or "",
+        text=(text or "")[:COMMENT_MAX_LENGTH],
+        normalized_text=(normalized_text or "")[:160],
+        reason_code=reason_code,
+        meta=meta or {},
+        author_ip=author_ip,
+        author_user_agent=(author_user_agent or "")[:255],
+    )
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    value = (str(value or "").strip().lower())
+    return value in {"1", "true", "yes", "y", "on", "oui"}
+
+
+def _get_current_incitation_for_box(box, at_date=None):
+    client_id = getattr(box, "client_id", None)
+    if not client_id:
+        return None
+
+    current_date = at_date or localdate()
+    return (
+        IncitationPhrase.objects
+        .for_client(client_id)
+        .active_on_date(current_date)
+        .order_by("-created_at", "-id")
         .first()
     )
 
 
-def get_current_app_user(request) -> Optional[CustomUser]:
-    if getattr(request, "user", None) is not None and getattr(request.user, "is_authenticated", False):
-        return (
-            CustomUser.objects.select_related("client")
-            .filter(pk=request.user.pk)
-            .first()
-        ) or request.user
+def _get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude_id=None):
+    if not client_id or not start_date or not end_date:
+        return IncitationPhrase.objects.none()
 
-    return get_guest_user_from_request(request)
-
-
-def touch_last_seen(user: Optional[CustomUser]) -> Optional[CustomUser]:
-    if not user:
-        return user
-
-    now = _now()
-    user.last_seen_at = now
-    try:
-        user.save(update_fields=["last_seen_at"])
-    except Exception:
-        user.save()
-    return user
+    qs = IncitationPhrase.objects.for_client(client_id).filter(
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    )
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    return qs
 
 
-def build_current_user_payload(user: CustomUser):
-    profile_picture_url = None
-    user_status = get_user_status(user)
+def _build_incitation_overlap_counts(phrases):
+    phrases = list(phrases or [])
+    counts = {}
+    for phrase in phrases:
+        counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
+    return counts
 
-    if getattr(user, "profile_picture", None):
-        try:
-            profile_picture_url = user.profile_picture.url
-        except Exception:
-            profile_picture_url = None
+def _get_active_client_user_or_response(request):
+    user = request.user
 
-    is_social_auth = False
-    if not getattr(user, "is_guest", False):
-        is_social_auth = UserSocialAuth.objects.filter(user=user).exists()
+    if not user or not user.is_authenticated:
+        return None, Response(
+            {"detail": "Authentification requise."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
-    client = getattr(user, "client", None)
-    client_id = getattr(user, "client_id", None)
+    if not getattr(user, "client_id", None):
+        return None, Response(
+            {"detail": "Ce compte n'est rattaché à aucun client."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
-    return {
-        "id": user.id,
-        "username": user.username,
-        "display_name": getattr(user, "display_name", None) or ("Invité" if user.is_guest else user.username),
-        "email": user.email,
-        "preferred_platform": user.preferred_platform,
-        "points": user.points,
-        "is_social_auth": is_social_auth,
-        "profile_picture_url": profile_picture_url,
-        "is_guest": bool(getattr(user, "is_guest", False)),
-        "last_seen_at": user.last_seen_at.isoformat() if getattr(user, "last_seen_at", None) else None,
-        "client_id": client_id,
-        "client_name": client.name if client else None,
-        "client_slug": client.slug if client else None,
-        "client_role": getattr(user, "client_role", ""),
-        "portal_status": getattr(user, "portal_status", None),
-        "client": (
-            {
-                "id": client.id,
-                "name": client.name,
-                "slug": client.slug,
-            }
-            if client
-            else None
-        ),
-        "status": user_status,
+    if getattr(user, "portal_status", None) != "active":
+        return None, Response(
+            {"detail": "Ce compte n'a pas accès au portail client."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if getattr(user, "client_role", "") not in {"client_owner", "client_editor"}:
+        return None, Response(
+            {"detail": "Ce compte n'a pas les droits nécessaires."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return user, None
+
+
+class _ArticleImportHTMLParser(HTMLParser):
+    BLOCK_TAGS = {
+        "p",
+        "article",
+        "main",
+        "section",
+        "div",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "blockquote",
     }
 
+    SKIP_TAGS = {
+        "script",
+        "style",
+        "noscript",
+        "svg",
+        "path",
+        "iframe",
+        "canvas",
+    }
 
-def create_guest_user() -> Tuple[CustomUser, str]:
-    token = generate_guest_device_token()
-    user = CustomUser(
-        username=generate_guest_username(),
-        email="",
-        is_guest=True,
-        guest_device_token=token,
-        last_seen_at=_now(),
-    )
-    user.set_unusable_password()
-    user.save()
-    return user, token
+    SKIP_ATTR_KEYWORDS = {
+        "nav",
+        "menu",
+        "header",
+        "footer",
+        "breadcrumb",
+        "cookie",
+        "consent",
+        "banner",
+        "sidebar",
+        "toolbar",
+        "newsletter",
+        "social",
+        "share",
+        "search",
+        "ads",
+        "advert",
+        "pagination",
+    }
 
+    def __init__(self):
+        super().__init__()
+        self.meta = {}
+        self.title_chunks = []
 
-def ensure_guest_user_for_request(request) -> Tuple[CustomUser, bool]:
-    current = get_current_app_user(request)
-    if current:
-        return current, False
+        self.body_chunks = []
+        self.paragraph_chunks = []
+        self.image_sources = []
+        self.favicon_sources = []
 
-    guest, _token = create_guest_user()
-    return guest, True
+        self._in_title = False
+        self._skip_depth = 0
 
+        self._paragraph_stack = []
+        self._current_paragraph_parts = []
 
-def attach_guest_cookie(response, token: str):
-    secure_default = bool(getattr(settings, "SESSION_COOKIE_SECURE", False))
-    response.set_cookie(
-        GUEST_COOKIE_NAME,
-        token,
-        max_age=GUEST_COOKIE_MAX_AGE,
-        httponly=True,
-        samesite="Lax",
-        secure=secure_default,
-        path="/",
-    )
-    return response
+    def _attrs_to_dict(self, attrs):
+        return {key.lower(): value for key, value in attrs if key}
 
+    def _should_skip_by_attrs(self, attrs_dict):
+        haystack = " ".join(
+            [
+                attrs_dict.get("id") or "",
+                attrs_dict.get("class") or "",
+                attrs_dict.get("role") or "",
+                attrs_dict.get("aria-label") or "",
+            ]
+        ).lower()
 
-def clear_guest_cookie(response):
-    response.delete_cookie(GUEST_COOKIE_NAME, path="/", samesite="Lax")
-    return response
+        return any(keyword in haystack for keyword in self.SKIP_ATTR_KEYWORDS)
 
+    def handle_starttag(self, tag, attrs):
+        tag = (tag or "").lower()
+        attrs_dict = self._attrs_to_dict(attrs)
 
-def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
-    try:
-        delta = int(delta)
-    except (TypeError, ValueError):
-        return False, {"errors": "Nombre de points invalide."}, 400
+        if tag in self.SKIP_TAGS or self._should_skip_by_attrs(attrs_dict):
+            self._skip_depth += 1
+            return
 
-    with transaction.atomic():
-        working_user = user
+        if tag == "title":
+            self._in_title = True
+            return
 
-        if lock_user:
-            working_user = CustomUser.objects.select_for_update().get(pk=user.pk)
-        else:
-            try:
-                working_user.refresh_from_db(fields=["points", "last_seen_at"])
-            except Exception:
-                working_user.refresh_from_db()
-
-        current = int(getattr(working_user, "points", 0) or 0)
-        new_balance = current + delta
-        if new_balance < 0:
-            return (
-                False,
-                {
-                    "error": "insufficient_funds",
-                    "message": "Pas assez de points pour effectuer cette action.",
-                    "points_balance": current,
-                },
-                400,
-            )
-
-        working_user.points = new_balance
-        working_user.last_seen_at = _now()
-        try:
-            working_user.save(update_fields=["points", "last_seen_at"])
-        except Exception:
-            working_user.save()
-
-        if working_user.pk == getattr(user, "pk", None):
-            user.points = working_user.points
-            user.last_seen_at = working_user.last_seen_at
-
-        return True, {"status": "Points mis à jour avec succès.", "points_balance": working_user.points}, 200
-
-def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
-    if not guest_user or not target_user:
-        return {"merged": False, "reason": "missing_user"}
-    if guest_user.pk == target_user.pk:
-        return {"merged": False, "reason": "same_user"}
-    if not getattr(guest_user, "is_guest", False):
-        return {"merged": False, "reason": "source_not_guest"}
-
-    from box_management.models import (
-        Article,
-        Comment,
-        CommentAttemptLog,
-        CommentModerationDecision,
-        CommentReport,
-        CommentUserRestriction,
-        Deposit,
-        DiscoveredSong,
-        EmojiRight,
-        Reaction,
-    )
-    from spotify.models import SpotifyToken
-    from deezer.models import DeezerToken
-
-    with transaction.atomic():
-        guest = CustomUser.objects.select_for_update().get(pk=guest_user.pk)
-        target = CustomUser.objects.select_for_update().get(pk=target_user.pk)
-
-        if not guest.is_guest:
-            return {"merged": False, "reason": "source_not_guest"}
-
-        # -----------------------------
-        # 1) Fusion des champs du user
-        # -----------------------------
-        points_added = int(guest.points or 0)
-        target_update_fields = ["last_seen_at"]
-        moved_profile_picture = False
-
-        if points_added:
-            target.points = int(target.points or 0) + points_added
-            target_update_fields.append("points")
-
-        if not target.preferred_platform and guest.preferred_platform:
-            target.preferred_platform = guest.preferred_platform
-            target_update_fields.append("preferred_platform")
-
-        if not target.profile_picture and guest.profile_picture:
-            target.profile_picture = guest.profile_picture
-            target_update_fields.append("profile_picture")
-            moved_profile_picture = True
-
-        target.last_seen_at = _now()
-        target.save(update_fields=target_update_fields)
-
-        # Important :
-        # si on a déplacé la profile picture du guest vers le target,
-        # il faut vider le champ côté guest SANS passer par save(),
-        # sinon les signaux supprimeront physiquement le fichier.
-        if moved_profile_picture:
-            CustomUser.objects.filter(pk=guest.pk).update(profile_picture=None)
-            guest.profile_picture = None
-
-        try:
-            target_avatar_url = target.profile_picture.url if target.profile_picture else ""
-        except Exception:
-            target_avatar_url = ""
-
-        # -----------------------------
-        # 2) Dépôts
-        # -----------------------------
-        guest_deposit_ids = list(
-            Deposit.objects.filter(user=guest).values_list("id", flat=True)
-        )
-        moved_deposits = Deposit.objects.filter(user=guest).update(user=target)
-
-        # -----------------------------
-        # 3) Emoji rights
-        # -----------------------------
-        emoji_rights_moved = 0
-        emoji_rights_deleted = 0
-
-        for right in list(EmojiRight.objects.filter(user=guest).select_related("emoji")):
-            exists = EmojiRight.objects.filter(user=target, emoji_id=right.emoji_id).exists()
-            if exists:
-                right.delete()
-                emoji_rights_deleted += 1
-            else:
-                right.user = target
-                right.save(update_fields=["user"])
-                emoji_rights_moved += 1
-
-        # -----------------------------
-        # 4) Discoveries
-        # -----------------------------
-        discoveries_moved = 0
-        discoveries_merged = 0
-
-        guest_discoveries = list(
-            DiscoveredSong.objects.filter(user=guest)
-            .select_related("deposit")
-            .order_by("discovered_at", "id")
-        )
-        for discovery in guest_discoveries:
-            existing = (
-                DiscoveredSong.objects.filter(user=target, deposit_id=discovery.deposit_id)
-                .order_by("discovered_at", "id")
-                .first()
-            )
-            if not existing:
-                discovery.user = target
-                discovery.save(update_fields=["user"])
-                discoveries_moved += 1
-                continue
-
-            update_fields = []
-            if discovery.discovered_type == "main" and existing.discovered_type != "main":
-                existing.discovered_type = "main"
-                update_fields.append("discovered_type")
-            if (
-                discovery.discovered_at
-                and existing.discovered_at
-                and discovery.discovered_at < existing.discovered_at
-            ):
-                existing.discovered_at = discovery.discovered_at
-                update_fields.append("discovered_at")
-            if update_fields:
-                existing.save(update_fields=update_fields)
-            discovery.delete()
-            discoveries_merged += 1
-
-        # -----------------------------
-        # 5) Reactions
-        # -----------------------------
-        reactions_moved = 0
-        reactions_deleted = 0
-        reactions_updated = 0
-
-        latest_guest_reaction_by_deposit = {}
-        guest_reactions = list(
-            Reaction.objects.filter(user=guest)
-            .select_related("emoji", "deposit")
-            .order_by("-updated_at", "-created_at", "-id")
-        )
-        for reaction in guest_reactions:
-            if reaction.deposit_id not in latest_guest_reaction_by_deposit:
-                latest_guest_reaction_by_deposit[reaction.deposit_id] = reaction
-            else:
-                reaction.delete()
-                reactions_deleted += 1
-
-        for deposit_id, guest_reaction in latest_guest_reaction_by_deposit.items():
-            target_reactions = list(
-                Reaction.objects.filter(user=target, deposit_id=deposit_id)
-                .order_by("-updated_at", "-created_at", "-id")
-            )
-            target_reaction = target_reactions[0] if target_reactions else None
-
-            for duplicate in target_reactions[1:]:
-                duplicate.delete()
-                reactions_deleted += 1
-
-            if not target_reaction:
-                try:
-                    guest_reaction.user = target
-                    guest_reaction.save(update_fields=["user"])
-                    reactions_moved += 1
-                except IntegrityError:
-                    Reaction.objects.filter(pk=guest_reaction.pk).delete()
-                    reactions_deleted += 1
-                continue
-
-            guest_stamp = guest_reaction.updated_at or guest_reaction.created_at
-            target_stamp = target_reaction.updated_at or target_reaction.created_at
-
-            if guest_stamp and target_stamp and guest_stamp > target_stamp:
-                if target_reaction.emoji_id != guest_reaction.emoji_id:
-                    target_reaction.emoji_id = guest_reaction.emoji_id
-                    target_reaction.save(update_fields=["emoji", "updated_at"])
-                else:
-                    target_reaction.save(update_fields=["updated_at"])
-                reactions_updated += 1
-
-            guest_reaction.delete()
-            reactions_deleted += 1
-
-        # -----------------------------
-        # 6) Comments
-        # -----------------------------
-        # Règle en cas de collision :
-        # si le target a déjà un commentaire sur le même dépôt,
-        # on détache le commentaire guest (user=None) au lieu de le supprimer,
-        # pour éviter de perdre le texte et l’historique de modération.
-        comments_moved = 0
-        comments_detached = 0
-
-        guest_comments = list(
-            Comment.objects.filter(user=guest)
-            .select_related("deposit")
-            .order_by("created_at", "id")
-        )
-
-        for guest_comment in guest_comments:
-            target_comment = None
-            if guest_comment.deposit_id is not None:
-                target_comment = (
-                    Comment.objects.filter(
-                        user=target,
-                        deposit_id=guest_comment.deposit_id,
-                    )
-                    .exclude(pk=guest_comment.pk)
-                    .order_by("created_at", "id")
-                    .first()
-                )
-
-            if target_comment:
-                guest_comment.user = None
-                guest_comment.save(update_fields=["user"])
-                comments_detached += 1
-                continue
-
-            update_fields = ["user"]
-            guest_comment.user = target
-
-            new_author_username = target.username or guest_comment.author_username or ""
-            new_author_display_name = (
-                getattr(target, "display_name", None)
-                or target.username
-                or guest_comment.author_display_name
-                or guest_comment.author_username
+        if tag == "meta":
+            meta_key = (
+                attrs_dict.get("property")
+                or attrs_dict.get("name")
+                or attrs_dict.get("itemprop")
                 or ""
-            )
-            new_author_email = target.email or guest_comment.author_email or ""
+            ).strip().lower()
+            content = (attrs_dict.get("content") or "").strip()
+            if meta_key and content and meta_key not in self.meta:
+                self.meta[meta_key] = content
+            return
 
-            if guest_comment.author_username != new_author_username:
-                guest_comment.author_username = new_author_username
-                update_fields.append("author_username")
+        if tag == "link":
+            rel_value = (attrs_dict.get("rel") or "").strip().lower()
+            href = (attrs_dict.get("href") or "").strip()
+            if href and any(marker in rel_value for marker in ("icon", "apple-touch-icon", "mask-icon")):
+                self.favicon_sources.append(href)
+            return
 
-            if guest_comment.author_display_name != new_author_display_name:
-                guest_comment.author_display_name = new_author_display_name
-                update_fields.append("author_display_name")
+        if tag == "img":
+            for key in ("src", "data-src", "data-original", "srcset"):
+                candidate = (attrs_dict.get(key) or "").strip()
+                if candidate:
+                    if key == "srcset":
+                        candidate = candidate.split(",")[0].strip().split(" ")[0].strip()
+                    self.image_sources.append(candidate)
+                    break
+            return
 
-            if guest_comment.author_email != new_author_email:
-                guest_comment.author_email = new_author_email
-                update_fields.append("author_email")
+        if self._skip_depth > 0:
+            return
 
-            if target_avatar_url and guest_comment.author_avatar_url != target_avatar_url:
-                guest_comment.author_avatar_url = target_avatar_url
-                update_fields.append("author_avatar_url")
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            self._paragraph_stack.append(tag)
+            self._current_paragraph_parts.append([])
 
-            guest_comment.save(update_fields=update_fields)
-            comments_moved += 1
+    def handle_endtag(self, tag):
+        tag = (tag or "").lower()
 
-        # -----------------------------
-        # 7) Comment reports
-        # -----------------------------
-        # Même logique :
-        # si le target a déjà report le même commentaire,
-        # on détache le report guest (reporter=None) au lieu de le supprimer.
-        reports_moved = 0
-        reports_detached = 0
-        touched_report_comment_ids = set()
+        if tag == "title":
+            self._in_title = False
+            return
 
-        guest_reports = list(
-            CommentReport.objects.filter(reporter=guest)
-            .select_related("comment")
-            .order_by("created_at", "id")
-        )
+        if self._skip_depth > 0:
+            if tag in self.SKIP_TAGS or tag in {
+                "nav", "header", "footer", "aside"
+            }:
+                self._skip_depth -= 1
+            return
 
-        for report in guest_reports:
-            if report.comment_id:
-                touched_report_comment_ids.add(report.comment_id)
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            if self._paragraph_stack and self._current_paragraph_parts:
+                self._paragraph_stack.pop()
+                parts = self._current_paragraph_parts.pop()
+                text = _collapse_article_text(" ".join(parts))
+                if text:
+                    self.paragraph_chunks.append(text)
 
-            existing = None
-            if report.comment_id is not None:
-                existing = (
-                    CommentReport.objects.filter(
-                        comment_id=report.comment_id,
-                        reporter=target,
-                    )
-                    .exclude(pk=report.pk)
-                    .first()
-                )
+    def handle_data(self, data):
+        if not data:
+            return
 
-            if existing:
-                report.reporter = None
-                report.save(update_fields=["reporter"])
-                reports_detached += 1
-                continue
+        if self._in_title:
+            self.title_chunks.append(data)
+            return
 
-            update_fields = ["reporter"]
-            report.reporter = target
+        if self._skip_depth > 0:
+            return
 
-            new_reporter_username = target.username or report.reporter_username or ""
-            new_reporter_email = target.email or report.reporter_email or ""
+        cleaned = _collapse_article_text(data)
+        if not cleaned:
+            return
 
-            if report.reporter_username != new_reporter_username:
-                report.reporter_username = new_reporter_username
-                update_fields.append("reporter_username")
+        self.body_chunks.append(cleaned)
 
-            if report.reporter_email != new_reporter_email:
-                report.reporter_email = new_reporter_email
-                update_fields.append("reporter_email")
+        if self._current_paragraph_parts:
+            self._current_paragraph_parts[-1].append(cleaned)
 
-            report.save(update_fields=update_fields)
-            reports_moved += 1
+    @property
+    def title_text(self):
+        return _collapse_article_text(" ".join(self.title_chunks))
 
-        for comment_id in touched_report_comment_ids:
-            reports_count = CommentReport.objects.filter(comment_id=comment_id).count()
-            Comment.objects.filter(pk=comment_id).update(reports_count=reports_count)
+    @property
+    def body_text(self):
+        return _collapse_article_text(" ".join(self.body_chunks))
 
-        # -----------------------------
-        # 8) Comment moderation decisions
-        # -----------------------------
-        moderation_actions_moved = CommentModerationDecision.objects.filter(
-            acted_by=guest
-        ).update(acted_by=target)
 
-        # -----------------------------
-        # 9) Comment restrictions
-        # -----------------------------
-        restrictions_moved = CommentUserRestriction.objects.filter(
-            user=guest
-        ).update(user=target)
+def _collapse_article_text(value):
+    value = html.unescape(value or "")
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
 
-        restrictions_created_by_moved = CommentUserRestriction.objects.filter(
-            created_by=guest
-        ).update(created_by=target)
 
-        # -----------------------------
-        # 10) Comment attempt logs
-        # -----------------------------
-        attempt_logs_moved = CommentAttemptLog.objects.filter(
-            user=guest
-        ).update(user=target)
+def _truncate_article_text(value, limit=10000):
+    value = _collapse_article_text(value)
+    if len(value) <= limit:
+        return value
 
-        # -----------------------------
-        # 11) Articles
-        # -----------------------------
-        articles_moved = Article.objects.filter(author=guest).update(author=target)
+    truncated = value[:limit].rstrip()
+    last_space = truncated.rfind(" ")
+    if last_space >= max(80, limit // 2):
+        truncated = truncated[:last_space].rstrip()
+    return truncated
 
-        # -----------------------------
-        # 12) Spotify / Deezer tokens
-        # -----------------------------
-        spotify_tokens_moved = 0
-        spotify_tokens_deleted = 0
 
-        target_spotify_token = SpotifyToken.objects.filter(user=target).order_by("-created_at", "-id").first()
-        guest_spotify_tokens = list(
-            SpotifyToken.objects.filter(user=guest).order_by("-created_at", "-id")
-        )
+def _absolute_remote_url(base_url, candidate):
+    candidate = (candidate or "").strip()
+    if not candidate:
+        return ""
 
-        if target_spotify_token:
-            for token in guest_spotify_tokens:
-                token.delete()
-                spotify_tokens_deleted += 1
+    if candidate.startswith("//"):
+        candidate = f"https:{candidate}"
+
+    absolute = urljoin(base_url, candidate)
+    if not absolute.startswith(("http://", "https://")):
+        return ""
+
+    return absolute
+
+
+def _dedupe_keep_order(values, limit=None):
+    output = []
+    seen = set()
+
+    for value in values:
+        normalized = (value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        output.append(normalized)
+
+        if limit and len(output) >= limit:
+            break
+
+    return output
+
+
+def _pick_best_favicon_url(final_url, parser):
+    favicon_candidates = [
+        _absolute_remote_url(final_url, href)
+        for href in getattr(parser, "favicon_sources", [])
+    ]
+
+    parsed = urlparse(final_url)
+    if parsed.scheme and parsed.netloc:
+        favicon_candidates.append(f"{parsed.scheme}://{parsed.netloc}/favicon.ico")
+
+    favicon_candidates = _dedupe_keep_order(favicon_candidates, limit=5)
+    return favicon_candidates[0] if favicon_candidates else ""
+
+
+def _clean_import_title(title):
+    title = _collapse_article_text(title)
+    if not title:
+        return ""
+
+    title = re.split(r"\s[\-|–|—|•|·|:]\s", title, maxsplit=1)[0].strip()
+    title = re.split(r"\s\|\s", title, maxsplit=1)[0].strip()
+    return title
+
+
+def _looks_like_noise_text(text):
+    text = _collapse_article_text(text)
+    if not text:
+        return True
+
+    lowered = text.lower()
+
+    noise_markers = [
+        "cookie",
+        "consent",
+        "accepter",
+        "refuser",
+        "menu",
+        "newsletter",
+        "suivez-nous",
+        "se connecter",
+        "connexion",
+        "inscription",
+        "publicité",
+        "advertisement",
+    ]
+
+    if any(marker in lowered for marker in noise_markers):
+        return True
+
+    if len(text) < 40:
+        return True
+
+    word_count = len(text.split())
+    if word_count < 8:
+        return True
+
+    return False
+
+
+def _pick_best_short_text(meta, parser):
+    description = _collapse_article_text(
+        meta.get("description")
+        or meta.get("og:description")
+        or meta.get("twitter:description")
+    )
+
+    if description and not _looks_like_noise_text(description):
+        return _truncate_article_text(description, limit=10000)
+
+    paragraph_candidates = []
+    for chunk in parser.paragraph_chunks:
+        text = _collapse_article_text(chunk)
+        if _looks_like_noise_text(text):
+            continue
+        paragraph_candidates.append(text)
+
+    paragraph_candidates = _dedupe_keep_order(paragraph_candidates)
+
+    combined = ""
+    for text in paragraph_candidates:
+        if not combined:
+            combined = text
         else:
-            for index, token in enumerate(guest_spotify_tokens):
-                if index == 0:
-                    token.user = target
-                    token.save(update_fields=["user"])
-                    spotify_tokens_moved += 1
-                else:
-                    token.delete()
-                    spotify_tokens_deleted += 1
+            combined = f"{combined} {text}"
 
-        deezer_tokens_moved = 0
-        deezer_tokens_deleted = 0
+        if len(combined) >= 220:
+            break
 
-        target_deezer_token = DeezerToken.objects.filter(user=target).order_by("-created_at", "-id").first()
-        guest_deezer_tokens = list(
-            DeezerToken.objects.filter(user=guest).order_by("-created_at", "-id")
-        )
+    combined = _truncate_article_text(combined, limit=10000)
+    if combined:
+        return combined
 
-        if target_deezer_token:
-            for token in guest_deezer_tokens:
-                token.delete()
-                deezer_tokens_deleted += 1
-        else:
-            for index, token in enumerate(guest_deezer_tokens):
-                if index == 0:
-                    token.user = target
-                    token.save(update_fields=["user"])
-                    deezer_tokens_moved += 1
-                else:
-                    token.delete()
-                    deezer_tokens_deleted += 1
+    body_candidates = []
+    for piece in parser.body_chunks:
+        text = _collapse_article_text(piece)
+        if _looks_like_noise_text(text):
+            continue
+        body_candidates.append(text)
 
-        # -----------------------------
-        # 13) Réécriture des snapshots historiques
-        # -----------------------------
-        comment_owner_snapshots_updated = Comment.objects.filter(
-            Q(deposit_id__in=guest_deposit_ids) | Q(deposit_owner_user_id=guest.id)
-        ).update(
-            deposit_owner_user_id=target.id,
-            deposit_owner_username=target.username or "",
-        )
+    merged_body = _truncate_article_text(" ".join(body_candidates), limit=10000)
+    return merged_body
 
-        attempt_owner_snapshots_updated = CommentAttemptLog.objects.filter(
-            Q(deposit_id__in=guest_deposit_ids) | Q(target_owner_user_id=guest.id)
-        ).update(
-            target_owner_user_id=target.id,
-            target_owner_username=target.username or "",
-        )
 
-        # -----------------------------
-        # 14) Suppression du guest
-        # -----------------------------
-        guest.delete()
-
-    return {
-        "merged": True,
-        "points_added": points_added,
-        "moved_deposits": moved_deposits,
-        "emoji_rights_moved": emoji_rights_moved,
-        "emoji_rights_deleted": emoji_rights_deleted,
-        "discoveries_moved": discoveries_moved,
-        "discoveries_merged": discoveries_merged,
-        "reactions_moved": reactions_moved,
-        "reactions_updated": reactions_updated,
-        "reactions_deleted": reactions_deleted,
-        "comments_moved": comments_moved,
-        "comments_detached": comments_detached,
-        "reports_moved": reports_moved,
-        "reports_detached": reports_detached,
-        "moderation_actions_moved": moderation_actions_moved,
-        "restrictions_moved": restrictions_moved,
-        "restrictions_created_by_moved": restrictions_created_by_moved,
-        "attempt_logs_moved": attempt_logs_moved,
-        "articles_moved": articles_moved,
-        "spotify_tokens_moved": spotify_tokens_moved,
-        "spotify_tokens_deleted": spotify_tokens_deleted,
-        "deezer_tokens_moved": deezer_tokens_moved,
-        "deezer_tokens_deleted": deezer_tokens_deleted,
-        "comment_owner_snapshots_updated": comment_owner_snapshots_updated,
-        "attempt_owner_snapshots_updated": attempt_owner_snapshots_updated,
+def _extract_import_preview_from_url(link):
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;"
+            "q=0.9,image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
     }
 
+    response = requests.get(
+        link,
+        headers=headers,
+        timeout=10,
+        allow_redirects=True,
+    )
+    response.raise_for_status()
+
+    final_url = response.url or link
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
+        raise ValueError("Le lien ne renvoie pas une page HTML.")
+
+    parser = _ArticleImportHTMLParser()
+    parser.feed(response.text or "")
+    parser.close()
+
+    meta = parser.meta
+
+    raw_title = (
+        meta.get("og:title")
+        or meta.get("twitter:title")
+        or parser.title_text
+    )
+    title = _clean_import_title(raw_title)
+
+    short_text = _pick_best_short_text(meta, parser)
+
+    image_candidates = []
+    for key in (
+        "og:image",
+        "og:image:url",
+        "og:image:secure_url",
+        "twitter:image",
+        "twitter:image:src",
+    ):
+        image_candidates.append(_absolute_remote_url(final_url, meta.get(key)))
+
+    for img_src in parser.image_sources:
+        image_candidates.append(_absolute_remote_url(final_url, img_src))
+
+    image_candidates = [
+        img for img in image_candidates
+        if img and not img.lower().endswith(".svg")
+    ]
+    image_candidates = _dedupe_keep_order(image_candidates, limit=3)
+    favicon = _pick_best_favicon_url(final_url, parser)
+
+    return {
+        "title": title,
+        "short_text": short_text,
+        "cover_image": image_candidates[0] if image_candidates else "",
+        "cover_images": image_candidates,
+        "favicon": favicon,
+        "resolved_link": final_url,
+    }
+
+# ---------- petits builders "from instance only" ----------
+
+def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
+    default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
+    if not user:
+        return {
+            "id": None,
+            "username": None,
+            "display_name": "anonyme",
+            "profile_picture_url": default_pic,
+            "is_guest": False,
+        }
+
+    pic = getattr(user, "profile_picture", None)
+    profile_url = pic.url if pic else default_pic
+    is_guest = bool(getattr(user, "is_guest", False))
+    username = None if is_guest else getattr(user, "username", None)
+    display_name = "Invité" if is_guest else (getattr(user, "username", None) or "anonyme")
+
+    return {
+        "id": getattr(user, "id", None),
+        "username": username,
+        "display_name": display_name,
+        "profile_picture_url": profile_url,
+        "is_guest": is_guest,
+    }
+
+
+def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
+    """Ne fait AUCUNE requête : lit uniquement l'instance déjà chargée."""
+    if hidden:
+        return {"image_url": song.image_url, "image_url_small": song.image_url_small or None}
+    return {
+        "image_url": song.image_url,
+        "image_url_small": song.image_url_small or None,
+        "title": song.title,
+        "artist": song.artist,
+        "spotify_url": song.spotify_url or None,
+        "deezer_url": song.deezer_url or None,
+    }
+
+
+def _iter_reactions_from_instance(dep: Deposit):
+    """
+    Utilise en priorité la prefetch list (to_attr). Sinon, une SEULE requête
+    jointe (select_related) – mais reste centrée sur l'objet (pas d'ID).
+    """
+    reacs = getattr(dep, "prefetched_reactions", None)
+    if reacs is not None:
+        return reacs
+    return dep.reactions.select_related("emoji", "user").order_by("created_at", "id").all()
+
+
+def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUser] = None) -> Dict[str, Any]:
+    """Ne refait pas de get par ID : exploite uniquement dep + relations."""
+    current_user_id = getattr(current_user, "id", None) if current_user else None
+
+    detail: List[Dict[str, Any]] = []
+    mine: Optional[Dict[str, Any]] = None
+
+    for r in _iter_reactions_from_instance(dep):
+        if not getattr(r.emoji, "active", True):
+            continue
+        payload = {
+            "user": _build_user_from_instance(getattr(r, "user", None)),
+            "emoji": r.emoji.char,
+        }
+        if current_user_id is not None and r.user_id == current_user_id:
+            mine = {"emoji": r.emoji.char}
+        detail.append(payload)
+
+    return {"detail": detail, "mine": mine}
+
+def _build_deposit_from_instance(
+    dep: Deposit,
+    *,
+    include_user: bool,
+    include_deposit_time: bool,
+    hidden: bool,
+    current_user: Optional[CustomUser] = None,
+    comments_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
+
+    payload: Dict[str, Any] = {
+        "public_key": dep.public_key,
+        "song": _build_song_from_instance(dep.song, hidden),
+        "accent_color": (getattr(dep.song, "accent_color", "") or "") or None,
+    }
+
+    if include_deposit_time:
+        # Date brute en UTC, au format ISO 8601
+        payload["deposited_at"] = (
+            dep.deposited_at.astimezone(dt_timezone.utc).isoformat()
+        )
+
+    if include_user:
+        payload["user"] = _build_user_from_instance(dep.user)
+
+    rx = _build_reactions_from_instance(dep, current_user=current_user)
+    payload["reactions"] = rx["detail"]
+    payload["my_reaction"] = rx["mine"]
+    payload["comments"] = comments_context or {"items": [], "viewer_state": {}}
+
+    return payload
+
+
+
+
+# box_management/utils.py
+
+def _build_deposits_payload(
+    deposits: Union[Deposit, Iterable[Deposit], Sequence[Deposit]],
+    *,
+    viewer: Optional[CustomUser] = None,
+    include_user: bool = True,
+    include_deposit_time: bool = True,
+    force_song_infos_for: Optional[Iterable[int]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Construit une liste de payloads de dépôts à partir d'instances déjà chargées.
+
+    - N'effectue AUCUNE requête de "get par ID".
+    - Optionnellement annote "is_revealed" pour le viewer fourni (en 1 requête bulk).
+    - Permet un override ciblé (force_song_infos_for) pour renvoyer song en hidden=False
+      pour certains dépôts, sans créer de reveal en base.
+    - Construit le payload final via _build_deposit_from_instance(...).
+    """
+    # Normalisation en liste tout en respectant l’ordre fourni
+    if isinstance(deposits, Deposit):
+        deps: List[Deposit] = [deposits]
+    else:
+        deps = list(deposits or [])
+
+    if not deps:
+        return []
+
+    force_ids = set(force_song_infos_for or [])
+
+    # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+    if viewer is None:
+        revealed_ids = set()  # personne -> rien de révélé
+    else:
+        viewer_id = getattr(viewer, "id", None)
+        dep_ids = [d.pk for d in deps]
+
+        # 1) Révélé implicitement si le viewer est le propriétaire du dépôt (0 requête)
+        own_dep_ids = {d.pk for d in deps if getattr(d, "user_id", None) == viewer_id}
+
+        # 2) Pour le reste seulement, on consulte DiscoveredSong (1 requête max)
+        remaining_ids = [i for i in dep_ids if i not in own_dep_ids]
+
+        discovered_ids = set()
+        if remaining_ids:
+            discovered_ids = set(
+                DiscoveredSong.objects
+                .filter(user_id=viewer_id, deposit_id__in=remaining_ids)
+                .values_list("deposit_id", flat=True)
+            )
+
+        revealed_ids = own_dep_ids | discovered_ids
+
+    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer)
+
+    # ------- Construction des payloads à partir des instances -------
+    out: List[Dict[str, Any]] = []
+    for dep in deps:
+        # hidden si pas révélé, sauf override ciblé
+        hidden = (dep.pk not in revealed_ids) and (dep.pk not in force_ids)
+
+        payload = _build_deposit_from_instance(
+            dep,
+            include_user=include_user,
+            include_deposit_time=include_deposit_time,
+            hidden=hidden,
+            current_user=viewer,
+            comments_context=comments_by_deposit.get(dep.pk) or {"items": [], "viewer_state": {}},
+        )
+        out.append(payload)
+
+    return out
+
+
+
+def _get_prev_head_and_older(box, limit: int = 10):
+    """
+    Snapshot AVANT création:
+    - récupère d'un coup les (limit+1) derniers dépôts
+    - prev_head = le plus récent
+    - older = les suivants (jusqu'à limit)
+    """
+    qs = (
+        Deposit.objects
+        .filter(box=box)
+        .select_related("song", "user")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects
+                .select_related("emoji", "user")
+                .order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-deposited_at", "-id")
+    )
+
+    deposits = list(qs[: limit + 1])  # head + older
+    if not deposits:
+        return None, []
+
+    prev_head = deposits[0]
+    older_deposits_qs = deposits[1:]
+    return prev_head, older_deposits_qs
+
+# ---------- Normalisation & distance ----------
+
+def normalize_string(input_string: str) -> str:
+    """
+    Normalise une chaîne : supprime les caractères spéciaux et met en minuscule.
+    """
+    normalized_string = re.sub(r'[^a-zA-Z0-9\s]', '', input_string).lower()
+    normalized_string = re.sub(r'\s+', ' ', normalized_string).strip()
+    return normalized_string
+
+
+def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
+    """
+    Calcule la distance entre deux points géographiques (Haversine).
+    """
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    r = 6371000  # rayon de la Terre en mètres
+
+    d_lat = lat2 - lat1
+    d_lon = lon2 - lon1
+
+    a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return r * c
+
+
+# ============ Achievements centralisés ============
+
+def _is_first_user_deposit(user: Optional[CustomUser], box) -> bool:
+    """Vrai si l'utilisateur n'a jamais déposé dans cette box."""
+    if not user:
+        return False
+    return not Deposit.objects.filter(user=user, box=box).exists()
+
+
+def _is_first_song_deposit_global_by_title_artist(title: str, artist: str) -> bool:
+    """Vrai si (title, artist) n'a jamais été déposé nulle part (case-insensitive)."""
+    if not title or not artist:
+        return False
+    return not Deposit.objects.filter(
+        song__title__iexact=title, song__artist__iexact=artist
+    ).exists()
+
+
+def _is_first_song_deposit_in_box_by_title_artist(title: str, artist: str, box) -> bool:
+    """Vrai si (title, artist) n'a jamais été déposé dans la box donnée (case-insensitive)."""
+    if not title or not artist:
+        return False
+    return not Deposit.objects.filter(
+        box=box, song__title__iexact=title, song__artist__iexact=artist
+    ).exists()
+
+
+def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
+    """
+    Nombre de JOURS consécutifs (terminant hier) où 'user' a déposé dans 'box'.
+    Ex: si l'user a déposé hier et avant-hier → 2.
+    """
+    if not user:
+        return 0
+
+    today = localdate()
+    target = today - timedelta(days=1)  # on ne compte pas aujourd'hui
+    streak = 0
+
+    # Liste des dates (locales) distinctes de dépôts, récentes → anciennes
+    dates = (
+        Deposit.objects
+        .filter(user=user, box=box)
+        .order_by("-deposited_at")
+        .values_list("deposited_at", flat=True)
+    )
+
+    seen_days: List = []
+    for dt in dates:
+        try:
+            d = localtime(dt).date()
+        except Exception:
+            d = timezone.localtime(dt).date()  # fallback
+        if not seen_days or seen_days[-1] != d:
+            seen_days.append(d)
+
+    for d in seen_days:
+        if d == target:
+            streak += 1
+            target -= timedelta(days=1)
+        elif d < target:
+            break  # trou dans la chaîne
+
+    return streak
+
+
+def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    Calcule la liste des 'successes' (achievements) + le total de points.
+
+    Entrée:
+      - box: instance de Box
+      - user: CustomUser | None
+      - song: instance de Song (déjà upsertée)
+
+    Optimisations :
+      - 1 requête pour tous les dépôts user+box (streak + "premier dépôt ici").
+      - 1 requête pour tous les dépôts de cette song (global + dans cette box).
+    """
+    from django.utils.timezone import localtime, localdate  # déjà importés plus haut, mais pour clarté locale
+
+    title = (getattr(song, "title", "") or "").strip()
+    artist = (getattr(song, "artist", "") or "").strip()
+
+    successes: Dict[str, Dict[str, Any]] = {}
+    points_to_add = int(NB_POINTS_ADD_SONG)
+
+    # ---------- Helper interne : calcul de streak à partir d'une liste de datetimes ----------
+    def _compute_streak_from_dates(dates: List) -> int:
+        """
+        Reprend la logique de _get_consecutive_deposit_days, mais en pur Python
+        à partir d'une liste de datetimes déjà récupérés.
+        """
+        if not dates:
+            return 0
+
+        today = localdate()
+        target = today - timedelta(days=1)  # on ne compte pas aujourd'hui
+        streak = 0
+
+        # Liste des dates (locales) distinctes des dépôts, récentes → anciennes
+        seen_days: List = []
+        for dt in dates:
+            try:
+                d = localtime(dt).date()
+            except Exception:
+                d = timezone.localtime(dt).date()
+            if not seen_days or seen_days[-1] != d:
+                seen_days.append(d)
+
+        for d in seen_days:
+            if d == target:
+                streak += 1
+                target -= timedelta(days=1)
+            elif d < target:
+                break  # trou dans la chaîne
+
+        return streak
+
+    # ===================== 1) Requêtes mutualisées =====================
+
+    # --- 1.a) Tous les dépôts de cet user dans cette box (streak + "premier dépôt ici")
+    user_box_dates: List = []
+    has_user_deposit_in_box = False
+    if user:
+        user_box_dates = list(
+            Deposit.objects
+            .filter(user=user, box=box)
+            .order_by("-deposited_at")
+            .values_list("deposited_at", flat=True)
+        )
+        has_user_deposit_in_box = len(user_box_dates) > 0
+
+    # --- 1.b) Tous les dépôts de cette chanson (song) (global + dans cette box)
+    # On s'appuie sur le fait que Song est upsertée par (title, artist),
+    # donc il n'existe qu'une seule instance logique pour ce couple.
+    song_box_ids: List[int] = []
+    if title and artist:
+        song_box_ids = list(
+            Deposit.objects
+            .filter(song=song)
+            .values_list("box_id", flat=True)
+        )
+
+    # ===================== 2) Construction des achievements =====================
+
+    # 1) Série de jours consécutifs
+    nb_consecutive_days = _compute_streak_from_dates(user_box_dates) if user else 0
+    if nb_consecutive_days > 0:
+        bonus = nb_consecutive_days * int(NB_POINTS_CONSECUTIVE_DAYS_BOX)
+        points_to_add += bonus
+        successes["consecutive_days"] = {
+            "name": "Amour fou",
+            "desc": f"{nb_consecutive_days + 1} jours consécutifs avec cette boite",
+            "points": bonus,
+            "emoji": "🔥",
+        }
+
+    # 2) Premier dépôt de cet utilisateur dans cette box
+    if user and not has_user_deposit_in_box:
+        points_to_add += int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX)
+        successes["first_user_deposit_box"] = {
+            "name": "Explorateur·ice",
+            "desc": "C’est ta première chanson dans cette boîte",
+            "points": int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX),
+            "emoji": "🔍",
+        }
+
+    # 3) Première fois (title, artist) dans la box
+    is_first_song_in_box = False
+    if title and artist:
+        is_first_song_in_box = box.id not in song_box_ids
+
+    if is_first_song_in_box:
+        points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX)
+        successes["first_song_deposit"] = {
+            "name": "Far West",
+            "desc": "Cette chanson n’a jamais été déposée dans cette boîte",
+            "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX),
+            "emoji": "🤠",
+        }
+
+    # 4) Première fois (title, artist) sur le réseau
+    is_first_song_global = False
+    if title and artist:
+        is_first_song_global = len(song_box_ids) == 0
+
+    if is_first_song_global:
+        points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL)
+        successes["first_song_deposit_global"] = {
+            "name": "Preums",
+            "desc": "Cette chanson n'a jamais été déposée sur le réseau",
+            "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL),
+            "emoji": "🥇",
+        }
+
+    # 5) Succès par défaut + total
+    successes["default_deposit"] = {
+        "name": "Pépite",
+        "desc": "Tu as partagé·e une chanson",
+        "points": int(NB_POINTS_ADD_SONG),
+        "emoji": "💎",
+    }
+    successes["points_total"] = {"name": "Total", "points": points_to_add}
+
+    return list(successes.values()), points_to_add
