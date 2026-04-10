@@ -4,3 +4,20 @@
   padding: 12px 16px;
   border-radius: var(--mm-radius-sm);
 }
+
+
+.profile .favorite{
+  
+
+}
+
+.profile .favorite .slot{
+  min-height: 120px;
+  border-radius: var(--mm-radius-lg);
+  border: dashed 2px var(--mm-color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
