@@ -174,6 +174,8 @@ export default function FavoriteSongSection({
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
   const canRemove = Boolean(hasFavorite);
+  const showSearchButton = isCurrentFullUser;
+  const searchButtonLabel = hasFavorite ? "Changer" : "Ajouter";
 
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
@@ -199,55 +201,92 @@ export default function FavoriteSongSection({
     );
   }, [canRemove, handleRemoveFavorite, searchValue]);
 
+  const emptySlotContent = useMemo(() => {
+    if (isGuestOwner) {
+      return (
+        <>
+          <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
+            Finalise ton compte pour pouvoir attacher une chanson à ton profil.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() =>
+              navigate(
+                `/register?merge_guest=1&prefill_username=${encodeURIComponent(
+                  user?.username || ""
+                )}`
+              )
+            }
+          >
+            Finalise ton compte
+          </Button>
+        </>
+      );
+    }
+
+    if (isCurrentFullUser) {
+      return (
+        <Typography variant="body1" sx={{ textAlign: "center" }}>
+          Attache une chanson à ton profil, elle sera visible par tout ceux qui le visiteront
+        </Typography>
+      );
+    }
+
+    return (
+      <Typography variant="body1" sx={{ textAlign: "center" }}>
+        {displayName} n&apos;a pas encore attaché de chanson à son profil
+      </Typography>
+    );
+  }, [displayName, isCurrentFullUser, isGuestOwner, navigate, user?.username]);
+
   return (
     <Box className="favorite">
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, pb:"8px" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          pb: "8px",
+        }}
+      >
         <Typography variant="h5">Chanson de coeur</Typography>
-        {isCurrentFullUser && hasFavorite ? (
+        {showSearchButton ? (
           <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
-            Changer
+            {searchButtonLabel}
           </Button>
         ) : null}
       </Box>
 
-      {!isOwner ? (
-        hasFavorite ? (
+      {hasFavorite ? (
+        !isOwner ? (
           <>
             <Typography variant="body1" sx={{ mb: 2 }}>
               {displayName} a attaché cette chanson à son profil
             </Typography>
-            <Deposit dep={favoriteDeposit} user={user} variant="list" showUser={false} showDate={false} fitContainer />
+            <Deposit
+              dep={favoriteDeposit}
+              user={user}
+              variant="list"
+              showUser={false}
+              showDate={false}
+              fitContainer
+            />
           </>
         ) : (
-          <Typography variant="body1">{displayName} n&apos;a pas encore attaché de chanson à son profil</Typography>
+          <Deposit
+            dep={favoriteDeposit}
+            user={user}
+            variant="list"
+            showUser={false}
+            showDate={false}
+            fitContainer
+          />
         )
-      ) : isGuestOwner ? (
-        <>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Finalise ton compte pour pouvoir attacher une chanson à ton profil.
-          </Typography>
-          <Box className="slot">
-            <Button
-              variant="contained"
-              onClick={() => navigate(`/register?merge_guest=1&prefill_username=${encodeURIComponent(user?.username || "")}`)}
-            >
-              Finalise ton compte
-            </Button>
-          </Box>
-        </>
-      ) : hasFavorite ? (
-        <Deposit dep={favoriteDeposit} user={user} variant="list" showUser={false} showDate={false} fitContainer />
       ) : (
-        <>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Attache une chanson à ton profil, elle sera visible par tout ceux qui le visiteront
-          </Typography>
-          <Box className="slot">
-            <Button variant="contained" onClick={openDrawer} startIcon={<SearchIcon />}>
-              Ajoute ta chanson de coeur
-            </Button>
-          </Box>
-        </>
+        <Box className="slot">
+          {emptySlotContent}
+        </Box>
       )}
 
       <Drawer
