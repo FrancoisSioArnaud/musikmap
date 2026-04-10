@@ -180,6 +180,7 @@ export default function FavoriteSongSection({
       return canRemove ? (
         <Box sx={{ p: "16px 20px" }}>
           <Button
+            size="fullwidth"
             variant="text"
             onClick={handleRemoveFavorite}
             startIcon={<RemoveCircleOutlineIcon />}
