@@ -12,7 +12,8 @@ from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction, IntegrityError
 from django.db.models import Count, Max, Prefetch, Q
 from django.middleware.csrf import get_token
-from django.shortcuts import get_object_or_404
+from django.http import Http404, HttpResponseGone
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.timezone import localtime, localdate
@@ -45,6 +46,7 @@ from .models import (
     LocationPoint,
     Reaction,
     Song,
+    Sticker,
     Comment,
     CommentReport,
     CommentModerationDecision,
@@ -123,6 +125,35 @@ def _get_request_ip(request):
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
+
+
+def sticker_redirect_view(request, sticker_slug):
+    sticker_slug = (sticker_slug or "").strip()
+
+    if not re.fullmatch(r"\d{11}", sticker_slug):
+        return redirect("/")
+
+    sticker = (
+        Sticker.objects.select_related("box")
+        .filter(slug=sticker_slug)
+        .first()
+    )
+
+    if not sticker:
+        return redirect("/")
+
+    if not sticker.is_active:
+        return HttpResponseGone("Sticker désactivé.", content_type="text/plain; charset=utf-8")
+
+    box_slug = getattr(getattr(sticker, "box", None), "url", "")
+    if not box_slug:
+        raise Http404("Aucune box active n’est associée à ce sticker.")
+
+    return redirect(f"/flowbox/{box_slug}")
+
+
+def sticker_root_not_found_view(request):
+    raise Http404("Le slug du sticker est obligatoire.")
 
 
 def _get_comment_error_message(reason_code):

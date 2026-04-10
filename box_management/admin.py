@@ -24,6 +24,7 @@ from .models import (
     LocationPoint,
     Reaction,
     Song,
+    Sticker,
 )
 
 
@@ -547,6 +548,30 @@ class CommentAttemptLogAdmin(admin.ModelAdmin):
         "author_user_agent",
         "created_at",
     )
+
+
+@admin.register(Sticker)
+class StickerAdmin(admin.ModelAdmin):
+    list_display = ("slug", "box", "is_active", "sticker_path", "flowbox_path", "created_at", "updated_at")
+    list_filter = ("is_active", "box__client", "created_at")
+    search_fields = ("slug", "box__name", "box__url", "box__client__name")
+    ordering = ("-created_at", "-id")
+    autocomplete_fields = ("box",)
+    readonly_fields = ("sticker_path", "flowbox_path", "created_at", "updated_at")
+    fields = ("slug", "box", "is_active", "sticker_path", "flowbox_path", "created_at", "updated_at")
+
+    @admin.display(description="URL sticker")
+    def sticker_path(self, obj):
+        if not obj or not obj.slug:
+            return "—"
+        return f"/s/{obj.slug}"
+
+    @admin.display(description="URL box")
+    def flowbox_path(self, obj):
+        box_url = getattr(getattr(obj, "box", None), "url", "")
+        if not box_url:
+            return "—"
+        return f"/flowbox/{box_url}"
 
 
 admin.site.site_header = "Administration de la Boîte à Son"

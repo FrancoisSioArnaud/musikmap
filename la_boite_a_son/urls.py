@@ -4,8 +4,13 @@ from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
 
+from box_management.views import sticker_redirect_view, sticker_root_not_found_view
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("s", sticker_root_not_found_view),
+    path("s/", sticker_root_not_found_view),
+    path("s/<str:sticker_slug>", sticker_redirect_view),
 
     path("index", TemplateView.as_view(template_name="index.html")),
     path("", TemplateView.as_view(template_name="index.html")),

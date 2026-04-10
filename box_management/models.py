@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.db.models import Count
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from typing import Union, Optional, Iterable
 from users.models import CustomUser
 from utils import generate_unique_filename
@@ -983,6 +984,55 @@ class CommentAttemptLog(models.Model):
             models.Index(fields=["user", "reason_code", "created_at"]),
         ]
 
+
+
+
+class Sticker(models.Model):
+    slug = models.CharField(
+        max_length=11,
+        unique=True,
+        db_index=True,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\d{11}$",
+                message="Le slug du sticker doit contenir exactement 11 chiffres.",
+            )
+        ],
+        help_text="11 chiffres. Laisse vide pour générer automatiquement un slug.",
+    )
+    box = models.ForeignKey(
+        Box,
+        on_delete=models.PROTECT,
+        related_name="stickers",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["is_active", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.slug} → {self.box}"
+
+    @staticmethod
+    def generate_slug():
+        return "".join(secrets.choice("0123456789") for _ in range(11))
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            slug = self.generate_slug()
+            while self.__class__.objects.filter(slug=slug).exists():
+                slug = self.generate_slug()
+            self.slug = slug
+
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 @receiver(models.signals.pre_delete, sender=Deposit)
 def mark_comments_when_deposit_deleted(sender, instance, **kwargs):
