@@ -248,7 +248,7 @@ export default function Discover() {
               variant="light"
               startIcon={<KeyboardArrowDownIcon />}
               onClick={handleScrollToOlderDeposits}
-              sx={{ mt: "16px", width: "100%"}}
+              sx={{ mt: "26px", width: "100%"}}
             >
               Découvrir plus de chansons
             </Button>
