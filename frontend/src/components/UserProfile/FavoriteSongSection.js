@@ -8,7 +8,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import SearchIcon from "@mui/icons-material/Search";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
@@ -69,7 +69,7 @@ export default function FavoriteSongSection({
     setDrawerOpen(true);
   };
 
-  const closeDrawer = (force = false) => {
+  const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
     setDrawerOpen(false);
     resetSearch();
@@ -77,7 +77,7 @@ export default function FavoriteSongSection({
     setPostingId(null);
     setPostingProgress(0);
     setPostingTransitionMs(0);
-  };
+  }, [posting, resetSearch]);
 
   const syncCurrentUser = useCallback((payload) => {
     if (!payload || !setUser) return;
@@ -174,50 +174,21 @@ export default function FavoriteSongSection({
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
   const canRemove = Boolean(hasFavorite);
+
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
-      return (
-        <Box sx={{ px: 2, pb: 2 }}>
-          {canRemove ? (
-            <Box
-              sx={{
-                margin: "0px 20px",
-                backgroundColor: "var(--mm-color-secondary-light)",
-                padding: "16px 20px",
-                borderRadius: "var(--mm-radius-lg)",
-                display: "flex",
-                gap: "12px",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <CampaignRoundedIcon />
-                <Typography variant="subtitle1">Retire la chanson actuellement attachée à ton profil</Typography>
-              </Box>
-              <Button variant="contained" onClick={handleRemoveFavorite}>
-                Retirer ma chanson de coeur
-              </Button>
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                margin: "0px 20px",
-                backgroundColor: "var(--mm-color-secondary-light)",
-                padding: "16px 20px",
-                borderRadius: "var(--mm-radius-lg)",
-                display: "flex",
-                gap: "12px",
-                alignItems: "center",
-              }}
-            >
-              <CampaignRoundedIcon />
-              <Typography variant="subtitle1">Cherche une chanson Spotify ou Deezer pour l’attacher à ton profil</Typography>
-            </Box>
-          )}
+      return canRemove ? (
+        <Box sx={{ px: 5, py: 2 }}>
+          <Button
+            variant="text"
+            onClick={handleRemoveFavorite}
+            startIcon={<RemoveCircleOutlineIcon />}
+            sx={{ px: 0 }}
+          >
+            Retirer ma chanson de coeur
+          </Button>
         </Box>
-      );
+      ) : null;
     }
 
     return (
@@ -232,8 +203,8 @@ export default function FavoriteSongSection({
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 1 }}>
         <Typography variant="h5">Chanson de coeur</Typography>
         {isCurrentFullUser && hasFavorite ? (
-          <Button variant="contained" onClick={openDrawer}>
-            Change ta chanson de coeur
+          <Button variant="outlined" onClick={openDrawer}>
+            Changer
           </Button>
         ) : null}
       </Box>
