@@ -203,7 +203,7 @@ export default function FavoriteSongSection({
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, pb:"6px" }}>
         <Typography variant="h5">Chanson de coeur</Typography>
         {isCurrentFullUser && hasFavorite ? (
-          <Button variant="outlined" onClick={openDrawer} startIcon={<SearchIcon />}>
+          <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
             Changer
           </Button>
         ) : null}
