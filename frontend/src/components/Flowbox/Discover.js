@@ -245,10 +245,10 @@ export default function Discover() {
 
           {olderDeposits.length > 0 ? (
             <Button
-              variant="outlined"
+              variant="light"
               startIcon={<KeyboardArrowDownIcon />}
               onClick={handleScrollToOlderDeposits}
-              sx={{ mt: 2, width: "100%" }}
+              sx={{ mt: "16px" }}
             >
               Découvrir plus de chansons
             </Button>
