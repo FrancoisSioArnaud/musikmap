@@ -199,8 +199,8 @@ export default function FavoriteSongSection({
   }, [canRemove, handleRemoveFavorite, searchValue]);
 
   return (
-    <Box sx={{ px: 2, pb: 3 }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 1 }}>
+    <Box className="favorite">
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
         <Typography variant="h3">Chanson de coeur</Typography>
         {isCurrentFullUser && hasFavorite ? (
           <Button variant="outlined" onClick={openDrawer}>
@@ -227,8 +227,9 @@ export default function FavoriteSongSection({
           </Typography>
           <Box
             sx={{
-              minHeight: 150,
+              minHeight: 120,
               borderRadius: "var(--mm-radius-lg)",
+              border: "dashed 2px var(--mm-color-divider)",
               bgcolor: "background.paper",
               display: "flex",
               alignItems: "center",
