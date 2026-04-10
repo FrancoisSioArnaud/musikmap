@@ -1,9 +1,10 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import Deposit from "./Common/Deposit";
 import { UserContext } from "./UserContext";
@@ -13,6 +14,7 @@ function getSenderLabel(sender) {
 }
 
 export default function LinkDepositPage() {
+  const navigate = useNavigate();
   const { linkSlug } = useParams();
   const { user, setCurrentClient } = useContext(UserContext) || {};
 
@@ -107,7 +109,7 @@ export default function LinkDepositPage() {
     const isExpired = pageCode === "link_expired";
 
     return (
-      <Box sx={{ px: "20px", py: 7, textAlign: "center" }}>
+      <Box sx={{ px: 3, py: 7, textAlign: "center" }}>
         <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
           {isExpired ? "Lien expiré" : "Lien indisponible"}
         </Typography>
@@ -120,9 +122,53 @@ export default function LinkDepositPage() {
     );
   }
 
+  const senderLabel = getSenderLabel(sender);
+  const canOpenSenderProfile = Boolean(sender?.username);
+  const boxLabel =
+    deposit?.box?.name || deposit?.box?.slug || deposit?.box?.url || "Inconnue";
+
   return (
-    <Box sx={{ px: "20px", py: 4 }}>
+    <Box sx={{ px: 2, py: 4 }}>
       <Box sx={{ maxWidth: 760, mx: "auto" }}>
+        <Box className="intro">
+          <Typography
+            variant="subtitle1"
+            component="p"
+            sx={{ textAlign: "center" }}
+          >
+            <Box
+              component="span"
+              role={canOpenSenderProfile ? "button" : undefined}
+              tabIndex={canOpenSenderProfile ? 0 : undefined}
+              onClick={() => {
+                if (!canOpenSenderProfile) return;
+                navigate(`/profile/${sender.username}`);
+              }}
+              onKeyDown={(event) => {
+                if (!canOpenSenderProfile) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  navigate(`/profile/${sender.username}`);
+                }
+              }}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.5,
+                cursor: canOpenSenderProfile ? "pointer" : "default",
+                verticalAlign: "middle",
+              }}
+            >
+              <Box component="span">{senderLabel}</Box>
+              {canOpenSenderProfile ? (
+                <ArrowForwardIosIcon sx={{ fontSize: "0.9em" }} />
+              ) : null}
+            </Box>{" "}
+            a découvert cette chanson dans la boîte à chanson "{boxLabel}".
+            Il·Elle a pensé qu&apos;elle te plairait
+          </Typography>
+        </Box>
+
         <Deposit
           dep={deposit}
           user={user}
