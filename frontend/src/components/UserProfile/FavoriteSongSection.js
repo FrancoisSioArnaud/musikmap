@@ -178,12 +178,12 @@ export default function FavoriteSongSection({
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
       return canRemove ? (
-        <Box sx={{ px: 5, py: 2 }}>
+        <Box sx={{ p: "16px 20px" }}>
           <Button
             variant="text"
             onClick={handleRemoveFavorite}
             startIcon={<RemoveCircleOutlineIcon />}
-            sx={{ px: 0 }}
+            sx={{ px: "auto" }}
           >
             Retirer ma chanson de coeur
           </Button>
