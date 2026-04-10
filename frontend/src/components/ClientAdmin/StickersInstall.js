@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
@@ -17,7 +17,6 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Chip from "@mui/material/Chip";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
@@ -60,38 +59,7 @@ export default function StickersInstall() {
   const [sticker, setSticker] = useState(null);
   const [boxes, setBoxes] = useState([]);
   const [message, setMessage] = useState("");
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState("");
   const [assigningBoxId, setAssigningBoxId] = useState(null);
-
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const detectorRef = useRef(null);
-  const scanLoopRef = useRef(null);
-  const lastDetectionRef = useRef(0);
-
-  const barcodeSupported = useMemo(() => {
-    return (
-      typeof window !== "undefined" &&
-      "BarcodeDetector" in window &&
-      Boolean(navigator?.mediaDevices?.getUserMedia)
-    );
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    if (scanLoopRef.current) {
-      window.cancelAnimationFrame(scanLoopRef.current);
-      scanLoopRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setCameraActive(false);
-  }, []);
 
   const fetchInstallState = useCallback(
     async (stickerSlug, currentBoxSearch = "") => {
@@ -157,12 +125,6 @@ export default function StickersInstall() {
     return () => window.clearTimeout(timer);
   }, [boxSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera]);
-
   const handleLookupSubmit = async (event) => {
     event.preventDefault();
     await fetchInstallState(inputValue, boxSearch);
@@ -211,7 +173,6 @@ export default function StickersInstall() {
   };
 
   const handleReset = () => {
-    stopCamera();
     setInputValue("");
     setBoxSearch("");
     setSticker(null);
@@ -219,72 +180,8 @@ export default function StickersInstall() {
     setMessage("");
     setPageError("");
     setPageSuccess("");
-    setCameraError("");
     setSearchParams({});
   };
-
-  const startCamera = useCallback(async () => {
-    if (!barcodeSupported) {
-      setCameraError("Le scan caméra n’est pas disponible sur ce navigateur.");
-      return;
-    }
-
-    setCameraError("");
-    setPageError("");
-
-    try {
-      detectorRef.current = new window.BarcodeDetector({ formats: ["qr_code"] });
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-        },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      setCameraActive(true);
-
-      const scan = async () => {
-        if (!videoRef.current || !detectorRef.current) {
-          scanLoopRef.current = window.requestAnimationFrame(scan);
-          return;
-        }
-
-        const now = Date.now();
-        if (now - lastDetectionRef.current < 500) {
-          scanLoopRef.current = window.requestAnimationFrame(scan);
-          return;
-        }
-
-        try {
-          const barcodes = await detectorRef.current.detect(videoRef.current);
-          if (Array.isArray(barcodes) && barcodes.length > 0) {
-            const rawValue = barcodes[0]?.rawValue || "";
-            const slug = extractStickerSlug(rawValue);
-            if (slug) {
-              lastDetectionRef.current = now;
-              stopCamera();
-              setInputValue(slug);
-              fetchInstallState(slug, boxSearch);
-              return;
-            }
-          }
-        } catch (error) {}
-
-        scanLoopRef.current = window.requestAnimationFrame(scan);
-      };
-
-      scanLoopRef.current = window.requestAnimationFrame(scan);
-    } catch (error) {
-      setCameraError("Impossible d’accéder à la caméra.");
-      stopCamera();
-    }
-  }, [barcodeSupported, boxSearch, fetchInstallState, stopCamera]);
 
   return (
     <Stack spacing={3}>
@@ -308,7 +205,7 @@ export default function StickersInstall() {
               Installer des stickers
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Scanne un sticker, puis rattache-le rapidement à une box du client.
+              Saisis un slug sticker, puis rattache-le rapidement à une box du client.
             </Typography>
           </Box>
 
@@ -333,10 +230,10 @@ export default function StickersInstall() {
         }}
       >
         <Stack spacing={2} component="form" onSubmit={handleLookupSubmit}>
-          <Typography variant="h6">Scanner ou saisir un sticker</Typography>
+          <Typography variant="h6">Rechercher un sticker</Typography>
 
           <TextField
-            label="Slug sticker ou URL scannée"
+            label="Slug sticker ou URL sticker"
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             placeholder="12345678901 ou https://boiteachanson.fr/s/12345678901"
@@ -353,48 +250,10 @@ export default function StickersInstall() {
             <Button type="submit" variant="contained" startIcon={<SearchRoundedIcon />}>
               Rechercher ce sticker
             </Button>
-            <Button
-              type="button"
-              variant="outlined"
-              startIcon={<CameraAltRoundedIcon />}
-              onClick={cameraActive ? stopCamera : startCamera}
-            >
-              {cameraActive ? "Arrêter la caméra" : "Scanner avec la caméra"}
-            </Button>
             <Button type="button" variant="text" startIcon={<RefreshRoundedIcon />} onClick={handleReset}>
               Scanner un autre sticker
             </Button>
           </Stack>
-
-          {!barcodeSupported ? (
-            <Alert severity="info">
-              Le scan caméra n’est pas disponible ici. La saisie manuelle du slug reste utilisable.
-            </Alert>
-          ) : null}
-          {cameraError ? <Alert severity="warning">{cameraError}</Alert> : null}
-
-          {cameraActive ? (
-            <Box
-              sx={{
-                position: "relative",
-                width: "100%",
-                maxWidth: 520,
-                borderRadius: 3,
-                overflow: "hidden",
-                border: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <Box
-                component="video"
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                sx={{ width: "100%", display: "block", backgroundColor: "#000" }}
-              />
-            </Box>
-          ) : null}
         </Stack>
       </Paper>
 

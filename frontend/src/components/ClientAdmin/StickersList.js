@@ -27,7 +27,6 @@ import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
-import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import { getCookie } from "../Security/TokensUtils";
 
@@ -281,7 +280,7 @@ export default function StickersList() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button
               variant="outlined"
-              startIcon={<CameraAltRoundedIcon />}
+              startIcon={<LocalOfferRoundedIcon />}
               component={RouterLink}
               to="/client/stickers/install"
             >
