@@ -229,7 +229,7 @@ export default function UserProfilePage() {
           flexDirection: "vertical",
           alignItems: "center",
           gap: 4,
-          p: "38px 16px",
+          p: "20px",
         }}
       >
         <Avatar
