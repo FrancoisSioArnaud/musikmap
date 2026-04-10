@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction, IntegrityError
-from django.db.models import Count, Max, Prefetch, Q
+from django.db.models import Count, Max, Prefetch, Q, F
 from django.middleware.csrf import get_token
 from django.http import Http404, HttpResponse, HttpResponseGone
 from django.shortcuts import get_object_or_404, redirect
@@ -54,6 +54,7 @@ from .models import (
     Reaction,
     Song,
     Sticker,
+    Link,
     Comment,
     CommentReport,
     CommentModerationDecision,
@@ -214,6 +215,64 @@ def sticker_redirect_view(request, sticker_slug):
 def sticker_root_not_found_view(request):
     raise Http404("Le slug du sticker est obligatoire.")
 
+def _normalize_link_slug(raw_slug):
+    return (raw_slug or "").strip().lower()
+
+
+def _serialize_share_link(link, request):
+    return {
+        "slug": link.slug,
+        "url": request.build_absolute_uri(f"/l/{link.slug}"),
+        "expires_at": link.expires_at.isoformat() if link.expires_at else None,
+        "deposit_public_key": getattr(link.deposit, "public_key", None),
+        "created_by": _build_user_from_instance(link.created_by),
+    }
+
+
+def _is_deposit_revealed_for_user(user, deposit):
+    if not user or not deposit:
+        return False
+    return bool(
+        getattr(deposit, "user_id", None) == getattr(user, "id", None)
+        or DiscoveredSong.objects.filter(user=user, deposit=deposit).exists()
+    )
+
+
+def _build_public_link_payload(link, viewer):
+    deposit = getattr(link, "deposit", None)
+    if not deposit:
+        return None
+
+    deposits_payload = _build_deposits_payload(
+        [deposit],
+        viewer=viewer,
+        include_user=True,
+        force_song_infos_for=[deposit.pk],
+    )
+    deposit_payload = deposits_payload[0] if deposits_payload else {}
+    deposit_payload = {
+        **deposit_payload,
+        "type": "revealed",
+        "context": "link",
+        "discovered_at": timezone.now().isoformat(),
+        "deposit_id": deposit.pk,
+    }
+
+    box = getattr(deposit, "box", None)
+    client = getattr(box, "client", None)
+
+    return {
+        "deposit": deposit_payload,
+        "sender": _build_user_from_instance(link.created_by),
+        "client_slug": getattr(client, "slug", None),
+        "box": {
+            "id": getattr(box, "id", None),
+            "name": getattr(box, "name", None),
+            "url": getattr(box, "url", None),
+        } if box else None,
+    }
+
+
 
 def _get_comment_error_message(reason_code):
     messages = {
@@ -295,6 +354,125 @@ def _serialize_comment_restriction(restriction):
 # -----------------------
 # Vues
 # -----------------------
+
+
+class ShareLinkCreateView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+        touch_last_seen(current_user)
+
+        dep_public_key = (request.data.get("dep_public_key") or "").strip()
+        if not dep_public_key:
+            return Response({"detail": "dep_public_key manquant"}, status=status.HTTP_400_BAD_REQUEST)
+
+        deposit = (
+            Deposit.objects
+            .select_related("song", "box", "box__client", "user")
+            .filter(public_key=dep_public_key)
+            .first()
+        )
+        if not deposit:
+            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not _is_deposit_revealed_for_user(current_user, deposit):
+            return Response(
+                {"detail": "Ce dépôt doit déjà être révélé pour pouvoir être partagé."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        with transaction.atomic():
+            link = (
+                Link.objects
+                .select_for_update()
+                .select_related("deposit", "created_by")
+                .filter(deposit=deposit, created_by=current_user)
+                .first()
+            )
+            created = link is None
+            if created:
+                link = Link(deposit=deposit, created_by=current_user)
+
+            link.deposit_deleted = False
+            link.extend_expiration()
+            link.save()
+
+        payload = _serialize_share_link(link, request)
+        payload["created"] = created
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class ShareLinkPublicDetailView(APIView):
+    permission_classes = []
+
+    def get(self, request, link_slug):
+        slug = _normalize_link_slug(link_slug)
+        if not slug:
+            return Response({"detail": "Lien introuvable.", "code": "link_not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+        link = (
+            Link.objects
+            .select_related("deposit", "deposit__song", "deposit__box", "deposit__box__client", "deposit__user", "created_by")
+            .prefetch_related(
+                Prefetch(
+                    "deposit__reactions",
+                    queryset=Reaction.objects
+                        .select_related("emoji", "user")
+                        .order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+            .filter(slug=slug)
+            .first()
+        )
+
+        if not link:
+            return Response({"detail": "Lien introuvable.", "code": "link_not_found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if link.deposit_deleted or not getattr(link, "deposit", None):
+            return Response({"detail": "Ce dépôt n’est plus disponible.", "code": "deposit_deleted"}, status=status.HTTP_410_GONE)
+
+        now = timezone.now()
+        if link.expires_at and link.expires_at <= now:
+            return Response(
+                {
+                    "detail": "Ce lien a expiré.",
+                    "code": "link_expired",
+                    "sender": _build_user_from_instance(link.created_by),
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        viewer = get_current_app_user(request)
+        if viewer:
+            touch_last_seen(viewer)
+            link.opened_by_users.add(viewer)
+
+            discovery, created = DiscoveredSong.objects.get_or_create(
+                user=viewer,
+                deposit=link.deposit,
+                defaults={
+                    "discovered_type": "revealed",
+                    "context": "link",
+                    "link_sender": link.created_by,
+                },
+            )
+            if not created:
+                update_fields = ["discovered_at", "context", "link_sender"]
+                discovery.discovered_at = now
+                discovery.context = "link"
+                discovery.link_sender = link.created_by
+                discovery.save(update_fields=update_fields)
+        else:
+            Link.objects.filter(pk=link.pk).update(anonymous_view_count=F("anonymous_view_count") + 1)
+            link.anonymous_view_count = int(link.anonymous_view_count or 0) + 1
+
+        payload = _build_public_link_payload(link, viewer) or {}
+        payload["link"] = _serialize_share_link(link, request)
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class GetMain(APIView):
@@ -748,6 +926,7 @@ class ManageDiscoveredSongs(APIView):
                 "deposit__song",
                 "deposit__user",
                 "deposit__box",
+                "link_sender",
             )
             .prefetch_related(
                 Prefetch(
@@ -906,6 +1085,18 @@ class ManageDiscoveredSongs(APIView):
                     "deposits": deposits_list,
                 })
                 index = cursor
+                continue
+
+            if event_context == "link":
+                consumed[index] = True
+                sessions_all.append({
+                    "session_id": f"link-{event.id}",
+                    "session_type": "link",
+                    "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)),
+                    "started_at": event.discovered_at.isoformat(),
+                    "deposits": [deposit_payload(event)],
+                })
+                index += 1
                 continue
 
             if event.discovered_type == "revealed":
