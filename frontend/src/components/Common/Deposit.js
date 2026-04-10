@@ -15,6 +15,7 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import MusicNote from "@mui/icons-material/MusicNote";
 import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
 import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
+import SendIcon from "@mui/icons-material/Send";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -432,9 +433,10 @@ export default function Deposit({
 
       const shareData = {
         title: song?.title || "Chanson partagée",
-        text: song?.artist
-          ? `${song.title} — ${song.artist}`
-          : "Découvre cette chanson",
+        text:
+          song?.title && song?.artist
+            ? `Regarde ce que j'ai découvert dans une boîte à chanson : ${song.title} — ${song.artist} ${shareUrl}`
+            : `Regarde ce que j'ai découvert dans une boîte à chanson : ${shareUrl}`,
         url: shareUrl,
       };
 
@@ -504,7 +506,7 @@ export default function Deposit({
               return;
             }
             if (!viewer?.id) {
-              window.alert("Dépose d’abord une chanson pour pouvoir réagir.");
+              window.alert("Connecte toi pour pouvoir réagir.");
               return;
             }
             setAddReactionOpen(true);
@@ -554,8 +556,10 @@ export default function Deposit({
           variant="depositInteract"
           className="deposit_action_button share_button"
           onClick={handleShareDeposit}
+          aria-label="Partager"
+          title="Partager"
         >
-          Partager
+          <SendIcon />
         </Button>
       ) : null}
     </Box>
