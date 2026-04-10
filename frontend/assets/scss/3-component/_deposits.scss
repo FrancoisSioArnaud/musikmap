@@ -30,6 +30,8 @@ color : var(--mm-color-success);
 
 .my_deposit .text{
   text-align: left;
+  flex: 1;
+  min-width: 0;
 }
 
 .deposit{
