@@ -10,12 +10,9 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
-import qrcode
 
-try:
-    import cairosvg
-except ImportError:
-    cairosvg = None
+qrcode = None
+cairosvg = None
 from reportlab.lib.pagesizes import A3
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -2234,10 +2231,25 @@ def _load_sticker_template_with_zone(client):
 
 
 
+def _get_qrcode_module():
+    global qrcode
+    if qrcode is not None:
+        return qrcode
+
+    try:
+        import qrcode as qrcode_module
+    except ImportError as exc:
+        raise RuntimeError("qrcode_missing") from exc
+
+    qrcode = qrcode_module
+    return qrcode
+
+
 def _generate_qr_png_bytes(content, *, size=1400):
-    qr = qrcode.QRCode(
+    qrcode_module = _get_qrcode_module()
+    qr = qrcode_module.QRCode(
         version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_Q,
+        error_correction=qrcode_module.constants.ERROR_CORRECT_Q,
         box_size=12,
         border=4,
     )
@@ -2279,7 +2291,7 @@ def _get_cairosvg_module():
 
     try:
         import cairosvg as cairosvg_module
-    except ImportError as exc:
+    except (ImportError, OSError) as exc:
         raise RuntimeError("cairosvg_missing") from exc
 
     cairosvg = cairosvg_module
@@ -2527,12 +2539,15 @@ class ClientAdminStickerDownloadView(APIView):
                 return _build_stickers_pdf_response(request, stickers)
             return _build_stickers_zip_response(request, stickers)
         except RuntimeError as exc:
-            if str(exc) != "cairosvg_missing":
+            if str(exc) not in {"cairosvg_missing", "qrcode_missing"}:
                 raise
+            detail = (
+                "L'export de stickers nécessite qrcode[pil] côté serveur."
+                if str(exc) == "qrcode_missing"
+                else "L'export de stickers nécessite cairosvg côté serveur et ses bibliothèques système (notamment cairo)."
+            )
             return Response(
-                {
-                    "detail": "L'export de stickers nécessite cairosvg côté serveur. Installe la dépendance pour générer les PNG et PDF.",
-                },
+                {"detail": detail},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
