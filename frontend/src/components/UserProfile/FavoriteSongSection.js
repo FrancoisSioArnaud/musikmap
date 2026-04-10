@@ -264,7 +264,7 @@ export default function FavoriteSongSection({
             }}
           >
             <Button variant="contained" onClick={openDrawer}>
-              ajoute ta chanson de coeur
+              Ajoute ta chanson de coeur
             </Button>
           </Box>
         </>
