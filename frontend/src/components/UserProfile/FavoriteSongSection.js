@@ -225,18 +225,7 @@ export default function FavoriteSongSection({
           <Typography variant="body1" sx={{ mb: 2 }}>
             Finalise ton compte pour pouvoir attacher une chanson à ton profil.
           </Typography>
-          <Box
-            sx={{
-              minHeight: 120,
-              borderRadius: "var(--mm-radius-lg)",
-              border: "dashed 2px var(--mm-color-divider)",
-              bgcolor: "background.paper",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              p: 2,
-            }}
-          >
+          <Box className="slot">
             <Button
               variant="contained"
               onClick={() => navigate(`/register?merge_guest=1&prefill_username=${encodeURIComponent(user?.username || "")}`)}
@@ -252,17 +241,7 @@ export default function FavoriteSongSection({
           <Typography variant="body1" sx={{ mb: 2 }}>
             Attache une chanson à ton profil, elle sera visible par tout ceux qui le visiteront
           </Typography>
-          <Box
-            sx={{
-              minHeight: 150,
-              borderRadius: "var(--mm-radius-lg)",
-              bgcolor: "background.paper",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              p: 2,
-            }}
-          >
+          <Box className="slot">
             <Button variant="contained" onClick={openDrawer}>
               Ajoute ta chanson de coeur
             </Button>
