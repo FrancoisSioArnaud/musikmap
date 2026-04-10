@@ -1019,6 +1019,8 @@ class Sticker(models.Model):
         on_delete=models.PROTECT,
         related_name="stickers",
         db_index=True,
+        null=True,
+        blank=True,
     )
     box = models.ForeignKey(
         Box,
@@ -1080,8 +1082,8 @@ class Sticker(models.Model):
         if self.slug and not re.fullmatch(r"\d{11}", self.slug):
             errors["slug"] = "Le slug du sticker doit contenir exactement 11 chiffres."
 
-        if not self.client_id:
-            errors["client"] = "Le client est obligatoire."
+        if self.box_id and not self.client_id and getattr(self.box, "client_id", None):
+            self.client = self.box.client
 
         if self.box_id:
             if not getattr(self.box, "client_id", None):
@@ -1119,6 +1121,9 @@ class Sticker(models.Model):
             while self.__class__.objects.filter(slug=slug).exists():
                 slug = self.generate_slug()
             self.slug = slug
+
+        if self.box_id and not self.client_id and getattr(self.box, "client_id", None):
+            self.client = self.box.client
 
         if self.box_id and not self.assigned_at:
             self.assigned_at = timezone.now()
