@@ -102,13 +102,25 @@ export default function Library() {
     <Box sx={{ display: "grid", gap: 5, p: 5 }}>
       {sessions.map((sess) => {
         const sessionType =
-          sess?.session_type === "profile" ? "profile" : "box";
+          sess?.session_type === "profile"
+            ? "profile"
+            : sess?.session_type === "link"
+              ? "link"
+              : "box";
+
         const profileUser = sess?.profile_user || null;
         const profileLabel =
           profileUser?.display_name ||
           profileUser?.username ||
           "profil inconnu";
         const canOpenProfile = Boolean(profileUser?.username);
+
+        const linkSender = sess?.link_sender || null;
+        const linkSenderLabel =
+          linkSender?.display_name ||
+          linkSender?.username ||
+          "utilisateur inconnu";
+        const canOpenLinkSender = Boolean(linkSender?.username);
 
         return (
           <Box key={sess.session_id} sx={{ display: "grid" }}>
@@ -132,9 +144,7 @@ export default function Library() {
                 <Typography
                   variant="h5"
                   component="h2"
-                  sx={{
-                    textAlign: "center",
-                  }}
+                  sx={{ textAlign: "center" }}
                 >
                   sur le profil de{" "}
                   <Box
@@ -164,6 +174,42 @@ export default function Library() {
                     <ArrowForwardIosIcon sx={{ fontSize: "0.9em" }} />
                   </Box>
                 </Typography>
+              ) : sessionType === "link" ? (
+                <Typography
+                  variant="h5"
+                  component="h2"
+                  sx={{ textAlign: "center" }}
+                >
+                  via un lien de{" "}
+                  <Box
+                    component="span"
+                    role={canOpenLinkSender ? "button" : undefined}
+                    tabIndex={canOpenLinkSender ? 0 : undefined}
+                    onClick={() => {
+                      if (!canOpenLinkSender) return;
+                      navigate(`/profile/${linkSender.username}`);
+                    }}
+                    onKeyDown={(event) => {
+                      if (!canOpenLinkSender) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate(`/profile/${linkSender.username}`);
+                      }
+                    }}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      cursor: canOpenLinkSender ? "pointer" : "default",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    <Box component="span">{linkSenderLabel}</Box>
+                    {canOpenLinkSender ? (
+                      <ArrowForwardIosIcon sx={{ fontSize: "0.9em" }} />
+                    ) : null}
+                  </Box>
+                </Typography>
               ) : (
                 <Typography
                   variant="h5"
@@ -186,11 +232,17 @@ export default function Library() {
                       key={`${sess.session_id}-${idx}`}
                       dep={d}
                       user={user}
-                      variant={isMain ? "main" : "list"}
+                      variant={sessionType === "link" ? "main" : (isMain ? "main" : "list")}
                       showDate={false}
                       showUser={true}
                       fitContainer={true}
-                                context={sessionType === "profile" ? "profile" : "box"}
+                      context={
+                        sessionType === "profile"
+                          ? "profile"
+                          : sessionType === "link"
+                            ? "link"
+                            : "box"
+                      }
                     />
                   );
                 })}

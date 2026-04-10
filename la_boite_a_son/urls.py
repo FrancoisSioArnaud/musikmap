@@ -19,6 +19,7 @@ urlpatterns = [
     path("profile", TemplateView.as_view(template_name="index.html")),
     path("profile/<str:username>", TemplateView.as_view(template_name="index.html")),
     path("library", TemplateView.as_view(template_name="index.html")),
+    path("l/<str:link_slug>", TemplateView.as_view(template_name="index.html")),
     path("box/<str:boxName>", TemplateView.as_view(template_name="index.html")),
 
     re_path(r"^flowbox/.*$", TemplateView.as_view(template_name="index.html")),

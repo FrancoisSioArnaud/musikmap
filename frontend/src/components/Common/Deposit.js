@@ -51,6 +51,25 @@ function randomBetween(min, max) {
   return min + Math.random() * (max - min);
 }
 
+
+async function copyText(text) {
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "readonly");
+  textArea.style.position = "absolute";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+  return copied;
+}
+
 function getFloatingEmojiItems(reactions) {
   const reactionList = Array.isArray(reactions) ? reactions : [];
   const emojiItems = reactionList.flatMap((reaction, reactionIndex) => {
@@ -152,6 +171,7 @@ export default function Deposit({
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [snackOpen, setSnackOpen] = useState(false);
+  const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
 
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
@@ -164,6 +184,7 @@ export default function Deposit({
   );
   const reactionCount = reactionsDetail.length;
   const commentsCount = Array.isArray(comments?.items) ? comments.items.length : 0;
+  const canShare = Boolean(viewer?.id && isRevealed);
 
   const updateDepositCollections = useCallback((transform) => {
     setDispDeposits?.((prev) => {
@@ -369,6 +390,73 @@ export default function Deposit({
     updateDepositCollections((item) => ({ ...(item || {}), comments: safeComments }));
   };
 
+  const showShareFeedback = useCallback((message) => {
+    setShareSnack({ open: true, message });
+  }, []);
+
+  const handleShareDeposit = useCallback(async (event) => {
+    event?.stopPropagation?.();
+
+    if (!viewer?.id) {
+      window.alert("Connecte-toi ou finalise ton compte pour partager cette chanson.");
+      return;
+    }
+
+    if (!isRevealed) {
+      window.alert("Révèle d’abord la chanson avant de la partager.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/box-management/links/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ dep_public_key: localDep?.public_key }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        window.alert(payload?.detail || "Impossible de créer le lien de partage.");
+        return;
+      }
+
+      const shareUrl = payload?.url;
+      if (!shareUrl) {
+        window.alert("Impossible de créer le lien de partage.");
+        return;
+      }
+
+      const shareData = {
+        title: song?.title || "Chanson partagée",
+        text: song?.artist
+          ? `${song.title} — ${song.artist}`
+          : "Découvre cette chanson",
+        url: shareUrl,
+      };
+
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          await navigator.share(shareData);
+          showShareFeedback("Lien prêt à être partagé.");
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            return;
+          }
+        }
+      }
+
+      await copyText(shareUrl);
+      showShareFeedback("Lien copié.");
+    } catch (error) {
+      window.alert("Impossible de créer le lien de partage.");
+    }
+  }, [viewer?.id, isRevealed, localDep?.public_key, showShareFeedback, song?.artist, song?.title]);
+
   const renderDepositUser = (currentUser) => {
     const canNavigate = Boolean(currentUser?.username && !currentUser?.is_guest);
 
@@ -460,6 +548,16 @@ export default function Deposit({
       >
         {commentsCount > 0 ? `x${commentsCount}` : ""}
       </Button>
+
+      {canShare ? (
+        <Button
+          variant="depositInteract"
+          className="deposit_action_button share_button"
+          onClick={handleShareDeposit}
+        >
+          Partager
+        </Button>
+      ) : null}
     </Box>
   );
 
@@ -635,6 +733,33 @@ export default function Deposit({
             >
               Voir
             </Button>
+          }
+        />
+      </Snackbar>
+
+      <Snackbar
+        open={shareSnack.open}
+        onClose={() => setShareSnack({ open: false, message: "" })}
+        autoHideDuration={3500}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        TransitionComponent={SlideDownTransition}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <SnackbarContent
+          sx={{
+            bgcolor: "background.paper",
+            color: "text.primary",
+            borderRadius: 2,
+            boxShadow: 3,
+            px: 2,
+            py: 1,
+            maxWidth: 520,
+            width: "calc(100vw - 32px)",
+          }}
+          message={
+            <Typography variant="body2" sx={{ whiteSpace: "normal" }}>
+              {shareSnack.message || "Lien copié."}
+            </Typography>
           }
         />
       </Snackbar>

@@ -28,6 +28,7 @@ import MenuAppBar from "./Common/Menu";
 import Onboarding from "./Flowbox/Onboarding";
 import LiveSearch from "./Flowbox/LiveSearch";
 import Discover from "./Flowbox/Discover";
+import LinkDepositPage from "./LinkDepositPage";
 
 import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
 import ClientAdminLayout from "./ClientAdmin/ClientAdminLayout";
@@ -151,6 +152,7 @@ export default function App() {
                 <Route path="/flowbox/:boxSlug" element={<Onboarding />} />
                 <Route path="/flowbox/:boxSlug/search" element={<LiveSearch />} />
                 <Route path="/flowbox/:boxSlug/discover" element={<Discover />} />
+                <Route path="/l/:linkSlug" element={<LinkDepositPage />} />
               </Route>
 
               <Route path="/client" element={<ClientAdminRouteWrapper />}>

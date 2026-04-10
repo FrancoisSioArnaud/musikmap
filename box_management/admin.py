@@ -29,6 +29,7 @@ from .models import (
     Reaction,
     Song,
     Sticker,
+    Link,
 )
 
 
@@ -334,7 +335,7 @@ class SongAdmin(admin.ModelAdmin):
 
 @admin.register(DiscoveredSong)
 class DiscoveredSongAdmin(admin.ModelAdmin):
-    list_display = ("user", "deposit", "discovered_type", "discovered_at", "context")
+    list_display = ("user", "deposit", "discovered_type", "discovered_at", "context", "link_sender")
     list_filter = ("discovered_type", "context", "discovered_at")
     search_fields = (
         "user__username",
@@ -553,6 +554,24 @@ class CommentAttemptLogAdmin(admin.ModelAdmin):
         "created_at",
     )
 
+
+
+
+@admin.register(Link)
+class LinkAdmin(admin.ModelAdmin):
+    list_display = (
+        "slug",
+        "deposit",
+        "created_by",
+        "expires_at",
+        "deposit_deleted",
+        "anonymous_view_count",
+        "created_at",
+    )
+    list_filter = ("deposit_deleted", "created_at", "expires_at")
+    search_fields = ("slug", "deposit__public_key", "created_by__username")
+    autocomplete_fields = ("deposit", "created_by", "opened_by_users")
+    readonly_fields = ("created_at", "updated_at")
 
 class StickerBatchCreateForm(forms.Form):
     client = forms.ModelChoiceField(

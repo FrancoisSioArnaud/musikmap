@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from typing import Union, Optional, Iterable
+from datetime import timedelta
 from users.models import CustomUser
 from utils import generate_unique_filename
 import secrets
@@ -677,6 +678,7 @@ class DiscoveredSong(models.Model):
     CONTEXT_CHOICES = (
         ("box", "Box"),
         ("profile", "Profile"),
+        ("link", "Link"),
     )
     context = models.CharField(
         max_length=10,
@@ -685,6 +687,13 @@ class DiscoveredSong(models.Model):
         blank=False,
         null=False,
         db_index=True,
+    )
+    link_sender = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="link_discoveries_received",
     )
 
     class Meta:
@@ -698,6 +707,7 @@ class DiscoveredSong(models.Model):
         indexes = [
             models.Index(fields=["user", "deposit"]),
             models.Index(fields=["context"]),
+            models.Index(fields=["link_sender"]),
         ]
 
     def __str__(self):
@@ -1136,7 +1146,90 @@ class Sticker(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+
+
+class Link(models.Model):
+    ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+    slug = models.CharField(
+        max_length=15,
+        unique=True,
+        db_index=True,
+        editable=False,
+        validators=[
+            RegexValidator(
+                regex=r"^[abcdefghjkmnpqrstuvwxyz23456789]{15}$",
+                message="Le slug du lien doit contenir exactement 15 caractères alphanumériques minuscules sans caractères ambigus.",
+            )
+        ],
+    )
+    deposit = models.ForeignKey(
+        Deposit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="share_links",
+    )
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_share_links",
+    )
+    opened_by_users = models.ManyToManyField(
+        CustomUser,
+        blank=True,
+        related_name="opened_share_links",
+    )
+    anonymous_view_count = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(db_index=True)
+    deposit_deleted = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["deposit", "created_by"], name="unique_link_per_deposit_and_creator"),
+        ]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["created_by", "created_at"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.slug} → {getattr(self.deposit, 'public_key', None) or 'dépôt supprimé'}"
+
+    @classmethod
+    def generate_slug(cls):
+        return "".join(secrets.choice(cls.ALPHABET) for _ in range(15))
+
+    @staticmethod
+    def default_expires_at():
+        return timezone.now() + timedelta(days=90)
+
+    def extend_expiration(self):
+        self.expires_at = self.default_expires_at()
+        return self.expires_at
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            slug = self.generate_slug()
+            while self.__class__.objects.filter(slug=slug).exists():
+                slug = self.generate_slug()
+            self.slug = slug
+
+        if not self.expires_at:
+            self.expires_at = self.default_expires_at()
+
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
 @receiver(models.signals.pre_delete, sender=Deposit)
 def mark_comments_when_deposit_deleted(sender, instance, **kwargs):
     Comment.objects.filter(deposit=instance).update(deposit_deleted=True)
     CommentAttemptLog.objects.filter(deposit=instance).update(deposit_public_key=instance.public_key or "")
+    Link.objects.filter(deposit=instance).update(deposit_deleted=True, deposit=None)

@@ -29,6 +29,8 @@ from .views import (
     ClientAdminStickerInstallView,
     ClientAdminStickerAssignView,
     ClientAdminStickerUnassignView,
+    ShareLinkCreateView,
+    ShareLinkPublicDetailView,
 )
 
 urlpatterns = [
@@ -38,6 +40,8 @@ urlpatterns = [
     path("discovered-songs", ManageDiscoveredSongs.as_view(), name="discovered-songs"),
     path("revealSong", RevealSong.as_view(), name="reveal-song"),
     path("user-deposits", UserDepositsView.as_view(), name="user-deposits"),
+    path("links/", ShareLinkCreateView.as_view(), name="share-link-create"),
+    path("links/<str:link_slug>/", ShareLinkPublicDetailView.as_view(), name="share-link-public-detail"),
     path("emojis/catalog", EmojiCatalogView.as_view(), name="emoji-catalog"),
     path("emojis/purchase", PurchaseEmojiView.as_view(), name="emoji-purchase"),
     path("reactions", ReactionView.as_view(), name="reactions"),
