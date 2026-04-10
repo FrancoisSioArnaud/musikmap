@@ -15,6 +15,8 @@ from PIL import Image
 from django.conf import settings
 from django.db.models import QuerySet, Prefetch, Q, Count
 from django.utils import timezone
+from django.urls import reverse
+from django.middleware.csrf import get_token
 from django.utils.timezone import localtime, localdate
 from rest_framework import status
 from rest_framework.response import Response
@@ -1305,6 +1307,111 @@ def normalize_string(input_string: str) -> str:
     normalized_string = re.sub(r'\s+', ' ', normalized_string).strip()
     return normalized_string
 
+
+
+
+def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None):
+    song_name = (option.get("name") or "").strip()
+    song_author = (option.get("artist") or "").strip()
+    if not song_name or not song_author:
+        raise ValueError("Titre ou artiste manquant")
+
+    try:
+        song_platform_id = int(option.get("platform_id"))
+    except (TypeError, ValueError):
+        song_platform_id = None
+
+    incoming_url = (option.get("url") or "").strip()
+    incoming_image_url = (option.get("image_url") or "").strip()
+    incoming_image_url_small = (option.get("image_url_small") or "").strip()
+
+    existing_song = (
+        Song.objects.filter(title__iexact=song_name, artist__iexact=song_author)
+        .only("id", "accent_color", "image_url", "image_url_small", "n_deposits")
+        .first()
+    )
+
+    accent_color_to_apply = ""
+    should_compute_accent = existing_song is None or not (existing_song.accent_color or "").strip()
+    if should_compute_accent:
+        accent_color_to_apply = (
+            extract_accent_color_from_urls(
+                image_url_small=(getattr(existing_song, "image_url_small", "") or incoming_image_url_small or ""),
+                image_url=(getattr(existing_song, "image_url", "") or incoming_image_url or ""),
+            )
+            or ""
+        )
+
+    try:
+        song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
+    except Song.DoesNotExist:
+        song = Song(
+            song_id=option.get("id"),
+            title=song_name,
+            artist=song_author,
+            image_url=incoming_image_url,
+            image_url_small=incoming_image_url_small,
+            accent_color=accent_color_to_apply,
+            duration=option.get("duration") or 0,
+            n_deposits=0,
+        )
+
+    if incoming_image_url and not (song.image_url or "").strip():
+        song.image_url = incoming_image_url
+    if incoming_image_url_small and not (song.image_url_small or "").strip():
+        song.image_url_small = incoming_image_url_small
+    if accent_color_to_apply and not (song.accent_color or "").strip():
+        song.accent_color = accent_color_to_apply
+
+    if song_platform_id == 1 and incoming_url:
+        song.spotify_url = incoming_url
+    elif song_platform_id == 2 and incoming_url:
+        song.deezer_url = incoming_url
+
+    try:
+        request_platform = None
+        if song_platform_id == 1 and not song.deezer_url:
+            request_platform = "deezer"
+        elif song_platform_id == 2 and not song.spotify_url:
+            request_platform = "spotify"
+
+        if request_platform and request is not None:
+            aggreg_url = request.build_absolute_uri(reverse("api_agg:aggreg"))
+            payload = {
+                "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
+                "platform": request_platform,
+            }
+            headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
+            response = requests.post(
+                aggreg_url,
+                data=json.dumps(payload),
+                headers=headers,
+                cookies=request.COOKIES,
+                timeout=6,
+            )
+            if response.ok:
+                other_url = response.json()
+                if isinstance(other_url, str):
+                    if request_platform == "deezer":
+                        song.deezer_url = other_url
+                    elif request_platform == "spotify":
+                        song.spotify_url = other_url
+    except Exception:
+        pass
+
+    if deposit_type == "box":
+        if box is None:
+            raise ValueError("Boîte introuvable")
+        song.n_deposits = int(getattr(song, "n_deposits", 0) or 0) + 1
+    song.save()
+
+    deposit = Deposit.objects.create(
+        song=song,
+        box=box if deposit_type == "box" else None,
+        user=user,
+        deposit_type=deposit_type,
+    )
+    return deposit, song
 
 def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
     """

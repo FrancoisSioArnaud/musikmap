@@ -25,7 +25,7 @@ def _get_user_total_deposits(user: Optional[CustomUser]) -> int:
 
     from box_management.models import Deposit
 
-    return Deposit.objects.filter(user=user).count()
+    return Deposit.objects.filter(user=user).exclude(deposit_type="favorite").count()
 
 
 def _load_user_statuses() -> list[dict]:
@@ -68,6 +68,34 @@ def get_user_status(user: Optional[CustomUser]) -> Optional[dict]:
             break
 
     return current_status
+
+
+
+def build_favorite_deposit_payload(profile_user: Optional[CustomUser], viewer: Optional[CustomUser] = None):
+    favorite_deposit_id = getattr(profile_user, "favorite_deposit_id", None)
+    if not favorite_deposit_id:
+        return None
+
+    from box_management.models import Deposit
+    from box_management.utils import _build_deposits_payload
+
+    deposit = (
+        Deposit.objects
+        .select_related("song", "user")
+        .filter(pk=favorite_deposit_id, deposit_type="favorite")
+        .first()
+    )
+    if not deposit:
+        return None
+
+    payloads = _build_deposits_payload(
+        [deposit],
+        viewer=viewer,
+        include_user=False,
+        include_deposit_time=False,
+        force_song_infos_for=[deposit.pk],
+    )
+    return payloads[0] if payloads else None
 
 
 def _now():
@@ -138,6 +166,8 @@ def build_current_user_payload(user: CustomUser):
     client = getattr(user, "client", None)
     client_id = getattr(user, "client_id", None)
 
+    favorite_deposit = build_favorite_deposit_payload(user, viewer=user)
+
     return {
         "id": user.id,
         "username": user.username,
@@ -164,6 +194,7 @@ def build_current_user_payload(user: CustomUser):
             else None
         ),
         "status": user_status,
+        "favorite_deposit": favorite_deposit,
     }
 
 

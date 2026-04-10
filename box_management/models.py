@@ -6,7 +6,6 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from typing import Union, Optional, Iterable
-from datetime import timedelta
 from users.models import CustomUser
 from utils import generate_unique_filename
 import secrets
@@ -570,7 +569,7 @@ class DepositQuerySet(models.QuerySet):
         """
         bid = self._coerce_id(box_or_id)
         qs = (
-            self.filter(box_id=bid)
+            self.filter(box_id=bid, deposit_type="box")
             .with_related()
             .order_by("-deposited_at")
         )
@@ -585,7 +584,7 @@ class DepositQuerySet(models.QuerySet):
         """
         uid = self._coerce_id(user_or_id)
         qs = (
-            self.filter(user_id=uid)
+            self.filter(user_id=uid).exclude(deposit_type="favorite")
             .with_related()
             .order_by("-deposited_at")
         )
@@ -593,16 +592,36 @@ class DepositQuerySet(models.QuerySet):
 
 
 class Deposit(models.Model):
+    DEPOSIT_TYPE_BOX = "box"
+    DEPOSIT_TYPE_FAVORITE = "favorite"
+    DEPOSIT_TYPE_CHOICES = (
+        (DEPOSIT_TYPE_BOX, "Box"),
+        (DEPOSIT_TYPE_FAVORITE, "Favorite"),
+    )
+
     deposited_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     song = models.ForeignKey("Song", on_delete=models.CASCADE, related_name="deposits")
-    box = models.ForeignKey("Box", on_delete=models.CASCADE, related_name="deposits")
+    box = models.ForeignKey(
+        "Box",
+        on_delete=models.CASCADE,
+        related_name="deposits",
+        null=True,
+        blank=True,
+    )
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="deposits",
+    )
+
+    deposit_type = models.CharField(
+        max_length=16,
+        choices=DEPOSIT_TYPE_CHOICES,
+        default=DEPOSIT_TYPE_BOX,
+        db_index=True,
     )
 
     public_key = models.CharField(
@@ -620,15 +639,26 @@ class Deposit(models.Model):
             models.Index(fields=["box", "deposited_at"]),
             models.Index(fields=["song", "deposited_at"]),
             models.Index(fields=["user", "deposited_at"]),
+            models.Index(fields=["deposit_type", "deposited_at"]),
             models.Index(fields=["public_key"]),
         ]
 
     def __str__(self):
-        return f"Deposit {self.public_key} (song={self.song_id}, box={self.box_id})"
+        return (
+            f"Deposit {self.public_key} (song={self.song_id}, "
+            f"box={self.box_id}, type={self.deposit_type})"
+        )
+
+    def clean(self):
+        if self.deposit_type == self.DEPOSIT_TYPE_BOX and not self.box_id:
+            raise ValidationError({"box": "Une boîte est obligatoire pour un dépôt de type box."})
+        if self.deposit_type == self.DEPOSIT_TYPE_FAVORITE:
+            self.box = None
 
     def save(self, *args, **kwargs):
         if not self.public_key:
             self.public_key = self._generate_unique_key()
+        self.full_clean()
         super().save(*args, **kwargs)
 
     @staticmethod
@@ -678,7 +708,6 @@ class DiscoveredSong(models.Model):
     CONTEXT_CHOICES = (
         ("box", "Box"),
         ("profile", "Profile"),
-        ("link", "Link"),
     )
     context = models.CharField(
         max_length=10,
@@ -687,13 +716,6 @@ class DiscoveredSong(models.Model):
         blank=False,
         null=False,
         db_index=True,
-    )
-    link_sender = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="link_discoveries_received",
     )
 
     class Meta:
@@ -707,7 +729,6 @@ class DiscoveredSong(models.Model):
         indexes = [
             models.Index(fields=["user", "deposit"]),
             models.Index(fields=["context"]),
-            models.Index(fields=["link_sender"]),
         ]
 
     def __str__(self):
@@ -1146,90 +1167,7 @@ class Sticker(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-
-
-class Link(models.Model):
-    ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
-
-    slug = models.CharField(
-        max_length=15,
-        unique=True,
-        db_index=True,
-        editable=False,
-        validators=[
-            RegexValidator(
-                regex=r"^[abcdefghjkmnpqrstuvwxyz23456789]{15}$",
-                message="Le slug du lien doit contenir exactement 15 caractères alphanumériques minuscules sans caractères ambigus.",
-            )
-        ],
-    )
-    deposit = models.ForeignKey(
-        Deposit,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="share_links",
-    )
-    created_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_share_links",
-    )
-    opened_by_users = models.ManyToManyField(
-        CustomUser,
-        blank=True,
-        related_name="opened_share_links",
-    )
-    anonymous_view_count = models.PositiveIntegerField(default=0)
-    expires_at = models.DateTimeField(db_index=True)
-    deposit_deleted = models.BooleanField(default=False, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["-created_at", "-id"]
-        constraints = [
-            models.UniqueConstraint(fields=["deposit", "created_by"], name="unique_link_per_deposit_and_creator"),
-        ]
-        indexes = [
-            models.Index(fields=["slug"]),
-            models.Index(fields=["created_by", "created_at"]),
-            models.Index(fields=["expires_at"]),
-        ]
-
-    def __str__(self):
-        return f"{self.slug} → {getattr(self.deposit, 'public_key', None) or 'dépôt supprimé'}"
-
-    @classmethod
-    def generate_slug(cls):
-        return "".join(secrets.choice(cls.ALPHABET) for _ in range(15))
-
-    @staticmethod
-    def default_expires_at():
-        return timezone.now() + timedelta(days=90)
-
-    def extend_expiration(self):
-        self.expires_at = self.default_expires_at()
-        return self.expires_at
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            slug = self.generate_slug()
-            while self.__class__.objects.filter(slug=slug).exists():
-                slug = self.generate_slug()
-            self.slug = slug
-
-        if not self.expires_at:
-            self.expires_at = self.default_expires_at()
-
-        self.full_clean()
-        return super().save(*args, **kwargs)
-
-
 @receiver(models.signals.pre_delete, sender=Deposit)
 def mark_comments_when_deposit_deleted(sender, instance, **kwargs):
     Comment.objects.filter(deposit=instance).update(deposit_deleted=True)
     CommentAttemptLog.objects.filter(deposit=instance).update(deposit_public_key=instance.public_key or "")
-    Link.objects.filter(deposit=instance).update(deposit_deleted=True, deposit=None)

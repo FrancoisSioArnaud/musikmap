@@ -16,6 +16,7 @@ import TextField from "@mui/material/TextField";
 
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
+import FavoriteSongSection from "./UserProfile/FavoriteSongSection";
 import {
   getProfilePageStateKey,
   readPageState,
@@ -97,6 +98,7 @@ export default function UserProfilePage() {
           total_deposits: null,
           status: user?.status || null,
           is_guest: Boolean(user?.is_guest),
+          favorite_deposit: user?.favorite_deposit || null,
         },
       });
       return () => controller.abort();
@@ -134,6 +136,7 @@ export default function UserProfilePage() {
             typeof data?.total_deposits === "number" ? data.total_deposits : 0,
           status: data?.status || null,
           is_guest: false,
+          favorite_deposit: data?.favorite_deposit || null,
         },
       });
     }
@@ -150,6 +153,7 @@ export default function UserProfilePage() {
     user?.is_guest,
     user?.status?.name,
     user?.status?.min_deposits,
+    user?.favorite_deposit?.public_key,
   ]);
 
   const handleGuestContinue = () => {
@@ -196,7 +200,6 @@ export default function UserProfilePage() {
     totalDeposits > 1 ? "s" : ""
   }`;
   const trimmedGuestUsername = guestUsernameDraft.trim();
-
   const userStatusName = String(headerUser?.status?.name || "").trim();
 
   return (
@@ -271,7 +274,7 @@ export default function UserProfilePage() {
           >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
             {userStatusName && (
-                <Typography className="status" variant="body1">{userStatusName}</Typography>
+              <Typography className="status" variant="body1">{userStatusName}</Typography>
             )}
             {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
@@ -288,9 +291,16 @@ export default function UserProfilePage() {
         )}
       </Box>
 
+      <FavoriteSongSection
+        profileUser={headerUser}
+        isOwner={isOwner}
+        isGuestOwner={isGuestOwner}
+        initialFavoriteDeposit={headerUser?.favorite_deposit || null}
+      />
+
       {isOwner ? (
         <>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
+          <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="fullWidth">
             <Tab label="Découvertes" />
             <Tab label="Partages" />
           </Tabs>

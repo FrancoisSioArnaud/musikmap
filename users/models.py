@@ -26,6 +26,13 @@ class CustomUser(AbstractUser):
     profile_picture = models.ImageField(upload_to=profile_picture_path, blank=True, null=True)
 
     points = models.IntegerField(default=0)
+    favorite_deposit = models.ForeignKey(
+        "box_management.Deposit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="favorited_by_users",
+    )
     is_guest = models.BooleanField(default=False, db_index=True)
     guest_device_token = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True)
     last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
@@ -78,6 +85,7 @@ class CustomUser(AbstractUser):
 
     class Meta:
         indexes = [
+            models.Index(fields=["favorite_deposit"]),
             models.Index(fields=["client"]),
             models.Index(fields=["client_role"]),
             models.Index(fields=["portal_status"]),

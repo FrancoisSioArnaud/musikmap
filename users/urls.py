@@ -12,6 +12,8 @@ urlpatterns = [
     path('change-preferred-platform', views.ChangePreferredPlatform.as_view(), name="change-preferred-platform"),
     path('get-points', views.GetUserPoints.as_view(), name='get-points'),
     path('get-user-info', views.GetUserInfo.as_view(), name='get-user-info'),
+    path('set-favorite-song', views.SetFavoriteSong.as_view(), name='set-favorite-song'),
+    path('remove-favorite-song', views.RemoveFavoriteSong.as_view(), name='remove-favorite-song'),
     path('change-username', views.ChangeUsername.as_view(), name='change-username'),
 ]
 

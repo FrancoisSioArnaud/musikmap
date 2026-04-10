@@ -15,12 +15,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from box_management.models import Deposit
+from box_management.utils import create_song_deposit
 
 from .forms import RegisterUserForm
 from .models import CustomUser
 from .serializer import CustomUserSerializer
 from .utils import (
     build_current_user_payload,
+    build_favorite_deposit_payload,
     get_user_status,
     clear_guest_cookie,
     get_current_app_user,
@@ -303,15 +305,78 @@ class GetUserInfo(APIView):
         except Exception:
             profile_picture_url = None
 
-        total_deposits = Deposit.objects.filter(user=user).count()
+        viewer = get_current_app_user(request)
+        total_deposits = Deposit.objects.filter(user=user).exclude(deposit_type="favorite").count()
         data = {
             "username": user.username,
             "display_name": user.display_name,
             "profile_picture_url": profile_picture_url,
             "total_deposits": total_deposits,
             "status": get_user_status(user),
+            "favorite_deposit": build_favorite_deposit_payload(user, viewer=viewer),
         }
         return Response(data, status=status.HTTP_200_OK)
+
+
+class SetFavoriteSong(APIView):
+    def post(self, request, format=None):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+        if getattr(current_user, "is_guest", False):
+            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+        touch_last_seen(current_user)
+
+        option = request.data.get("option") or {}
+
+        try:
+            with transaction.atomic():
+                user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
+                deposit, _song = create_song_deposit(
+                    request=request,
+                    user=user,
+                    option=option,
+                    deposit_type="favorite",
+                )
+                user.favorite_deposit = deposit
+                user.save(update_fields=["favorite_deposit"])
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
+        return Response(
+            {
+                "favorite_deposit": build_favorite_deposit_payload(refreshed_user, viewer=refreshed_user),
+                "current_user": build_current_user_payload(refreshed_user),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class RemoveFavoriteSong(APIView):
+    def post(self, request, format=None):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+        if getattr(current_user, "is_guest", False):
+            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+        touch_last_seen(current_user)
+
+        with transaction.atomic():
+            user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
+            user.favorite_deposit = None
+            user.save(update_fields=["favorite_deposit"])
+
+        refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
+        return Response(
+            {
+                "favorite_deposit": None,
+                "current_user": build_current_user_payload(refreshed_user),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ChangeUsername(APIView):
