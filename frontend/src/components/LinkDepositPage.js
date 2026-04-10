@@ -23,6 +23,7 @@ export default function LinkDepositPage() {
   const [pageMessage, setPageMessage] = useState("");
   const [sender, setSender] = useState(null);
   const [deposit, setDeposit] = useState(null);
+  const [boxData, setBoxData] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +46,7 @@ export default function LinkDepositPage() {
       setPageMessage("");
       setDeposit(null);
       setSender(null);
+      setBoxData(null);
 
       try {
         const response = await fetch(
@@ -73,6 +75,7 @@ export default function LinkDepositPage() {
 
         setSender(data?.sender || null);
         setDeposit(data?.deposit || null);
+        setBoxData(data?.box || null);
       } catch {
         if (cancelled) return;
         setPageCode("network_error");
@@ -125,7 +128,7 @@ export default function LinkDepositPage() {
   const senderLabel = getSenderLabel(sender);
   const canOpenSenderProfile = Boolean(sender?.username);
   const boxLabel =
-    deposit?.box?.name || deposit?.box?.slug || deposit?.box?.url || "Inconnue";
+    boxData?.name || boxData?.url || deposit?.box_name || "Inconnue";
 
   return (
     <Box sx={{ px: 2, py: 4 }}>
