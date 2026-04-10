@@ -107,7 +107,7 @@ export default function LinkDepositPage() {
     const isExpired = pageCode === "link_expired";
 
     return (
-      <Box sx={{ px: 3, py: 7, textAlign: "center" }}>
+      <Box sx={{ px: "20px", py: 7, textAlign: "center" }}>
         <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
           {isExpired ? "Lien expiré" : "Lien indisponible"}
         </Typography>
@@ -121,7 +121,7 @@ export default function LinkDepositPage() {
   }
 
   return (
-    <Box sx={{ px: 2, py: 4 }}>
+    <Box sx={{ px: "20px", py: 4 }}>
       <Box sx={{ maxWidth: 760, mx: "auto" }}>
         <Deposit
           dep={deposit}
