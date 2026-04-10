@@ -234,7 +234,7 @@ export default function FavoriteSongSection({
 
     return (
       <Typography variant="body1" sx={{ textAlign: "center" }}>
-        {displayName} n&apos;a pas encore attaché de chanson à son profil
+        {displayName} n&apos;a pas encore de chanson de coeur
       </Typography>
     );
   }, [displayName, isCurrentFullUser, isGuestOwner, navigate, user?.username]);
