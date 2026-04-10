@@ -10,8 +10,12 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
-import cairosvg
 import qrcode
+
+try:
+    import cairosvg
+except ImportError:
+    cairosvg = None
 from reportlab.lib.pagesizes import A3
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
@@ -2268,9 +2272,24 @@ def _build_sticker_svg_bytes(sticker, absolute_sticker_url):
 
 
 
+def _get_cairosvg_module():
+    global cairosvg
+    if cairosvg is not None:
+        return cairosvg
+
+    try:
+        import cairosvg as cairosvg_module
+    except ImportError as exc:
+        raise RuntimeError("cairosvg_missing") from exc
+
+    cairosvg = cairosvg_module
+    return cairosvg
+
+
 def _render_sticker_png_bytes(sticker, absolute_sticker_url, *, output_size=2200):
+    cairosvg_module = _get_cairosvg_module()
     svg_bytes, _svg_width, _svg_height = _build_sticker_svg_bytes(sticker, absolute_sticker_url)
-    return cairosvg.svg2png(bytestring=svg_bytes, output_width=output_size, output_height=output_size)
+    return cairosvg_module.svg2png(bytestring=svg_bytes, output_width=output_size, output_height=output_size)
 
 
 
@@ -2503,9 +2522,19 @@ class ClientAdminStickerDownloadView(APIView):
         export_format = (request.data.get("format") or "images").strip().lower()
         _mark_stickers_generated(stickers)
 
-        if export_format == "pdf":
-            return _build_stickers_pdf_response(request, stickers)
-        return _build_stickers_zip_response(request, stickers)
+        try:
+            if export_format == "pdf":
+                return _build_stickers_pdf_response(request, stickers)
+            return _build_stickers_zip_response(request, stickers)
+        except RuntimeError as exc:
+            if str(exc) != "cairosvg_missing":
+                raise
+            return Response(
+                {
+                    "detail": "L'export de stickers nécessite cairosvg côté serveur. Installe la dépendance pour générer les PNG et PDF.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 class ClientAdminStickerConfirmDownloadView(APIView):
