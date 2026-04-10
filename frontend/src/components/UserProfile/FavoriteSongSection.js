@@ -203,7 +203,7 @@ export default function FavoriteSongSection({
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, pb:"6px" }}>
         <Typography variant="h5">Chanson de coeur</Typography>
         {isCurrentFullUser && hasFavorite ? (
-          <Button variant="light" onClick={openDrawer}>
+          <Button variant="outlined" onClick={openDrawer} startIcon={<SearchIcon />}>
             Changer
           </Button>
         ) : null}
@@ -242,7 +242,7 @@ export default function FavoriteSongSection({
             Attache une chanson à ton profil, elle sera visible par tout ceux qui le visiteront
           </Typography>
           <Box className="slot">
-            <Button variant="contained" onClick={openDrawer}>
+            <Button variant="contained" onClick={openDrawer} startIcon={<SearchIcon />}>
               Ajoute ta chanson de coeur
             </Button>
           </Box>
@@ -291,7 +291,7 @@ export default function FavoriteSongSection({
             />
           </Box>
 
-          <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
+          <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
             <SongSearchResultsList
               results={results}
               isSearching={isSearching}
@@ -304,6 +304,14 @@ export default function FavoriteSongSection({
               emptyContent={drawerEmptyContent}
             />
           </Box>
+
+          <Button
+            variant="contained"
+            onClick={() => closeDrawer()}
+            className="bottom_fixed"
+          >
+            Fermer
+          </Button>
         </Box>
       </Drawer>
     </Box>
