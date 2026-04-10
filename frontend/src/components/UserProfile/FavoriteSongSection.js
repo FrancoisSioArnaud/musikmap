@@ -183,7 +183,6 @@ export default function FavoriteSongSection({
             variant="text"
             onClick={handleRemoveFavorite}
             startIcon={<RemoveCircleOutlineIcon />}
-            sx={{ px: 0 }}
           >
             Retirer ma chanson de coeur
           </Button>
@@ -192,7 +191,7 @@ export default function FavoriteSongSection({
     }
 
     return (
-      <Box sx={{ px: 5, py: 3 }}>
+      <Box>
         <Typography variant="body1">Aucun résultat.</Typography>
       </Box>
     );
@@ -263,7 +262,7 @@ export default function FavoriteSongSection({
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ p: 5, pb: 2 }}>
+          <Box>
             <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
               Choisis une chanson de coeur
             </Typography>
