@@ -11,12 +11,6 @@ from urllib.parse import quote
 
 import requests
 
-qrcode = None
-cairosvg = None
-from reportlab.lib.pagesizes import A3
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
-
 # ===== Django =====
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -131,6 +125,57 @@ from utils import (
 )
 
 User = get_user_model()
+
+
+_QRCODE_MODULE = None
+_CAIROSVG_MODULE = None
+_REPORTLAB_HELPERS = None
+
+
+def _get_qrcode_module():
+    global _QRCODE_MODULE
+    if _QRCODE_MODULE is not None:
+        return _QRCODE_MODULE
+
+    try:
+        import qrcode as qrcode_module
+    except ImportError as exc:
+        raise RuntimeError("qrcode_missing") from exc
+
+    _QRCODE_MODULE = qrcode_module
+    return qrcode_module
+
+
+def _get_cairosvg_module():
+    global _CAIROSVG_MODULE
+    if _CAIROSVG_MODULE is not None:
+        return _CAIROSVG_MODULE
+
+    try:
+        import cairosvg as cairosvg_module
+    except ImportError as exc:
+        raise RuntimeError("cairosvg_missing") from exc
+    except OSError as exc:
+        raise RuntimeError("cairosvg_system_missing") from exc
+
+    _CAIROSVG_MODULE = cairosvg_module
+    return cairosvg_module
+
+
+def _get_reportlab_helpers():
+    global _REPORTLAB_HELPERS
+    if _REPORTLAB_HELPERS is not None:
+        return _REPORTLAB_HELPERS
+
+    try:
+        from reportlab.lib.pagesizes import A3 as reportlab_a3
+        from reportlab.lib.utils import ImageReader as reportlab_image_reader
+        from reportlab.pdfgen import canvas as reportlab_canvas
+    except ImportError as exc:
+        raise RuntimeError("reportlab_missing") from exc
+
+    _REPORTLAB_HELPERS = (reportlab_a3, reportlab_image_reader, reportlab_canvas)
+    return _REPORTLAB_HELPERS
 
 
 def _get_request_ip(request):
@@ -2231,31 +2276,22 @@ def _load_sticker_template_with_zone(client):
 
 
 
-def _get_qrcode_module():
-    global qrcode
-    if qrcode is not None:
-        return qrcode
+def _generate_qr_png_bytes(content, *, size=1400):
+    qrcode_module = _get_qrcode_module()
 
     try:
-        import qrcode as qrcode_module
+        qr = qrcode_module.QRCode(
+            version=None,
+            error_correction=qrcode_module.constants.ERROR_CORRECT_Q,
+            box_size=12,
+            border=4,
+        )
+        qr.add_data(content)
+        qr.make(fit=True)
+        image = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
     except ImportError as exc:
         raise RuntimeError("qrcode_missing") from exc
 
-    qrcode = qrcode_module
-    return qrcode
-
-
-def _generate_qr_png_bytes(content, *, size=1400):
-    qrcode_module = _get_qrcode_module()
-    qr = qrcode_module.QRCode(
-        version=None,
-        error_correction=qrcode_module.constants.ERROR_CORRECT_Q,
-        box_size=12,
-        border=4,
-    )
-    qr.add_data(content)
-    qr.make(fit=True)
-    image = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
     image = image.resize((size, size))
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
@@ -2282,20 +2318,6 @@ def _build_sticker_svg_bytes(sticker, absolute_sticker_url):
     svg_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     return svg_bytes, svg_width, svg_height
 
-
-
-def _get_cairosvg_module():
-    global cairosvg
-    if cairosvg is not None:
-        return cairosvg
-
-    try:
-        import cairosvg as cairosvg_module
-    except (ImportError, OSError) as exc:
-        raise RuntimeError("cairosvg_missing") from exc
-
-    cairosvg = cairosvg_module
-    return cairosvg
 
 
 def _render_sticker_png_bytes(sticker, absolute_sticker_url, *, output_size=2200):
@@ -2428,14 +2450,16 @@ def _build_stickers_zip_response(request, stickers):
 
 
 def _build_stickers_pdf_response(request, stickers):
+    reportlab_a3, reportlab_image_reader, reportlab_canvas = _get_reportlab_helpers()
+
     pdf_buffer = io.BytesIO()
-    pdf = canvas.Canvas(pdf_buffer, pagesize=A3)
-    page_width, page_height = A3
+    pdf = reportlab_canvas.Canvas(pdf_buffer, pagesize=reportlab_a3)
+    page_width, page_height = reportlab_a3
 
     for sticker in stickers:
         absolute_url = request.build_absolute_uri(f"/s/{sticker.slug}")
         png_bytes = _render_sticker_png_bytes(sticker, absolute_url, output_size=2600)
-        image_reader = ImageReader(io.BytesIO(png_bytes))
+        image_reader = reportlab_image_reader(io.BytesIO(png_bytes))
         pdf.drawImage(image_reader, 0, 0, width=page_width, height=page_height, preserveAspectRatio=True, anchor='c')
         pdf.showPage()
 
@@ -2539,17 +2563,17 @@ class ClientAdminStickerDownloadView(APIView):
                 return _build_stickers_pdf_response(request, stickers)
             return _build_stickers_zip_response(request, stickers)
         except RuntimeError as exc:
-            if str(exc) not in {"cairosvg_missing", "qrcode_missing"}:
+            error_code = str(exc)
+            details_by_code = {
+                "qrcode_missing": "L’export de stickers nécessite la dépendance Python qrcode côté serveur.",
+                "cairosvg_missing": "L’export de stickers nécessite la dépendance Python cairosvg côté serveur pour générer les PNG et PDF.",
+                "cairosvg_system_missing": "L’export de stickers nécessite les bibliothèques système Cairo sur le serveur pour générer les PNG et PDF.",
+                "reportlab_missing": "L’export PDF de stickers nécessite la dépendance Python reportlab côté serveur.",
+            }
+            detail = details_by_code.get(error_code)
+            if not detail:
                 raise
-            detail = (
-                "L'export de stickers nécessite qrcode[pil] côté serveur."
-                if str(exc) == "qrcode_missing"
-                else "L'export de stickers nécessite cairosvg côté serveur et ses bibliothèques système (notamment cairo)."
-            )
-            return Response(
-                {"detail": detail},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+            return Response({"detail": detail}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class ClientAdminStickerConfirmDownloadView(APIView):

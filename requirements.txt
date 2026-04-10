@@ -10,3 +10,4 @@ django-import-export
 social-auth-app-django
 qrcode[pil]
 cairosvg
+reportlab
