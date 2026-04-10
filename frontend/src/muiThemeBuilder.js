@@ -161,14 +161,31 @@ export function buildMuiTheme(clientTheme) {
             border: `solid inset 2px ${clientTheme.colors.primary}`,
             borderWidth: 2,
             "&:hover": {
-              backgroundColor: "inherit",
+              backgroundColor: clientTheme.colors.white,
               boxShadow: "none",
-              border: "inherit",
+              border: `solid inset 2px ${clientTheme.colors.primary}`,
             },
           },
         },
 
         variants: [
+          {
+            props: { variant: "light" },
+            style: {
+              p: "6px 26px",
+              borderRadius: 0,
+              height: 48,
+              backgroundColor: clientTheme.colors.white,
+              color: clientTheme.colors.primary,
+              fontWeight: 700,
+              border: "none",
+              "&:hover": {
+                backgroundColor: clientTheme.colors.white,
+                boxShadow: "none",
+                border: "none",
+              },
+            },
+          },
           {
             props: { variant: "depositInteract" },
             style: {
