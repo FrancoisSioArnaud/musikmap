@@ -244,6 +244,7 @@ color : var(--mm-color-success);
   display: flex;
   flex-direction: column;
   padding:6px 0;
+//  color : var(--mm-color-black);
 }
 
 .deposit_main_card .texts{
@@ -252,12 +253,6 @@ color : var(--mm-color-success);
   text-align:center;
 }
 
-.deposit_main_card .titre{
-  color: var(--mm-color-primary);
-}
-.deposit_main_card .artist{
-  color : var(--mm-color-black);
-}
 
 .deposit_list_card .texts{
   text-align:left;
