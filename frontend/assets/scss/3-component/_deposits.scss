@@ -90,10 +90,15 @@ color : var(--mm-color-success);
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   text-align: left;
   gap: 4px;
   padding: 4px 16px 4px 16px;
+}
+
+.deposit_card .deposit_interact .left, .deposit_card .deposit_interact .right{
+  display:flex;
+  gap: 4px
 }
 
 .deposit_card .deposit_action_button {
@@ -221,18 +226,6 @@ color : var(--mm-color-success);
   width : 33%;
 }
 
-
-
-.deposit_card .interact{
-  display: flex;
-  gap: 8px;
-  flex-direction: column;
-}
-.deposit .interact{
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
 
 .deposit_card .texts{
   display: flex;
