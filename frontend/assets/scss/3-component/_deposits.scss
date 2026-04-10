@@ -228,16 +228,10 @@ color : var(--mm-color-success);
   gap: 8px;
   flex-direction: column;
 }
-.deposit_main_card .interact{
+.deposit .interact{
   gap: 12px;
-}
-
-.deposit_main_card .interact{
   align-items: center;
-}
-
-.deposit_list_card .interact{
-  justify-content: left;
+  justify-content: space-between;
 }
 
 .deposit_card .texts{
