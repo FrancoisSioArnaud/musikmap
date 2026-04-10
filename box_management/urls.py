@@ -22,6 +22,13 @@ from .views import (
     ClientAdminCommentListView,
     ClientAdminCommentModerateView,
     ClientAdminCommentRestrictionListCreateView,
+    ClientAdminStickerListView,
+    ClientAdminStickerGenerateView,
+    ClientAdminStickerDownloadView,
+    ClientAdminStickerConfirmDownloadView,
+    ClientAdminStickerInstallView,
+    ClientAdminStickerAssignView,
+    ClientAdminStickerUnassignView,
 )
 
 urlpatterns = [
@@ -64,6 +71,41 @@ urlpatterns = [
         "client-admin/comments/",
         ClientAdminCommentListView.as_view(),
         name="client-admin-comments-list",
+    ),
+    path(
+        "client-admin/stickers/",
+        ClientAdminStickerListView.as_view(),
+        name="client-admin-stickers-list",
+    ),
+    path(
+        "client-admin/stickers/generate/",
+        ClientAdminStickerGenerateView.as_view(),
+        name="client-admin-stickers-generate",
+    ),
+    path(
+        "client-admin/stickers/download/",
+        ClientAdminStickerDownloadView.as_view(),
+        name="client-admin-stickers-download",
+    ),
+    path(
+        "client-admin/stickers/confirm-download/",
+        ClientAdminStickerConfirmDownloadView.as_view(),
+        name="client-admin-stickers-confirm-download",
+    ),
+    path(
+        "client-admin/stickers/install/",
+        ClientAdminStickerInstallView.as_view(),
+        name="client-admin-stickers-install",
+    ),
+    path(
+        "client-admin/stickers/<int:sticker_id>/assign/",
+        ClientAdminStickerAssignView.as_view(),
+        name="client-admin-stickers-assign",
+    ),
+    path(
+        "client-admin/stickers/<int:sticker_id>/unassign/",
+        ClientAdminStickerUnassignView.as_view(),
+        name="client-admin-stickers-unassign",
     ),
     path(
         "client-admin/comments/<int:comment_id>/moderate/",

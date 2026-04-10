@@ -1,18 +1,30 @@
 # ===== Standard library =====
+import base64
+import io
 import json
 import re
+import xml.etree.ElementTree as ET
+import zipfile
 from datetime import timedelta
+from pathlib import Path
+from urllib.parse import quote
 
 import requests
+import cairosvg
+import qrcode
+from reportlab.lib.pagesizes import A3
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 
 # ===== Django =====
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction, IntegrityError
 from django.db.models import Count, Max, Prefetch, Q
 from django.middleware.csrf import get_token
-from django.http import Http404, HttpResponseGone
+from django.http import Http404, HttpResponse, HttpResponseGone
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -134,7 +146,7 @@ def sticker_redirect_view(request, sticker_slug):
         return redirect("/")
 
     sticker = (
-        Sticker.objects.select_related("box")
+        Sticker.objects.select_related("box", "client")
         .filter(slug=sticker_slug)
         .first()
     )
@@ -146,10 +158,10 @@ def sticker_redirect_view(request, sticker_slug):
         return HttpResponseGone("Sticker désactivé.", content_type="text/plain; charset=utf-8")
 
     box_slug = getattr(getattr(sticker, "box", None), "url", "")
-    if not box_slug:
-        raise Http404("Aucune box active n’est associée à ce sticker.")
+    if box_slug:
+        return redirect(f"/flowbox/{box_slug}")
 
-    return redirect(f"/flowbox/{box_slug}")
+    return redirect(f"/client/stickers/install?sticker={quote(sticker.slug)}")
 
 
 def sticker_root_not_found_view(request):
@@ -2141,3 +2153,506 @@ class ClientAdminIncitationDetailView(APIView):
 
         phrase.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+STICKER_TEMPLATE_DIR = Path(settings.BASE_DIR) / "box_management" / "static" / "box_management" / "stickers" / "templates"
+SVG_NS = "http://www.w3.org/2000/svg"
+XLINK_NS = "http://www.w3.org/1999/xlink"
+ET.register_namespace("", SVG_NS)
+ET.register_namespace("xlink", XLINK_NS)
+
+
+def _get_sticker_template_path_for_client(client):
+    client_slug = (getattr(client, "slug", "") or "").strip()
+    if client_slug:
+        candidate = STICKER_TEMPLATE_DIR / f"{client_slug}.svg"
+        if candidate.exists():
+            return candidate
+    return STICKER_TEMPLATE_DIR / "default.svg"
+
+
+
+def _find_svg_element_by_id(root, element_id):
+    for element in root.iter():
+        if str(element.attrib.get("id") or "").strip() == element_id:
+            return element
+    return None
+
+
+
+def _parse_svg_dimension(value, fallback=None):
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    raw = raw.replace("px", "").strip()
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return fallback
+
+
+
+def _get_svg_viewbox_size(root):
+    view_box = str(root.attrib.get("viewBox") or "").strip()
+    if view_box:
+        parts = re.split(r"[\s,]+", view_box)
+        if len(parts) == 4:
+            try:
+                return float(parts[2]), float(parts[3])
+            except (TypeError, ValueError):
+                pass
+    width = _parse_svg_dimension(root.attrib.get("width"), 1000.0)
+    height = _parse_svg_dimension(root.attrib.get("height"), 1000.0)
+    return width or 1000.0, height or 1000.0
+
+
+
+def _load_sticker_template_with_zone(client):
+    template_path = _get_sticker_template_path_for_client(client)
+    if not template_path.exists():
+        raise FileNotFoundError("Template SVG sticker introuvable.")
+
+    svg_text = template_path.read_text(encoding="utf-8")
+    root = ET.fromstring(svg_text)
+    qr_zone = _find_svg_element_by_id(root, "qr-zone")
+    if qr_zone is None:
+        raise ValueError("Le template SVG doit contenir un élément avec id='qr-zone'.")
+
+    x = _parse_svg_dimension(qr_zone.attrib.get("x"), 0.0)
+    y = _parse_svg_dimension(qr_zone.attrib.get("y"), 0.0)
+    width = _parse_svg_dimension(qr_zone.attrib.get("width"), None)
+    height = _parse_svg_dimension(qr_zone.attrib.get("height"), None)
+    if width is None or height is None:
+        raise ValueError("La zone QR du template SVG doit définir x, y, width et height.")
+
+    svg_width, svg_height = _get_svg_viewbox_size(root)
+    return root, {"x": x, "y": y, "width": width, "height": height}, (svg_width, svg_height)
+
+
+
+def _generate_qr_png_bytes(content, *, size=1400):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_Q,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(content)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+    image = image.resize((size, size))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+
+def _build_sticker_svg_bytes(sticker, absolute_sticker_url):
+    root, qr_zone, (svg_width, svg_height) = _load_sticker_template_with_zone(sticker.client)
+    qr_png_bytes = _generate_qr_png_bytes(absolute_sticker_url)
+    qr_png_base64 = base64.b64encode(qr_png_bytes).decode("ascii")
+
+    image_el = ET.Element(f"{{{SVG_NS}}}image")
+    image_el.set("id", "generated-qr")
+    image_el.set("x", str(qr_zone["x"]))
+    image_el.set("y", str(qr_zone["y"]))
+    image_el.set("width", str(qr_zone["width"]))
+    image_el.set("height", str(qr_zone["height"]))
+    image_el.set("preserveAspectRatio", "none")
+    image_el.set(f"{{{XLINK_NS}}}href", f"data:image/png;base64,{qr_png_base64}")
+    image_el.set("href", f"data:image/png;base64,{qr_png_base64}")
+    root.append(image_el)
+
+    svg_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    return svg_bytes, svg_width, svg_height
+
+
+
+def _render_sticker_png_bytes(sticker, absolute_sticker_url, *, output_size=2200):
+    svg_bytes, _svg_width, _svg_height = _build_sticker_svg_bytes(sticker, absolute_sticker_url)
+    return cairosvg.svg2png(bytestring=svg_bytes, output_width=output_size, output_height=output_size)
+
+
+
+def _sticker_asset_basename(sticker):
+    return f"sticker-{sticker.slug}"
+
+
+
+def _serialize_client_admin_sticker(sticker):
+    box = getattr(sticker, "box", None)
+    return {
+        "id": sticker.id,
+        "slug": sticker.slug,
+        "status": sticker.status,
+        "status_label": sticker.get_status_display(),
+        "is_active": bool(sticker.is_active),
+        "client": {
+            "id": sticker.client_id,
+            "name": getattr(getattr(sticker, "client", None), "name", None),
+            "slug": getattr(getattr(sticker, "client", None), "slug", None),
+        },
+        "box": (
+            {
+                "id": box.id,
+                "name": box.name,
+                "slug": box.url,
+            }
+            if box
+            else None
+        ),
+        "qr_generated_at": sticker.qr_generated_at.isoformat() if sticker.qr_generated_at else None,
+        "downloaded_at": sticker.downloaded_at.isoformat() if sticker.downloaded_at else None,
+        "assigned_at": sticker.assigned_at.isoformat() if sticker.assigned_at else None,
+        "created_at": sticker.created_at.isoformat() if sticker.created_at else None,
+        "updated_at": sticker.updated_at.isoformat() if sticker.updated_at else None,
+        "sticker_url": f"/s/{sticker.slug}",
+        "flowbox_url": f"/flowbox/{box.url}" if box and box.url else None,
+        "is_assigned": bool(sticker.box_id),
+        "is_generated": bool(sticker.qr_generated_at),
+        "is_downloaded": bool(sticker.downloaded_at),
+    }
+
+
+
+def _serialize_client_box_assignment(box, assigned_sticker_count=0):
+    return {
+        "id": box.id,
+        "name": box.name,
+        "slug": box.url,
+        "assigned_sticker_count": int(assigned_sticker_count or 0),
+        "has_assigned_sticker": bool(assigned_sticker_count),
+    }
+
+
+
+def _get_sticker_ids_from_request(request):
+    raw_ids = request.data.get("sticker_ids")
+    if raw_ids is None:
+        raw_ids = request.data.get("ids")
+
+    if not isinstance(raw_ids, list):
+        return []
+
+    ids = []
+    for item in raw_ids:
+        try:
+            ids.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+
+def _get_client_stickers_by_ids(user, sticker_ids):
+    if not sticker_ids:
+        return []
+    stickers = list(
+        Sticker.objects.select_related("client", "box")
+        .filter(client_id=user.client_id, id__in=sticker_ids)
+        .order_by("id")
+    )
+    stickers_by_id = {sticker.id: sticker for sticker in stickers}
+    return [stickers_by_id[sticker_id] for sticker_id in sticker_ids if sticker_id in stickers_by_id]
+
+
+
+def _mark_stickers_generated(stickers, now=None):
+    now = now or timezone.now()
+    updated = []
+    for sticker in stickers:
+        before = sticker.qr_generated_at
+        sticker.mark_generated(at=now)
+        if before != sticker.qr_generated_at or sticker.status != sticker.get_status_from_fields():
+            updated.append(sticker)
+        else:
+            updated.append(sticker)
+    for sticker in updated:
+        sticker.save(update_fields=["qr_generated_at", "status", "updated_at", "assigned_at"])
+    return updated
+
+
+
+def _mark_stickers_downloaded(stickers, now=None):
+    now = now or timezone.now()
+    for sticker in stickers:
+        sticker.mark_downloaded(at=now)
+        sticker.save(update_fields=["qr_generated_at", "downloaded_at", "status", "updated_at", "assigned_at"])
+    return stickers
+
+
+
+def _build_stickers_zip_response(request, stickers):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for sticker in stickers:
+            absolute_url = request.build_absolute_uri(f"/s/{sticker.slug}")
+            png_bytes = _render_sticker_png_bytes(sticker, absolute_url)
+            archive.writestr(f"{_sticker_asset_basename(sticker)}.png", png_bytes)
+
+    response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+    response["Content-Disposition"] = 'attachment; filename="stickers-images.zip"'
+    return response
+
+
+
+def _build_stickers_pdf_response(request, stickers):
+    pdf_buffer = io.BytesIO()
+    pdf = canvas.Canvas(pdf_buffer, pagesize=A3)
+    page_width, page_height = A3
+
+    for sticker in stickers:
+        absolute_url = request.build_absolute_uri(f"/s/{sticker.slug}")
+        png_bytes = _render_sticker_png_bytes(sticker, absolute_url, output_size=2600)
+        image_reader = ImageReader(io.BytesIO(png_bytes))
+        pdf.drawImage(image_reader, 0, 0, width=page_width, height=page_height, preserveAspectRatio=True, anchor='c')
+        pdf.showPage()
+
+    pdf.save()
+    response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="stickers-a3.pdf"'
+    return response
+
+
+class ClientAdminStickerListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        search = (request.query_params.get("search") or "").strip()
+        status_filter = (request.query_params.get("status") or "all").strip()
+
+        stickers_qs = Sticker.objects.select_related("client", "box").filter(client_id=user.client_id)
+        if search:
+            stickers_qs = stickers_qs.filter(
+                Q(slug__icontains=search)
+                | Q(box__name__icontains=search)
+                | Q(box__url__icontains=search)
+            )
+
+        if status_filter and status_filter != "all":
+            if status_filter == "never_generated":
+                stickers_qs = stickers_qs.filter(qr_generated_at__isnull=True)
+            elif status_filter == "never_downloaded":
+                stickers_qs = stickers_qs.filter(downloaded_at__isnull=True)
+            elif status_filter == "assigned":
+                stickers_qs = stickers_qs.filter(box__isnull=False)
+            elif status_filter == "unassigned":
+                stickers_qs = stickers_qs.filter(box__isnull=True)
+            elif status_filter == "inactive":
+                stickers_qs = stickers_qs.filter(is_active=False)
+            else:
+                stickers_qs = stickers_qs.filter(status=status_filter)
+
+        stickers = list(stickers_qs.order_by("-created_at", "-id"))
+        payload = [_serialize_client_admin_sticker(sticker) for sticker in stickers]
+
+        counts_base = Sticker.objects.filter(client_id=user.client_id)
+        counts = {
+            "all": counts_base.count(),
+            "never_generated": counts_base.filter(qr_generated_at__isnull=True).count(),
+            "never_downloaded": counts_base.filter(downloaded_at__isnull=True).count(),
+            "assigned": counts_base.filter(box__isnull=False).count(),
+            "unassigned": counts_base.filter(box__isnull=True).count(),
+            "inactive": counts_base.filter(is_active=False).count(),
+        }
+
+        return Response({"results": payload, "counts": counts}, status=status.HTTP_200_OK)
+
+
+class ClientAdminStickerGenerateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker_ids = _get_sticker_ids_from_request(request)
+        stickers = _get_client_stickers_by_ids(user, sticker_ids)
+        if not stickers:
+            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+
+        _mark_stickers_generated(stickers)
+        return Response(
+            {
+                "ok": True,
+                "count": len(stickers),
+                "stickers": [_serialize_client_admin_sticker(sticker) for sticker in stickers],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientAdminStickerDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker_ids = _get_sticker_ids_from_request(request)
+        stickers = _get_client_stickers_by_ids(user, sticker_ids)
+        if not stickers:
+            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+
+        export_format = (request.data.get("format") or "images").strip().lower()
+        _mark_stickers_generated(stickers)
+
+        if export_format == "pdf":
+            return _build_stickers_pdf_response(request, stickers)
+        return _build_stickers_zip_response(request, stickers)
+
+
+class ClientAdminStickerConfirmDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker_ids = _get_sticker_ids_from_request(request)
+        stickers = _get_client_stickers_by_ids(user, sticker_ids)
+        if not stickers:
+            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+
+        _mark_stickers_downloaded(stickers)
+        return Response(
+            {
+                "ok": True,
+                "count": len(stickers),
+                "stickers": [_serialize_client_admin_sticker(sticker) for sticker in stickers],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientAdminStickerInstallView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker_slug = (request.query_params.get("sticker") or "").strip()
+        search = (request.query_params.get("search") or "").strip()
+
+        sticker = None
+        if sticker_slug:
+            if not re.fullmatch(r"\d{11}", sticker_slug):
+                return Response({"detail": "Slug sticker invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+            sticker = (
+                Sticker.objects.select_related("client", "box")
+                .filter(client_id=user.client_id, slug=sticker_slug)
+                .first()
+            )
+            if not sticker:
+                return Response({"detail": "Sticker introuvable pour ce client."}, status=status.HTTP_404_NOT_FOUND)
+            if not sticker.is_active:
+                return Response({"detail": "Sticker désactivé."}, status=status.HTTP_410_GONE)
+
+        boxes_qs = Box.objects.filter(client_id=user.client_id)
+        if search:
+            boxes_qs = boxes_qs.filter(Q(name__icontains=search) | Q(url__icontains=search))
+
+        boxes = list(boxes_qs.order_by("name"))
+        if boxes:
+            counts_by_box_id = dict(
+                Sticker.objects.filter(client_id=user.client_id, box_id__in=[box.id for box in boxes])
+                .values_list("box_id")
+                .annotate(count=Count("id"))
+            )
+        else:
+            counts_by_box_id = {}
+
+        serialized_boxes = [
+            _serialize_client_box_assignment(box, counts_by_box_id.get(box.id, 0))
+            for box in boxes
+        ]
+        serialized_boxes.sort(
+            key=lambda item: (0 if not item["has_assigned_sticker"] else 1, (item["name"] or "").lower())
+        )
+
+        message = ""
+        if sticker and sticker.box_id:
+            message = f"Sticker assigné à {sticker.box.url}"
+            serialized_boxes = []
+
+        return Response(
+            {
+                "sticker": _serialize_client_admin_sticker(sticker) if sticker else None,
+                "boxes": serialized_boxes,
+                "message": message,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ClientAdminStickerAssignView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, sticker_id):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker = (
+            Sticker.objects.select_related("client", "box")
+            .filter(client_id=user.client_id, id=sticker_id)
+            .first()
+        )
+        if not sticker:
+            return Response({"detail": "Sticker introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        if not sticker.is_active:
+            return Response({"detail": "Sticker désactivé."}, status=status.HTTP_410_GONE)
+        if sticker.box_id:
+            return Response(
+                {
+                    "detail": f"Sticker assigné à {sticker.box.url}.",
+                    "sticker": _serialize_client_admin_sticker(sticker),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        try:
+            box_id = int(request.data.get("box_id"))
+        except (TypeError, ValueError):
+            return Response({"detail": "Box invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+        box = Box.objects.filter(client_id=user.client_id, id=box_id).first()
+        if not box:
+            return Response({"detail": "Box introuvable pour ce client."}, status=status.HTTP_404_NOT_FOUND)
+
+        sticker.assign_box(box)
+        sticker.save(update_fields=["box", "assigned_at", "status", "updated_at", "qr_generated_at", "downloaded_at"])
+
+        return Response({"ok": True, "sticker": _serialize_client_admin_sticker(sticker)}, status=status.HTTP_200_OK)
+
+
+class ClientAdminStickerUnassignView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, sticker_id):
+        user, error_response = _get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        sticker = (
+            Sticker.objects.select_related("client", "box")
+            .filter(client_id=user.client_id, id=sticker_id)
+            .first()
+        )
+        if not sticker:
+            return Response({"detail": "Sticker introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        sticker.unassign_box()
+        sticker.save(update_fields=["box", "assigned_at", "status", "updated_at", "qr_generated_at", "downloaded_at"])
+
+        return Response({"ok": True, "sticker": _serialize_client_admin_sticker(sticker)}, status=status.HTTP_200_OK)

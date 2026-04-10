@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useContext, useMemo } from "react";
-import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [errorMessages, setErrorMessages] = useState("");
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   const hasGuest = Boolean(user?.is_guest);
@@ -55,8 +56,16 @@ export default function LoginPage() {
 
         setTimeout(async () => {
           await checkUserStatus(setUser, setIsAuthenticated);
+
+          const redirectState = location?.state?.from;
+          const redirectTarget = redirectState?.pathname
+            ? `${redirectState.pathname || ""}${redirectState.search || ""}${redirectState.hash || ""}`
+            : (searchParams.get("next") || "");
+
           if (data?.guest_merged) {
             navigate("/profile");
+          } else if (redirectTarget) {
+            navigate(redirectTarget);
           } else {
             navigateToCurrentBox(navigate);
           }

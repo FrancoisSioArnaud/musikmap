@@ -1,0 +1,28 @@
+<svg viewBox="0 0 1000 1400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF7E8" />
+      <stop offset="100%" stop-color="#FFE7B8" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1000" height="1400" rx="56" fill="url(#bg)" />
+  <rect x="48" y="48" width="904" height="1304" rx="40" fill="none" stroke="#111111" stroke-width="8" />
+
+  <text x="500" y="170" text-anchor="middle" font-size="78" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#111111">
+    Boîte à chanson
+  </text>
+  <text x="500" y="255" text-anchor="middle" font-size="34" font-family="Arial, Helvetica, sans-serif" fill="#222222">
+    Scanne pour ouvrir la boîte
+  </text>
+
+  <rect x="180" y="380" width="640" height="640" rx="28" fill="#FFFFFF" stroke="#111111" stroke-width="8" />
+  <rect id="qr-zone" x="180" y="380" width="640" height="640" fill="none" stroke="none" />
+
+  <text x="500" y="1115" text-anchor="middle" font-size="28" font-family="Arial, Helvetica, sans-serif" fill="#333333">
+    Approche ton téléphone du QR code
+  </text>
+  <text x="500" y="1180" text-anchor="middle" font-size="28" font-family="Arial, Helvetica, sans-serif" fill="#333333">
+    et découvre la chanson de cette boîte.
+  </text>
+</svg>

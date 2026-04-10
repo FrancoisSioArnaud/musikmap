@@ -1,7 +1,11 @@
 import csv
 
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.db.models import Count
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
@@ -550,15 +554,112 @@ class CommentAttemptLogAdmin(admin.ModelAdmin):
     )
 
 
+class StickerBatchCreateForm(forms.Form):
+    client = forms.ModelChoiceField(
+        queryset=Client.objects.order_by("name"),
+        label="Client",
+    )
+    quantity = forms.IntegerField(
+        label="Nombre de stickers",
+        min_value=1,
+        max_value=500,
+        initial=50,
+        help_text="Maximum 500 stickers par lot.",
+    )
+
+
 @admin.register(Sticker)
 class StickerAdmin(admin.ModelAdmin):
-    list_display = ("slug", "box", "is_active", "sticker_path", "flowbox_path", "created_at", "updated_at")
-    list_filter = ("is_active", "box__client", "created_at")
-    search_fields = ("slug", "box__name", "box__url", "box__client__name")
+    change_list_template = "admin/box_management/sticker/change_list.html"
+    list_display = (
+        "slug",
+        "client",
+        "box",
+        "status",
+        "is_active",
+        "sticker_path",
+        "flowbox_path",
+        "qr_generated_at",
+        "downloaded_at",
+        "assigned_at",
+        "created_at",
+    )
+    list_filter = ("status", "is_active", "client", "created_at")
+    search_fields = ("slug", "client__name", "client__slug", "box__name", "box__url")
     ordering = ("-created_at", "-id")
-    autocomplete_fields = ("box",)
-    readonly_fields = ("sticker_path", "flowbox_path", "created_at", "updated_at")
-    fields = ("slug", "box", "is_active", "sticker_path", "flowbox_path", "created_at", "updated_at")
+    autocomplete_fields = ("client", "box")
+    readonly_fields = (
+        "status",
+        "sticker_path",
+        "flowbox_path",
+        "qr_generated_at",
+        "downloaded_at",
+        "assigned_at",
+        "created_at",
+        "updated_at",
+    )
+    fields = (
+        "client",
+        "slug",
+        "box",
+        "is_active",
+        "status",
+        "sticker_path",
+        "flowbox_path",
+        "qr_generated_at",
+        "downloaded_at",
+        "assigned_at",
+        "created_at",
+        "updated_at",
+    )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "batch-create/",
+                self.admin_site.admin_view(self.batch_create_view),
+                name="box_management_sticker_batch_create",
+            ),
+        ]
+        return custom_urls + urls
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["sticker_batch_create_url"] = reverse("admin:box_management_sticker_batch_create")
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def batch_create_view(self, request):
+        if request.method == "POST":
+            form = StickerBatchCreateForm(request.POST)
+            if form.is_valid():
+                client = form.cleaned_data["client"]
+                quantity = form.cleaned_data["quantity"]
+                created_count = 0
+
+                for _ in range(quantity):
+                    Sticker.objects.create(client=client)
+                    created_count += 1
+
+                messages.success(
+                    request,
+                    f"{created_count} stickers ont été créés pour {client.name}.",
+                )
+                return redirect(reverse("admin:box_management_sticker_changelist"))
+        else:
+            form = StickerBatchCreateForm()
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": "Créer un lot de stickers",
+            "form": form,
+        }
+        return TemplateResponse(
+            request,
+            "admin/box_management/sticker/batch_create.html",
+            context,
+        )
 
     @admin.display(description="URL sticker")
     def sticker_path(self, obj):

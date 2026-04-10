@@ -1,4 +1,5 @@
 from django.db import models
+import re
 from django.utils import timezone
 from django.db.models import Count
 from django.dispatch import receiver
@@ -988,6 +989,18 @@ class CommentAttemptLog(models.Model):
 
 
 class Sticker(models.Model):
+    STATUS_CREATED = "created"
+    STATUS_GENERATED = "generated"
+    STATUS_DOWNLOADED = "downloaded"
+    STATUS_ASSIGNED = "assigned"
+
+    STATUS_CHOICES = [
+        (STATUS_CREATED, "Créé"),
+        (STATUS_GENERATED, "QR généré"),
+        (STATUS_DOWNLOADED, "Téléchargé"),
+        (STATUS_ASSIGNED, "Assigné"),
+    ]
+
     slug = models.CharField(
         max_length=11,
         unique=True,
@@ -1001,12 +1014,29 @@ class Sticker(models.Model):
         ],
         help_text="11 chiffres. Laisse vide pour générer automatiquement un slug.",
     )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.PROTECT,
+        related_name="stickers",
+        db_index=True,
+    )
     box = models.ForeignKey(
         Box,
         on_delete=models.PROTECT,
         related_name="stickers",
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_CREATED,
+        db_index=True,
     )
     is_active = models.BooleanField(default=True, db_index=True)
+    qr_generated_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    downloaded_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    assigned_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1014,15 +1044,74 @@ class Sticker(models.Model):
         ordering = ["-created_at", "-id"]
         indexes = [
             models.Index(fields=["slug"]),
-            models.Index(fields=["is_active", "created_at"]),
+            models.Index(fields=["client", "status"]),
+            models.Index(fields=["client", "is_active", "created_at"]),
+            models.Index(fields=["client", "qr_generated_at"]),
+            models.Index(fields=["client", "downloaded_at"]),
+            models.Index(fields=["client", "assigned_at"]),
         ]
 
     def __str__(self):
-        return f"{self.slug} → {self.box}"
+        target = getattr(self.box, "url", None) or "non assigné"
+        return f"{self.slug} → {target}"
 
     @staticmethod
     def generate_slug():
         return "".join(secrets.choice("0123456789") for _ in range(11))
+
+    def get_status_from_fields(self):
+        if self.box_id:
+            return self.STATUS_ASSIGNED
+        if self.downloaded_at:
+            return self.STATUS_DOWNLOADED
+        if self.qr_generated_at:
+            return self.STATUS_GENERATED
+        return self.STATUS_CREATED
+
+    def sync_status(self):
+        self.status = self.get_status_from_fields()
+        return self.status
+
+    def clean(self):
+        errors = {}
+
+        self.slug = (self.slug or "").strip()
+
+        if self.slug and not re.fullmatch(r"\d{11}", self.slug):
+            errors["slug"] = "Le slug du sticker doit contenir exactement 11 chiffres."
+
+        if not self.client_id:
+            errors["client"] = "Le client est obligatoire."
+
+        if self.box_id:
+            if not getattr(self.box, "client_id", None):
+                errors["box"] = "La box sélectionnée n’est rattachée à aucun client."
+            elif self.client_id and self.box.client_id != self.client_id:
+                errors["box"] = "La box doit appartenir au même client que le sticker."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def mark_generated(self, at=None):
+        if not self.qr_generated_at:
+            self.qr_generated_at = at or timezone.now()
+        self.sync_status()
+
+    def mark_downloaded(self, at=None):
+        if not self.qr_generated_at:
+            self.qr_generated_at = at or timezone.now()
+        self.downloaded_at = at or timezone.now()
+        self.sync_status()
+
+    def assign_box(self, box, at=None):
+        self.box = box
+        self.assigned_at = at or timezone.now()
+        self.sync_status()
+
+    def unassign_box(self):
+        self.box = None
+        self.assigned_at = None
+        self.sync_status()
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -1031,6 +1120,14 @@ class Sticker(models.Model):
                 slug = self.generate_slug()
             self.slug = slug
 
+        if self.box_id and not self.assigned_at:
+            self.assigned_at = timezone.now()
+        if not self.box_id:
+            self.assigned_at = None
+        if self.downloaded_at and not self.qr_generated_at:
+            self.qr_generated_at = self.downloaded_at
+
+        self.sync_status()
         self.full_clean()
         return super().save(*args, **kwargs)
 

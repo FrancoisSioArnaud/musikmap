@@ -36,6 +36,8 @@ import ClientArticlesList from "./ClientAdmin/ArticlesList";
 import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
 import ClientIncitationsList from "./ClientAdmin/IncitationsList";
 import ClientCommentsList from "./ClientAdmin/CommentsList";
+import ClientStickersList from "./ClientAdmin/StickersList";
+import ClientStickersInstall from "./ClientAdmin/StickersInstall";
 
 import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
@@ -158,6 +160,8 @@ export default function App() {
                 <Route path="articles/:articleId" element={<ClientArticleEdit />} />
                 <Route path="incitation" element={<ClientIncitationsList />} />
                 <Route path="commentaires" element={<ClientCommentsList />} />
+                <Route path="stickers" element={<ClientStickersList />} />
+                <Route path="stickers/install" element={<ClientStickersInstall />} />
               </Route>
 
               <Route
