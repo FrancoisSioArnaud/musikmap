@@ -359,225 +359,227 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [hasActivePinned, isGuestUser, loading, navigate, openSearchDrawer, user?.username]);
 
   return (
-    <Box className="icon_container info_box">
-      <PushPinIcon />
-    </Box>
     <Box className="pinned_song_section">
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-          px: 2.5,
-          pb: 1,
-        }}
-      >
-        <Typography variant="h4">Épinglé ici</Typography>
+      <Box className="icon_container info_box">
+        <PushPinIcon />
       </Box>
-      <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-         La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
-      </Typography>
-          
-      {hasActivePinned ? (
-        <Deposit
-          dep={activePinnedDeposit}
-          user={user}
-          variant="list"
-          showUser={true}
-          showDate={true}
-          fitContainer
-          dateLabel={buildPinnedDateLabel(activePinnedDeposit)}
-          userPrefix="par"
-          footerSlot={progressFooter}
-        />
-      ) : (
-        <Box className="slot">{slotContent}</Box>
-      )}
-
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={closeDrawer}
-        PaperProps={{
-          sx: {
-            width: "100vw",
-            maxWidth: "100vw",
-            height: "100vh",
-            overflow: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          {drawerStep === "search" ? (
-            <>
-              <Box sx={{ p: 5, pb: 2 }}>
-                <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                  Choisis une chanson à épingler
-                </Typography>
-
-                <TextField
-                  inputRef={searchInputRef}
-                  fullWidth
-                  type="search"
-                  placeholder="Chercher une chanson"
-                  value={searchValue}
-                  className="searchfield"
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  inputProps={{ inputMode: "search" }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="medium" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    borderRadius: "var(--mm-radius-round)",
-                    "& .MuiInputBase-input": { fontSize: 16 },
-                  }}
-                />
-              </Box>
-
-              <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
-                <SongSearchResultsList
-                  results={results}
-                  isSearching={isSearching}
-                  onAction={handleSongSelected}
-                  actionLabel="Choisir"
-                  emptyContent={
-                    searchValue.trim() ? (
-                      <Box sx={{ px: 5, py: 3 }}>
-                        <Typography variant="body1">Aucun résultat.</Typography>
-                      </Box>
-                    ) : (
-                      <Box sx={{ px: 5, py: 3 }}>
-                        
-                      </Box>
-                    )
-                  }
-                />
-              </Box>
-            </>
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              <Box sx={{ 
-                        p: 5,
-                        pb: "100px",
-                        /* flex-direction: column; */
+      <Box className="pinned_song_container">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            px: 2.5,
+            pb: 1,
+          }}
+        >
+          <Typography variant="h4">Épinglé ici</Typography>
+        </Box>
+        <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+           La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
+        </Typography>
+            
+        {hasActivePinned ? (
+          <Deposit
+            dep={activePinnedDeposit}
+            user={user}
+            variant="list"
+            showUser={true}
+            showDate={true}
+            fitContainer
+            dateLabel={buildPinnedDateLabel(activePinnedDeposit)}
+            userPrefix="par"
+            footerSlot={progressFooter}
+          />
+        ) : (
+          <Box className="slot">{slotContent}</Box>
+        )}
+  
+        <Drawer
+          anchor="right"
+          open={drawerOpen}
+          onClose={closeDrawer}
+          PaperProps={{
+            sx: {
+              width: "100vw",
+              maxWidth: "100vw",
+              height: "100vh",
+              overflow: "hidden",
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {drawerStep === "search" ? (
+              <>
+                <Box sx={{ p: 5, pb: 2 }}>
+                  <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                    Choisis une chanson à épingler
+                  </Typography>
+  
+                  <TextField
+                    inputRef={searchInputRef}
+                    fullWidth
+                    type="search"
+                    placeholder="Chercher une chanson"
+                    value={searchValue}
+                    className="searchfield"
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    inputProps={{ inputMode: "search" }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="medium" />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      borderRadius: "var(--mm-radius-round)",
+                      "& .MuiInputBase-input": { fontSize: 16 },
+                    }}
+                  />
+                </Box>
+  
+                <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
+                  <SongSearchResultsList
+                    results={results}
+                    isSearching={isSearching}
+                    onAction={handleSongSelected}
+                    actionLabel="Choisir"
+                    emptyContent={
+                      searchValue.trim() ? (
+                        <Box sx={{ px: 5, py: 3 }}>
+                          <Typography variant="body1">Aucun résultat.</Typography>
+                        </Box>
+                      ) : (
+                        <Box sx={{ px: 5, py: 3 }}>
+                          
+                        </Box>
+                      )
+                    }
+                  />
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <Box sx={{ 
+                          p: 5,
+                          pb: "100px",
+                          /* flex-direction: column; */
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          height: "100%",
+                        }}>
+                  <Button
+                    variant="text"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => setDrawerStep("search")}
+                    sx={{ px: 0, mb: 2 }}
+                  >
+                    Retour
+                  </Button>
+  
+                  <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                    Choisis une durée
+                  </Typography>
+                  <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+                    Choisis pendant combien de temps ta chanson sera épinglée à la boîte.
+                  </Typography>
+                      
+  
+                  <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing:"border-box" }}>
+                    <Box className="img_container">
+                      {selectedSong?.image_url_small || selectedSong?.image_url ? (
+                        <Box
+                          component="img"
+                          src={selectedSong?.image_url_small || selectedSong?.image_url}
+                          alt={selectedSong?.name || "Cover"}
+                          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      ) : null}
+                    </Box>
+                    <Box className="texts">
+                      <Typography className="titre" variant="h5" title={selectedSong?.name || ""}>
+                        {selectedSong?.name || ""}
+                      </Typography>
+                      <Typography className="artist" variant="body1" title={selectedSong?.artist || ""}>
+                        {selectedSong?.artist || ""}
+                      </Typography>
+                    </Box>
+                  </Box>
+  
+                  <Box sx={{ 
                         display: "flex",
+                        alignItems: "center",
+                        gap: 0,
+                        flex: "1",
+                        minHeight: "0",
+                        width: "100%",
                         flexDirection: "column",
-                        alignItems: "flex-start",
-                        height: "100%",
-                      }}>
-                <Button
-                  variant="text"
-                  startIcon={<ArrowBackIcon />}
-                  onClick={() => setDrawerStep("search")}
-                  sx={{ px: 0, mb: 2 }}
-                >
-                  Retour
-                </Button>
-
-                <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                  Choisis une durée
-                </Typography>
-                <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-                  Choisis pendant combien de temps ta chanson sera épinglée à la boîte.
-                </Typography>
-                    
-
-                <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing:"border-box" }}>
-                  <Box className="img_container">
-                    {selectedSong?.image_url_small || selectedSong?.image_url ? (
-                      <Box
-                        component="img"
-                        src={selectedSong?.image_url_small || selectedSong?.image_url}
-                        alt={selectedSong?.name || "Cover"}
-                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
+                        justifyContent: "center",
+                        gap: "26px"
+                          }}>
+                    <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
+                    <Box
+                      key={`${selectedStepIndex}-${selectedPrice}`}
+                      className="points_container points_container_big points_container_pop"
+                      sx={{
+                        margin: "12px auto",
+                        display: "inline-flex",
+                        gap: 1,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography component="span" variant="body1">
+                        {selectedPrice}
+                      </Typography>
+                      <MusicNote />
+                    </Box>
+                    {isSelectedPriceTooHigh ? (
+                      <Typography variant="body1" sx={{ color: "var(--mm-color-error)" }}>
+                        Tu n'as pas assez de points
+                      </Typography>
                     ) : null}
                   </Box>
-                  <Box className="texts">
-                    <Typography className="titre" variant="h5" title={selectedSong?.name || ""}>
-                      {selectedSong?.name || ""}
-                    </Typography>
-                    <Typography className="artist" variant="body1" title={selectedSong?.artist || ""}>
-                      {selectedSong?.artist || ""}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box sx={{ 
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0,
-                      flex: "1",
-                      minHeight: "0",
-                      width: "100%",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      gap: "26px"
-                        }}>
-                  <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
-                  <Box
-                    key={`${selectedStepIndex}-${selectedPrice}`}
-                    className="points_container points_container_big points_container_pop"
-                    sx={{
-                      margin: "12px auto",
-                      display: "inline-flex",
-                      gap: 1,
-                      alignItems: "center",
+  
+                  <Slider
+                    value={selectedStepIndex}
+                    min={0}
+                    max={Math.max(priceSteps.length - 1, 0)}
+                    step={1}
+                    marks={priceSteps.map((_, index) => ({ value: index }))}
+                    onChange={(_event, value) => {
+                      const safeValue = Array.isArray(value) ? value[0] : value;
+                      setSelectedStepIndex(Number(safeValue || 0));
                     }}
-                  >
-                    <Typography component="span" variant="body1">
-                      {selectedPrice}
-                    </Typography>
-                    <MusicNote />
-                  </Box>
-                  {isSelectedPriceTooHigh ? (
-                    <Typography variant="body1" sx={{ color: "var(--mm-color-error)" }}>
-                      Tu n'as pas assez de points
-                    </Typography>
-                  ) : null}
+                    disabled={!priceSteps.length || posting}
+                    valueLabelDisplay="off"
+                    sx={{
+                      color: isSelectedPriceTooHigh
+                        ? "var(--mm-color-error)"
+                        : "var(--mm-color-primary)",
+                    }}
+                  />
                 </Box>
-
-                <Slider
-                  value={selectedStepIndex}
-                  min={0}
-                  max={Math.max(priceSteps.length - 1, 0)}
-                  step={1}
-                  marks={priceSteps.map((_, index) => ({ value: index }))}
-                  onChange={(_event, value) => {
-                    const safeValue = Array.isArray(value) ? value[0] : value;
-                    setSelectedStepIndex(Number(safeValue || 0));
-                  }}
-                  disabled={!priceSteps.length || posting}
-                  valueLabelDisplay="off"
-                  sx={{
-                    color: isSelectedPriceTooHigh
-                      ? "var(--mm-color-error)"
-                      : "var(--mm-color-primary)",
-                  }}
-                />
               </Box>
-            </Box>
-          )}
-
-          <Button
-            variant="contained"
-            onClick={drawerStep === "duration" ? handleSubmitPinned : closeDrawer}
-            className="bottom_fixed"
-            disabled={posting || (drawerStep === "duration" && !selectedPriceStep)}
-          >
-            {drawerStep === "duration"
-              ? posting
-                ? "Validation..."
-                : `Épingler pour ${selectedPrice} points`
-              : "Fermer"}
-          </Button>
-        </Box>
-      </Drawer>
+            )}
+  
+            <Button
+              variant="contained"
+              onClick={drawerStep === "duration" ? handleSubmitPinned : closeDrawer}
+              className="bottom_fixed"
+              disabled={posting || (drawerStep === "duration" && !selectedPriceStep)}
+            >
+              {drawerStep === "duration"
+                ? posting
+                  ? "Validation..."
+                  : `Épingler pour ${selectedPrice} points`
+                : "Fermer"}
+            </Button>
+          </Box>
+        </Drawer>
+      </Box>
     </Box>
   );
 }
