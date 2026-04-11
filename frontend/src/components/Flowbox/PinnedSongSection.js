@@ -431,7 +431,7 @@ export default function PinnedSongSection({ boxSlug }) {
                 </Typography>
                     
 
-                <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing="border-box" }}>
+                <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing:"border-box" }}>
                   <Box className="img_container">
                     {selectedSong?.image_url_small || selectedSong?.image_url ? (
                       <Box
