@@ -465,7 +465,7 @@ export default function PinnedSongSection({ boxSlug }) {
                         }}>
                   <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
                   <Box
-                    className="points_container points_container_big"
+                    className="points_container points_container_big animation_pop"
                     style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
                   >
                     <Typography component="span" variant="body1">
