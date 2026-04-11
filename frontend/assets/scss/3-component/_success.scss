@@ -1,48 +1,47 @@
 @use '../0-init/color' as *;
 
-.success_container{
+.success_container {
   display: flex;
   flex-direction: column;
-  overflow: auto;
   gap: 20px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 16px 20px;
-
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
-.success{
+.success {
   display: flex;
   flex-direction: column;
   align-items: baseline;
   gap: 8px;
-  padding: 16px 16px;
-  box-shadow: none;
+  padding: 16px;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
+  box-shadow: none;
 }
 
-.success .success_design{
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
+.success .success_design {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
-
-.success .success_infos{
+.success .success_infos {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.success .success_title{
-
+.success .success_title {
 }
 
-.success .success_desc{
-
+.success .success_desc {
 }
 
-.success .success_emoji{
-    font-size: 40px;
-    padding: 0 12px;
+.success .success_emoji {
+  padding: 0 12px;
+  font-size: 40px;
 }

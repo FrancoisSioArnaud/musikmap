@@ -1,119 +1,115 @@
 @use '../0-init/color' as *;
 
-.my_deposit_notif{
+.my_deposit_notif {
   display: flex;
   flex-direction: column;
-  background-color: var(--mm-color-secondary-light);
-  border-radius: var(--mm-radius-lg);
-  margin: 20px;
-  padding: 24px 16px 16px 16px;
   gap: 16px;
+  margin: 20px;
+  padding: 24px 16px 16px;
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-secondary-light);
+  opacity: 0;
   transform: translateY(-120%);
-  opacity:0;
   animation: slideIn 300ms ease-out forwards;
 }
 
-.my_deposit .img_container{
+.my_deposit .img_container {
   width: 23% !important;
 }
 
 @keyframes slideIn {
   to {
+    opacity: 1;
     transform: translateY(0);
-    opacity:1;
   }
 }
 
-.my_deposit_notif svg{
-color : var(--mm-color-success);
+.my_deposit_notif svg {
+  color: var(--mm-color-success);
 }
 
-.my_deposit .text{
-  text-align: left;
+.my_deposit .text {
   flex: 1;
   min-width: 0;
+  text-align: left;
 }
 
-.deposit{
+.deposit {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   align-items: center;
+  gap: 16px;
 }
 
-#older_deposits_list .deposit::after{
+#older_deposits_list .deposit::after {
   content: "...";
-  transform: rotate(90deg) translate(0, -15px);
   padding: 16px;
-  line-height: 0;
-  font-size: 26px;
-  color: var(--mm-color-divider);
   padding-right: 16px;
+  color: var(--mm-color-divider);
+  font-size: 26px;
+  line-height: 0;
+  transform: rotate(90deg) translate(0, -15px);
 }
 
-.deposit_card{
+.deposit_card {
   display: flex;
   flex-direction: column;
-  box-shadow: none;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
-}
-.deposit_main_card{
-
-
+  box-shadow: none;
 }
 
+.deposit_main_card {
+}
 
-#older_deposits_list{
+#older_deposits_list {
   display: flex;
   flex-direction: column;
   gap: 32px;
   padding: 26px;
   padding-bottom: 32px;
-  background-color:  var(--mm-color-bg-gradient) ;
-  
+  background-color: var(--mm-color-bg-gradient);
 }
 
-#older_deposits_list .deposit_card{
-  
+#older_deposits_list .deposit_card {
 }
 
-.deposit_card .deposit_infos{
+.deposit_card .deposit_infos {
   display: flex;
   flex-direction: column;
-  text-align: left;
   gap: 8px;
   padding: 12px 16px;
+  text-align: left;
 }
 
-.deposit_card .deposit_interact{
+.deposit_card .deposit_interact {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  text-align: left;
   gap: 4px;
   padding: 4px 12px;
+  text-align: left;
 }
 
-.deposit_card .deposit_interact .left, .deposit_card .deposit_interact .right{
-  display:flex;
+.deposit_card .deposit_interact .left,
+.deposit_card .deposit_interact .right {
+  display: flex;
   gap: 4px;
 }
 
 .deposit_card .deposit_action_button {
-  min-width: auto;
   width: auto;
+  min-width: auto;
   padding: 8px 12px;
   background: none;
   color: var(--mm-color-black);
   font-size: 1em;
 }
 
-.deposit_card .deposit_action_button svg{
+.deposit_card .deposit_action_button svg {
   font-size: 26px;
 }
-
 
 .deposit_card .deposit_action_group {
   display: flex;
@@ -131,167 +127,181 @@ color : var(--mm-color-success);
   padding-left: 0;
 }
 
-
-.deposit_card .deposit_date{
-
+.deposit_card .deposit_date {
 }
 
-.deposit_card .deposit_user{
+.deposit_card .deposit_user {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  justify-content:center;
 }
 
-.deposit_card .deposit_user span{
+.deposit_card .deposit_user span {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .deposit_card .avatar {
-  width : 26px;
-  height : 26px;
+  width: 26px;
+  height: 26px;
 }
 
 .deposit_card .deposit_song,
-.deposit_song{
-  background-color: var(--mm-color-primary-light);
+.deposit_song {
   display: flex;
+  background-color: var(--mm-color-primary-light);
 }
 
 .deposit_card .deposit_song.has_accent_color,
-.deposit_song.has_accent_color{
+.deposit_song.has_accent_color {
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main_card .deposit_song{
+.deposit_main_card .deposit_song {
+  display: flex;
   flex-direction: column;
   gap: 16px;
-//  background : var(--mm-color-primary-dark);
   padding: 36px;
   padding-bottom: 32px;
+  // background: var(--mm-color-primary-dark);
 }
 
-.deposit_list_card .deposit_song, .my_deposit.deposit_song{
+.deposit_list_card .deposit_song,
+.my_deposit.deposit_song {
+  display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 16px;
-  align-items:center;
-  padding:16px;
+  padding: 16px;
 }
-.my_deposit.deposit_song{
+
+.my_deposit.deposit_song {
   border-radius: var(--mm-radius-md);
 }
-.my_deposit{
+
+.my_deposit {
   background-color: var(--mm-color-surface);
 }
 
-.deposit_card .cover_media{
+.deposit_card .cover_media {
   position: relative;
+  flex-shrink: 0;
   width: 100%;
   max-width: 100%;
-  flex-shrink: 0;
 }
 
-.deposit_card .img_container{
+.deposit_card .img_container {
   position: relative;
-  border-radius: var(--mm-radius-sm);
-  aspect-ratio: 1 / 1;
+  overflow: hidden;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
-  box-shadow: 0 .4rem 0.6rem rgba(0, 0, 0, .15);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--mm-radius-sm);
+  box-shadow: 0 0.4rem 0.6rem rgba(0, 0, 0, 0.15);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 .img_container img {
+  display: block;
   width: 100%;
   max-width: 100%;
   aspect-ratio: 1 / 1;
+  -o-object-fit: cover;
   object-fit: cover;
-  display: block;
 }
 
-.deposit_main_card .cover_media{
-  width : 66%;
-  margin : auto;
+.deposit_main_card .cover_media {
+  width: 66%;
+  margin: auto;
 }
 
-.deposit_list_card .cover_media{
-  width : 33%;
+.deposit_list_card .cover_media {
+  width: 33%;
 }
 
-
-.deposit_card .texts{
+.deposit_card .texts {
   display: flex;
   flex-direction: column;
-  padding:6px 0;
-//  color : var(--mm-color-black);
+  padding: 6px 0;
+  // color: var(--mm-color-black);
 }
 
-.deposit_main_card .texts{
+.deposit_main_card .texts {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  text-align:center;
+  text-align: center;
 }
 
-
-.deposit_list_card .texts{
-  text-align:left;
+.deposit_list_card .texts {
+  text-align: left;
 }
 
-.deposit_card .interact{
+.deposit_card .interact {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-direction: column;
-}
-.deposit_main_card .interact{
-  gap: 12px;
-  align-items: center;
 }
 
-.deposit_list_card .interact{
+.deposit_main_card .interact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deposit_list_card .interact {
   justify-content: left;
 }
 
-.deposit_list_card .decouvrir{
+.deposit_list_card .decouvrir {
   display: flex;
   flex-direction: inherit;
-  padding: 8px 12px;
   width: auto;
   min-width: auto;
   height: auto;
+  padding: 8px 12px;
 }
 
-.deposit_list_card .points_container{
- margin:0;
+.deposit_list_card .points_container {
+  margin: 0;
 }
 
-.deposit_card .emojis{
+.deposit_card .emojis {
   position: absolute;
   inset: 0;
   overflow: visible;
   pointer-events: none;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
-.deposit_card .emojis .emoji{
+.deposit_card .emojis .emoji {
   position: absolute;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-  pointer-events: auto;
   cursor: pointer;
+  pointer-events: auto;
   user-select: none;
+  line-height: 1;
+  font-size: 2rem;
+  text-shadow: var(--mm-shadow-high);
   transform-origin: center center;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
   will-change: transform;
   animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
-  text-shadow: var(--mm-shadow-high);
-  font-size:2rem;
 }
 
-.deposit_main_card .emojis .emoji{
-    font-size: 4rem;
+.deposit_main_card .emojis .emoji {
+  font-size: 4rem;
 }
 
 @keyframes emojiFloat {
@@ -338,33 +348,33 @@ color : var(--mm-color-success);
   }
 }
 
-.pinned_song_section{
-  padding: 36px 26px;
+.pinned_song_section {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 36px 26px;
 }
 
-.pinned_song_container{
-  padding: 20px;
-  border-radius: var(--mm-radius-xl);
-  border: var(--mm-border-default);
-  background-color: var(--mm-color-primary-light);
+.pinned_song_container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 20px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-xl);
+  background-color: var(--mm-color-primary-light);
   text-align: center;
 }
 
-.pinned_song_container .slot{
-  min-height: 140px;
-  border-radius: var(--mm-radius-lg);
+.pinned_song_container .slot {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 16px 6px 16px;
-  flex-direction: column;
-  border: var(--mm-border-default);
-  background-color: var(--mm-color-surface);
+  min-height: 140px;
   margin-top: 12px;
+  padding: 12px 16px 6px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-surface);
 }
