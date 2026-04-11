@@ -292,12 +292,11 @@ export default function PinnedSongSection({ boxSlug }) {
   const progressValue = Math.max(0, Math.min(100, (remainingMs / totalDurationMs) * 100));
 
   const progressFooter = hasActivePinned ? (
-    <Box sx={{ px: 2, pb: 1.5, pt: 0.5 }}>
+    <Box sx={{ pb: 1.5, pt: 0.5 }}>
       <Box
         sx={{
           width: "100%",
           height: 8,
-          borderRadius: "999px",
           overflow: "hidden",
           bgcolor: "action.hover",
         }}
@@ -311,7 +310,7 @@ export default function PinnedSongSection({ boxSlug }) {
           }}
         />
       </Box>
-      <Typography variant="body2" sx={{ mt: 1 }}>
+      <Typography variant="body1" sx={{ mt: 1 }}>
         {formatRemainingTime(remainingMs)}
       </Typography>
     </Box>
