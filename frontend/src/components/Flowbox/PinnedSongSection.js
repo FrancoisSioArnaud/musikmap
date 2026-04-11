@@ -11,6 +11,7 @@ import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MusicNote from "@mui/icons-material/MusicNote";
+import PushPinIcon from '@mui/icons-material/PushPin';
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
@@ -359,6 +360,7 @@ export default function PinnedSongSection({ boxSlug }) {
 
   return (
     <Box className="pinned_song_section">
+      <PushPinIcon sw={{ mb: "-50%" }}/>
       <Box
         sx={{
           display: "flex",
@@ -406,8 +408,12 @@ export default function PinnedSongSection({ boxSlug }) {
             <>
               <Box sx={{ p: 5, pb: 2 }}>
                 <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                  Choisis une chanson à épingler
+                  Épinglée ici
                 </Typography>
+                <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+                   La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
+                </Typography>
+                    
 
                 <TextField
                   inputRef={searchInputRef}
