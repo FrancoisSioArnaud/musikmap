@@ -344,3 +344,18 @@ color : var(--mm-color-success);
   }
 }
 
+
+.pinned_song_section{
+  padding: 20px;
+}
+
+.pinned_song_section .slot{
+  min-height: 160px;
+  border-radius: var(--mm-radius-lg);
+  border: dashed 2px var(--mm-color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  flex-direction: column;
+}

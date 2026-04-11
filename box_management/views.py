@@ -119,6 +119,9 @@ from .utils import (
     _log_blocked_comment_attempt,
     extract_accent_color_from_urls,
     create_song_deposit,
+    build_pinned_price_steps_payload,
+    get_pinned_price_step,
+    get_active_pinned_deposit_for_box,
 )
 
 # Barèmes & coûts (importés depuis ton module utils global)
@@ -1251,6 +1254,165 @@ class UserDepositsView(APIView):
         )
 
 
+class PinnedSongView(APIView):
+    permission_classes = []
+
+    def _get_box(self, request):
+        box_slug = (request.query_params.get("boxSlug") or request.data.get("boxSlug") or "").strip()
+        if not box_slug:
+            return None, Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+
+        box = Box.objects.select_related("client").filter(url=box_slug).first()
+        if not box:
+            return None, Response({"detail": "Boîte introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        return box, None
+
+    def _serialize_active_deposit(self, deposit, viewer):
+        if not deposit:
+            return None
+
+        payloads = _build_deposits_payload(
+            [deposit],
+            viewer=viewer,
+            include_user=True,
+            force_song_infos_for=[deposit.pk],
+        )
+        return payloads[0] if payloads else None
+
+    def get(self, request):
+        box, error_response = self._get_box(request)
+        if error_response is not None:
+            return error_response
+
+        viewer = get_current_app_user(request)
+        if viewer:
+            touch_last_seen(viewer)
+
+        active_pinned = get_active_pinned_deposit_for_box(box)
+        return Response(
+            {
+                "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
+                "price_steps": build_pinned_price_steps_payload(
+                    user_points=getattr(viewer, "points", None) if viewer else None
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+        if getattr(current_user, "is_guest", False):
+            return Response({"detail": "Finalise d’abord ton compte pour épingler une chanson."}, status=status.HTTP_403_FORBIDDEN)
+        touch_last_seen(current_user)
+
+        box, error_response = self._get_box(request)
+        if error_response is not None:
+            return error_response
+
+        option = request.data.get("option") or {}
+        try:
+            duration_minutes = int(request.data.get("duration_minutes"))
+        except (TypeError, ValueError):
+            return Response({"detail": "Durée invalide."}, status=status.HTTP_400_BAD_REQUEST)
+
+        price_step = get_pinned_price_step(duration_minutes)
+        if not price_step:
+            return Response({"detail": "Durée non disponible."}, status=status.HTTP_400_BAD_REQUEST)
+
+        points_cost = int(price_step["points"])
+
+        if not option and not get_active_pinned_deposit_for_box(box):
+            return Response({"detail": "Chanson manquante."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
+                box = Box.objects.select_for_update().select_related("client").get(pk=box.pk)
+                active_pinned = get_active_pinned_deposit_for_box(box, for_update=True)
+
+                if active_pinned and active_pinned.user_id != user.id:
+                    return Response(
+                        {
+                            "detail": "Une chanson est déjà épinglée pour le moment.",
+                            "code": "slot_occupied",
+                            "active_pinned_deposit": self._serialize_active_deposit(active_pinned, user),
+                            "price_steps": build_pinned_price_steps_payload(user_points=user.points),
+                        },
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
+                ok_points, points_payload, points_status = apply_points_delta(
+                    user,
+                    -points_cost,
+                    lock_user=False,
+                )
+                if not ok_points:
+                    return Response(
+                        {
+                            "detail": points_payload.get("errors") or "Points insuffisants.",
+                            "code": "insufficient_funds",
+                            "points_balance": points_payload.get("points_balance", user.points),
+                            "price_steps": build_pinned_price_steps_payload(user_points=user.points),
+                        },
+                        status=points_status,
+                    )
+
+                if active_pinned and active_pinned.user_id == user.id:
+                    extension_base = active_pinned.pin_expires_at if active_pinned.pin_expires_at and active_pinned.pin_expires_at > timezone.now() else timezone.now()
+                    active_pinned.pin_expires_at = extension_base + timedelta(minutes=duration_minutes)
+                    active_pinned.pin_duration_minutes = int(active_pinned.pin_duration_minutes or 0) + duration_minutes
+                    active_pinned.pin_points_spent = int(active_pinned.pin_points_spent or 0) + points_cost
+                    active_pinned.save(update_fields=["pin_expires_at", "pin_duration_minutes", "pin_points_spent"])
+                    pinned_deposit = active_pinned
+                    action = "extended"
+                else:
+                    pin_expires_at = timezone.now() + timedelta(minutes=duration_minutes)
+                    pinned_deposit, _song = create_song_deposit(
+                        request=request,
+                        user=user,
+                        option=option,
+                        deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+                        box=box,
+                        pin_duration_minutes=duration_minutes,
+                        pin_points_spent=points_cost,
+                        pin_expires_at=pin_expires_at,
+                    )
+                    action = "created"
+
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
+        pinned_deposit = (
+            Deposit.objects
+            .select_related("song", "user", "box")
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+            .filter(pk=pinned_deposit.pk)
+            .first()
+        )
+
+        return Response(
+            {
+                "action": action,
+                "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
+                "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
+                "current_user": build_current_user_payload(refreshed_user),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class PublicVisibleArticlesView(APIView):
     def get_box(self, request):
         box_slug = (request.query_params.get("boxSlug") or request.query_params.get("box_slug") or "").strip()
@@ -1627,6 +1789,10 @@ class ReactionView(APIView):
 
         is_revealed_for_user = bool(
             getattr(deposit, "user_id", None) == getattr(current_user, "id", None)
+            or getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (
+                Deposit.DEPOSIT_TYPE_FAVORITE,
+                Deposit.DEPOSIT_TYPE_PINNED,
+            )
             or DiscoveredSong.objects.filter(user=current_user, deposit=deposit).exists()
         )
         if not is_revealed_for_user:

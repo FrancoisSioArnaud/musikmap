@@ -17,6 +17,7 @@ import { UserContext } from "../UserContext";
 import { getValid } from "../Utils/mmStorage";
 import ArticleCard from "../Common/Article/ArticleCard";
 import ArticleDrawer from "../Common/Article/ArticleDrawer";
+import PinnedSongSection from "./PinnedSongSection";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const MAX_VISIBLE_ARTICLES = 5;
@@ -269,6 +270,8 @@ export default function Discover() {
           </Box>
         </Box>
       ) : null}
+
+      <PinnedSongSection boxSlug={boxSlug} />
 
       {olderDeposits.length > 0 ? (
         <Box id="older_deposit">

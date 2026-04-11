@@ -139,6 +139,9 @@ export default function Deposit({
   showUser = true,
   fitContainer = true,
   context = "box",
+  dateLabel = null,
+  userPrefix = "Partagée par",
+  footerSlot = null,
 }) {
   const navigate = useNavigate();
   const { setUser } = useContext(UserContext) || {};
@@ -470,7 +473,7 @@ export default function Deposit({
         className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
       >
         <Typography variant="body1" component="span">
-          Partagée par
+          {userPrefix}
         </Typography>
         <Box className="avatarbox">
           <Avatar
@@ -640,7 +643,7 @@ export default function Deposit({
       <Box className={rootClassName}>
         {showDate ? (
           <Typography className="deposit_date" variant="subtitle1" component="span">
-            {naturalDate || ""}
+            {dateLabel || naturalDate || ""}
           </Typography>
         ) : null}
         <Card className={cardClassName}>
@@ -696,6 +699,7 @@ export default function Deposit({
             </Box>
           </Box>
 
+          {footerSlot}
           {depositInteractBlock}
         </Card>
       </Box>

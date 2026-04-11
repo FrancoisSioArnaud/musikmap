@@ -1,0 +1,13 @@
+[
+  {"minutes": 10, "points": 149},
+  {"minutes": 20, "points": 195},
+  {"minutes": 30, "points": 227},
+  {"minutes": 50, "points": 275},
+  {"minutes": 80, "points": 334},
+  {"minutes": 130, "points": 416},
+  {"minutes": 210, "points": 532},
+  {"minutes": 340, "points": 706},
+  {"minutes": 550, "points": 953},
+  {"minutes": 890, "points": 1389},
+  {"minutes": 1440, "points": 2048}
+]

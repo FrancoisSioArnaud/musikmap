@@ -72,11 +72,15 @@ class DepositSerializer(serializers.ModelSerializer):
             "id",
             "public_key",
             "deposited_at",
+            "deposit_type",
             "song",
             "song_detail",
             "box",
             "box_detail",
             "user",
+            "pin_expires_at",
+            "pin_duration_minutes",
+            "pin_points_spent",
         ]
 
 

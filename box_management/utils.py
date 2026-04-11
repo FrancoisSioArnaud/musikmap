@@ -4,6 +4,7 @@ import html
 import json
 import re
 from io import BytesIO
+from pathlib import Path
 from datetime import date, timedelta, timezone as dt_timezone
 from html.parser import HTMLParser
 from math import radians, sin, cos, sqrt, atan2, log2
@@ -87,6 +88,87 @@ ACCENT_COLOR_SATURATION_SCORE_WEIGHT = 1000
 ACCENT_COLOR_COUNT_SCORE_WEIGHT = 14
 ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT = 8
 ACCENT_COLOR_REQUEST_TIMEOUT = 8
+
+PINNED_PRICE_STEPS_PATH = Path(__file__).resolve().parent / "data" / "pinned_price_steps.json"
+
+
+def load_pinned_price_steps() -> List[Dict[str, int]]:
+    try:
+        raw = json.loads(PINNED_PRICE_STEPS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        raw = []
+
+    steps: List[Dict[str, int]] = []
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            minutes = int(item.get("minutes"))
+            points = int(item.get("points"))
+        except (TypeError, ValueError):
+            continue
+        if minutes <= 0 or points <= 0:
+            continue
+        steps.append({"minutes": minutes, "points": points})
+
+    steps.sort(key=lambda entry: entry["minutes"])
+    return steps
+
+
+def get_pinned_price_step(duration_minutes: int) -> Optional[Dict[str, int]]:
+    try:
+        duration_minutes = int(duration_minutes)
+    except (TypeError, ValueError):
+        return None
+
+    for step in load_pinned_price_steps():
+        if step["minutes"] == duration_minutes:
+            return step
+    return None
+
+
+def build_pinned_price_steps_payload(*, user_points: Optional[int] = None) -> List[Dict[str, Any]]:
+    points_value = None
+    try:
+        if user_points is not None:
+            points_value = int(user_points)
+    except (TypeError, ValueError):
+        points_value = None
+
+    payload: List[Dict[str, Any]] = []
+    for step in load_pinned_price_steps():
+        price = int(step["points"])
+        payload.append({
+            "minutes": int(step["minutes"]),
+            "points": price,
+            "is_affordable": (points_value is None) or (points_value >= price),
+        })
+    return payload
+
+
+def get_active_pinned_deposit_for_box(box, *, for_update: bool = False):
+    qs = (
+        Deposit.objects
+        .filter(
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_expires_at__gt=timezone.now(),
+        )
+        .select_related("song", "user", "box")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects
+                .select_related("emoji", "user")
+                .order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-pin_expires_at", "-deposited_at", "-id")
+    )
+    if for_update:
+        qs = qs.select_for_update()
+    return qs.first()
 
 
 def _accent_clamp(value: float, minimum: float, maximum: float) -> float:
@@ -1168,8 +1250,12 @@ def _build_deposit_from_instance(
 
     payload: Dict[str, Any] = {
         "public_key": dep.public_key,
+        "deposit_type": getattr(dep, "deposit_type", Deposit.DEPOSIT_TYPE_BOX),
         "song": _build_song_from_instance(dep.song, hidden),
         "accent_color": (getattr(dep.song, "accent_color", "") or "") or None,
+        "pin_expires_at": dep.pin_expires_at.isoformat() if getattr(dep, "pin_expires_at", None) else None,
+        "pin_duration_minutes": int(getattr(dep, "pin_duration_minutes", 0) or 0),
+        "pin_points_spent": int(getattr(dep, "pin_points_spent", 0) or 0),
     }
 
     if include_deposit_time:
@@ -1222,14 +1308,28 @@ def _build_deposits_payload(
     force_ids = set(force_song_infos_for or [])
 
     # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+    public_visible_ids = {
+        d.pk
+        for d in deps
+        if getattr(d, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (
+            Deposit.DEPOSIT_TYPE_FAVORITE,
+            Deposit.DEPOSIT_TYPE_PINNED,
+        )
+    }
+
     if viewer is None:
-        revealed_ids = set()  # personne -> rien de révélé
+        revealed_ids = public_visible_ids
     else:
         viewer_id = getattr(viewer, "id", None)
         dep_ids = [d.pk for d in deps]
 
-        # 1) Révélé implicitement si le viewer est le propriétaire du dépôt (0 requête)
-        own_dep_ids = {d.pk for d in deps if getattr(d, "user_id", None) == viewer_id}
+        # 1) Révélé implicitement si le viewer est le propriétaire du dépôt
+        #    ou si le dépôt est publiquement visible (favorite / pinned).
+        own_dep_ids = {
+            d.pk
+            for d in deps
+            if getattr(d, "user_id", None) == viewer_id
+        } | public_visible_ids
 
         # 2) Pour le reste seulement, on consulte DiscoveredSong (1 requête max)
         remaining_ids = [i for i in dep_ids if i not in own_dep_ids]
@@ -1275,7 +1375,7 @@ def _get_prev_head_and_older(box, limit: int = 10):
     """
     qs = (
         Deposit.objects
-        .filter(box=box)
+        .filter(box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX)
         .select_related("song", "user")
         .prefetch_related(
             Prefetch(
@@ -1310,7 +1410,7 @@ def normalize_string(input_string: str) -> str:
 
 
 
-def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None):
+def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None):
     song_name = (option.get("name") or "").strip()
     song_author = (option.get("artist") or "").strip()
     if not song_name or not song_author:
@@ -1399,7 +1499,7 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
     except Exception:
         pass
 
-    if deposit_type == "box":
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
         if box is None:
             raise ValueError("Boîte introuvable")
         song.n_deposits = int(getattr(song, "n_deposits", 0) or 0) + 1
@@ -1407,9 +1507,12 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
 
     deposit = Deposit.objects.create(
         song=song,
-        box=box if deposit_type == "box" else None,
+        box=box if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) else None,
         user=user,
         deposit_type=deposit_type,
+        pin_duration_minutes=pin_duration_minutes,
+        pin_points_spent=int(pin_points_spent or 0),
+        pin_expires_at=pin_expires_at,
     )
     return deposit, song
 

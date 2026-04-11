@@ -595,9 +595,11 @@ class DepositQuerySet(models.QuerySet):
 class Deposit(models.Model):
     DEPOSIT_TYPE_BOX = "box"
     DEPOSIT_TYPE_FAVORITE = "favorite"
+    DEPOSIT_TYPE_PINNED = "pinned"
     DEPOSIT_TYPE_CHOICES = (
         (DEPOSIT_TYPE_BOX, "Box"),
         (DEPOSIT_TYPE_FAVORITE, "Favorite"),
+        (DEPOSIT_TYPE_PINNED, "Pinned"),
     )
 
     deposited_at = models.DateTimeField(default=timezone.now, db_index=True)
@@ -631,6 +633,9 @@ class Deposit(models.Model):
         db_index=True,
         editable=False
     )
+    pin_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    pin_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    pin_points_spent = models.PositiveIntegerField(default=0)
 
     objects = DepositQuerySet.as_manager()
 
@@ -641,6 +646,7 @@ class Deposit(models.Model):
             models.Index(fields=["song", "deposited_at"]),
             models.Index(fields=["user", "deposited_at"]),
             models.Index(fields=["deposit_type", "deposited_at"]),
+            models.Index(fields=["deposit_type", "box", "pin_expires_at"]),
             models.Index(fields=["public_key"]),
         ]
 
@@ -651,16 +657,38 @@ class Deposit(models.Model):
         )
 
     def clean(self):
-        if self.deposit_type == self.DEPOSIT_TYPE_BOX and not self.box_id:
-            raise ValidationError({"box": "Une boîte est obligatoire pour un dépôt de type box."})
+        if self.deposit_type in (self.DEPOSIT_TYPE_BOX, self.DEPOSIT_TYPE_PINNED) and not self.box_id:
+            raise ValidationError({"box": "Une boîte est obligatoire pour ce type de dépôt."})
         if self.deposit_type == self.DEPOSIT_TYPE_FAVORITE:
             self.box = None
+            self.pin_expires_at = None
+            self.pin_duration_minutes = None
+            self.pin_points_spent = 0
+        if self.deposit_type == self.DEPOSIT_TYPE_BOX:
+            self.pin_expires_at = None
+            self.pin_duration_minutes = None
+            self.pin_points_spent = 0
+        if self.deposit_type == self.DEPOSIT_TYPE_PINNED:
+            if not self.pin_expires_at:
+                raise ValidationError({"pin_expires_at": "La date de fin est obligatoire pour un dépôt épinglé."})
+            if not self.pin_duration_minutes:
+                raise ValidationError({"pin_duration_minutes": "La durée est obligatoire pour un dépôt épinglé."})
+            if int(self.pin_points_spent or 0) <= 0:
+                raise ValidationError({"pin_points_spent": "Le coût doit être strictement positif pour un dépôt épinglé."})
 
     def save(self, *args, **kwargs):
         if not self.public_key:
             self.public_key = self._generate_unique_key()
         self.full_clean()
         super().save(*args, **kwargs)
+
+    @property
+    def is_pin_active(self):
+        return (
+            self.deposit_type == self.DEPOSIT_TYPE_PINNED
+            and bool(self.pin_expires_at)
+            and self.pin_expires_at > timezone.now()
+        )
 
     @staticmethod
     def _generate_key():
