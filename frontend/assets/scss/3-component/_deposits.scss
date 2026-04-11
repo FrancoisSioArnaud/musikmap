@@ -165,12 +165,6 @@ color : var(--mm-color-success);
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main_card .deposit_song.has_accent_color,
-.deposit_song.has_accent_color{
- background-color: color-mix(in srgb, var(--deposit-accent) 60%, #000 40%);
-}
-
-
 .deposit_main_card .deposit_song{
   flex-direction: column;
   gap: 16px;
