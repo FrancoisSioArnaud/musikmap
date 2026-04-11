@@ -10,6 +10,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import MusicNote from "@mui/icons-material/MusicNote";
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
@@ -458,8 +459,17 @@ export default function PinnedSongSection({ boxSlug }) {
                       justifyContent: "center",
                       gap: "26px"
                         }}>
-                  <Typography variant="h4">{formatDuration(selectedDurationMinutes)}</Typography>
-                  <Typography variant="h5">{selectedPrice} points</Typography>
+                  <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
+                  <Box
+                    className="points_container points_container_big"
+                    style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
+                  >
+                    <Typography component="span" variant="body1">
+                      -{selectedPrice}
+                    </Typography>
+                    <MusicNote />
+                  </Box>
+
                   {isSelectedPriceTooHigh ? (
                     <Typography variant="body2" sx={{ color: "var(--mm-color-error)" }}>
                       Pas assez de points
