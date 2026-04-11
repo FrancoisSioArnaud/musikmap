@@ -366,19 +366,18 @@ export default function PinnedSongSection({ boxSlug }) {
       <Box className="pinned_song_container">
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display:"grid",
             gap: 2,
             px: 2.5,
             pb: 1,
           }}
         >
-          <Typography variant="h4">Épinglé ici</Typography>
+          <Typography variant="h4">Épinglée ici</Typography>
+          <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+            La chanson épinglée reste visible pour tous les passants ouvrant cette boîte pendant un temps donné.
+          </Typography>
         </Box>
-        <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-           La chanson épinglée reste visible pour tous les passants ouvrant cette boîte pendant un temps donné.
-        </Typography>
+       
             
         {hasActivePinned ? (
           <Deposit
