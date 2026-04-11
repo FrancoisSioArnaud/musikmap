@@ -509,15 +509,14 @@ export default function PinnedSongSection({ boxSlug }) {
                   </Box>
   
                   <Box sx={{ 
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0,
-                        flex: "1",
-                        minHeight: "0",
-                        width: "100%",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        gap: "26px"
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0,
+                            flex: "1",
+                            minHeight: "0",
+                            width: "100%",
+                            flexDirection: "column",
+                            justifyContent: "center",
                           }}>
                     <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
                     <Box
