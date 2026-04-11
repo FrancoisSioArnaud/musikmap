@@ -40,13 +40,13 @@
   font-size: 20px;
 }
 
-.points_container.animation_pop{
   transform-origin: center;
-  animation: pointsPop 260ms cubic-bezier(0.2, 0.9, 0.2, 1);
+.points_container.points_container_pop{
+  animation: animPop 260ms cubic-bezier(0.2, 0.9, 0.2, 1);
   will-change: transform, opacity;
 }
 
-@keyframes pointsPop {
+@keyframes animPop {
   0% {
     transform: scale(0.92);
     opacity: 0.8;
