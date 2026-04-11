@@ -345,11 +345,11 @@ color : var(--mm-color-success);
 }
 
 
-.pinned_song_section{
+.pinned_song_container{
   padding: 20px;
 }
 
-.pinned_song_section .slot{
+.pinned_song_container .slot{
   min-height: 160px;
   border-radius: var(--mm-radius-lg);
   border: dashed 2px var(--mm-color-divider);
