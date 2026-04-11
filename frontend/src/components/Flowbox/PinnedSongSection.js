@@ -361,7 +361,7 @@ export default function PinnedSongSection({ boxSlug }) {
   return (
     <Box className="pinned_song_section">
       <Box className="icon_container info_box">
-        <PushPinIcon />
+        <PushPinIcon sx={{transform: rotate(45deg)}}/>
       </Box>
       <Box className="pinned_song_container">
         <Box
