@@ -426,6 +426,10 @@ export default function PinnedSongSection({ boxSlug }) {
                 <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
                   Choisis une durée
                 </Typography>
+                <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+                  Choisis pendant combien de temps ta chanson sera épinglée à la boîte.
+                </Typography>
+                    
 
                 <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing="border-box" }}>
                   <Box className="img_container">
