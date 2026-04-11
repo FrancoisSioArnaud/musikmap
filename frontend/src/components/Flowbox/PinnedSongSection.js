@@ -349,7 +349,7 @@ export default function PinnedSongSection({ boxSlug }) {
     return (
       <>
         <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-          Attache une chanson à cette boîte pendant un temps donné.
+          Aucune chanson épinglée pour le moment
         </Typography>
         <Button variant="light" onClick={openSearchDrawer}>
           Épingler une chanson
@@ -360,7 +360,10 @@ export default function PinnedSongSection({ boxSlug }) {
 
   return (
     <Box className="pinned_song_section">
-      <PushPinIcon sw={{ mb: "-50%" }}/>
+      <Box className="icon_container info_box"
+        <PushPinIcon />
+      </Box>
+      <
       <Box
         sx={{
           display: "flex",
