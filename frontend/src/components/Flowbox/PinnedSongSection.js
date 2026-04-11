@@ -465,15 +465,20 @@ export default function PinnedSongSection({ boxSlug }) {
                         }}>
                   <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
                   <Box
-                    className="points_container points_container_big animation_pop"
-                    style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
+                    key={`${selectedStepIndex}-${selectedPrice}`}
+                    className="points_container points_container_big points_container_pop"
+                    sx={{
+                      margin: "12px auto",
+                      display: "inline-flex",
+                      gap: 1,
+                      alignItems: "center",
+                    }}
                   >
                     <Typography component="span" variant="body1">
                       {selectedPrice}
                     </Typography>
                     <MusicNote />
                   </Box>
-
                   {isSelectedPriceTooHigh ? (
                     <Typography variant="body2" sx={{ color: "var(--mm-color-error)" }}>
                       Pas assez de points
