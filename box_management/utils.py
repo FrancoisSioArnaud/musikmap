@@ -1494,7 +1494,7 @@ def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
     return streak
 
 
-def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[List[Dict[str, Any]], int]:
+def _build_successes(*, box, user: Optional[CustomUser], song: Song, current_deposit: Optional[Deposit] = None) -> Tuple[List[Dict[str, Any]], int]:
     """
     Calcule la liste des 'successes' (achievements) + le total de points.
 
@@ -1549,13 +1549,20 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
 
     # ===================== 1) Requêtes mutualisées =====================
 
+    exclude_current_filter: Dict[str, Any] = {}
+    if current_deposit is not None and getattr(current_deposit, "pk", None):
+        exclude_current_filter["pk"] = current_deposit.pk
+
     # --- 1.a) Tous les dépôts de cet user dans cette box (streak + "premier dépôt ici")
     user_box_dates: List = []
     has_user_deposit_in_box = False
     if user:
+        user_box_qs = Deposit.objects.filter(user=user, box=box)
+        if exclude_current_filter:
+            user_box_qs = user_box_qs.exclude(**exclude_current_filter)
+
         user_box_dates = list(
-            Deposit.objects
-            .filter(user=user, box=box)
+            user_box_qs
             .order_by("-deposited_at")
             .values_list("deposited_at", flat=True)
         )
@@ -1566,9 +1573,12 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song) -> Tuple[Li
     # donc il n'existe qu'une seule instance logique pour ce couple.
     song_box_ids: List[int] = []
     if title and artist:
+        song_deposits_qs = Deposit.objects.filter(song=song)
+        if exclude_current_filter:
+            song_deposits_qs = song_deposits_qs.exclude(**exclude_current_filter)
+
         song_box_ids = list(
-            Deposit.objects
-            .filter(song=song)
+            song_deposits_qs
             .values_list("box_id", flat=True)
         )
 

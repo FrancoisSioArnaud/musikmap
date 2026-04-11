@@ -644,7 +644,7 @@ class GetBox(APIView):
             except ValueError as exc:
                 return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-            successes, points_to_add = _build_successes(box=box, user=user, song=song)
+            successes, points_to_add = _build_successes(box=box, user=user, song=song, current_deposit=_deposit)
 
 
             if prev_head is not None:
