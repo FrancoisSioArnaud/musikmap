@@ -455,7 +455,7 @@ export default function PinnedSongSection({ boxSlug }) {
                 <Box sx={{ 
                       display: "flex",
                       alignItems: "center",
-                      gap: 26,
+                      gap: 0,
                       flex: "1",
                       minHeight: "0",
                       width: "100%",
@@ -480,8 +480,8 @@ export default function PinnedSongSection({ boxSlug }) {
                     <MusicNote />
                   </Box>
                   {isSelectedPriceTooHigh ? (
-                    <Typography variant="body2" sx={{ color: "var(--mm-color-error)" }}>
-                      Pas assez de points
+                    <Typography variant="body1" sx={{ color: "var(--mm-color-error)" }}>
+                      Tu n'as pas assez de points
                     </Typography>
                   ) : null}
                 </Box>
