@@ -376,7 +376,6 @@ export default function PinnedSongSection({ boxSlug }) {
       >
         <Typography variant="h4">Épinglé ici</Typography>
       </Box>
-
       <Typography component="p" variant="body1" sx={{ mb: 3 }}>
          La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
       </Typography>
