@@ -404,7 +404,15 @@ export default function PinnedSongSection({ boxSlug }) {
             </>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              <Box sx={{ p: 5, pb: 3 }}>
+              <Box sx={{ 
+                        p: 5,
+                        pb: "100px",
+                        /* flex-direction: column; */
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        height: "100%",
+                      }}>
                 <Button
                   variant="text"
                   startIcon={<ArrowBackIcon />}
@@ -418,27 +426,8 @@ export default function PinnedSongSection({ boxSlug }) {
                   Choisis une durée
                 </Typography>
 
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
-                    border: "var(--mm-border-default)",
-                    borderRadius: "var(--mm-radius-lg)",
-                    p: 2,
-                    mb: 3,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: "var(--mm-radius-xs)",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      bgcolor: "action.hover",
-                    }}
-                  >
+                <Box className="my_deposit deposit_card deposit_song">
+                  <Box className="img_container">
                     {selectedSong?.image_url_small || selectedSong?.image_url ? (
                       <Box
                         component="img"
@@ -448,17 +437,27 @@ export default function PinnedSongSection({ boxSlug }) {
                       />
                     ) : null}
                   </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="h6" noWrap title={selectedSong?.name || ""}>
+                  <Box className="texts">
+                    <Typography className="titre" variant="h5" title={selectedSong?.name || ""}>
                       {selectedSong?.name || ""}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap title={selectedSong?.artist || ""}>
+                    <Typography className="artist" variant="body1" title={selectedSong?.artist || ""}>
                       {selectedSong?.artist || ""}
                     </Typography>
                   </Box>
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
+                <Box sx={{ 
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 26,
+                      flex: "1",
+                      minHeight: "0",
+                      width: "100%",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      gap: "26px"
+                        }}>
                   <Typography variant="h4">{formatDuration(selectedDurationMinutes)}</Typography>
                   <Typography variant="h5">{selectedPrice} points</Typography>
                   {isSelectedPriceTooHigh ? (
