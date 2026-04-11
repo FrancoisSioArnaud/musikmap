@@ -298,9 +298,9 @@ export default function PinnedSongSection({ boxSlug }) {
     return (
       <>
         <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-          Mets une chanson en avant pendant un temps limité.
+          Attache une chanson à cette boîte pendant un temps donné.
         </Typography>
-        <Button variant="contained" onClick={openSearchDrawer}>
+        <Button variant="light" onClick={openSearchDrawer}>
           Épingler une chanson
         </Button>
       </>
