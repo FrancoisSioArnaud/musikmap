@@ -63,19 +63,6 @@ function buildPinnedDateLabel(dep) {
   return "Épinglée à l’instant";
 }
 
-function mapDepositSongToOption(dep) {
-  const song = dep?.song || {};
-  return {
-    id: dep?.public_key || song?.spotify_url || song?.deezer_url || `${song?.title || "song"}-${song?.artist || "artist"}`,
-    name: song?.title || "",
-    artist: song?.artist || "",
-    image_url: song?.image_url || "",
-    image_url_small: song?.image_url_small || song?.image_url || "",
-    url: song?.spotify_url || song?.deezer_url || "",
-    platform_id: song?.spotify_url ? 1 : song?.deezer_url ? 2 : null,
-  };
-}
-
 export default function PinnedSongSection({ boxSlug }) {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext) || {};
@@ -101,9 +88,6 @@ export default function PinnedSongSection({ boxSlug }) {
 
   const isGuestUser = Boolean(user?.is_guest);
   const hasActivePinned = Boolean(activePinnedDeposit?.public_key);
-  const isOwnerOfPinned = Boolean(
-    hasActivePinned && user?.id && activePinnedDeposit?.user?.id === user.id
-  );
 
   const refreshPinnedSection = useCallback(async () => {
     try {
@@ -173,13 +157,6 @@ export default function PinnedSongSection({ boxSlug }) {
     setDrawerOpen(true);
   }, []);
 
-  const openExtendDrawer = useCallback(() => {
-    if (!activePinnedDeposit) return;
-    setSelectedSong(mapDepositSongToOption(activePinnedDeposit));
-    setDrawerStep("duration");
-    setDrawerOpen(true);
-  }, [activePinnedDeposit]);
-
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
     setDrawerOpen(false);
@@ -196,11 +173,12 @@ export default function PinnedSongSection({ boxSlug }) {
   const selectedPriceStep = priceSteps[selectedStepIndex] || null;
   const selectedDurationMinutes = Number(selectedPriceStep?.minutes || 0);
   const selectedPrice = Number(selectedPriceStep?.points || 0);
-  const isSelectedPriceTooHigh = Boolean(selectedPrice && Number(user?.points || 0) < selectedPrice);
+  const isSelectedPriceTooHigh = Boolean(
+    selectedPriceStep && selectedPriceStep.is_affordable === false
+  );
 
   const handleSubmitPinned = useCallback(async () => {
-    if (posting || !selectedPriceStep) return;
-    if (!selectedSong && !isOwnerOfPinned) return;
+    if (posting || !selectedPriceStep || !selectedSong) return;
 
     try {
       setPosting(true);
@@ -215,7 +193,7 @@ export default function PinnedSongSection({ boxSlug }) {
         body: JSON.stringify({
           boxSlug,
           duration_minutes: selectedDurationMinutes,
-          option: isOwnerOfPinned ? undefined : selectedSong,
+          option: selectedSong,
         }),
       });
 
@@ -248,7 +226,6 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [
     boxSlug,
     closeDrawer,
-    isOwnerOfPinned,
     posting,
     selectedDurationMinutes,
     selectedPriceStep,
@@ -343,11 +320,6 @@ export default function PinnedSongSection({ boxSlug }) {
         }}
       >
         <Typography variant="h4">À la une</Typography>
-        {!loading && hasActivePinned && isOwnerOfPinned ? (
-          <Button variant="light" onClick={openExtendDrawer}>
-            Prolonger
-          </Button>
-        ) : null}
       </Box>
 
       {hasActivePinned ? (
@@ -438,13 +410,7 @@ export default function PinnedSongSection({ boxSlug }) {
                 <Button
                   variant="text"
                   startIcon={<ArrowBackIcon />}
-                  onClick={() => {
-                    if (isOwnerOfPinned) {
-                      closeDrawer();
-                      return;
-                    }
-                    setDrawerStep("search");
-                  }}
+                  onClick={() => setDrawerStep("search")}
                   sx={{ px: 0, mb: 2 }}
                 >
                   Retour
@@ -494,7 +460,7 @@ export default function PinnedSongSection({ boxSlug }) {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
                   <Typography variant="h4">{formatDuration(selectedDurationMinutes)}</Typography>
                   <Typography variant="h5">{selectedPrice} points</Typography>
                   {isSelectedPriceTooHigh ? (
@@ -516,9 +482,13 @@ export default function PinnedSongSection({ boxSlug }) {
                   }}
                   disabled={!priceSteps.length || posting}
                   valueLabelDisplay="off"
+                  sx={{
+                    color: isSelectedPriceTooHigh
+                      ? "var(--mm-color-error)"
+                      : "var(--mm-color-primary)",
+                  }}
                 />
               </Box>
-
             </Box>
           )}
 
@@ -531,9 +501,7 @@ export default function PinnedSongSection({ boxSlug }) {
             {drawerStep === "duration"
               ? posting
                 ? "Validation..."
-                : isOwnerOfPinned
-                  ? `Prolonger pour ${selectedPrice} points`
-                  : `Épingler pour ${selectedPrice} points`
+                : `Épingler pour ${selectedPrice} points`
               : "Fermer"}
           </Button>
         </Box>

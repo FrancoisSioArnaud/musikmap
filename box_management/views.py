@@ -550,8 +550,14 @@ class GetBox(APIView):
             .select_related("client")
             .filter(url=slug)
             .annotate(
-                deposit_count=Count("deposits"),
-                last_deposit_at=Max("deposits__deposited_at"),
+                deposit_count=Count(
+                    "deposits",
+                    filter=Q(deposits__deposit_type=Deposit.DEPOSIT_TYPE_BOX),
+                ),
+                last_deposit_at=Max(
+                    "deposits__deposited_at",
+                    filter=Q(deposits__deposit_type=Deposit.DEPOSIT_TYPE_BOX),
+                ),
             )
             .only("name", "client__slug")
             .first()
@@ -565,6 +571,7 @@ class GetBox(APIView):
 
         last_deposit = (
             box.deposits
+            .filter(deposit_type=Deposit.DEPOSIT_TYPE_BOX)
             .select_related("song")
             .order_by("-deposited_at")
             .first()
@@ -1324,7 +1331,7 @@ class PinnedSongView(APIView):
 
         points_cost = int(price_step["points"])
 
-        if not option and not get_active_pinned_deposit_for_box(box):
+        if not option:
             return Response({"detail": "Chanson manquante."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -1333,7 +1340,7 @@ class PinnedSongView(APIView):
                 box = Box.objects.select_for_update().select_related("client").get(pk=box.pk)
                 active_pinned = get_active_pinned_deposit_for_box(box, for_update=True)
 
-                if active_pinned and active_pinned.user_id != user.id:
+                if active_pinned:
                     return Response(
                         {
                             "detail": "Une chanson est déjà épinglée pour le moment.",
@@ -1360,27 +1367,18 @@ class PinnedSongView(APIView):
                         status=points_status,
                     )
 
-                if active_pinned and active_pinned.user_id == user.id:
-                    extension_base = active_pinned.pin_expires_at if active_pinned.pin_expires_at and active_pinned.pin_expires_at > timezone.now() else timezone.now()
-                    active_pinned.pin_expires_at = extension_base + timedelta(minutes=duration_minutes)
-                    active_pinned.pin_duration_minutes = int(active_pinned.pin_duration_minutes or 0) + duration_minutes
-                    active_pinned.pin_points_spent = int(active_pinned.pin_points_spent or 0) + points_cost
-                    active_pinned.save(update_fields=["pin_expires_at", "pin_duration_minutes", "pin_points_spent"])
-                    pinned_deposit = active_pinned
-                    action = "extended"
-                else:
-                    pin_expires_at = timezone.now() + timedelta(minutes=duration_minutes)
-                    pinned_deposit, _song = create_song_deposit(
-                        request=request,
-                        user=user,
-                        option=option,
-                        deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
-                        box=box,
-                        pin_duration_minutes=duration_minutes,
-                        pin_points_spent=points_cost,
-                        pin_expires_at=pin_expires_at,
-                    )
-                    action = "created"
+                pin_expires_at = timezone.now() + timedelta(minutes=duration_minutes)
+                pinned_deposit, _song = create_song_deposit(
+                    request=request,
+                    user=user,
+                    option=option,
+                    deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+                    box=box,
+                    pin_duration_minutes=duration_minutes,
+                    pin_points_spent=points_cost,
+                    pin_expires_at=pin_expires_at,
+                )
+                action = "created"
 
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
