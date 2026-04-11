@@ -427,7 +427,7 @@ export default function PinnedSongSection({ boxSlug }) {
                   Choisis une durée
                 </Typography>
 
-                <Box className="my_deposit deposit_card deposit_song">
+                <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing="border-box" }}>
                   <Box className="img_container">
                     {selectedSong?.image_url_small || selectedSong?.image_url ? (
                       <Box
@@ -465,7 +465,7 @@ export default function PinnedSongSection({ boxSlug }) {
                     style={{ margin: "12px auto", display: "inline-flex", gap: 8, alignItems: "center" }}
                   >
                     <Typography component="span" variant="body1">
-                      -{selectedPrice}
+                      {selectedPrice}
                     </Typography>
                     <MusicNote />
                   </Box>
