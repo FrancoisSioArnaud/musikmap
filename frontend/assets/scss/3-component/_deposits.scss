@@ -369,5 +369,6 @@ color : var(--mm-color-success);
   justify-content: center;
   padding: 12px 16px 6px 16px;
   flex-direction: column;
-  background-color: var(--mm-color-primary-light);
+  border: var(--mm-border-default);
+  margin-top: 12px;
 }
