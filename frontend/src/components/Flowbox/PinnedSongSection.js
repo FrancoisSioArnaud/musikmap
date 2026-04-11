@@ -395,9 +395,7 @@ export default function PinnedSongSection({ boxSlug }) {
                       </Box>
                     ) : (
                       <Box sx={{ px: 5, py: 3 }}>
-                        <Typography variant="body1">
-                          Cherche une chanson sur Spotify ou Deezer.
-                        </Typography>
+                        
                       </Box>
                     )
                   }
