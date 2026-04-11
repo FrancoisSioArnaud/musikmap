@@ -371,7 +371,7 @@ export default function PinnedSongSection({ boxSlug }) {
           pb: 1,
         }}
       >
-        <Typography variant="h4">À la une</Typography>
+        <Typography variant="h4">Épinglé ici</Typography>
       </Box>
 
       <Typography component="p" variant="body1" sx={{ mb: 3 }}>
