@@ -330,7 +330,7 @@ export default function PinnedSongSection({ boxSlug }) {
       return (
         <>
           <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-            Finalise ton compte pour pouvoir mettre une chanson à la une.
+            Finalise ton compte pour pouvoir épingler une chanson.
           </Typography>
           <Button
             variant="contained"
@@ -374,6 +374,10 @@ export default function PinnedSongSection({ boxSlug }) {
         <Typography variant="h4">À la une</Typography>
       </Box>
 
+      <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+         La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
+      </Typography>
+          
       {hasActivePinned ? (
         <Deposit
           dep={activePinnedDeposit}
@@ -408,12 +412,8 @@ export default function PinnedSongSection({ boxSlug }) {
             <>
               <Box sx={{ p: 5, pb: 2 }}>
                 <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                  Épinglée ici
+                  Choisis une chanson à épingler
                 </Typography>
-                <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-                   La chanson épinglée reste visible de tous les passants ouvrant cette boîte pendant un temps donné.
-                </Typography>
-                    
 
                 <TextField
                   inputRef={searchInputRef}
