@@ -359,7 +359,7 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [hasActivePinned, isGuestUser, loading, navigate, openSearchDrawer, user?.username]);
 
   return (
-    <Box className="icon_container info_box"
+    <Box className="icon_container info_box">
       <PushPinIcon />
     </Box>
     <Box className="pinned_song_section">
