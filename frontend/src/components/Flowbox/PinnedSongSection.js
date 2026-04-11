@@ -389,6 +389,7 @@ export default function PinnedSongSection({ boxSlug }) {
             dateLabel={buildPinnedDateLabel(activePinnedDeposit)}
             userPrefix="par"
             footerSlot={progressFooter}
+            sx={{ pt : "12px"}}
           />
         ) : (
           <Box className="slot">{slotContent}</Box>
