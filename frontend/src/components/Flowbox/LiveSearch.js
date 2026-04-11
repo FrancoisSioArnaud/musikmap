@@ -163,6 +163,7 @@ export default function LiveSearch() {
           points_balance = null,
           older_deposits = [],
           main = null,
+          active_pinned_deposit = null,
         } = data;
 
         if (setUser) {
@@ -185,6 +186,7 @@ export default function LiveSearch() {
           main: main || null,
           olderDeposits: Array.isArray(older_deposits) ? older_deposits : [],
           successes: Array.isArray(successes) ? successes : [],
+          activePinnedDeposit: active_pinned_deposit || null,
           myDeposit,
         };
 

@@ -17,6 +17,7 @@ import SongSearchResultsList from "../Common/SongSearchResultsList";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);
@@ -64,6 +65,10 @@ function buildPinnedDateLabel(dep) {
   return "Épinglée à l’instant";
 }
 
+
+const KEY_BOX_CONTENT = "mm_box_content";
+const TTL_MINUTES = 120;
+
 export default function PinnedSongSection({ boxSlug }) {
   const navigate = useNavigate();
   const { user, setUser } = useContext(UserContext) || {};
@@ -90,9 +95,41 @@ export default function PinnedSongSection({ boxSlug }) {
   const isGuestUser = Boolean(user?.is_guest);
   const hasActivePinned = Boolean(activePinnedDeposit?.public_key);
 
-  const refreshPinnedSection = useCallback(async () => {
+  const updateBoxContentStorage = useCallback((nextActivePinnedDeposit) => {
     try {
-      setLoading(true);
+      const snap = getValid(KEY_BOX_CONTENT);
+      if (!snap || snap.boxSlug !== boxSlug) return;
+
+      setWithTTL(
+        KEY_BOX_CONTENT,
+        {
+          ...snap,
+          timestamp: Date.now(),
+          activePinnedDeposit: nextActivePinnedDeposit || null,
+        },
+        TTL_MINUTES
+      );
+    } catch {}
+  }, [boxSlug]);
+
+  const hydratePinnedFromStorage = useCallback(() => {
+    try {
+      const snap = getValid(KEY_BOX_CONTENT);
+      if (!snap || snap.boxSlug !== boxSlug) return false;
+
+      setActivePinnedDeposit(snap.activePinnedDeposit || null);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [boxSlug]);
+
+  const refreshPinnedSection = useCallback(async ({ preserveLoadedState = false } = {}) => {
+    try {
+      if (!preserveLoadedState) {
+        setLoading(true);
+      }
+
       const response = await fetch(
         `/box-management/pinned-song/?boxSlug=${encodeURIComponent(boxSlug)}`,
         {
@@ -106,19 +143,26 @@ export default function PinnedSongSection({ boxSlug }) {
         throw new Error(data?.detail || "Impossible de charger la chanson épinglée.");
       }
 
-      setActivePinnedDeposit(data?.active_pinned_deposit || null);
+      const nextActivePinnedDeposit = data?.active_pinned_deposit || null;
+      setActivePinnedDeposit(nextActivePinnedDeposit);
       setPriceSteps(Array.isArray(data?.price_steps) ? data.price_steps : []);
+      updateBoxContentStorage(nextActivePinnedDeposit);
     } catch {
       setActivePinnedDeposit(null);
       setPriceSteps([]);
+      updateBoxContentStorage(null);
     } finally {
       setLoading(false);
     }
-  }, [boxSlug]);
+  }, [boxSlug, updateBoxContentStorage]);
 
   useEffect(() => {
-    refreshPinnedSection();
-  }, [refreshPinnedSection]);
+    const hydrated = hydratePinnedFromStorage();
+    if (hydrated) {
+      setLoading(false);
+    }
+    refreshPinnedSection({ preserveLoadedState: hydrated });
+  }, [hydratePinnedFromStorage, refreshPinnedSection]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -131,7 +175,8 @@ export default function PinnedSongSection({ boxSlug }) {
     if (!activePinnedDeposit?.pin_expires_at) return;
     if (getRemainingMs(activePinnedDeposit, nowTs) > 0) return;
     setActivePinnedDeposit(null);
-  }, [activePinnedDeposit, nowTs]);
+    updateBoxContentStorage(null);
+  }, [activePinnedDeposit, nowTs, updateBoxContentStorage]);
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
@@ -208,13 +253,16 @@ export default function PinnedSongSection({ boxSlug }) {
         }
         if (data?.active_pinned_deposit) {
           setActivePinnedDeposit(data.active_pinned_deposit);
+          updateBoxContentStorage(data.active_pinned_deposit);
         }
         window.alert(data?.detail || "Impossible d’épingler cette chanson.");
         return;
       }
 
-      setActivePinnedDeposit(data?.active_pinned_deposit || null);
+      const nextActivePinnedDeposit = data?.active_pinned_deposit || null;
+      setActivePinnedDeposit(nextActivePinnedDeposit);
       setPriceSteps(Array.isArray(data?.price_steps) ? data.price_steps : []);
+      updateBoxContentStorage(nextActivePinnedDeposit);
       if (data?.current_user && setUser) {
         setUser(data.current_user);
       }
@@ -232,6 +280,7 @@ export default function PinnedSongSection({ boxSlug }) {
     selectedPriceStep,
     selectedSong,
     setUser,
+    updateBoxContentStorage,
   ]);
 
   const remainingMs = getRemainingMs(activePinnedDeposit, nowTs);

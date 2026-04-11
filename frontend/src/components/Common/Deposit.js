@@ -222,6 +222,10 @@ export default function Deposit({
         next.myDeposit = applyToDeposit(next.myDeposit);
       }
 
+      if (next.activePinnedDeposit) {
+        next.activePinnedDeposit = applyToDeposit(next.activePinnedDeposit);
+      }
+
       if (Array.isArray(next.older)) {
         next.older = next.older.map(applyToDeposit);
       }

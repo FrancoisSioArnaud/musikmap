@@ -532,6 +532,20 @@ class GetMain(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+def _serialize_active_pinned_deposit_for_box(box, viewer):
+    active_pinned = get_active_pinned_deposit_for_box(box)
+    if not active_pinned:
+        return None
+
+    payloads = _build_deposits_payload(
+        [active_pinned],
+        viewer=viewer,
+        include_user=True,
+        force_song_infos_for=[active_pinned.pk],
+    )
+    return payloads[0] if payloads else None
+
+
 class GetBox(APIView):
     lookup_url_kwarg = "name"
     serializer_class = BoxSerializer
@@ -703,6 +717,7 @@ class GetBox(APIView):
                 "successes": list(successes),
                 "points_balance": points_balance,
                 "current_user": build_current_user_payload(user),
+                "active_pinned_deposit": _serialize_active_pinned_deposit_for_box(box, user),
             },
             status=status.HTTP_200_OK,
         )
@@ -1279,13 +1294,7 @@ class PinnedSongView(APIView):
         if not deposit:
             return None
 
-        payloads = _build_deposits_payload(
-            [deposit],
-            viewer=viewer,
-            include_user=True,
-            force_song_infos_for=[deposit.pk],
-        )
-        return payloads[0] if payloads else None
+        return _serialize_active_pinned_deposit_for_box(deposit.box, viewer)
 
     def get(self, request):
         box, error_response = self._get_box(request)
