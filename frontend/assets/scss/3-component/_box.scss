@@ -15,6 +15,7 @@
   gap: 12px;
   margin-bottom: -26px;
   background-color: white;
+  box-sizing: border-box;
   z-index: 100;
 }
 
@@ -24,4 +25,8 @@
 
 .info_box + div > :first-child{
   margin-top: 16px;
+}
+
+.info_box.icon_container{
+  padding: 16px;
 }
