@@ -12,7 +12,9 @@
   background-color: white;
   border: var(--mm-border-default);
 }
-
+.points_container_big{
+  padding: 12px 16px 12px 20px;
+}
 .points_container.vertical{
   flex-direction:column;
   padding:12px 12px 8px 12px;
@@ -26,9 +28,9 @@
 
 .points_container.points_container_big svg{
   fill: var(--mm-color-primary);
-  width: 1.7em;
-  height: 1.7em;
-  transform: rotate(15deg) translate(-4px, -1px);
+  width: 1.2em;
+  height: 1.2em;
+  transform: rotate(15deg) translate(0px,0px);
 }
 
 
