@@ -519,42 +519,6 @@ export default function PinnedSongSection({ boxSlug }) {
                 />
               </Box>
 
-              <Box sx={{ px: 5, pb: 14, overflowY: "auto", flex: 1 }}>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  Tableau des durées et des prix
-                </Typography>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                  {priceSteps.map((step, index) => {
-                    const isActive = index === selectedStepIndex;
-                    return (
-                      <Box
-                        key={`${step.minutes}-${step.points}`}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: 2,
-                          px: 2,
-                          py: 1.25,
-                          borderRadius: "var(--mm-radius-sm)",
-                          border: "var(--mm-border-default)",
-                          bgcolor: isActive ? "var(--mm-color-primary-light)" : "transparent",
-                        }}
-                      >
-                        <Typography variant="body1">{formatDuration(step.minutes)}</Typography>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body1">{step.points} points</Typography>
-                          {!step.is_affordable ? (
-                            <Typography variant="body2" sx={{ color: "var(--mm-color-error)" }}>
-                              Trop cher
-                            </Typography>
-                          ) : null}
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
             </Box>
           )}
 
