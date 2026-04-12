@@ -152,6 +152,7 @@ def touch_last_seen(user: Optional[CustomUser]) -> Optional[CustomUser]:
 def build_current_user_payload(user: CustomUser):
     profile_picture_url = None
     user_status = get_user_status(user)
+    total_deposits = _get_user_total_deposits(user)
 
     if getattr(user, "profile_picture", None):
         try:
@@ -194,6 +195,7 @@ def build_current_user_payload(user: CustomUser):
             else None
         ),
         "status": user_status,
+        "total_deposits": total_deposits,
         "favorite_deposit": favorite_deposit,
     }
 

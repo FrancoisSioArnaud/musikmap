@@ -95,7 +95,8 @@ export default function UserProfilePage() {
           username: user?.is_guest ? null : user?.username || null,
           display_name: user?.display_name || user?.username || "Invité",
           profile_picture_url: user?.profile_picture_url || null,
-          total_deposits: null,
+          total_deposits:
+            typeof user?.total_deposits === "number" ? user.total_deposits : 0,
           status: user?.status || null,
           is_guest: Boolean(user?.is_guest),
           favorite_deposit: user?.favorite_deposit || null,
@@ -153,6 +154,7 @@ export default function UserProfilePage() {
     user?.is_guest,
     user?.status?.name,
     user?.status?.min_deposits,
+    user?.total_deposits,
     user?.favorite_deposit?.public_key,
   ]);
 
