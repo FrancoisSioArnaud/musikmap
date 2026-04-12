@@ -179,6 +179,7 @@ export function buildMuiTheme(clientTheme) {
               color: clientTheme.colors.primary,
               fontWeight: 700,
               border: "none",
+              borderRadius: parseInt(clientTheme.radius.button, 10),
               "&:hover": {
                 backgroundColor: clientTheme.colors.white,
                 boxShadow: "none",
