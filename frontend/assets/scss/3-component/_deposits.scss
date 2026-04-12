@@ -193,7 +193,7 @@
   transform-origin: left center;
   transform: scaleX(var(--deposit-reveal-progress, 0));
   transition: transform 180ms ease-out;
-  transition: opacity 0.2s;
+  transition: opacity 0.3s ease-in-out;
   opacity:0;
 }
 
