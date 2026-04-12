@@ -306,7 +306,7 @@
   opacity: 0;
   transform-origin: left center;
   transform: scale(0.88);
-  animation: depositListPopIn 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: depositListPopIn 420ms ease-in forwards;
   will-change: transform, opacity;
 }
 
@@ -319,7 +319,7 @@
 }
 
 .deposit_list_card .interact button {
-  animation-delay: 520ms;
+  animation-delay: 400ms;
 }
 
 .deposit_card .deposit_song.is_hidden .interact {
