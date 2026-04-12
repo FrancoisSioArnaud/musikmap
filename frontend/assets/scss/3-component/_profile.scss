@@ -4,16 +4,6 @@
   background-color: var(--mm-color-primary-light);
 }
 
-.profile .favorite {
+.profile .favorite_song_section {
   padding: 20px;
-}
-
-.profile .favorite .slot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  padding: 16px;
-  border: dashed 2px var(--mm-color-divider);
-  border-radius: var(--mm-radius-lg);
 }

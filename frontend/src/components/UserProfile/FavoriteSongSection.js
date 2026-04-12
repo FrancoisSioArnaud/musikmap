@@ -6,6 +6,7 @@ import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import InputAdornment from "@mui/material/InputAdornment";
 import SearchIcon from "@mui/icons-material/Search";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
@@ -174,8 +175,6 @@ export default function FavoriteSongSection({
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
   const canRemove = Boolean(hasFavorite);
-  const showSearchButton = isCurrentFullUser;
-  const searchButtonLabel = hasFavorite ? "Changer" : "Ajouter";
 
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
@@ -201,7 +200,19 @@ export default function FavoriteSongSection({
     );
   }, [canRemove, handleRemoveFavorite, searchValue]);
 
-  const emptySlotContent = useMemo(() => {
+  const bodyContent = useMemo(() => {
+    if (isCurrentFullUser) {
+      return "Ta chanson de cœur est visible par tout le monde indéfiniment";
+    }
+
+    if (!hasFavorite) {
+      return null;
+    }
+
+    return `${displayName} a épinglé cette chanson à son profil`;
+  }, [displayName, hasFavorite, isCurrentFullUser]);
+
+  const slotContent = useMemo(() => {
     if (isGuestOwner) {
       return (
         <>
@@ -226,54 +237,43 @@ export default function FavoriteSongSection({
 
     if (isCurrentFullUser) {
       return (
-        <Typography variant="body1" sx={{ textAlign: "center" }}>
-          Attache une chanson à ton profil, elle sera visible par tout ceux qui le visiteront
-        </Typography>
+        <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
+          Choisi ta chanson de coeur
+        </Button>
       );
     }
 
     return (
       <Typography variant="body1" sx={{ textAlign: "center" }}>
-        {displayName} n&apos;a pas encore de chanson de coeur
+        {displayName} n&apos;a pas épinglé de chanson à son profil
       </Typography>
     );
-  }, [displayName, isCurrentFullUser, isGuestOwner, navigate, user?.username]);
+  }, [displayName, isCurrentFullUser, isGuestOwner, navigate, openDrawer, user?.username]);
 
   return (
-    <Box className="favorite">
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-          pb: "8px",
-        }}
-      >
-        <Typography variant="h5">Chanson de coeur</Typography>
-        {showSearchButton ? (
-          <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
-            {searchButtonLabel}
-          </Button>
-        ) : null}
+    <Box className="favorite_song_section">
+      <Box className="icon_container info_box">
+        <FavoriteIcon />
       </Box>
 
-      {hasFavorite ? (
-        !isOwner ? (
-          <>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {displayName} a attaché cette chanson à son profil
+      <Box className="favorite_song_container">
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2,
+            px: 2.5,
+            pb: 1,
+          }}
+        >
+          <Typography variant="h4">Chanson de coeur</Typography>
+          {bodyContent ? (
+            <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+              {bodyContent}
             </Typography>
-            <Deposit
-              dep={favoriteDeposit}
-              user={user}
-              variant="list"
-              showUser={false}
-              showDate={false}
-              fitContainer
-            />
-          </>
-        ) : (
+          ) : null}
+        </Box>
+
+        {hasFavorite ? (
           <Deposit
             dep={favoriteDeposit}
             user={user}
@@ -282,78 +282,76 @@ export default function FavoriteSongSection({
             showDate={false}
             fitContainer
           />
-        )
-      ) : (
-        <Box className="slot">
-          {emptySlotContent}
-        </Box>
-      )}
+        ) : (
+          <Box className="slot">{slotContent}</Box>
+        )}
 
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={closeDrawer}
-        PaperProps={{
-          sx: {
-            width: "100vw",
-            maxWidth: "100vw",
-            height: "100vh",
-            overflow: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ p: 5, pb: 2 }}>
-            <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-              Choisis une chanson de coeur
-            </Typography>
+        <Drawer
+          anchor="right"
+          open={drawerOpen}
+          onClose={closeDrawer}
+          PaperProps={{
+            sx: {
+              width: "100vw",
+              maxWidth: "100vw",
+              height: "100vh",
+              overflow: "hidden",
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <Box sx={{ p: 5, pb: 2 }}>
+              <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                Choisis une chanson de coeur
+              </Typography>
 
-            <TextField
-              inputRef={searchInputRef}
-              fullWidth
-              type="search"
-              placeholder="Chercher une chanson"
-              value={searchValue}
-              className="searchfield"
-              onChange={(event) => setSearchValue(event.target.value)}
-              inputProps={{ inputMode: "search" }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="medium" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                borderRadius: "var(--mm-radius-round)",
-                "& .MuiInputBase-input": { fontSize: 16 },
-              }}
-            />
+              <TextField
+                inputRef={searchInputRef}
+                fullWidth
+                type="search"
+                placeholder="Chercher une chanson"
+                value={searchValue}
+                className="searchfield"
+                onChange={(event) => setSearchValue(event.target.value)}
+                inputProps={{ inputMode: "search" }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="medium" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  borderRadius: "var(--mm-radius-round)",
+                  "& .MuiInputBase-input": { fontSize: 16 },
+                }}
+              />
+            </Box>
+
+            <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
+              <SongSearchResultsList
+                results={results}
+                isSearching={isSearching}
+                posting={posting}
+                postingId={postingId}
+                postingProgress={postingProgress}
+                postingTransitionMs={postingTransitionMs}
+                onAction={handleSetFavorite}
+                actionLabel="Choisir"
+                emptyContent={drawerEmptyContent}
+              />
+            </Box>
+
+            <Button
+              variant="contained"
+              onClick={() => closeDrawer()}
+              className="bottom_fixed"
+            >
+              Fermer
+            </Button>
           </Box>
-
-          <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
-            <SongSearchResultsList
-              results={results}
-              isSearching={isSearching}
-              posting={posting}
-              postingId={postingId}
-              postingProgress={postingProgress}
-              postingTransitionMs={postingTransitionMs}
-              onAction={handleSetFavorite}
-              actionLabel="Choisir"
-              emptyContent={drawerEmptyContent}
-            />
-          </Box>
-
-          <Button
-            variant="contained"
-            onClick={() => closeDrawer()}
-            className="bottom_fixed"
-          >
-            Fermer
-          </Button>
-        </Box>
-      </Drawer>
+        </Drawer>
+      </Box>
     </Box>
   );
 }
