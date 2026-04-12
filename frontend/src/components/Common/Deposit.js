@@ -37,7 +37,7 @@ function SlideDownTransition(props) {
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
-const HOLD_TO_REVEAL_MS = 2000;
+const HOLD_TO_REVEAL_MS = 1200;
 const MIN_REVEAL_LOADING_MS = 750;
 
 function sleep(ms) {
@@ -435,10 +435,11 @@ export default function Deposit({
         return;
       }
 
-      const progress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
+      const linearProgress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
+      const progress = 1 - Math.pow(1 - linearProgress, 3);
       setHoldProgress(progress);
 
-      if (progress >= 1) {
+      if (linearProgress >= 1) {
         revealHoldTriggeredRef.current = true;
         stopRevealHoldAnimation();
         revealHoldStartRef.current = null;
