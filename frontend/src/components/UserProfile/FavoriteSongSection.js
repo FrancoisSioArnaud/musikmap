@@ -268,7 +268,7 @@ export default function FavoriteSongSection({
         >
           <Typography variant="h4">Chanson de coeur</Typography>
           {bodyContent ? (
-            <Typography component="p" variant="body1" sx={{ mb: showOwnerActions ? 2 : 3 }}>
+            <Typography component="p" variant="body1">
               {bodyContent}
             </Typography>
           ) : null}
