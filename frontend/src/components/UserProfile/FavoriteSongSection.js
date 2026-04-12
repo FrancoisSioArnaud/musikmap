@@ -9,7 +9,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
@@ -175,6 +175,7 @@ export default function FavoriteSongSection({
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
   const canRemove = Boolean(hasFavorite);
+  const showOwnerActions = Boolean(isCurrentFullUser && hasFavorite);
 
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
@@ -184,7 +185,7 @@ export default function FavoriteSongSection({
             size="fullwidth"
             variant="text"
             onClick={handleRemoveFavorite}
-            startIcon={<RemoveCircleOutlineIcon />}
+            startIcon={<RemoveCircleOutlineOutlinedIcon />}
             sx={{ px: "auto" }}
           >
             Retirer ma chanson de coeur
@@ -267,9 +268,25 @@ export default function FavoriteSongSection({
         >
           <Typography variant="h4">Chanson de coeur</Typography>
           {bodyContent ? (
-            <Typography component="p" variant="body1" sx={{ mb: 3 }}>
+            <Typography component="p" variant="body1" sx={{ mb: showOwnerActions ? 2 : 3 }}>
               {bodyContent}
             </Typography>
+          ) : null}
+
+          {showOwnerActions ? (
+            <Box className="favorite_song_actions">
+              <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
+                Changer
+              </Button>
+              <Button
+                variant="light"
+                onClick={handleRemoveFavorite}
+                startIcon={<RemoveCircleOutlineOutlinedIcon />}
+                sx={{ color: "var(--mm-color-error)" }}
+              >
+                Supprimer
+              </Button>
+            </Box>
           ) : null}
         </Box>
 

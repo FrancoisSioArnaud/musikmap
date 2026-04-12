@@ -362,3 +362,12 @@
   border-radius: var(--mm-radius-lg);
   background-color: var(--mm-color-surface);
 }
+
+.favorite_song_actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
