@@ -167,7 +167,6 @@
   height: 26px;
 }
 
-.deposit_card .deposit_song,
 .deposit_song {
   position: relative;
   display: flex;
@@ -175,15 +174,16 @@
   background-color: var(--mm-color-primary-light);
   --deposit-reveal-settle-delay: 600ms;
   --deposit-reveal-settle-duration: 340ms;
+  transition: 
+    height 1s;
 }
 
-.deposit_card .deposit_song > *,
+
 .deposit_song > * {
   position: relative;
   z-index: 1;
 }
 
-.deposit_card .deposit_reveal_fill,
 .deposit_reveal_fill {
   position: absolute;
   inset: 0;
@@ -195,12 +195,10 @@
   transition: transform 180ms ease-out;
 }
 
-.deposit_card .deposit_song.is_reveal_holding .deposit_reveal_fill,
 .deposit_song.is_reveal_holding .deposit_reveal_fill {
   transition: none;
 }
 
-.deposit_card .deposit_song.has_accent_color,
 .deposit_song.has_accent_color {
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
@@ -221,6 +219,9 @@
   gap: 26px;
   padding: 26px;
 }
+
+
+
 .my_deposit.deposit_song {
   border-radius: var(--mm-radius-md);
 }
@@ -233,7 +234,13 @@
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
+  transition:
+    margin: 1s;
 }
+.deposit_list_card .deposit_song:not(.is_hidden) .cover_media{
+  margin:16px;
+}
+
 
 .deposit_card .img_container {
   position: relative;
@@ -296,7 +303,7 @@
 .deposit_card .interact {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
