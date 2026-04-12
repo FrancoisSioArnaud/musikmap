@@ -190,7 +190,7 @@
 }
 
 .pochette .vinyl {
-  margin-left: -23%;
+  margin-left: calc(-27% + 16px);
   border-radius: var(--mm-radius-round, 9999px);
   background-color: #0f0f0f;
   background-image: radial-gradient(
@@ -228,11 +228,11 @@
 
 @-webkit-keyframes vinyl_open {
   from {
-    margin-left: -50%;
+    margin-left: calc(-50% + 16px);
   }
 
   to {
-    margin-left: -23%;
+    margin-left: calc(-27% + 16px);
   }
 }
 
