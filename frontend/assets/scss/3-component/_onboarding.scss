@@ -262,46 +262,28 @@
 }
 
 .onBoarding .container {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
   flex-direction: column;
   gap: 16px;
   width: 100%;
   padding: 26px;
-  background-color: #ffffff;
+  height: auto;
   z-index: 2;
-  -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  animation-delay: 1.2s;
-  -webkit-animation: bottom_enter 1s ease-in-out;
-  animation: bottom_enter 1s ease-in-out;
-  height:auto;
-
-}
-
-
-
-@-webkit-keyframes bottom_enter {
-  from {
-    height: 0px;
-  }
-
-  to {
-    height: auto;
-  }
+  overflow: hidden;
+  background-color: #fff;
+  animation: bottom_enter 1s ease-in-out 1.2s both;
 }
 
 @keyframes bottom_enter {
   from {
-    height: 0px;
+    max-height: 0;
+    opacity: 0;
   }
 
   to {
-    height: auto;
+    max-height: 500px; /* mets une valeur assez grande */
+    opacity: 1;
   }
 }
 
