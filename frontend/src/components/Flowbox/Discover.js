@@ -227,7 +227,7 @@ export default function Discover() {
 
       <Box className="intro">
         <Typography component="h2" variant="h1">
-          Bonne écoute !
+          Bienvenue !
         </Typography>
         <Typography component="span" variant="body1">
           Découvre la chanson déposée par le passant·e précédent
