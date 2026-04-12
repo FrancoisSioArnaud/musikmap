@@ -317,7 +317,7 @@
 
 .deposit_list_card .texts .titre,
 .deposit_list_card .texts .artist,
-.deposit_list_card .interact button {
+.deposit_list_card .interact button.play {
   opacity: 0;
   transform-origin: left center;
   transform: scale(0.88);
