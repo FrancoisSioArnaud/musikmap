@@ -272,18 +272,9 @@
   box-sizing: border-box;
   overflow: hidden;
   background-color: #fff;
-  animation: bottom_enter 1s ease-in-out 1.2s both;
 }
 
-@keyframes bottom_enter {
-  from {
-    max-height: 0;
-  }
 
-  to {
-    max-height: 500px; /* mets une valeur assez grande */
-  }
-}
 
 
 .onBoarding h1 {
