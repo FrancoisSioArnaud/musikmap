@@ -173,6 +173,8 @@
   display: flex;
   overflow: hidden;
   background-color: var(--mm-color-primary-light);
+  --deposit-reveal-settle-delay: 600ms;
+  --deposit-reveal-settle-duration: 340ms;
 }
 
 .deposit_card .deposit_song > *,
@@ -245,7 +247,8 @@
   transform: translateZ(0);
 }
 
-.img_container img {
+.img_container img,
+.img_container .cover_image {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -254,6 +257,12 @@
   object-fit: cover;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  transition: filter var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay);
+  will-change: filter;
+}
+
+.img_container .cover_image.is_blurred {
+  filter: blur(6px);
 }
 
 .deposit_main_card .cover_media {
@@ -369,8 +378,8 @@
   justify-content: center;
   transform: translate(-50%, -50%);
   transition:
-    left 340ms cubic-bezier(0.2, 0.9, 0.2, 1),
-    top 340ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    left var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay),
+    top var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay),
     opacity 180ms ease;
   will-change: left, top;
   cursor: pointer;
@@ -395,10 +404,6 @@
 .deposit_card .emojis.is_revealed .emoji_shell {
   left: var(--emoji-target-left);
   top: var(--emoji-target-top);
-}
-
-.deposit_card .emojis.is_revealed .emoji {
-  animation: none;
 }
 
 .deposit_main_card .emojis .emoji {

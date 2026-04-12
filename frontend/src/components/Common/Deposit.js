@@ -831,9 +831,9 @@ export default function Deposit({
         {song?.image_url ? (
           <Box
             component="img"
+            className={`cover_image${blurred ? " is_blurred" : ""}`}
             src={song.image_url}
             alt={isRevealed ? `${song.title} - ${song.artist}` : "Cover"}
-            sx={{ filter: blurred ? "blur(6px)" : "none" }}
           />
         ) : null}
       </Box>
