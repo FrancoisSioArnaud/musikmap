@@ -263,7 +263,7 @@ export default function FavoriteSongSection({
             display: "grid",
             gap: 2,
             px: 2.5,
-            pb: 1,
+            pb: "16px",
           }}
         >
           <Typography variant="h4">Chanson de coeur</Typography>
@@ -274,7 +274,7 @@ export default function FavoriteSongSection({
           ) : null}
 
           {showOwnerActions ? (
-            <Box className="favorite_song_actions" sx={{ mb:"8px"}}>
+            <Box className="favorite_song_actions">
               <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
                 Changer
               </Button>
