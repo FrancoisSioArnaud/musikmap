@@ -114,6 +114,49 @@ async function copyText(text) {
   return copied;
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getEmojiEdgeTarget(left, top) {
+  const outsideOffset = 6;
+  const distances = {
+    left,
+    right: 100 - left,
+    top,
+    bottom: 100 - top,
+  };
+
+  const nearestEdge = Object.entries(distances).sort((a, b) => a[1] - b[1])[0]?.[0] || "right";
+  const target = {
+    edge: nearestEdge,
+    targetLeft: left,
+    targetTop: top,
+  };
+
+  if (nearestEdge === "left") {
+    target.targetLeft = -outsideOffset;
+    target.targetTop = clamp(top, 8, 92);
+  }
+
+  if (nearestEdge === "right") {
+    target.targetLeft = 100 + outsideOffset;
+    target.targetTop = clamp(top, 8, 92);
+  }
+
+  if (nearestEdge === "top") {
+    target.targetLeft = clamp(left, 8, 92);
+    target.targetTop = -outsideOffset;
+  }
+
+  if (nearestEdge === "bottom") {
+    target.targetLeft = clamp(left, 8, 92);
+    target.targetTop = 100 + outsideOffset;
+  }
+
+  return target;
+}
+
 function getFloatingEmojiItems(reactions) {
   const reactionList = Array.isArray(reactions) ? reactions : [];
   const emojiItems = reactionList.flatMap((reaction, reactionIndex) => {
@@ -147,11 +190,17 @@ function getFloatingEmojiItems(reactions) {
     const cell = orderedCells[index] || { row: 0, col: 0 };
     const jitterX = (Math.random() - 0.5) * Math.min(16, cellWidth * 0.5);
     const jitterY = (Math.random() - 0.5) * Math.min(18, cellHeight * 0.5);
+    const left = clamp(cell.col * cellWidth + jitterX + cellWidth * 0.5, 10, 90);
+    const top = clamp(cell.row * cellHeight + jitterY + cellHeight * 0.5, 10, 90);
+    const { edge, targetLeft, targetTop } = getEmojiEdgeTarget(left, top);
 
     return {
       ...item,
-      left: cell.col * cellWidth + jitterX,
-      top: cell.row * cellHeight + jitterY,
+      left,
+      top,
+      targetLeft,
+      targetTop,
+      edge,
       fontSize: `${randomBetween(1.1, 1.75).toFixed(2)}rem`,
       zIndex: Math.floor(randomBetween(1, 5)),
       opacity: randomBetween(0.92, 1).toFixed(2),
@@ -721,33 +770,18 @@ export default function Deposit({
     if (!floatingEmojiItems.length) return null;
 
     return (
-      <Box className="emojis">
+      <Box className={`emojis${isRevealed ? " is_revealed" : ""}`}>
         {floatingEmojiItems.map((item) => (
-          <Typography
+          <Box
             key={item.key}
-            className="emoji"
-            component="span"
-            role="button"
-            tabIndex={0}
+            className={`emoji_shell edge_${item.edge || "right"}`}
             sx={{
               left: `${item.left}%`,
               top: `${item.top}%`,
-              fontSize: item.fontSize,
+              "--emoji-target-left": `${item.targetLeft}%`,
+              "--emoji-target-top": `${item.targetTop}%`,
               zIndex: item.zIndex,
               opacity: item.opacity,
-              "--float-duration": item.floatDuration,
-              "--float-delay": item.floatDelay,
-              "--x1": item.x1,
-              "--y1": item.y1,
-              "--x2": item.x2,
-              "--y2": item.y2,
-              "--x3": item.x3,
-              "--y3": item.y3,
-              "--x4": item.x4,
-              "--y4": item.y4,
-              "--rot-max": item.rotMax,
-              "--scale-min": item.scaleMin,
-              "--scale-max": item.scaleMax,
             }}
             onClick={(event) => {
               event.stopPropagation();
@@ -760,9 +794,32 @@ export default function Deposit({
                 setReactionSummaryOpen(true);
               }
             }}
+            role="button"
+            tabIndex={0}
           >
-            {item.emoji}
-          </Typography>
+            <Typography
+              className="emoji"
+              component="span"
+              sx={{
+                fontSize: item.fontSize,
+                "--float-duration": item.floatDuration,
+                "--float-delay": item.floatDelay,
+                "--x1": item.x1,
+                "--y1": item.y1,
+                "--x2": item.x2,
+                "--y2": item.y2,
+                "--x3": item.x3,
+                "--y3": item.y3,
+                "--x4": item.x4,
+                "--y4": item.y4,
+                "--rot-max": item.rotMax,
+                "--scale-min": item.scaleMin,
+                "--scale-max": item.scaleMax,
+              }}
+            >
+              {item.emoji}
+            </Typography>
+          </Box>
         ))}
       </Box>
     );
