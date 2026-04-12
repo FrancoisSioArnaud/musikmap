@@ -203,7 +203,7 @@ export default function FavoriteSongSection({
 
   const bodyContent = useMemo(() => {
     if (isCurrentFullUser) {
-      return "Ta chanson de cœur est visible par tout le monde indéfiniment";
+      return "Ta chanson de cœur est visible par tout le monde";
     }
 
     if (!hasFavorite) {
