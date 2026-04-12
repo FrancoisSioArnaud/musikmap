@@ -67,13 +67,12 @@
   -webkit-box-pack: center;
   -ms-flex-pack: center;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
 }
 
 .last_song p {
   color: var(--mm-color-white, #ffffff);
-  padding: 20px;
   text-align: center;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -115,6 +114,7 @@
   align-items: center;
   height: clamp(120px, 38vw, 260px);
   max-height: 40vh;
+  transform: scale(0.9);
 }
 
 .cover,
@@ -238,11 +238,11 @@
 
 @keyframes vinyl_open {
   from {
-    margin-left: -50%;
+    margin-left: calc(-50% + 16px);
   }
 
   to {
-    margin-left: -23%;
+    margin-left: calc(-27% + 16px);
   }
 }
 
@@ -276,7 +276,35 @@
   z-index: 2;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
+  animation-delay: 1.2s;
+  -webkit-animation: bottom_enter 1s ease-in-out;
+  animation: bottom_enter 1s ease-in-out;
+  height:auto;
+
 }
+
+
+
+@-webkit-keyframes bottom_enter {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: auto;
+  }
+}
+
+@keyframes bottom_enter {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: auto;
+  }
+}
+
 
 .onBoarding h1 {
   text-align: center;
@@ -323,15 +351,4 @@
     height: clamp(110px, 42vw, 220px);
   }
 
-  .onBoarding .container {
-    padding: 20px;
-  }
-
-  .last_song {
-    gap: 16px;
-  }
-
-  .last_song p {
-    padding: 16px;
-  }
 }
