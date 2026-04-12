@@ -1,29 +1,27 @@
-.comments_drawer_modal .comments_panel {
+.comments_drawer_modal .comments_panel{
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 16px;
-  min-height: 0;
 }
 
-.comments_drawer_modal .deposit_comment {
+.comments_drawer_modal .deposit_comment{
   padding: 8px 0;
 }
 
-.comments_drawer_modal .comment_main {
+.comments_drawer_modal .comment_main{
   display: flex;
   flex: 1;
   gap: 12px;
   min-width: 0;
 }
 
-.comments_drawer_modal .username {
+.comments_drawer_modal .username{
   display: flex;
   align-items: center;
 }
 
 .comments_drawer_modal .username svg {
-  font-size: 16px;
+  font-size: 16px
 }
 
 .comments_drawer_modal .deposit_comment_form {
@@ -53,9 +51,9 @@
 }
 
 .comments_drawer_modal .comment_submit_button {
+  color: var(--mm-color-text);
   flex: 0 0 auto;
   margin-bottom: 20px;
-  color: var(--mm-color-text);
 }
 
 .comments_drawer_modal .comment_submit_button.Mui-disabled {
@@ -74,6 +72,10 @@
 .comments_drawer_modal .MuiDrawer-paper {
   display: flex;
   flex-direction: column;
+}
+
+.comments_drawer_modal .comments_panel{
+  flex: 1;
   min-height: 0;
 }
 
@@ -81,7 +83,5 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   padding-right: 4px;
 }

@@ -1,19 +1,23 @@
-.profile .status {
+
+.profile .status{
+  background-color: var(--mm-color-primary-light);
   padding: 12px 16px;
   border-radius: var(--mm-radius-sm);
-  background-color: var(--mm-color-primary-light);
 }
 
-.profile .favorite {
-  padding: 20px;
+
+.profile .favorite{
+  padding: 20px;  
+
 }
 
-.profile .favorite .slot {
+.profile .favorite .slot{
+  min-height: 120px;
+  border-radius: var(--mm-radius-lg);
+  border: dashed 2px var(--mm-color-divider);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
   padding: 16px;
-  border: dashed 2px var(--mm-color-divider);
-  border-radius: var(--mm-radius-lg);
 }
+
