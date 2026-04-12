@@ -226,7 +226,7 @@ export default function UserProfilePage() {
       <Box
         sx={{
           display: "flex",
-          flexDirection: "vertical",
+          flexDirection: "column",
           alignItems: "center",
           gap: 4,
           p: "20px",
@@ -270,7 +270,7 @@ export default function UserProfilePage() {
           </>
         ) : (
           <Box
-            sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "8px" }}
+            sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" }}
           >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
             {isOwner && !isGuestOwner && (
