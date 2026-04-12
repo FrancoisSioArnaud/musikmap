@@ -888,7 +888,7 @@ export default function Deposit({
                 </PlayModal>
               ) : (
                 <Button
-                  variant="depositInteract"
+                  variant="light"
                   className="decouvrir"
                   disabled={isRevealLoading}
                   onPointerDown={beginRevealHold}
