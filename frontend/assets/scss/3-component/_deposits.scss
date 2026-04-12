@@ -58,8 +58,11 @@
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
 }
-.deposit_main_card {
+
+.favorite_song_section .deposit_card, .pinned_song_section .deposit_card{
+  border: solid 3px var(--mm-color-white);
 }
+
 
 #older_deposits_list {
   display: flex;
