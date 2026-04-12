@@ -278,12 +278,10 @@
 @keyframes bottom_enter {
   from {
     max-height: 0;
-    opacity: 0;
   }
 
   to {
     max-height: 500px; /* mets une valeur assez grande */
-    opacity: 1;
   }
 }
 
