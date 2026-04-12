@@ -1,47 +1,47 @@
-@use '../0-init/color' as *;
+@use "../0-init/color" as *;
 
-.my_deposit_notif{
+.my_deposit_notif {
   display: flex;
   flex-direction: column;
-  background-color: var(--mm-color-secondary-light);
-  border-radius: var(--mm-radius-lg);
-  margin: 20px;
-  padding: 24px 16px 16px 16px;
   gap: 16px;
+  margin: 20px;
+  padding: 24px 16px 16px;
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-secondary-light);
+  opacity: 0;
   transform: translateY(-120%);
-  opacity:0;
   animation: slideIn 300ms ease-out forwards;
 }
 
-.my_deposit .img_container{
+.my_deposit .img_container {
   width: 23% !important;
 }
 
 @keyframes slideIn {
   to {
     transform: translateY(0);
-    opacity:1;
+    opacity: 1;
   }
 }
 
-.my_deposit_notif svg{
-color : var(--mm-color-success);
+.my_deposit_notif svg {
+  color: var(--mm-color-success);
 }
 
-.my_deposit .text{
+.my_deposit .text {
   text-align: left;
   flex: 1;
   min-width: 0;
 }
 
-.deposit{
+.deposit {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   align-items: center;
+  gap: 16px;
 }
 
-#older_deposits_list .deposit::after{
+#older_deposits_list .deposit::after {
   content: "...";
   transform: rotate(90deg) translate(0, -15px);
   padding: 16px;
@@ -51,34 +51,29 @@ color : var(--mm-color-success);
   padding-right: 16px;
 }
 
-.deposit_card{
+.deposit_card {
   display: flex;
   flex-direction: column;
   box-shadow: none;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
 }
-.deposit_main_card{
-
-
+.deposit_main_card {
 }
 
-
-#older_deposits_list{
+#older_deposits_list {
   display: flex;
   flex-direction: column;
   gap: 32px;
   padding: 26px;
   padding-bottom: 32px;
-  background-color:  var(--mm-color-bg-gradient) ;
-  
+  background-color: var(--mm-color-bg-gradient);
 }
 
-#older_deposits_list .deposit_card{
-  
+#older_deposits_list .deposit_card {
 }
 
-.deposit_card .deposit_infos{
+.deposit_card .deposit_infos {
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -86,7 +81,7 @@ color : var(--mm-color-success);
   padding: 12px 16px;
 }
 
-.deposit_card .deposit_interact{
+.deposit_card .deposit_interact {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -96,8 +91,9 @@ color : var(--mm-color-success);
   padding: 4px 12px;
 }
 
-.deposit_card .deposit_interact .left, .deposit_card .deposit_interact .right{
-  display:flex;
+.deposit_card .deposit_interact .left,
+.deposit_card .deposit_interact .right {
+  display: flex;
   gap: 4px;
 }
 
@@ -110,10 +106,9 @@ color : var(--mm-color-success);
   font-size: 1em;
 }
 
-.deposit_card .deposit_action_button svg{
+.deposit_card .deposit_action_button svg {
   font-size: 26px;
 }
-
 
 .deposit_card .deposit_action_group {
   display: flex;
@@ -131,129 +126,133 @@ color : var(--mm-color-success);
   padding-left: 0;
 }
 
-
-.deposit_card .deposit_date{
-
+.deposit_card .deposit_date {
 }
 
-.deposit_card .deposit_user{
+.deposit_card .deposit_user {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  justify-content:center;
 }
 
-.deposit_card .deposit_user span{
+.deposit_card .deposit_user span {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .deposit_card .avatar {
-  width : 26px;
-  height : 26px;
+  width: 26px;
+  height: 26px;
 }
 
 .deposit_card .deposit_song,
-.deposit_song{
-  background-color: var(--mm-color-primary-light);
+.deposit_song {
   display: flex;
+  background-color: var(--mm-color-primary-light);
 }
 
 .deposit_card .deposit_song.has_accent_color,
-.deposit_song.has_accent_color{
+.deposit_song.has_accent_color {
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main_card .deposit_song{
+.deposit_main_card .deposit_song {
   flex-direction: column;
   gap: 16px;
-//  background : var(--mm-color-primary-dark);
+  //  background : var(--mm-color-primary-dark);
   padding: 36px;
   padding-bottom: 32px;
 }
 
-.deposit_list_card .deposit_song, .my_deposit.deposit_song{
+.deposit_list_card .deposit_song,
+.my_deposit.deposit_song {
+  display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 16px;
-  align-items:center;
-  padding:16px;
+  padding: 16px;
 }
-.my_deposit.deposit_song{
+.my_deposit.deposit_song {
   border-radius: var(--mm-radius-md);
 }
-.my_deposit{
+.my_deposit {
   background-color: var(--mm-color-surface);
 }
 
-.deposit_card .cover_media{
+.deposit_card .cover_media {
   position: relative;
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
 }
 
-.deposit_card .img_container{
+.deposit_card .img_container {
   position: relative;
-  border-radius: var(--mm-radius-sm);
-  aspect-ratio: 1 / 1;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  box-shadow: 0 .4rem 0.6rem rgba(0, 0, 0, .15);
+  border-radius: var(--mm-radius-sm);
+  box-shadow: 0 0.4rem 0.6rem rgba(0, 0, 0, 0.15);
+  aspect-ratio: 1 / 1;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .img_container img {
+  display: block;
   width: 100%;
   max-width: 100%;
   aspect-ratio: 1 / 1;
+  -o-object-fit: cover;
   object-fit: cover;
-  display: block;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
-.deposit_main_card .cover_media{
-  width : 66%;
-  margin : auto;
+.deposit_main_card .cover_media {
+  width: 66%;
+  margin: auto;
 }
 
-.deposit_list_card .cover_media{
-  width : 33%;
+.deposit_list_card .cover_media {
+  width: 33%;
 }
 
-
-.deposit_card .texts{
+.deposit_card .texts {
   display: flex;
   flex-direction: column;
-  padding:6px 0;
-//  color : var(--mm-color-black);
+  padding: 6px 0;
+  //  color : var(--mm-color-black);
 }
 
-.deposit_main_card .texts{
+.deposit_main_card .texts {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  text-align:center;
+  text-align: center;
 }
 
-
-.deposit_list_card .texts{
-  text-align:left;
+.deposit_list_card .texts {
+  text-align: left;
 }
 
-.deposit_card .interact{
+.deposit_card .interact {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-direction: column;
 }
-.deposit_main_card .interact{
-  gap: 12px;
+.deposit_main_card .interact {
   align-items: center;
+  gap: 12px;
 }
 
-.deposit_list_card .interact{
+.deposit_list_card .interact {
   justify-content: left;
 }
 
-.deposit_list_card .decouvrir{
+.deposit_list_card .decouvrir {
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -262,109 +261,98 @@ color : var(--mm-color-success);
   height: auto;
 }
 
-.deposit_list_card .points_container{
- margin:0;
+.deposit_list_card .points_container {
+  margin: 0;
 }
 
-.deposit_card .emojis{
+.deposit_card .emojis {
   position: absolute;
   inset: 0;
   overflow: visible;
   pointer-events: none;
 }
 
-.deposit_card .emojis .emoji{
+.deposit_card .emojis .emoji {
   position: absolute;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: 2rem;
   line-height: 1;
-  pointer-events: auto;
-  cursor: pointer;
-  user-select: none;
+  text-shadow: var(--mm-shadow-high);
   transform-origin: center center;
-  will-change: transform;
   animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
-  text-shadow: var(--mm-shadow-high);
-  font-size:2rem;
+  will-change: transform;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.deposit_main_card .emojis .emoji{
-    font-size: 4rem;
+.deposit_main_card .emojis .emoji {
+  font-size: 4rem;
 }
 
 @keyframes emojiFloat {
   0% {
-    transform:
-      translate(0px, 0px)
-      rotate(calc(var(--rot-max, 5deg) * -0.45))
+    transform: translate(0px, 0px) rotate(calc(var(--rot-max, 5deg) * -0.45))
       scale(var(--scale-min, 0.95));
   }
 
   20% {
-    transform:
-      translate(var(--x1, 6px), var(--y1, -4px))
-      rotate(calc(var(--rot-max, 5deg) * 0.35))
-      scale(var(--scale-max, 1.05));
+    transform: translate(var(--x1, 6px), var(--y1, -4px))
+      rotate(calc(var(--rot-max, 5deg) * 0.35)) scale(var(--scale-max, 1.05));
   }
 
   40% {
-    transform:
-      translate(var(--x2, -5px), var(--y2, 5px))
-      rotate(calc(var(--rot-max, 5deg) * -0.25))
-      scale(1);
+    transform: translate(var(--x2, -5px), var(--y2, 5px))
+      rotate(calc(var(--rot-max, 5deg) * -0.25)) scale(1);
   }
 
   60% {
-    transform:
-      translate(var(--x3, 4px), var(--y3, 8px))
-      rotate(calc(var(--rot-max, 5deg) * 0.5))
-      scale(var(--scale-min, 0.95));
+    transform: translate(var(--x3, 4px), var(--y3, 8px))
+      rotate(calc(var(--rot-max, 5deg) * 0.5)) scale(var(--scale-min, 0.95));
   }
 
   80% {
-    transform:
-      translate(var(--x4, -7px), var(--y4, -3px))
-      rotate(calc(var(--rot-max, 5deg) * -0.2))
-      scale(var(--scale-max, 1.05));
+    transform: translate(var(--x4, -7px), var(--y4, -3px))
+      rotate(calc(var(--rot-max, 5deg) * -0.2)) scale(var(--scale-max, 1.05));
   }
 
   100% {
-    transform:
-      translate(0px, 0px)
-      rotate(calc(var(--rot-max, 5deg) * -0.45))
+    transform: translate(0px, 0px) rotate(calc(var(--rot-max, 5deg) * -0.45))
       scale(var(--scale-min, 0.95));
   }
 }
 
-.pinned_song_section{
-  padding: 36px 26px;
+.pinned_song_section {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 36px 26px;
 }
 
-.pinned_song_container{
-  padding: 20px;
-  border-radius: var(--mm-radius-xl);
-  border: var(--mm-border-default);
-  background-color: var(--mm-color-primary-light);
+.pinned_song_container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 20px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-xl);
+  background-color: var(--mm-color-primary-light);
   text-align: center;
 }
 
-.pinned_song_container .slot{
-  min-height: 140px;
-  border-radius: var(--mm-radius-lg);
+.pinned_song_container .slot {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 16px 6px 16px;
-  flex-direction: column;
-  border: var(--mm-border-default);
-  background-color: var(--mm-color-surface);
+  min-height: 140px;
   margin-top: 12px;
+  padding: 12px 16px 6px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-surface);
 }

@@ -1,27 +1,29 @@
-.comments_drawer_modal .comments_panel{
+.comments_drawer_modal .comments_panel {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
   gap: 16px;
 }
 
-.comments_drawer_modal .deposit_comment{
+.comments_drawer_modal .deposit_comment {
   padding: 8px 0;
 }
 
-.comments_drawer_modal .comment_main{
+.comments_drawer_modal .comment_main {
   display: flex;
   flex: 1;
-  gap: 12px;
   min-width: 0;
+  gap: 12px;
 }
 
-.comments_drawer_modal .username{
+.comments_drawer_modal .username {
   display: flex;
   align-items: center;
 }
 
 .comments_drawer_modal .username svg {
-  font-size: 16px
+  font-size: 16px;
 }
 
 .comments_drawer_modal .deposit_comment_form {
@@ -38,7 +40,9 @@
   align-items: flex-start;
 }
 
-.comments_drawer_modal .deposit_comment_form textarea.MuiInputBase-inputMultiline {
+.comments_drawer_modal
+  .deposit_comment_form
+  textarea.MuiInputBase-inputMultiline {
   overflow: hidden !important;
 }
 
@@ -51,9 +55,9 @@
 }
 
 .comments_drawer_modal .comment_submit_button {
-  color: var(--mm-color-text);
   flex: 0 0 auto;
   margin-bottom: 20px;
+  color: var(--mm-color-text);
 }
 
 .comments_drawer_modal .comment_submit_button.Mui-disabled {
@@ -74,14 +78,11 @@
   flex-direction: column;
 }
 
-.comments_drawer_modal .comments_panel{
-  flex: 1;
-  min-height: 0;
-}
-
 .comments_drawer_modal .comments_list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }

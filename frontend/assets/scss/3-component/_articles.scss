@@ -1,89 +1,92 @@
-.articles_section{
-  background-color: var(--mm-color-secondary-light);
-  padding: 32px 0;
+.articles_section {
   margin-top: 66px;
+  padding: 32px 0;
+  background-color: var(--mm-color-secondary-light);
 }
 
-.articles_list{
+.articles_list {
   display: flex;
   flex-direction: row;
   gap: 32px;
   padding: 0 26px;
   overflow-x: scroll;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
-.container::-webkit-scrollbar {
+
+.articles_list::-webkit-scrollbar {
   display: none;
 }
 
-.article{
+.article {
   display: flex;
+  flex: 0 0 75vw;
   flex-direction: column;
-  box-shadow: none;
+  min-width: 75vw;
+  overflow: hidden;
+  overflow: clip;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
-  overflow: clip;
-  flex: 0 0 75vw;
-  min-width: 75vw;
-  scroll-snap-align: start;
   background-color: var(--mm-color-surface);
+  box-shadow: none;
+  scroll-snap-align: start;
 }
 
-.article .content{
-  padding: 16px 20px 20px 20px;
+.article .content {
   display: grid;
   gap: 6px;
+  padding: 16px 20px 20px;
 }
 
-.article .linkline{
+.article .linkline {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.article .linkline .domain{
+.article .linkline .domain {
   text-decoration: underline;
 }
 
-.article .linkline .favicon{
+.article .linkline .favicon {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
   object-fit: contain;
-  flex-shrink: 0;
 }
 
-.article .text{
+.article .text {
   display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
   overflow: hidden;
   opacity: 0.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
-.article .img_container{
+.article .img_container {
   width: 100%;
-  aspect-ratio: 16 / 9;
   overflow: hidden;
+  aspect-ratio: 16 / 9;
 }
 
-.article .img_container img{
-    max-width: 100%;
-    aspect-ratio: 1 / 1;
-    -o-object-fit: cover;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
+.article .img_container img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  -o-object-fit: cover;
+  object-fit: cover;
+  object-position: center;
 }
 
-.article_drawer_content{
-    padding-bottom: 82px;
+.article_drawer_content {
+  padding-bottom: 82px;
 }
-.article_drawer_content .text{
-  padding: 20px;
+
+.article_drawer_content .text {
   display: grid;
   gap: 16px;
+  padding: 20px;
 }
-
-

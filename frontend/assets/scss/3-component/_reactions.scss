@@ -1,102 +1,109 @@
-@use '../0-init/color' as *;
+@use "../0-init/color" as *;
 
-.react_list{
+.react_list {
   display: flex;
   flex-wrap: wrap;
   padding: 26px 0;
 }
 
-.react_item_wrap{
+.react_item_wrap {
   position: relative;
   width: calc(25% - 8px);
   margin: 4px;
 }
 
-.react_item_wrap.react_free{
+.react_item_wrap.react_free {
   width: calc(33.3% - 8px);
 }
-.react_item_wrap:not(.react_notOwned, .react_free) .react_emoji{
+
+.react_item_wrap:not(.react_notOwned, .react_free) .react_emoji {
   line-height: 1;
 }
-.react_item{
+
+.react_item {
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: auto;
   padding: 0;
   border-radius: var(--mm-radius-md);
   aspect-ratio: 1 / 1;
-  height: auto;
 }
 
-.react_item_wrap.selected .react_item{
+.react_item_wrap.selected .react_item {
   border: dotted 3px var(--mm-color-primary);
   background-color: var(--mm-color-primary-light);
 }
 
-.react_item .points_container{
+.react_item .points_container {
   margin: 0;
   margin-top: -15px;
 }
 
-.react_emoji{
+.react_emoji {
   font-size: 2.5em;
 }
 
-.react_notOwned .react_emoji{
+.react_notOwned .react_emoji {
   font-size: 1.5em;
 }
 
-.unlock_cta{
+.unlock_cta {
   position: absolute;
   top: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%);
   z-index: 4;
+  transform: translateX(-50%);
   box-shadow: var(--mm-shadow-high);
 }
 
-.unlock_cta::before{
+.unlock_cta::before {
   content: "";
   position: absolute;
-  left: 50%;
   bottom: 100%;
-  transform: translateX(-50%);
+  left: 50%;
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
+  transform: translateX(-50%);
   border-right: 8px solid transparent;
   border-bottom: 8px solid var(--mm-color-primary);
+  border-left: 8px solid transparent;
 }
 
-.unlock_cta_button{
-  white-space: nowrap;
+.unlock_cta_button {
   min-width: 0;
+  white-space: nowrap;
 }
 
-.reaction_summary_modal{
-
+.reaction_summary_modal {
 }
 
-.reaction_summary_modal .reactions_list{
-  gap: 12px;
+.reaction_summary_modal .reactions_list {
   display: grid;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
   padding-bottom: 26px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-.reaction_summary_modal .reaction{
-
+.reaction_summary_modal .reaction {
 }
 
-.reaction_summary_modal .reaction .emoji{
+.reaction_summary_modal .reaction .emoji {
   padding: 0 8px;
 }
 
-.reaction_summary_modal .reaction .username{
+.reaction_summary_modal .reaction .username {
   display: flex;
   align-items: center;
   word-break: break-word;
 }
-.reaction_summary_modal .reaction .click_delete{
+
+.reaction_summary_modal .reaction .click_delete {
   opacity: 0.7;
 }
 
@@ -108,11 +115,4 @@
 .reaction_summary_modal .reaction_summary_panel {
   flex: 1;
   min-height: 0;
-}
-
-.reaction_summary_modal .reactions_list{
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
 }

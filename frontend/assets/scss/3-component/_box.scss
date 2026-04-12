@@ -1,32 +1,30 @@
-@use '../0-init/color' as *;
+@use "../0-init/color" as *;
 
-
-.info_box{
-  box-shadow: none;
-  border: var(--mm-border-default);
-  border-radius: var(--mm-radius-xl);
-  padding: 16px 26px;
-  margin: 0 auto;
+.info_box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  max-width: 43%;
   gap: 12px;
-  margin-bottom: -26px;
-  background-color: white;
   box-sizing: border-box;
+  max-width: 43%;
+  margin: 0 auto;
+  margin-bottom: -26px;
+  padding: 16px 26px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-xl);
+  background-color: white;
+  box-shadow: none;
+  text-align: center;
   z-index: 100;
 }
 
-.info_box svg{
-
+.info_box svg {
 }
 
-.info_box + div > :first-child{
+.info_box + div > :first-child {
   margin-top: 20px;
 }
 
-.info_box.icon_container{
+.info_box.icon_container {
   padding: 16px;
 }

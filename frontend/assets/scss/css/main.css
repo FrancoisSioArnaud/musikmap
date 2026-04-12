@@ -673,4 +673,104 @@ body {
  .node--view-mode-[view_mode] { }
  */
 
+
+
+/* Safari iOS compatibility overrides */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+abbr[title] {
+  border-bottom: 1px dotted;
+}
+
+mark {
+  color: #000;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+html input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+  -webkit-appearance: button;
+  appearance: button;
+}
+
+input[type="search"] {
+  -webkit-appearance: textfield;
+  appearance: textfield;
+}
+
+textarea,
+.articles_list,
+.comments_drawer_modal .comments_list,
+.reaction_summary_modal .reactions_list,
+.success_container {
+  -webkit-overflow-scrolling: touch;
+}
+
+.articles_list {
+  overscroll-behavior-x: contain;
+}
+
+.articles_list::-webkit-scrollbar {
+  display: none;
+}
+
+.article {
+  overflow: hidden;
+  overflow: clip;
+}
+
+.searchfield > div {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.onBoarding {
+  -webkit-touch-callout: none;
+}
+
+.cover,
+.pochette .vinyl {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.deposit_card .img_container,
+.img_container img {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.deposit_card .emojis .emoji {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@-webkit-keyframes animPop {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.92);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /*# sourceMappingURL=main.css.map */

@@ -1,4 +1,4 @@
-@use '../0-init/color' as *;
+@use "../0-init/color" as *;
 /**
  * @file
  * Nomalize Styling
@@ -11,8 +11,9 @@
  */
 
 html {
-
-
+  font-family: sans-serif;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /**
@@ -103,7 +104,7 @@ a {
  */
 
 abbr[title] {
-
+  border-bottom: 1px dotted;
 }
 
 /**
@@ -128,13 +129,13 @@ dfn {
  * contexts in Firefox 4+, Safari, and Chrome.
  */
 
-
 /**
  * Address styling not present in IE 8/9.
  */
 
 mark {
   background: #ff0;
+  color: #000;
 }
 
 /**
@@ -285,6 +286,7 @@ html input[type='button'],
 /* 1 */
 input[type='reset'],
 input[type='submit'] {
+  -webkit-appearance: button;
   appearance: button;
   /* 2 */
   cursor: pointer;
@@ -330,8 +332,8 @@ input {
  * 2. Remove excess padding in IE 8/9/10.
  */
 
-input[type='checkbox'],
-input[type='radio'] {
+input[type="checkbox"],
+input[type="radio"] {
   box-sizing: border-box;
   /* 1 */
   padding: 0;
@@ -343,7 +345,8 @@ input[type='radio'] {
  * 2. Address `box-sizing` set to `border-box` in Safari and Chrome.
  */
 
-input[type='search'] {
+input[type="search"] {
+  -webkit-appearance: textfield;
   appearance: textfield;
   /* 1 */
   box-sizing: content-box;
@@ -387,6 +390,18 @@ textarea {
 
 optgroup {
   font-weight: bold;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+textarea {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Tables
