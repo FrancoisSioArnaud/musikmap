@@ -32,7 +32,7 @@
 
   60% {
     opacity: 1;
-    transform: scale(1.04);
+    transform: scale(1.7);
   }
 
   100% {
@@ -301,11 +301,11 @@
 }
 
 .deposit_list_card .texts .titre,
-.deposit_list_card .texts .artiste,
+.deposit_list_card .texts .artist,
 .deposit_list_card .interact button {
   opacity: 0;
   transform: scale(0.88);
-  animation: depositListPopIn 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: depositListPopIn 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity;
 }
 
