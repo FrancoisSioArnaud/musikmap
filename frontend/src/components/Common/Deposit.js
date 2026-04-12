@@ -436,7 +436,7 @@ export default function Deposit({
       }
 
       const linearProgress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
-      const progress = 1 - Math.pow(1 - linearProgress, 2);
+      const progress = 1 - Math.pow(1 - linearProgress, 1);
       setHoldProgress(progress);
 
       if (linearProgress >= 1) {
