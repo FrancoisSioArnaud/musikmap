@@ -470,7 +470,7 @@ export default function Deposit({
       }
 
       const linearProgress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
-      const progress = evaluateCubicBezier(linearProgress, 0,.64,1,.62);
+      const progress = evaluateCubicBezier(linearProgress, 0,1.5,1,.2);
       setHoldProgress(progress);
 
       if (linearProgress >= 1) {
