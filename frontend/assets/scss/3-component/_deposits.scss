@@ -271,6 +271,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 .deposit_main_card .interact {
   align-items: center;
@@ -292,11 +294,13 @@
   flex-wrap: wrap;
   justify-content: center;
   row-gap: 6px;
+  width: 100%;
 }
 
 .deposit_card .decouvrir {
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .deposit_list_card .decouvrir {
