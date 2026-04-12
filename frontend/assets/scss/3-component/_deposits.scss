@@ -386,8 +386,8 @@
   justify-content: center;
   transform: translate(-50%, -50%);
   transition:
-    left var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay),
-    top var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay),
+    left var(--emoji-settle-duration, var(--deposit-reveal-settle-duration)) ease-in var(--emoji-settle-delay, var(--deposit-reveal-settle-delay)),
+    top var(--emoji-settle-duration, var(--deposit-reveal-settle-duration)) ease-in var(--emoji-settle-delay, var(--deposit-reveal-settle-delay)),
     opacity 180ms ease;
   will-change: left, top;
   cursor: pointer;

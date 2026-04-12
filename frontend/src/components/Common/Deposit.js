@@ -206,6 +206,8 @@ function getFloatingEmojiItems(reactions) {
       opacity: randomBetween(0.92, 1).toFixed(2),
       floatDuration: `${randomBetween(4.8, 8.2).toFixed(2)}s`,
       floatDelay: `${randomBetween(-0, -1.8).toFixed(2)}s`,
+      settleDuration: `${randomBetween(280, 480).toFixed(0)}ms`,
+      settleDelay: `${randomBetween(500, 920).toFixed(0)}ms`,
       x1: `${randomBetween(-8, 8).toFixed(1)}px`,
       y1: `${randomBetween(-8, 8).toFixed(1)}px`,
       x2: `${randomBetween(-8, 8).toFixed(1)}px`,
@@ -780,6 +782,8 @@ export default function Deposit({
               top: `${item.top}%`,
               "--emoji-target-left": `${item.targetLeft}%`,
               "--emoji-target-top": `${item.targetTop}%`,
+              "--emoji-settle-duration": item.settleDuration,
+              "--emoji-settle-delay": item.settleDelay,
               zIndex: item.zIndex,
               opacity: item.opacity,
             }}
