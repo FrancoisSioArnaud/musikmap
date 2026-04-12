@@ -152,8 +152,33 @@
 
 .deposit_card .deposit_song,
 .deposit_song {
+  position: relative;
   display: flex;
+  overflow: hidden;
   background-color: var(--mm-color-primary-light);
+}
+
+.deposit_card .deposit_song > *,
+.deposit_song > * {
+  position: relative;
+  z-index: 1;
+}
+
+.deposit_card .deposit_reveal_fill,
+.deposit_reveal_fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.3);
+  transform-origin: left center;
+  transform: scaleX(var(--deposit-reveal-progress, 0));
+  transition: transform 180ms ease-out;
+}
+
+.deposit_card .deposit_song.is_reveal_holding .deposit_reveal_fill,
+.deposit_song.is_reveal_holding .deposit_reveal_fill {
+  transition: none;
 }
 
 .deposit_card .deposit_song.has_accent_color,
@@ -254,6 +279,24 @@
 
 .deposit_list_card .interact {
   justify-content: left;
+}
+
+.deposit_card .deposit_song.is_hidden .interact {
+  justify-content: center;
+}
+
+.deposit_card .deposit_song.is_hidden .decouvrir {
+  max-width: 100%;
+  min-height: 48px;
+  height: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 6px;
+}
+
+.deposit_card .decouvrir {
+  display: flex;
+  align-items: center;
 }
 
 .deposit_list_card .decouvrir {

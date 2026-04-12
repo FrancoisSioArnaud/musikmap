@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useContext, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
@@ -20,6 +20,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import PlayModal from "../Common/PlayModal";
 import { getCookie } from "../Security/TokensUtils";
@@ -36,6 +37,14 @@ function SlideDownTransition(props) {
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
+const HOLD_TO_REVEAL_MS = 2000;
+const MIN_REVEAL_LOADING_MS = 750;
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function shuffleArray(list) {
   const next = Array.isArray(list) ? [...list] : [];
@@ -177,6 +186,13 @@ export default function Deposit({
   const [snackOpen, setSnackOpen] = useState(false);
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [isHoldingReveal, setIsHoldingReveal] = useState(false);
+  const [isRevealLoading, setIsRevealLoading] = useState(false);
+
+  const revealHoldFrameRef = useRef(null);
+  const revealHoldStartRef = useRef(null);
+  const revealHoldTriggeredRef = useRef(false);
 
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
   const reactionsDetail = Array.isArray(localDep?.reactions)
@@ -269,7 +285,35 @@ export default function Deposit({
     setPlaySong(null);
   };
 
-  const revealDeposit = async () => {
+  const stopRevealHoldAnimation = useCallback(() => {
+    if (revealHoldFrameRef.current) {
+      window.cancelAnimationFrame(revealHoldFrameRef.current);
+      revealHoldFrameRef.current = null;
+    }
+  }, []);
+
+  const resetRevealHold = useCallback(() => {
+    stopRevealHoldAnimation();
+    revealHoldStartRef.current = null;
+    revealHoldTriggeredRef.current = false;
+    setIsHoldingReveal(false);
+    setHoldProgress(0);
+  }, [stopRevealHoldAnimation]);
+
+  useEffect(() => () => {
+    stopRevealHoldAnimation();
+  }, [stopRevealHoldAnimation]);
+
+  useEffect(() => {
+    if (isRevealed) {
+      resetRevealHold();
+      setIsRevealLoading(false);
+    }
+  }, [isRevealed, resetRevealHold]);
+
+  const revealDeposit = useCallback(async () => {
+    let didReveal = false;
+
     try {
       if (!viewer?.id) {
         window.alert(
@@ -278,6 +322,8 @@ export default function Deposit({
         return;
       }
 
+      setIsRevealLoading(true);
+      const requestStartedAt = Date.now();
       const csrftoken = getCookie("csrftoken");
       const res = await fetch("/box-management/revealSong", {
         method: "POST",
@@ -293,6 +339,11 @@ export default function Deposit({
       });
 
       const payload = await res.json().catch(() => ({}));
+      const remainingLoadingMs = Math.max(0, MIN_REVEAL_LOADING_MS - (Date.now() - requestStartedAt));
+
+      if (remainingLoadingMs > 0) {
+        await sleep(remainingLoadingMs);
+      }
 
       if (!res.ok) {
         if (payload?.message) {
@@ -307,6 +358,7 @@ export default function Deposit({
 
       const revealed = payload?.song || {};
       const isoNow = new Date().toISOString();
+      didReveal = true;
 
       setLocalDep((prev) => ({
         ...(prev || {}),
@@ -356,8 +408,63 @@ export default function Deposit({
       }
     } catch {
       alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+    } finally {
+      setIsRevealLoading(false);
+
+      if (!didReveal) {
+        resetRevealHold();
+      }
     }
-  };
+  }, [context, localDep.public_key, resetRevealHold, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
+
+  const beginRevealHold = useCallback((event) => {
+    if (isRevealed || isRevealLoading || isHoldingReveal) {
+      return;
+    }
+
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    revealHoldTriggeredRef.current = false;
+    revealHoldStartRef.current = performance.now();
+    setHoldProgress(0);
+    setIsHoldingReveal(true);
+
+    const tick = (now) => {
+      if (!revealHoldStartRef.current) {
+        return;
+      }
+
+      const progress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
+      setHoldProgress(progress);
+
+      if (progress >= 1) {
+        revealHoldTriggeredRef.current = true;
+        stopRevealHoldAnimation();
+        revealHoldStartRef.current = null;
+        setIsHoldingReveal(false);
+        setHoldProgress(1);
+        revealDeposit();
+        return;
+      }
+
+      revealHoldFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    stopRevealHoldAnimation();
+    revealHoldFrameRef.current = window.requestAnimationFrame(tick);
+  }, [isHoldingReveal, isRevealLoading, isRevealed, revealDeposit, stopRevealHoldAnimation]);
+
+  const endRevealHold = useCallback((event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    if (revealHoldTriggeredRef.current || isRevealLoading) {
+      return;
+    }
+
+    resetRevealHold();
+  }, [isRevealLoading, resetRevealHold]);
 
   const handleReactionApplied = (result) => {
     const nextReactions = Array.isArray(result?.reactions)
@@ -654,28 +761,26 @@ export default function Deposit({
           {depositInfosBlock}
 
           <Box
-            className={`deposit_song${accentColor ? " has_accent_color" : ""}`}
-            style={accentColor ? { "--deposit-accent": accentColor } : undefined}
+            className={`deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
+            style={{
+              ...(accentColor ? { "--deposit-accent": accentColor } : {}),
+              ...(isRevealed ? {} : { "--deposit-reveal-progress": holdProgress }),
+            }}
           >
+            {!isRevealed ? <Box className="deposit_reveal_fill" aria-hidden="true" /> : null}
             {renderCoverMedia(!isRevealed)}
 
             <Box className="interact">
-              <Box className="texts">
-                {isRevealed ? (
-                  <>
-                    <Typography component="span" className="titre" variant={variant === "main" ? "h4" : "h5"}>
-                      {song.title}
-                    </Typography>
-                    <Typography component="span" className="artist" variant="body1">
-                      {song.artist}
-                    </Typography>
-                  </>
-                ) : (
-                  <Typography component="span" className="titre" variant="body1">
-                    Utilise tes points pour révéler cette chanson
+              {isRevealed ? (
+                <Box className="texts">
+                  <Typography component="span" className="titre" variant={variant === "main" ? "h4" : "h5"}>
+                    {song.title}
                   </Typography>
-                )}
-              </Box>
+                  <Typography component="span" className="artist" variant="body1">
+                    {song.artist}
+                  </Typography>
+                </Box>
+              ) : null}
 
               {isRevealed ? (
                 <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
@@ -690,8 +795,19 @@ export default function Deposit({
                   </Button>
                 </PlayModal>
               ) : (
-                <Button variant="depositInteract" onClick={revealDeposit} className="decouvrir">
-                  Découvrir
+                <Button
+                  variant="depositInteract"
+                  className="decouvrir"
+                  disabled={isRevealLoading}
+                  onPointerDown={beginRevealHold}
+                  onPointerUp={endRevealHold}
+                  onPointerCancel={endRevealHold}
+                  onPointerLeave={endRevealHold}
+                  onContextMenu={(event) => event.preventDefault()}
+                  sx={{ touchAction: "none" }}
+                  startIcon={isRevealLoading ? <CircularProgress size={18} thickness={5} color="inherit" /> : null}
+                >
+                  {isRevealLoading ? "Révélation..." : "Maintiens pour révéler la chanson"}
                   <Box className="points_container" sx={{ ml: "12px" }}>
                     <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                       {cost}
