@@ -33,6 +33,10 @@ export function buildMuiTheme(clientTheme) {
     typography: {
       fontFamily: clientTheme.fonts.body1,
 
+      allVariants: {
+        lineHeight: "normal",
+      },
+
       h1: {
         fontSize: "40px",
         fontWeight: 900,
@@ -82,6 +86,10 @@ export function buildMuiTheme(clientTheme) {
         color: clientTheme.colors.text,
         fontFamily: clientTheme.fonts.body2,
       },
+
+      button: {
+        lineHeight: "normal",
+      },
     },
 
     components: {
@@ -96,7 +104,7 @@ export function buildMuiTheme(clientTheme) {
           a: {},
         },
       },
-        
+
       MuiAppBar: {
         styleOverrides: {
           root: {
@@ -126,6 +134,7 @@ export function buildMuiTheme(clientTheme) {
           root: {
             height: 48,
             fontSize: "16px",
+            lineHeight: "normal",
             textTransform: "none",
             "&:hover": {
               backgroundColor: "inherit",
@@ -147,8 +156,8 @@ export function buildMuiTheme(clientTheme) {
               border: "inherit",
             },
             "&:active": {
-               backgroundColor: clientTheme.colors.primary,
-            }
+              backgroundColor: clientTheme.colors.primary,
+            },
           },
 
           outlinedPrimary: {
@@ -292,12 +301,9 @@ export function buildMuiTheme(clientTheme) {
             },
           },
 
-          input: {
-          },
+          input: {},
 
-          multiline: {
-            
-          },
+          multiline: {},
         },
       },
     },
