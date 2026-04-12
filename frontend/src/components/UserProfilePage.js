@@ -288,7 +288,7 @@ export default function UserProfilePage() {
       {userStatusName && (
         <Typography className="status" variant="body1">{userStatusName}</Typography>
       )}
-      {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
+      <Typography variant="h5">{depositsLabel}</Typography>
         
       </Box>
 
