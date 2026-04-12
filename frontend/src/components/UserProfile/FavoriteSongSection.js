@@ -239,7 +239,7 @@ export default function FavoriteSongSection({
     if (isCurrentFullUser) {
       return (
         <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
-          Choisi ta chanson de coeur
+          Choisir ta chanson
         </Button>
       );
     }
