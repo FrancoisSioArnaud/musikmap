@@ -273,22 +273,23 @@ export default function UserProfilePage() {
             sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "8px" }}
           >
             <Typography variant="h4">{headerUser?.display_name}</Typography>
-            {userStatusName && (
-              <Typography className="status" variant="body1">{userStatusName}</Typography>
+            {isOwner && !isGuestOwner && (
+              <IconButton
+                aria-label="Modifier"
+                onClick={() => navigate("/profile/edit")}
+                size="small"
+              >
+                <EditIcon />
+              </IconButton>
             )}
-            {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
           </Box>
         )}
 
-        {isOwner && !isGuestOwner && (
-          <IconButton
-            aria-label="Modifier"
-            onClick={() => navigate("/profile/edit")}
-            size="small"
-          >
-            <EditIcon />
-          </IconButton>
-        )}
+      {userStatusName && (
+        <Typography className="status" variant="body1">{userStatusName}</Typography>
+      )}
+      {!isOwner && <Typography variant="h5">{depositsLabel}</Typography>}
+        
       </Box>
 
       <FavoriteSongSection
