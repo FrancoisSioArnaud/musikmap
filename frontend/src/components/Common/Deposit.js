@@ -61,6 +61,40 @@ function randomBetween(min, max) {
   return min + Math.random() * (max - min);
 }
 
+function evaluateCubicBezier(progress, x1, y1, x2, y2) {
+  const clampedProgress = Math.min(Math.max(progress, 0), 1);
+
+  if (clampedProgress === 0 || clampedProgress === 1) {
+    return clampedProgress;
+  }
+
+  const sampleCurve = (a1, a2, t) => {
+    const mt = 1 - t;
+    return (3 * a1 * mt * mt * t) + (3 * a2 * mt * t * t) + (t * t * t);
+  };
+
+  let lower = 0;
+  let upper = 1;
+  let t = clampedProgress;
+
+  for (let index = 0; index < 12; index += 1) {
+    const x = sampleCurve(x1, x2, t);
+
+    if (Math.abs(x - clampedProgress) < 0.0005) {
+      break;
+    }
+
+    if (x < clampedProgress) {
+      lower = t;
+    } else {
+      upper = t;
+    }
+
+    t = (lower + upper) / 2;
+  }
+
+  return sampleCurve(y1, y2, t);
+}
 
 async function copyText(text) {
   if (navigator?.clipboard?.writeText) {
@@ -436,7 +470,7 @@ export default function Deposit({
       }
 
       const linearProgress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
-      const progress = 1 - Math.pow(1 - linearProgress, 2);
+      const progress = evaluateCubicBezier(linearProgress, 0, 0.49, 1, 0.67);
       setHoldProgress(progress);
 
       if (linearProgress >= 1) {
