@@ -274,7 +274,7 @@ export default function FavoriteSongSection({
           ) : null}
 
           {showOwnerActions ? (
-            <Box className="favorite_song_actions">
+            <Box className="favorite_song_actions" sx={{ mb:"8px"}}>
               <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
                 Changer
               </Button>
