@@ -193,10 +193,12 @@
   transform-origin: left center;
   transform: scaleX(var(--deposit-reveal-progress, 0));
   transition: transform 180ms ease-out;
+  transition: opacity 0.2s;
+  opacity:0;
 }
 
 .deposit_song.is_reveal_holding .deposit_reveal_fill {
-  transition: none;
+  opacity: 1;
 }
 
 .deposit_song.has_accent_color {
