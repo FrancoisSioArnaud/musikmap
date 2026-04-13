@@ -1,3 +1,5 @@
+import { getCookie } from "../../Security/TokensUtils";
+
 export const checkSpotifyAuthentication = async (setIsSpotifyAuthenticated) => {
   try {
     const response = await fetch("/spotify/is-authenticated", {
@@ -45,11 +47,19 @@ export const disconnectSpotifyUser = async (isSpotifyAuthenticated, setIsSpotify
       return true;
     }
 
-    await fetch("/spotify/disconnect", {
+    const response = await fetch("/spotify/disconnect", {
       method: "POST",
       credentials: "same-origin",
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
     });
+
+    if (!response.ok) {
+      throw new Error(`Spotify disconnect failed with status ${response.status}`);
+    }
+
     setIsSpotifyAuthenticated(false);
     return true;
   } catch (error) {
