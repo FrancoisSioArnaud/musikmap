@@ -15,6 +15,28 @@ const PROVIDER_LABELS = {
   spotify: "Spotify",
 };
 
+const PROVIDER_ICON_PATHS = {
+  spotify: "/static/images/spotify_logo_icon.svg",
+};
+
+function SelectorLeadingIcon({ providerCode }) {
+  const iconPath = providerCode ? PROVIDER_ICON_PATHS[providerCode] : null;
+
+  if (!iconPath) {
+    return <SearchIcon fontSize="medium" className="search_personalization_selector_icon search_personalization_selector_icon--default" />;
+  }
+
+  return (
+    <Box
+      component="img"
+      src={iconPath}
+      alt={PROVIDER_LABELS[providerCode] || providerCode}
+      className={`search_personalization_selector_icon search_personalization_selector_icon--${providerCode}`}
+      sx={{ width: 22, height: 22, display: "block" }}
+    />
+  );
+}
+
 export default function SearchPersonalizationSelector({
   selectedProviderCode = null,
   connectedProviderCodes = [],
@@ -46,9 +68,10 @@ export default function SearchPersonalizationSelector({
 
   return (
     <>
-      <InputAdornment position="end" sx={{ ml: 0.5 }}>
+      <InputAdornment position="end" sx={{ ml: 0.5 }} className="search_personalization_selector_adornment">
         <ButtonBase
           onClick={handleOpen}
+          className="search_personalization_selector_button"
           sx={{
             display: "inline-flex",
             alignItems: "center",
@@ -59,24 +82,40 @@ export default function SearchPersonalizationSelector({
           }}
           aria-label="Sélectionner la source des résultats personnalisés"
         >
-          <SearchIcon fontSize="medium" />
-          <ArrowDropDownIcon fontSize="medium" />
+          <SelectorLeadingIcon providerCode={selectedProviderCode} />
+          <ArrowDropDownIcon
+            fontSize="medium"
+            className="search_personalization_selector_arrow"
+          />
         </ButtonBase>
       </InputAdornment>
 
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose} keepMounted>
-        <Box sx={{ px: 2, pt: 1.5, pb: 1, maxWidth: 320 }}>
-          <Typography variant="subtitle1">Résultats personnalisés</Typography>
-          <Typography variant="body1" color="text.secondary">
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        keepMounted
+        className="search_personalization_selector_menu"
+        classes={{ paper: "search_personalization_selector_menu_paper", list: "search_personalization_selector_menu_list" }}
+      >
+        <Box sx={{ px: 2, pt: 1.5, pb: 1, maxWidth: 320 }} className="search_personalization_selector_modal_header">
+          <Typography variant="subtitle1" className="search_personalization_selector_modal_title">
+            Résultats personnalisés
+          </Typography>
+          <Typography variant="body1" color="text.secondary" className="search_personalization_selector_modal_text">
             Choisi quelle plateforme te fournit tes résultats de recherche.
           </Typography>
         </Box>
 
-        <MenuItem selected={!selectedProviderCode} onClick={() => handleSelect(null)}>
+        <MenuItem
+          selected={!selectedProviderCode}
+          onClick={() => handleSelect(null)}
+          className="search_personalization_selector_option search_personalization_selector_option--none"
+        >
           Pas de résultats personnalisés
         </MenuItem>
 
-        <Divider />
+        <Divider className="search_personalization_selector_divider" />
 
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
@@ -88,6 +127,7 @@ export default function SearchPersonalizationSelector({
                 key={providerCode}
                 selected={selectedProviderCode === providerCode}
                 onClick={() => handleSelect(providerCode)}
+                className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >
                 {label}
               </MenuItem>
@@ -95,11 +135,19 @@ export default function SearchPersonalizationSelector({
           }
 
           return (
-            <Box key={providerCode} sx={{ px: 2, py: 1.5, minWidth: 280 }}>
-              <Typography variant="body1" sx={{ mb: 1 }}>
+            <Box
+              key={providerCode}
+              sx={{ px: 2, py: 1.5, minWidth: 280 }}
+              className={`search_personalization_selector_provider search_personalization_selector_provider--${providerCode}`}
+            >
+              <Typography variant="body1" sx={{ mb: 1 }} className="search_personalization_selector_provider_label">
                 {label}
               </Typography>
-              <Button variant="light" onClick={() => handleConnect(providerCode)}>
+              <Button
+                variant="light"
+                onClick={() => handleConnect(providerCode)}
+                className="search_personalization_selector_connect_button"
+              >
                 Connecter mon {label}
               </Button>
             </Box>
