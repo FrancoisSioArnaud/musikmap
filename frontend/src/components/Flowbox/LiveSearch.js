@@ -228,7 +228,7 @@ export default function LiveSearch() {
   );
 
   const emptyContent = searchValue.trim() ? null : (
-    <Stack spacing={2} sx={{ pb: 3 }}>
+    <Box spacing={2} sx={{ pb: 3 }}>
       {incitationLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><Typography variant="body2">Chargement…</Typography></Box>
       ) : incitationText ? (
@@ -270,13 +270,13 @@ export default function LiveSearch() {
           />
         </>
       ) : null}
-    </Stack>
+    </Box>
   );
 
   return (
-    <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
+    <Box spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
       <Box sx={{ p: 4, pb: 2 }}>
-        <Stack spacing={2}>
+        <Box spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis une chanson à partager
           </Typography>
@@ -305,7 +305,7 @@ export default function LiveSearch() {
               "& .MuiInputBase-input": { fontSize: 16 },
             }}
           />
-        </Stack>
+        </Box>
       </Box>
 
       <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
@@ -321,6 +321,6 @@ export default function LiveSearch() {
           emptyContent={emptyContent}
         />
       </Box>
-    </Stack>
+    </Box>
   );
 }
