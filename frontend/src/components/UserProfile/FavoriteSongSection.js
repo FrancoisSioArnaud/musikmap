@@ -6,13 +6,12 @@ import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import SearchIcon from "@mui/icons-material/Search";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
+import SearchBar from "../Common/SearchBar";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -360,29 +359,14 @@ export default function FavoriteSongSection({
                 Choisis une chanson de coeur
               </Typography>
 
-              <TextField
+              <SearchBar
                 inputRef={searchInputRef}
-                fullWidth
-                type="search"
-                placeholder="Chercher une chanson"
                 value={searchValue}
-                className="searchfield"
                 onChange={(event) => setSearchValue(event.target.value)}
-                inputProps={{ inputMode: "search" }}
-                InputProps={{
-                  endAdornment: (
-                    <SearchPersonalizationSelector
-                      selectedProviderCode={selectedStreamingService}
-                      connectedProviderCodes={connectedPersonalizedProviderCodes}
-                      onSelectProvider={setSelectedStreamingService}
-                      onConnectProvider={connectProvider}
-                    />
-                  ),
-                }}
-                sx={{
-                  borderRadius: "var(--mm-radius-round)",
-                  "& .MuiInputBase-input": { fontSize: 16 },
-                }}
+                selectedProviderCode={selectedStreamingService}
+                connectedProviderCodes={connectedPersonalizedProviderCodes}
+                onSelectProvider={setSelectedStreamingService}
+                onConnectProvider={connectProvider}
               />
             </Box>
 

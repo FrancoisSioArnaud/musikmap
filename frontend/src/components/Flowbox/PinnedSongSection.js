@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -13,7 +12,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
+import SearchBar from "../Common/SearchBar";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -426,29 +425,14 @@ export default function PinnedSongSection({ boxSlug }) {
                     Choisis une chanson à épingler
                   </Typography>
   
-                  <TextField
+                  <SearchBar
                     inputRef={searchInputRef}
-                    fullWidth
-                    type="search"
-                    placeholder="Chercher une chanson"
                     value={searchValue}
-                    className="searchfield"
                     onChange={(event) => setSearchValue(event.target.value)}
-                    inputProps={{ inputMode: "search" }}
-                    InputProps={{
-                      endAdornment: (
-                        <SearchPersonalizationSelector
-                          selectedProviderCode={selectedStreamingService}
-                          connectedProviderCodes={connectedPersonalizedProviderCodes}
-                          onSelectProvider={setSelectedStreamingService}
-                          onConnectProvider={connectProvider}
-                        />
-                      ),
-                    }}
-                    sx={{
-                      borderRadius: "var(--mm-radius-round)",
-                      "& .MuiInputBase-input": { fontSize: 16 },
-                    }}
+                    selectedProviderCode={selectedStreamingService}
+                    connectedProviderCodes={connectedPersonalizedProviderCodes}
+                    onSelectProvider={setSelectedStreamingService}
+                    onConnectProvider={connectProvider}
                   />
                 </Box>
   

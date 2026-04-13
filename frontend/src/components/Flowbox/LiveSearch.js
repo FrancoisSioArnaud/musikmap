@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
@@ -12,7 +11,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
+import SearchBar from "../Common/SearchBar";
 import useSongSearch from "../Common/useSongSearch";
 
 const KEY_BOX_CONTENT = "mm_box_content";
@@ -281,29 +280,14 @@ export default function LiveSearch() {
             Choisis une chanson à partager
           </Typography>
 
-          <TextField
+          <SearchBar
             inputRef={searchInputRef}
-            fullWidth
-            type="search"
-            placeholder="Chercher une chanson"
             value={searchValue}
-            className="searchfield"
             onChange={(event) => setSearchValue(event.target.value)}
-            inputProps={{ inputMode: "search" }}
-            InputProps={{
-              endAdornment: (
-                <SearchPersonalizationSelector
-                  selectedProviderCode={selectedStreamingService}
-                  connectedProviderCodes={connectedPersonalizedProviderCodes}
-                  onSelectProvider={setSelectedStreamingService}
-                  onConnectProvider={connectProvider}
-                />
-              ),
-            }}
-            sx={{
-              borderRadius: "var(--mm-radius-round)",
-              "& .MuiInputBase-input": { fontSize: 16 },
-            }}
+            selectedProviderCode={selectedStreamingService}
+            connectedProviderCodes={connectedPersonalizedProviderCodes}
+            onSelectProvider={setSelectedStreamingService}
+            onConnectProvider={connectProvider}
           />
         </Box>
       </Box>
