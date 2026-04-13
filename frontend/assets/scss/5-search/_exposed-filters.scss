@@ -51,20 +51,18 @@
   color: var(--mm-color-text);
 }
 
-.search_personalization_selector_menu_list li{
+.search_personalization_selector_menu_list li, .search_personalization_selector_provider{
   border-radius: var(--mm-radius-round);
   border: var(--mm-color-default);
+  min-width: 280px;
+  padding: 12px 16px;
+  box-sizing: border-box;
 }
 
 .search_personalization_selector_menu_list li.Mui-selected{
   border: solid 2px var(--mm-color-primary);
 }
 
-.search_personalization_selector_provider {
-  min-width: 280px;
-  padding: 12px 16px;
-  box-sizing: border-box;
-}
 
 .search_personalization_selector_provider_label {
   margin-bottom: 8px;
