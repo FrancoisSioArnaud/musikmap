@@ -31,7 +31,7 @@ export default function SongSearchResultsList({
   }
 
   return (
-    <List className="song_search_results" disablePadding>
+    <Box className="song_search_results" disablePadding>
       {results.map((option) => {
         const id = option?.id ?? "__posting__";
         const isThisPosting = posting && postingId === id;
@@ -106,6 +106,6 @@ export default function SongSearchResultsList({
           </Box>
         );
       })}
-    </List>
+    </Box>
   );
 }
