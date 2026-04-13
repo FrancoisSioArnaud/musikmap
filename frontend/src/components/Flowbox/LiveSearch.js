@@ -60,7 +60,9 @@ export default function LiveSearch() {
     searchValue,
     setSearchValue,
     results,
+    recentPlays,
     isSearching,
+    isLoadingRecentPlays,
   } = useSongSearch();
 
   useEffect(() => {
@@ -219,24 +221,45 @@ export default function LiveSearch() {
   );
 
   const emptyContent = searchValue.trim() ? null : (
-    incitationLoading ? (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><Typography variant="body2">Chargement…</Typography></Box>
-    ) : incitationText ? (
-      <Box
-        sx={{
-          margin: "0px 20px",
-          backgroundColor: "var(--mm-color-secondary-light)",
-          padding: "16px 20px",
-          borderRadius: "var(--mm-radius-lg)",
-          display: "flex",
-          gap: "12px",
-          alignItems: "center",
-        }}
-      >
-        <CampaignRoundedIcon />
-        <Typography variant="subtitle1">{incitationText}</Typography>
+    <Stack spacing={2} sx={{ pb: 3 }}>
+      {incitationLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><Typography variant="body2">Chargement…</Typography></Box>
+      ) : incitationText ? (
+        <Box
+          sx={{
+            margin: "0px 20px",
+            backgroundColor: "var(--mm-color-secondary-light)",
+            padding: "16px 20px",
+            borderRadius: "var(--mm-radius-lg)",
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          <CampaignRoundedIcon />
+          <Typography variant="subtitle1">{incitationText}</Typography>
+        </Box>
+      ) : null}
+
+      <Box sx={{ px: 5 }}>
+        <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
       </Box>
-    ) : null
+      <SongSearchResultsList
+        results={recentPlays}
+        isSearching={isLoadingRecentPlays}
+        posting={posting}
+        postingId={postingId}
+        postingProgress={postingProgress}
+        postingTransitionMs={postingTransitionMs}
+        onAction={handleDeposit}
+        actionLabel="Déposer"
+        emptyContent={
+          <Box sx={{ px: 5, py: 1 }}>
+            <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+          </Box>
+        }
+      />
+    </Stack>
   );
 
   return (
