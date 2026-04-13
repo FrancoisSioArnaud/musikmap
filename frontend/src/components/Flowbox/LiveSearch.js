@@ -42,7 +42,7 @@ function sleep(ms) {
 export default function LiveSearch() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
-  const { setUser } = useContext(UserContext) || {};
+  const { user, setUser } = useContext(UserContext) || {};
 
   const [incitationText, setIncitationText] = useState("");
   const [incitationLoading, setIncitationLoading] = useState(true);
@@ -76,11 +76,14 @@ export default function LiveSearch() {
   }, []);
 
   useEffect(() => {
+    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
+    if (hasLastPlatform) return undefined;
+
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 50);
     return () => clearTimeout(timer);
-  }, []);
+  }, [user?.last_platform]);
 
   useEffect(() => {
     setIncitationLoading(true);
