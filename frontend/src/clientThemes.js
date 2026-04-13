@@ -64,6 +64,9 @@ export const CLIENT_THEMES = {
     },
     padding:{
       pageSide: "26px",
+    },
+    opacity:{
+      lightText: "0.7",
     }
   },
 
