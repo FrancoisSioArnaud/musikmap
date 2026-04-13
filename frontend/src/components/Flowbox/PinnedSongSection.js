@@ -188,11 +188,15 @@ export default function PinnedSongSection({ boxSlug }) {
   useEffect(() => {
     if (!drawerOpen) return undefined;
     if (drawerStep !== "search") return undefined;
+
+    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
+    if (hasLastPlatform) return undefined;
+
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 60);
     return () => clearTimeout(timer);
-  }, [drawerOpen, drawerStep]);
+  }, [drawerOpen, drawerStep, user?.last_platform]);
 
   useEffect(() => {
     if (!priceSteps.length) {
