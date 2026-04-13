@@ -81,7 +81,7 @@ export default function SearchPersonalizationSelector({
         </ButtonBase>
       </InputAdornment>
 
-      <Box
+      <Menu
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
@@ -105,8 +105,6 @@ export default function SearchPersonalizationSelector({
         >
           Pas de résultats personnalisés
         </Box>
-
-        <Divider className="search_personalization_selector_divider" />
 
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
@@ -143,7 +141,7 @@ export default function SearchPersonalizationSelector({
             </Box>
           );
         })}
-      </Box>
+      </Menu>
     </>
   );
 }
