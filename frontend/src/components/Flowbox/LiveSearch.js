@@ -4,8 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import SearchIcon from "@mui/icons-material/Search";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
@@ -14,6 +12,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
+import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
 import useSongSearch from "../Common/useSongSearch";
 
 const KEY_BOX_CONTENT = "mm_box_content";
@@ -63,6 +62,11 @@ export default function LiveSearch() {
     recentPlays,
     isSearching,
     isLoadingRecentPlays,
+    selectedStreamingService,
+    setSelectedStreamingService,
+    connectedPersonalizedProviderCodes,
+    connectProvider,
+    canShowRecentPlays,
   } = useSongSearch();
 
   useEffect(() => {
@@ -241,24 +245,28 @@ export default function LiveSearch() {
         </Box>
       ) : null}
 
-      <Box sx={{ px: 5 }}>
-        <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
-      </Box>
-      <SongSearchResultsList
-        results={recentPlays}
-        isSearching={isLoadingRecentPlays}
-        posting={posting}
-        postingId={postingId}
-        postingProgress={postingProgress}
-        postingTransitionMs={postingTransitionMs}
-        onAction={handleDeposit}
-        actionLabel="Déposer"
-        emptyContent={
-          <Box sx={{ px: 5, py: 1 }}>
-            <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+      {canShowRecentPlays ? (
+        <>
+          <Box sx={{ px: 5 }}>
+            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
           </Box>
-        }
-      />
+          <SongSearchResultsList
+            results={recentPlays}
+            isSearching={isLoadingRecentPlays}
+            posting={posting}
+            postingId={postingId}
+            postingProgress={postingProgress}
+            postingTransitionMs={postingTransitionMs}
+            onAction={handleDeposit}
+            actionLabel="Déposer"
+            emptyContent={
+              <Box sx={{ px: 5, py: 1 }}>
+                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+              </Box>
+            }
+          />
+        </>
+      ) : null}
     </Stack>
   );
 
@@ -280,10 +288,13 @@ export default function LiveSearch() {
             onChange={(event) => setSearchValue(event.target.value)}
             inputProps={{ inputMode: "search" }}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="medium" />
-                </InputAdornment>
+              endAdornment: (
+                <SearchPersonalizationSelector
+                  selectedProviderCode={selectedStreamingService}
+                  connectedProviderCodes={connectedPersonalizedProviderCodes}
+                  onSelectProvider={setSelectedStreamingService}
+                  onConnectProvider={connectProvider}
+                />
               ),
             }}
             sx={{

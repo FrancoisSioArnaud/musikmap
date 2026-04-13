@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from spotify.spotipy_client import sp
+from users.provider_connections import set_last_platform_for_user, upsert_provider_connection
 
 from .credentials import CLIENT_ID, CLIENT_SECRET
 from .util import (
@@ -87,13 +88,29 @@ def spotify_callback(request, format=None):
     if not response.ok or not access_token:
         return redirect("/profile/settings?spotify=error")
 
+    token_type = payload.get("token_type") or "Bearer"
+    refresh_token = payload.get("refresh_token") or ""
+    expires_in = payload.get("expires_in") or 3600
     update_or_create_user_tokens(
         request.user,
         access_token,
-        payload.get("token_type") or "Bearer",
-        payload.get("expires_in") or 3600,
-        payload.get("refresh_token") or "",
+        token_type,
+        expires_in,
+        refresh_token,
     )
+    try:
+        upsert_provider_connection(
+            user=request.user,
+            provider_code="spotify",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=expires_in,
+            scopes=[value for value in SPOTIFY_SCOPES.split() if value],
+            is_active=True,
+        )
+        set_last_platform_for_user(request.user, "spotify")
+    except Exception:
+        pass
     return redirect("/profile/settings?spotify=connected")
 
 

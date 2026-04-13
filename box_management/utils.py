@@ -1467,6 +1467,14 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
 
     upsert_song_provider_link(song, track)
 
+    provider_code = (track.get("provider_code") or "").strip().lower()
+    if provider_code:
+        try:
+            from users.provider_connections import set_last_platform_for_user
+            set_last_platform_for_user(user, provider_code)
+        except Exception:
+            pass
+
     if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
         if box is None:
             raise ValueError("Boîte introuvable")

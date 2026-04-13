@@ -16,12 +16,7 @@ import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 
 import { getCookie } from "../Security/TokensUtils";
-import { checkUserStatus, setPreferredPlatform, logoutUser } from "../UsersUtils";
-import {
-  checkDeezerAuthentication,
-  authenticateDeezerUser,
-  disconnectDeezerUser,
-} from "../Utils/streaming/DeezerUtils";
+import { checkUserStatus, logoutUser } from "../UsersUtils";
 import {
   checkSpotifyAuthentication,
   authenticateSpotifyUser,
@@ -33,14 +28,12 @@ export default function UserSettings() {
   const navigate = useNavigate();
 
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
-  const [isDeezerAuthenticated, setIsDeezerAuthenticated] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const [providerErrors, setProviderErrors] = useState({});
 
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
-    checkDeezerAuthentication(setIsDeezerAuthenticated);
   }, []);
 
   useEffect(() => {
@@ -50,10 +43,6 @@ export default function UserSettings() {
     if (params.get("spotify") === "error") {
       nextProviderErrors.spotify =
         "Connexion Spotify impossible. Vérifie l’URL de redirection configurée côté Spotify et le domaine courant.";
-    }
-    if (params.get("deezer") === "error") {
-      nextProviderErrors.deezer =
-        "Connexion Deezer impossible. Vérifie l’URL de redirection configurée côté Deezer et le domaine courant.";
     }
 
     if (Object.keys(nextProviderErrors).length) {
@@ -108,30 +97,6 @@ export default function UserSettings() {
       await checkUserStatus(setUser, setIsAuthenticated);
     }
   };
-
-  const handleButtonClickConnectDeezer = async () => {
-    setProviderErrors((prev) => ({ ...prev, deezer: null }));
-    const ok = await authenticateDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-    if (!ok) {
-      setProviderErrors((prev) => ({
-        ...prev,
-        deezer: "Impossible d’ouvrir la connexion Deezer.",
-      }));
-    }
-  };
-
-  const handleButtonClickDisconnectDeezer = async () => {
-    const ok = await disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-    if (ok) {
-      await checkUserStatus(setUser, setIsAuthenticated);
-    }
-  };
-
-  function handlePreferredPlatform(platform) {
-    setPreferredPlatform(platform)
-      .then(() => checkUserStatus(setUser, setIsAuthenticated))
-      .catch(() => console.log("cannot change preferred platform"));
-  }
 
   const handlePasswordChange = () => setShowPasswordForm(true);
   const handlePasswordCancel = () => setShowPasswordForm(false);
@@ -239,64 +204,30 @@ export default function UserSettings() {
         <Card variant="outlined">
           <CardHeader
             titleTypographyProps={{ variant: "h6" }}
-            title="Tes services de streaming"
-            subheader="Ta plateforme principale est celle utilisée pour la recherche."
+            title="Spotify"
+            subheader="Connecte Spotify pour obtenir des résultats personnalisés et retrouver tes dernières écoutes dans la recherche."
           />
           <Divider />
           <CardContent>
-            <Stack spacing={3}>
+            <Stack spacing={2}>
               {providerErrors.spotify ? <Alert severity="error">{providerErrors.spotify}</Alert> : null}
-              {providerErrors.deezer ? <Alert severity="error">{providerErrors.deezer}</Alert> : null}
-
-              <Box>
-                <Grid container spacing={2} alignItems="center" wrap="wrap">
-                  <Grid item>
-                    <Box component="img" src="../static/images/spotify_logo.svg" alt="Spotify" sx={{ width: 96, height: "auto" }} />
-                  </Grid>
-                  <Grid item xs>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      {isSpotifyAuthenticated ? (
-                        <Button variant="outlined" onClick={handleButtonClickDisconnectSpotify}>Se déconnecter</Button>
-                      ) : (
-                        <Button variant="contained" onClick={handleButtonClickConnectSpotify}>Se connecter</Button>
-                      )}
-
-                      {user?.preferred_platform === "spotify" ? (
-                        <Typography variant="body2" sx={{ ml: 1 }}>Plateforme principale</Typography>
-                      ) : (
-                        <Button variant="text" onClick={() => handlePreferredPlatform("spotify")} sx={{ ml: 1 }}>
-                          Choisir comme plateforme principale
-                        </Button>
-                      )}
-                    </Stack>
-                  </Grid>
+              <Grid container spacing={2} alignItems="center" wrap="wrap">
+                <Grid item>
+                  <Box component="img" src="../static/images/spotify_logo.svg" alt="Spotify" sx={{ width: 96, height: "auto" }} />
                 </Grid>
-              </Box>
-
-              <Box>
-                <Grid container spacing={2} alignItems="center" wrap="wrap">
-                  <Grid item>
-                    <Box component="img" src="../static/images/deezer_logo.svg" alt="Deezer" sx={{ width: 96, height: "auto" }} />
-                  </Grid>
-                  <Grid item xs>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      {isDeezerAuthenticated ? (
-                        <Button variant="outlined" onClick={handleButtonClickDisconnectDeezer}>Se déconnecter</Button>
-                      ) : (
-                        <Button variant="contained" onClick={handleButtonClickConnectDeezer}>Se connecter</Button>
-                      )}
-
-                      {user?.preferred_platform === "deezer" ? (
-                        <Typography variant="body2" sx={{ ml: 1 }}>Plateforme principale</Typography>
-                      ) : (
-                        <Button variant="text" onClick={() => handlePreferredPlatform("deezer")} sx={{ ml: 1 }}>
-                          Choisir comme plateforme principale
-                        </Button>
-                      )}
-                    </Stack>
-                  </Grid>
+                <Grid item xs>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    {isSpotifyAuthenticated ? (
+                      <Button variant="outlined" onClick={handleButtonClickDisconnectSpotify}>Se déconnecter</Button>
+                    ) : (
+                      <Button variant="contained" onClick={handleButtonClickConnectSpotify}>Se connecter</Button>
+                    )}
+                    <Typography variant="body2" color="text.secondary">
+                      {isSpotifyAuthenticated ? "Connecté" : "Non connecté"}
+                    </Typography>
+                  </Stack>
                 </Grid>
-              </Box>
+              </Grid>
             </Stack>
           </CardContent>
         </Card>

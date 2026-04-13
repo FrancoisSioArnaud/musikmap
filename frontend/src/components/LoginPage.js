@@ -88,9 +88,9 @@ export default function LoginPage() {
     sendAndProcessData(data);
   };
 
-  const handleMultiplatformLogin = (platform) => {
+  const handleSpotifyLogin = () => {
     const next = encodeURIComponent("/profile");
-    window.location.assign(`/oauth/login/${platform}/?next=${next}`);
+    window.location.assign(`/oauth/login/spotify/?next=${next}`);
   };
 
   return (
@@ -170,15 +170,12 @@ export default function LoginPage() {
                 </Grid>
               </Grid>
               <Typography mt="10px" variant="body1">
-                Ou connecte toi avec une plateforme
+                Ou connecte toi avec Spotify
               </Typography>
             </Box>
             <Box sx={{ display: "flex", flexDirection: "row", gap: "10px", mt: 2 }}>
-              <Button variant="outlined" onClick={() => handleMultiplatformLogin("spotify")}>
+              <Button variant="outlined" onClick={handleSpotifyLogin}>
                 Spotify
-              </Button>
-              <Button variant="outlined" onClick={() => handleMultiplatformLogin("deezer")}>
-                Deezer
               </Button>
             </Box>
           </>

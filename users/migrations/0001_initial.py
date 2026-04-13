@@ -107,7 +107,7 @@ class Migration(migrations.Migration):
                 ),
                 ("points", models.IntegerField(default=0)),
                 (
-                    "preferred_platform",
+                    "last_platform",
                     models.CharField(
                         blank=True,
                         choices=[("spotify", "Spotify"), ("deezer", "Deezer")],

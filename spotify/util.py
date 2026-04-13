@@ -3,6 +3,7 @@ from datetime import timedelta
 import requests
 from django.utils import timezone
 from requests import get, post, put
+from users.provider_connections import disconnect_provider_connection, is_provider_authenticated, upsert_provider_connection
 
 from .credentials import CLIENT_ID, CLIENT_SECRET
 from .models import SpotifyToken
@@ -33,20 +34,46 @@ def update_or_create_user_tokens(user, access_token, token_type, expires_in, ref
         tokens.expires_in = expires_at
         tokens.token_type = token_type or tokens.token_type
         tokens.save(update_fields=["access_token", "refresh_token", "expires_in", "token_type"])
+        try:
+            upsert_provider_connection(
+                user=user,
+                provider_code="spotify",
+                access_token=access_token,
+                refresh_token=tokens.refresh_token,
+                expires_in=max(0, int((expires_at - timezone.now()).total_seconds())),
+                is_active=True,
+            )
+        except Exception:
+            pass
         return tokens
 
-    return SpotifyToken.objects.create(
+    created = SpotifyToken.objects.create(
         user=user,
         access_token=access_token,
         refresh_token=refresh_token or "",
         expires_in=expires_at,
         token_type=token_type or "Bearer",
     )
+    try:
+        upsert_provider_connection(
+            user=user,
+            provider_code="spotify",
+            access_token=access_token,
+            refresh_token=refresh_token or "",
+            expires_in=max(0, int((expires_at - timezone.now()).total_seconds())) if expires_at else None,
+            is_active=True,
+        )
+    except Exception:
+        pass
+    return created
 
 
 def is_spotify_authenticated(user):
     if not getattr(user, "is_authenticated", False):
         return False
+
+    if is_provider_authenticated(user, "spotify"):
+        return True
 
     tokens = get_user_tokens(user)
     if not tokens:
@@ -61,6 +88,10 @@ def disconnect_user(user):
     tokens = get_user_tokens(user)
     if tokens:
         tokens.delete()
+    try:
+        disconnect_provider_connection(user, "spotify")
+    except Exception:
+        pass
 
 
 def refresh_spotify_token(user):

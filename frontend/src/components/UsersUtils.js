@@ -57,10 +57,10 @@ export const checkUserStatus = async (
   }
 };
 
-export const setPreferredPlatform = async (new_preferred_platform) => {
+export const setLastPlatform = async (nextLastPlatform) => {
   const csrftoken = getCookie("csrftoken");
   const form = JSON.stringify({
-    preferred_platform: new_preferred_platform,
+    last_platform: nextLastPlatform,
   });
 
   const requestOptions = {
@@ -74,14 +74,15 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
   };
 
   try {
-    const response = await fetch("/users/change-preferred-platform", requestOptions);
+    const response = await fetch("/users/change-last-platform", requestOptions);
+    const data = await response.json().catch(() => ({}));
     if (response.ok) {
-      return true;
+      return data;
     }
-    return false;
+    return null;
   } catch (error) {
     console.error(error);
-    return false;
+    return null;
   }
 };
 

@@ -1,33 +1,112 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "react";
 
 import { UserContext } from "../UserContext";
+import { setLastPlatform } from "../UsersUtils";
 import {
-  fetchRecentPlaysViaBackend,
+  PERSONALIZED_SEARCH_PROVIDER_CODES,
+  SERVER_SEARCH_PROVIDER_CODE,
+  authenticateProviderUser,
   fetchRecentPlaysViaProviderClient,
+  getConnectedPersonalizedProviderCodes,
   getProviderConnection,
   searchTracksViaBackend,
   searchTracksViaProviderClient,
 } from "../Utils/streaming/providerClient";
 
-export default function useSongSearch({ initialPlatform = "spotify", debounceMs = 400 } = {}) {
-  const { user } = useContext(UserContext) || {};
+function getDefaultSelectedProvider(user) {
+  const connectedProviders = getConnectedPersonalizedProviderCodes(user);
+  const rawLastPlatform = String(user?.last_platform || "").trim().toLowerCase();
+
+  if (rawLastPlatform && connectedProviders.includes(rawLastPlatform)) {
+    return rawLastPlatform;
+  }
+
+  return connectedProviders[0] || null;
+}
+
+function buildSocialSpotifyLoginUrl() {
+  const next = encodeURIComponent(
+    `${window.location.pathname || "/"}${window.location.search || ""}${window.location.hash || ""}`
+  );
+  return `/oauth/login/spotify/?next=${next}`;
+}
+
+export default function useSongSearch({ initialPlatform = null, debounceMs = 400 } = {}) {
+  const { user, setUser, isAuthenticated } = useContext(UserContext) || {};
 
   const [searchValue, setSearchValue] = useState("");
   const [selectedStreamingService, setSelectedStreamingService] = useState(
-    user?.preferred_platform || initialPlatform
+    getDefaultSelectedProvider(user) || initialPlatform || null
   );
   const [results, setResults] = useState([]);
+  const manualSelectionRef = useRef(false);
   const [recentPlays, setRecentPlays] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingRecentPlays, setIsLoadingRecentPlays] = useState(false);
 
-  useEffect(() => {
-    if (user?.preferred_platform) {
-      setSelectedStreamingService(user.preferred_platform);
+  const connectedPersonalizedProviderCodes = useMemo(
+    () => getConnectedPersonalizedProviderCodes(user),
+    [user]
+  );
+
+  const effectiveSelectedProvider = useMemo(() => {
+    if (selectedStreamingService && connectedPersonalizedProviderCodes.includes(selectedStreamingService)) {
+      return selectedStreamingService;
     }
-  }, [user?.preferred_platform]);
+    return null;
+  }, [connectedPersonalizedProviderCodes, selectedStreamingService]);
 
   useEffect(() => {
+    const nextDefault = getDefaultSelectedProvider(user) || initialPlatform || null;
+    setSelectedStreamingService((previous) => {
+      if (manualSelectionRef.current) {
+        if (previous === null) {
+          return null;
+        }
+        if (previous && connectedPersonalizedProviderCodes.includes(previous)) {
+          return previous;
+        }
+      }
+      return nextDefault;
+    });
+  }, [connectedPersonalizedProviderCodes, initialPlatform, user?.id, user?.last_platform, user?.provider_connections]);
+
+  const handleSelectStreamingService = useCallback(
+    async (nextProviderCode) => {
+      const normalizedProvider =
+        nextProviderCode && PERSONALIZED_SEARCH_PROVIDER_CODES.includes(nextProviderCode)
+          ? nextProviderCode
+          : null;
+
+      manualSelectionRef.current = true;
+      setSelectedStreamingService(normalizedProvider);
+
+      const responseData = await setLastPlatform(normalizedProvider);
+      if (responseData?.current_user && setUser) {
+        setUser(responseData.current_user);
+      }
+
+      return Boolean(responseData);
+    },
+    [setUser]
+  );
+
+  const handleConnectProvider = useCallback(
+    async (providerCode) => {
+      if (providerCode !== "spotify") return;
+
+      if (isAuthenticated && !user?.is_guest) {
+        await authenticateProviderUser("spotify");
+        return;
+      }
+
+      window.location.assign(buildSocialSpotifyLoginUrl());
+    },
+    [isAuthenticated, user?.is_guest]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       const doFetch = async () => {
         const trimmedSearch = searchValue.trim();
@@ -39,89 +118,95 @@ export default function useSongSearch({ initialPlatform = "spotify", debounceMs 
 
         try {
           setIsSearching(true);
-          const connection = getProviderConnection(user, selectedStreamingService);
+          const connection = effectiveSelectedProvider
+            ? getProviderConnection(user, effectiveSelectedProvider)
+            : null;
           let nextResults = [];
 
-          if (connection?.connected && connection?.access_token) {
+          if (effectiveSelectedProvider && connection?.connected && connection?.access_token) {
             try {
               nextResults = await searchTracksViaProviderClient(
-                selectedStreamingService,
+                effectiveSelectedProvider,
                 trimmedSearch,
-                connection.access_token
+                connection.access_token,
+                { signal: controller.signal }
               );
             } catch (error) {
+              if (error?.name === "AbortError") {
+                return;
+              }
               nextResults = [];
             }
           }
 
           if (!Array.isArray(nextResults) || nextResults.length === 0) {
-            nextResults = await searchTracksViaBackend(selectedStreamingService, trimmedSearch);
+            nextResults = await searchTracksViaBackend(SERVER_SEARCH_PROVIDER_CODE, trimmedSearch, {
+              signal: controller.signal,
+            });
           }
 
           setResults(Array.isArray(nextResults) ? nextResults : []);
-        } catch {
-          setResults([]);
+        } catch (error) {
+          if (error?.name !== "AbortError") {
+            setResults([]);
+          }
         } finally {
-          setIsSearching(false);
+          if (!controller.signal.aborted) {
+            setIsSearching(false);
+          }
         }
       };
 
       doFetch();
     }, debounceMs);
 
-    return () => clearTimeout(timer);
-  }, [debounceMs, searchValue, selectedStreamingService, user]);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [debounceMs, effectiveSelectedProvider, searchValue, user]);
 
   useEffect(() => {
     const trimmedSearch = searchValue.trim();
-    if (trimmedSearch) {
+    if (trimmedSearch || !effectiveSelectedProvider) {
       setRecentPlays([]);
       setIsLoadingRecentPlays(false);
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
+    const connection = getProviderConnection(user, effectiveSelectedProvider);
+    if (!connection?.connected || !connection?.can_recent_plays || !connection?.access_token) {
+      setRecentPlays([]);
+      setIsLoadingRecentPlays(false);
+      return () => controller.abort();
+    }
 
     const loadRecentPlays = async () => {
       try {
         setIsLoadingRecentPlays(true);
-        const connection = getProviderConnection(user, selectedStreamingService);
-        let items = [];
-
-        if (connection?.connected && connection?.can_recent_plays && connection?.access_token) {
-          try {
-            items = await fetchRecentPlaysViaProviderClient(
-              selectedStreamingService,
-              connection.access_token
-            );
-          } catch (error) {
-            items = [];
-          }
-        }
-
-        if (!Array.isArray(items) || items.length === 0) {
-          items = await fetchRecentPlaysViaBackend(selectedStreamingService);
-        }
-
-        if (!cancelled) {
+        const items = await fetchRecentPlaysViaProviderClient(
+          effectiveSelectedProvider,
+          connection.access_token,
+          { signal: controller.signal }
+        );
+        if (!controller.signal.aborted) {
           setRecentPlays(Array.isArray(items) ? items : []);
         }
-      } catch {
-        if (!cancelled) {
+      } catch (error) {
+        if (!controller.signal.aborted) {
           setRecentPlays([]);
         }
       } finally {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setIsLoadingRecentPlays(false);
         }
       }
     };
 
     loadRecentPlays();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchValue, selectedStreamingService, user]);
+    return () => controller.abort();
+  }, [effectiveSelectedProvider, searchValue, user]);
 
   const resetSearch = () => {
     setSearchValue("");
@@ -132,12 +217,15 @@ export default function useSongSearch({ initialPlatform = "spotify", debounceMs 
   return {
     searchValue,
     setSearchValue,
-    selectedStreamingService,
-    setSelectedStreamingService,
+    selectedStreamingService: effectiveSelectedProvider,
+    setSelectedStreamingService: handleSelectStreamingService,
+    connectedPersonalizedProviderCodes,
+    connectProvider: handleConnectProvider,
     results,
     recentPlays,
     isSearching,
     isLoadingRecentPlays,
+    canShowRecentPlays: Boolean(effectiveSelectedProvider),
     resetSearch,
   };
 }

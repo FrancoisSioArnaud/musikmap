@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from box_management.models import Deposit
 from box_management.utils import create_song_deposit
+from users.provider_connections import set_last_platform_for_user
 
 from .forms import RegisterUserForm
 from .models import CustomUser
@@ -252,22 +253,29 @@ class ChangeProfilePicture(APIView):
             return Response({"errors": [str(e)]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ChangePreferredPlatform(APIView):
+class ChangeLastPlatform(APIView):
     def post(self, request, format=None):
-        if not request.user.is_authenticated:
+        user = get_current_app_user(request)
+        if not user:
             return Response({"errors": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
-        if getattr(request.user, "is_guest", False):
-            return Response({"errors": "Finalise d’abord ton compte."}, status=status.HTTP_403_FORBIDDEN)
 
-        preferred_platform = request.data.get("preferred_platform")
-        if preferred_platform not in ["spotify", "deezer"]:
-            return Response({"errors": "Plateforme préférée invalide."}, status=status.HTTP_400_BAD_REQUEST)
+        next_last_platform = request.data.get("last_platform")
+        if next_last_platform in (None, "", "none"):
+            next_last_platform = None
 
         try:
-            request.user.preferred_platform = preferred_platform
-            request.user.last_seen_at = timezone.now()
-            request.user.save(update_fields=["preferred_platform", "last_seen_at"])
-            return Response({"status": "La plateforme préférée a été modifiée avec succès."}, status=status.HTTP_200_OK)
+            set_last_platform_for_user(user, next_last_platform)
+            touch_last_seen(user)
+            return Response(
+                {
+                    "status": "La plateforme personnalisée a été mise à jour.",
+                    "last_platform": getattr(user, "last_platform", "") or None,
+                    "current_user": _build_authenticated_user_payload(user),
+                },
+                status=status.HTTP_200_OK,
+            )
+        except ValueError as exc:
+            return Response({"errors": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

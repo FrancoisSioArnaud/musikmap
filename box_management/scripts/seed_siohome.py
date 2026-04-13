@@ -213,7 +213,7 @@ def get_or_create_users(personas):
     - first_name
     - last_name
     - password: "test1234"
-    - preferred_platform: ""
+    - last_platform: ""
     - points: entre 200 et 400
     """
     User = get_user_model()
@@ -233,7 +233,7 @@ def get_or_create_users(personas):
             first_name=p.get("first_name", "")[:150],
             last_name=p.get("last_name", "")[:150],
             email="",
-            preferred_platform="",
+            last_platform="",
             points=random.randint(200, 400),
         )
         u.set_password("test1234")

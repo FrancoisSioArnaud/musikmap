@@ -38,7 +38,7 @@ class CustomUser(AbstractUser):
     last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
     converted_at = models.DateTimeField(null=True, blank=True)
 
-    preferred_platform = models.CharField(max_length=32, blank=True, db_index=True)
+    last_platform = models.CharField(max_length=32, blank=True, default="", db_index=True)
 
     # -----------------------------
     # Client portal fields

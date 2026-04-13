@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
-import InputAdornment from "@mui/material/InputAdornment";
-import SearchIcon from "@mui/icons-material/Search";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
@@ -15,6 +13,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
+import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -93,6 +92,11 @@ export default function PinnedSongSection({ boxSlug }) {
     isSearching,
     isLoadingRecentPlays,
     resetSearch,
+    selectedStreamingService,
+    setSelectedStreamingService,
+    connectedPersonalizedProviderCodes,
+    connectProvider,
+    canShowRecentPlays,
   } = useSongSearch();
 
   const isGuestUser = Boolean(user?.is_guest);
@@ -428,10 +432,13 @@ export default function PinnedSongSection({ boxSlug }) {
                     onChange={(event) => setSearchValue(event.target.value)}
                     inputProps={{ inputMode: "search" }}
                     InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="medium" />
-                        </InputAdornment>
+                      endAdornment: (
+                        <SearchPersonalizationSelector
+                          selectedProviderCode={selectedStreamingService}
+                          connectedProviderCodes={connectedPersonalizedProviderCodes}
+                          onSelectProvider={setSelectedStreamingService}
+                          onConnectProvider={connectProvider}
+                        />
                       ),
                     }}
                     sx={{
@@ -452,7 +459,7 @@ export default function PinnedSongSection({ boxSlug }) {
                         <Box sx={{ px: 5, py: 3 }}>
                           <Typography variant="body1">Aucun résultat.</Typography>
                         </Box>
-                      ) : (
+                      ) : canShowRecentPlays ? (
                         <Box>
                           <Box sx={{ px: 5, pt: 1 }}>
                             <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
@@ -468,6 +475,10 @@ export default function PinnedSongSection({ boxSlug }) {
                               </Box>
                             }
                           />
+                        </Box>
+                      ) : (
+                        <Box sx={{ px: 5, py: 3 }}>
+                          <Typography variant="body1">Aucun résultat.</Typography>
                         </Box>
                       )
                     }

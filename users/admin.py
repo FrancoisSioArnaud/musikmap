@@ -7,14 +7,14 @@ from users.models import CustomUser, UserProviderConnection
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
-        (None, {"fields": ("username", "password")}),
+        (None, {"fields": ("username", "password")} ),
         (
             "Personal info",
             {
                 "fields": (
                     "email",
                     "profile_picture",
-                    "preferred_platform",
+                    "last_platform",
                     "points",
                     "is_guest",
                     "guest_device_token",
@@ -71,7 +71,7 @@ class CustomUserAdmin(UserAdmin):
         "client",
         "client_role",
         "portal_status",
-        "preferred_platform",
+        "last_platform",
         "points",
         "last_seen_at",
         "converted_at",
@@ -82,7 +82,7 @@ class CustomUserAdmin(UserAdmin):
         "is_guest",
         "client_role",
         "portal_status",
-        "preferred_platform",
+        "last_platform",
         "is_staff",
         "is_superuser",
         "is_active",

@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
-import InputAdornment from "@mui/material/InputAdornment";
 import SearchIcon from "@mui/icons-material/Search";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import TextField from "@mui/material/TextField";
@@ -13,6 +12,7 @@ import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOut
 
 import Deposit from "../Common/Deposit";
 import SongSearchResultsList from "../Common/SongSearchResultsList";
+import SearchPersonalizationSelector from "../Common/SearchPersonalizationSelector";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -54,6 +54,11 @@ export default function FavoriteSongSection({
     isSearching,
     isLoadingRecentPlays,
     resetSearch,
+    selectedStreamingService,
+    setSelectedStreamingService,
+    connectedPersonalizedProviderCodes,
+    connectProvider,
+    canShowRecentPlays,
   } = useSongSearch();
 
   useEffect(() => {
@@ -197,24 +202,28 @@ export default function FavoriteSongSection({
             </Box>
           ) : null}
 
-          <Box sx={{ px: 5, pt: 1 }}>
-            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
-          </Box>
-          <SongSearchResultsList
-            results={recentPlays}
-            isSearching={isLoadingRecentPlays}
-            posting={posting}
-            postingId={postingId}
-            postingProgress={postingProgress}
-            postingTransitionMs={postingTransitionMs}
-            onAction={handleSetFavorite}
-            actionLabel="Choisir"
-            emptyContent={
-              <Box sx={{ px: 5, py: 1 }}>
-                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+          {canShowRecentPlays ? (
+            <>
+              <Box sx={{ px: 5, pt: 1 }}>
+                <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
               </Box>
-            }
-          />
+              <SongSearchResultsList
+                results={recentPlays}
+                isSearching={isLoadingRecentPlays}
+                posting={posting}
+                postingId={postingId}
+                postingProgress={postingProgress}
+                postingTransitionMs={postingTransitionMs}
+                onAction={handleSetFavorite}
+                actionLabel="Choisir"
+                emptyContent={
+                  <Box sx={{ px: 5, py: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+                  </Box>
+                }
+              />
+            </>
+          ) : null}
         </Box>
       );
     }
@@ -224,7 +233,7 @@ export default function FavoriteSongSection({
         <Typography variant="body1">Aucun résultat.</Typography>
       </Box>
     );
-  }, [canRemove, handleRemoveFavorite, handleSetFavorite, isLoadingRecentPlays, posting, postingId, postingProgress, postingTransitionMs, recentPlays, searchValue]);
+  }, [canRemove, canShowRecentPlays, handleRemoveFavorite, handleSetFavorite, isLoadingRecentPlays, posting, postingId, postingProgress, postingTransitionMs, recentPlays, searchValue]);
 
   const bodyContent = useMemo(() => {
     if (isCurrentFullUser) {
@@ -357,10 +366,13 @@ export default function FavoriteSongSection({
                 onChange={(event) => setSearchValue(event.target.value)}
                 inputProps={{ inputMode: "search" }}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="medium" />
-                    </InputAdornment>
+                  endAdornment: (
+                    <SearchPersonalizationSelector
+                      selectedProviderCode={selectedStreamingService}
+                      connectedProviderCodes={connectedPersonalizedProviderCodes}
+                      onSelectProvider={setSelectedStreamingService}
+                      onConnectProvider={connectProvider}
+                    />
                   ),
                 }}
                 sx={{

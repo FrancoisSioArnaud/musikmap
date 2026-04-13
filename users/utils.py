@@ -176,7 +176,7 @@ def build_current_user_payload(user: CustomUser):
         "username": user.username,
         "display_name": getattr(user, "display_name", None) or ("Invité" if user.is_guest else user.username),
         "email": user.email,
-        "preferred_platform": user.preferred_platform,
+        "last_platform": (getattr(user, "last_platform", "") or None),
         "points": user.points,
         "is_social_auth": is_social_auth,
         "profile_picture_url": profile_picture_url,
@@ -332,9 +332,9 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
             target.points = int(target.points or 0) + points_added
             target_update_fields.append("points")
 
-        if not target.preferred_platform and guest.preferred_platform:
-            target.preferred_platform = guest.preferred_platform
-            target_update_fields.append("preferred_platform")
+        if not target.last_platform and guest.last_platform:
+            target.last_platform = guest.last_platform
+            target_update_fields.append("last_platform")
 
         if not target.profile_picture and guest.profile_picture:
             target.profile_picture = guest.profile_picture
