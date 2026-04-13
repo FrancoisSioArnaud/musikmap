@@ -25,17 +25,26 @@
 }
 
 
+// -------- modale -------
+
 .search_personalization_selector_menu_paper {
   max-width: 320px;
+  border-radius: var(--mm-radius-lg);
 }
 
 .search_personalization_selector_menu_list {
-  padding: 16px 12px;
+  padding: 16px;
+  gap: 12px;
+  display: grid;
 }
+
+// -------- modale content -------
 
 .search_personalization_selector_modal_header {
   max-width: 320px;
-  padding: 12px 16px 8px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
 .search_personalization_selector_modal_text {
