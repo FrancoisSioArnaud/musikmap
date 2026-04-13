@@ -1,3 +1,48 @@
 @use "../0-init/color" as *;
 
+.search_personalization_selector_adornment {
+  margin-left: 4px;
+}
 
+.search_personalization_selector_button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  color: var(--mm-color-text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+.search_personalization_selector_icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.search_personalization_selector_menu_paper {
+  max-width: 320px;
+}
+
+.search_personalization_selector_menu_list {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.search_personalization_selector_modal_header {
+  max-width: 320px;
+  padding: 12px 16px 8px;
+}
+
+.search_personalization_selector_modal_text {
+  color: var(--mm-color-text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+.search_personalization_selector_provider {
+  min-width: 280px;
+  padding: 12px 16px;
+}
+
+.search_personalization_selector_provider_label {
+  margin-bottom: 8px;
+}

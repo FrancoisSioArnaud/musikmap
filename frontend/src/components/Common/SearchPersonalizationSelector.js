@@ -32,7 +32,6 @@ function SelectorLeadingIcon({ providerCode }) {
       src={iconPath}
       alt={PROVIDER_LABELS[providerCode] || providerCode}
       className={`search_personalization_selector_icon search_personalization_selector_icon--${providerCode}`}
-      sx={{ width: 22, height: 22, display: "block" }}
     />
   );
 }
@@ -68,18 +67,10 @@ export default function SearchPersonalizationSelector({
 
   return (
     <>
-      <InputAdornment position="end" sx={{ ml: 0.5 }} className="search_personalization_selector_adornment">
+      <InputAdornment position="end" className="search_personalization_selector_adornment">
         <ButtonBase
           onClick={handleOpen}
           className="search_personalization_selector_button"
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.25,
-            borderRadius: "999px",
-            p: 0.5,
-            color: "text.secondary",
-          }}
           aria-label="Sélectionner la source des résultats personnalisés"
         >
           <SelectorLeadingIcon providerCode={selectedProviderCode} />
@@ -98,7 +89,7 @@ export default function SearchPersonalizationSelector({
         className="search_personalization_selector_menu"
         classes={{ paper: "search_personalization_selector_menu_paper", list: "search_personalization_selector_menu_list" }}
       >
-        <Box sx={{ px: 2, pt: 1.5, pb: 1, maxWidth: 320 }} className="search_personalization_selector_modal_header">
+        <Box className="search_personalization_selector_modal_header">
           <Typography variant="subtitle1" className="search_personalization_selector_modal_title">
             Résultats personnalisés
           </Typography>
@@ -137,10 +128,9 @@ export default function SearchPersonalizationSelector({
           return (
             <Box
               key={providerCode}
-              sx={{ px: 2, py: 1.5, minWidth: 280 }}
               className={`search_personalization_selector_provider search_personalization_selector_provider--${providerCode}`}
             >
-              <Typography variant="body1" sx={{ mb: 1 }} className="search_personalization_selector_provider_label">
+              <Typography variant="body1" className="search_personalization_selector_provider_label">
                 {label}
               </Typography>
               <Button
