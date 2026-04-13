@@ -59,7 +59,7 @@
 .article .text {
   display: -webkit-box;
   overflow: hidden;
-  opacity: 0.7;
+  opacity: var(--mm-opacity-light-text);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
 }
