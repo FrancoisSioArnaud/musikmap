@@ -275,7 +275,7 @@ export default function LiveSearch() {
 
   return (
     <Stack spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
-      <Box sx={{ p: 5, pb: 2 }}>
+      <Box sx={{ p: 4, pb: 2 }}>
         <Stack spacing={2}>
           <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
             Choisis une chanson à partager
