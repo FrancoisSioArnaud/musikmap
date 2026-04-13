@@ -53,7 +53,7 @@
 
 .search_personalization_selector_menu_list li, .search_personalization_selector_provider{
   border-radius: var(--mm-radius-round);
-  border: var(--mm-color-default);
+  border: solid 1px var(--mm-color-primary-light);
   min-width: 280px;
   padding: 12px 16px;
   box-sizing: border-box;
