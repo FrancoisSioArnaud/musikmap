@@ -32,7 +32,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 # ===== Project =====
-from api_aggregation.views import ApiAggregation
 from users.models import CustomUser
 from users.utils import (
     apply_points_delta,
