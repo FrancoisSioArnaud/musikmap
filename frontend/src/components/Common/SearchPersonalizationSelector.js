@@ -81,7 +81,7 @@ export default function SearchPersonalizationSelector({
         </ButtonBase>
       </InputAdornment>
 
-      <Menu
+      <Box
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
@@ -98,13 +98,13 @@ export default function SearchPersonalizationSelector({
           </Typography>
         </Box>
 
-        <MenuItem
+        <Box
           selected={!selectedProviderCode}
           onClick={() => handleSelect(null)}
           className="search_personalization_selector_option search_personalization_selector_option--none"
         >
           Pas de résultats personnalisés
-        </MenuItem>
+        </Box>
 
         <Divider className="search_personalization_selector_divider" />
 
@@ -114,14 +114,14 @@ export default function SearchPersonalizationSelector({
 
           if (isConnected) {
             return (
-              <MenuItem
+              <Box
                 key={providerCode}
                 selected={selectedProviderCode === providerCode}
                 onClick={() => handleSelect(providerCode)}
                 className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >
                 {label}
-              </MenuItem>
+              </Box>
             );
           }
 
@@ -143,7 +143,7 @@ export default function SearchPersonalizationSelector({
             </Box>
           );
         })}
-      </Menu>
+      </Box>
     </>
   );
 }
