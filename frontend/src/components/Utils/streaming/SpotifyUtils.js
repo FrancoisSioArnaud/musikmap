@@ -1,30 +1,59 @@
-import { authenticateProviderUser, disconnectProviderUser, getProviderConnection } from "./providerClient";
-
-export const checkSpotifyAuthentication = async (setIsSpotifyAuthenticated, user = null) => {
+export const checkSpotifyAuthentication = async (setIsSpotifyAuthenticated) => {
   try {
-    if (user) {
-      setIsSpotifyAuthenticated(Boolean(getProviderConnection(user, "spotify")?.connected));
-      return;
-    }
-    const response = await fetch("/spotify/is-authenticated", { credentials: "same-origin" });
+    const response = await fetch("/spotify/is-authenticated", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
     const data = await response.json().catch(() => ({}));
     setIsSpotifyAuthenticated(Boolean(data?.status));
+    return Boolean(data?.status);
   } catch (error) {
     console.error(error);
     setIsSpotifyAuthenticated(false);
+    return false;
   }
 };
 
-export const authenticateSpotifyUser = async () => {
-  await authenticateProviderUser("spotify");
+export const authenticateSpotifyUser = async (isSpotifyAuthenticated, setIsSpotifyAuthenticated) => {
+  try {
+    const authenticated = await checkSpotifyAuthentication(setIsSpotifyAuthenticated);
+    if (isSpotifyAuthenticated || authenticated) {
+      return true;
+    }
+
+    const response = await fetch("/spotify/auth-redirection", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.url) {
+      throw new Error(data?.detail || "Spotify auth-redirection failed");
+    }
+
+    window.location.assign(data.url);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
 };
 
 export const disconnectSpotifyUser = async (isSpotifyAuthenticated, setIsSpotifyAuthenticated) => {
   try {
-    if (!isSpotifyAuthenticated) return;
-    await disconnectProviderUser("spotify");
+    const authenticated = await checkSpotifyAuthentication(setIsSpotifyAuthenticated);
+    if (!isSpotifyAuthenticated && !authenticated) {
+      return true;
+    }
+
+    await fetch("/spotify/disconnect", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
     setIsSpotifyAuthenticated(false);
+    return true;
   } catch (error) {
     console.error(error);
+    return false;
   }
 };

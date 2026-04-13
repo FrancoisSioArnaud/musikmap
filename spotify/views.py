@@ -1,112 +1,172 @@
 import base64
+from urllib.parse import urlencode
+
 import requests
 from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from box_management.provider_services import backend_search_tracks, normalize_spotify_track
-from spotify.credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
-from spotify.util import (
+from spotify.spotipy_client import sp
+
+from .credentials import CLIENT_ID, CLIENT_SECRET
+from .util import (
     disconnect_user,
     execute_spotify_api_request,
     is_spotify_authenticated,
     update_or_create_user_tokens,
 )
-from users.utils import get_current_app_user
+
+
+SPOTIFY_SCOPES = "user-read-recently-played"
+
+
+def _absolute_callback_uri(request):
+    callback_url = request.build_absolute_uri("/spotify/redirect")
+    forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO")
+    if forwarded_proto == "https" and callback_url.startswith("http://"):
+        return "https://" + callback_url[len("http://") :]
+    if not request.get_host().startswith(("localhost", "127.0.0.1")) and callback_url.startswith("http://"):
+        return "https://" + callback_url[len("http://") :]
+    return callback_url
 
 
 class AuthURL(APIView):
     def get(self, request, format=None):
-        user = get_current_app_user(request)
-        if not user or getattr(user, "is_guest", False) or not getattr(request.user, "is_authenticated", False):
+        if not getattr(request.user, "is_authenticated", False):
             return Response({"detail": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        scopes = "user-read-recently-played"
-        params = {
+        auth_headers = {
             "client_id": CLIENT_ID,
             "response_type": "code",
-            "redirect_uri": REDIRECT_URI,
-            "scope": scopes,
+            "redirect_uri": _absolute_callback_uri(request),
+            "scope": SPOTIFY_SCOPES,
+            "show_dialog": "true",
         }
-        from urllib.parse import urlencode
-
-        return Response({"url": "https://accounts.spotify.com/authorize?" + urlencode(params)}, status=status.HTTP_200_OK)
+        return Response(
+            {"url": "https://accounts.spotify.com/authorize?" + urlencode(auth_headers)},
+            status=status.HTTP_200_OK,
+        )
 
 
 class Disconnect(APIView):
     def get(self, request, format=None):
-        user = get_current_app_user(request)
-        if user:
-            disconnect_user(user)
+        if getattr(request.user, "is_authenticated", False):
+            disconnect_user(request.user)
         return Response({"status": True}, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        return self.get(request, format=format)
 
 
 def spotify_callback(request, format=None):
+    error = request.GET.get("error")
     code = request.GET.get("code")
-    if not code or not getattr(request.user, "is_authenticated", False):
-        return redirect("frontend:profile")
+    if error or not code or not getattr(request.user, "is_authenticated", False):
+        return redirect("/profile/settings?spotify=error")
 
-    encoded_credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode("utf-8")
+    encoded_credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
     headers = {
         "Authorization": "Basic " + encoded_credentials,
         "Content-Type": "application/x-www-form-urlencoded",
     }
+
     response = requests.post(
         "https://accounts.spotify.com/api/token",
         headers=headers,
         data={
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": REDIRECT_URI,
+            "redirect_uri": _absolute_callback_uri(request),
         },
-        timeout=10,
-    ).json()
+        timeout=20,
+    )
+    payload = response.json() if response.content else {}
 
-    access_token = response.get("access_token")
-    refresh_token = response.get("refresh_token")
-    expires_in = response.get("expires_in")
+    access_token = payload.get("access_token")
+    if not response.ok or not access_token:
+        return redirect("/profile/settings?spotify=error")
 
-    if access_token:
-        update_or_create_user_tokens(
-            request.user,
-            access_token,
-            token_type=response.get("token_type"),
-            expires_in=expires_in,
-            refresh_token=refresh_token,
-        )
-
-    return redirect("frontend:profile")
+    update_or_create_user_tokens(
+        request.user,
+        access_token,
+        payload.get("token_type") or "Bearer",
+        payload.get("expires_in") or 3600,
+        payload.get("refresh_token") or "",
+    )
+    return redirect("/profile/settings?spotify=connected")
 
 
 class IsAuthenticated(APIView):
     def get(self, request, format=None):
-        return Response({"status": is_spotify_authenticated(get_current_app_user(request))}, status=status.HTTP_200_OK)
+        return Response({"status": is_spotify_authenticated(self.request.user)}, status=status.HTTP_200_OK)
 
 
 class GetRecentlyPlayedTracks(APIView):
     def get(self, request, format=None):
-        user = get_current_app_user(request)
-        if not user:
-            return Response([], status=status.HTTP_401_UNAUTHORIZED)
+        response = execute_spotify_api_request(self.request.user, "player/recently-played")
 
-        response = execute_spotify_api_request(user, "player/recently-played")
-        items = response.get("items") or []
-        seen_ids = set()
+        if "error" in response or "items" not in response:
+            return Response([], status=status.HTTP_200_OK)
+
         tracks = []
-        for item in items:
-            track_item = item.get("track") or {}
-            normalized = normalize_spotify_track(track_item)
-            track_id = normalized.get("provider_track_id")
-            if track_id and track_id in seen_ids:
+        for item in response.get("items") or []:
+            track_data = item.get("track") or {}
+            track_id = track_data.get("id")
+            if not track_id or any(existing_track["id"] == track_id for existing_track in tracks):
                 continue
-            if track_id:
-                seen_ids.add(track_id)
-            tracks.append(normalized)
+
+            artists = track_data.get("artists") or []
+            album = track_data.get("album") or {}
+            images = album.get("images") or []
+            image_url = images[0]["url"] if images else None
+            image_64 = next((img for img in images if img.get("height") == 64), None)
+            image_url_small = image_64["url"] if image_64 else (images[-1]["url"] if images else None)
+
+            tracks.append(
+                {
+                    "id": track_id,
+                    "name": track_data.get("name"),
+                    "artist": artists[0]["name"] if artists else "",
+                    "artists": [artist.get("name") for artist in artists if artist.get("name")],
+                    "album": album.get("name"),
+                    "image_url": image_url,
+                    "image_url_small": image_url_small,
+                    "duration": (track_data.get("duration_ms") or 0) // 1000,
+                    "platform_id": 1,
+                    "url": (track_data.get("external_urls") or {}).get("spotify"),
+                }
+            )
+
         return Response(tracks, status=status.HTTP_200_OK)
 
 
 class Search(APIView):
     def post(self, request, format=None):
         search_query = request.data.get("search_query")
-        return Response(backend_search_tracks("spotify", search_query), status=status.HTTP_200_OK)
+        results = sp.search(q=search_query, type="track", limit=15)
+
+        tracks = []
+        for item in results.get("tracks", {}).get("items", []):
+            images = item.get("album", {}).get("images", [])
+            image_url = images[0]["url"] if images else None
+            image_64 = next((img for img in images if img.get("height") == 64), None)
+            image_url_small = image_64["url"] if image_64 else (images[-1]["url"] if images else None)
+            artists = item.get("artists") or []
+
+            tracks.append(
+                {
+                    "id": item.get("id"),
+                    "name": item.get("name"),
+                    "artist": artists[0]["name"] if artists else "",
+                    "artists": [artist.get("name") for artist in artists if artist.get("name")],
+                    "album": item.get("album", {}).get("name"),
+                    "image_url": image_url,
+                    "image_url_small": image_url_small,
+                    "duration": (item.get("duration_ms") or 0) // 1000,
+                    "platform_id": 1,
+                    "url": (item.get("external_urls") or {}).get("spotify"),
+                }
+            )
+
+        return Response(tracks, status=status.HTTP_200_OK)

@@ -92,8 +92,10 @@ class LogoutUser(APIView):
     def get(self, request, format=None):
         if request.user.is_authenticated:
             logout(request)
-            return Response({"status": True}, status=status.HTTP_200_OK)
-        return Response({"status": False}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"status": True}, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        return self.get(request, format=format)
 
 
 class RegisterUser(APIView):

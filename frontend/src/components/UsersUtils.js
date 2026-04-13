@@ -7,15 +7,21 @@ export const logoutUser = async (
   setCurrentClient = null
 ) => {
   try {
+    const csrftoken = getCookie("csrftoken");
     await fetch("/users/logout_user", {
+      method: "POST",
       credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "X-CSRFToken": csrftoken,
+      },
     });
   } catch (error) {
     console.error(error);
   } finally {
     await checkUserStatus(setUser, setIsAuthenticated, setCurrentClient);
     if (navigate) {
-      navigate("/profile");
+      navigate("/");
     }
   }
 };
@@ -68,17 +74,11 @@ export const setPreferredPlatform = async (new_preferred_platform) => {
   };
 
   try {
-    const response = await fetch(
-      "/users/change-preferred-platform",
-      requestOptions
-    );
-    const data = await response.json();
+    const response = await fetch("/users/change-preferred-platform", requestOptions);
     if (response.ok) {
       return true;
-    } else {
-      console.log(data);
-      return false;
     }
+    return false;
   } catch (error) {
     console.error(error);
     return false;

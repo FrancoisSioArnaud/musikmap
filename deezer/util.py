@@ -1,42 +1,59 @@
-from __future__ import annotations
-
 import requests
+from requests import get, post, put
 
-from users.provider_connections import (
-    disconnect_provider_connection,
-    get_provider_connection,
-    is_provider_authenticated,
-    upsert_provider_connection,
-)
+from .models import DeezerToken
 
 BASE_URL = "https://api.deezer.com/"
 
 
 def get_user_tokens(user):
-    return get_provider_connection(user, "deezer")
+    if not getattr(user, "is_authenticated", False):
+        return None
+    try:
+        return DeezerToken.objects.filter(user=user).order_by("-created_at", "-id").first()
+    except TypeError:
+        return None
 
 
 def update_or_create_user_tokens(user, access_token):
-    return upsert_provider_connection(
-        user=user,
-        provider_code="deezer",
-        access_token=access_token,
-        scopes=["listening_history"],
-    )
+    if not getattr(user, "is_authenticated", False):
+        return None
+
+    tokens = get_user_tokens(user)
+    if tokens:
+        tokens.access_token = access_token
+        tokens.save(update_fields=["access_token"])
+        return tokens
+    return DeezerToken.objects.create(user=user, access_token=access_token)
 
 
 def is_deezer_authenticated(user):
-    return is_provider_authenticated(user, "deezer")
+    return bool(getattr(user, "is_authenticated", False) and get_user_tokens(user))
 
 
 def disconnect_user(user):
-    return disconnect_provider_connection(user, "deezer")
+    tokens = get_user_tokens(user)
+    if tokens:
+        tokens.delete()
 
 
-def execute_deezer_api_request(user, endpoint, *, recent=False):
-    connection = get_provider_connection(user, "deezer")
+def execute_deezer_api_request(user, endpoint, post_=False, put_=False, recent=False):
+    headers = {"Content-Type": "application/json"}
     params = {"limit": 50}
-    if recent and connection and connection.access_token:
-        params["access_token"] = connection.access_token
-    response = requests.get(BASE_URL + endpoint.lstrip("/"), params=params, timeout=10)
-    return response
+
+    if recent:
+        tokens = get_user_tokens(user)
+        if not tokens:
+            return None
+        params["access_token"] = tokens.access_token
+
+    url = BASE_URL + endpoint.lstrip("/")
+
+    try:
+        if post_:
+            return post(url, headers=headers, params=params, timeout=20)
+        if put_:
+            return put(url, headers=headers, params=params, timeout=20)
+        return get(url, headers=headers, params=params, timeout=20)
+    except requests.RequestException:
+        return None

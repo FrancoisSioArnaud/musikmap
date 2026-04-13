@@ -35,12 +35,32 @@ export default function UserSettings() {
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
   const [isDeezerAuthenticated, setIsDeezerAuthenticated] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [errorMessages, setErrorMessages] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [providerErrors, setProviderErrors] = useState({});
 
   useEffect(() => {
-    checkSpotifyAuthentication(setIsSpotifyAuthenticated, user);
-    checkDeezerAuthentication(setIsDeezerAuthenticated, user);
-  }, [user]);
+    checkSpotifyAuthentication(setIsSpotifyAuthenticated);
+    checkDeezerAuthentication(setIsDeezerAuthenticated);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextProviderErrors = {};
+
+    if (params.get("spotify") === "error") {
+      nextProviderErrors.spotify =
+        "Connexion Spotify impossible. Vérifie l’URL de redirection configurée côté Spotify et le domaine courant.";
+    }
+    if (params.get("deezer") === "error") {
+      nextProviderErrors.deezer =
+        "Connexion Deezer impossible. Vérifie l’URL de redirection configurée côté Deezer et le domaine courant.";
+    }
+
+    if (Object.keys(nextProviderErrors).length) {
+      setProviderErrors(nextProviderErrors);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   if (user?.is_guest) {
     return (
@@ -71,20 +91,40 @@ export default function UserSettings() {
     );
   }
 
-  const handleButtonClickConnectSpotify = () =>
-    authenticateSpotifyUser();
-
-  const handleButtonClickDisconnectSpotify = async () => {
-    await disconnectSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
-    await checkUserStatus(setUser, setIsAuthenticated);
+  const handleButtonClickConnectSpotify = async () => {
+    setProviderErrors((prev) => ({ ...prev, spotify: null }));
+    const ok = await authenticateSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
+    if (!ok) {
+      setProviderErrors((prev) => ({
+        ...prev,
+        spotify: "Impossible d’ouvrir la connexion Spotify.",
+      }));
+    }
   };
 
-  const handleButtonClickConnectDeezer = () =>
-    authenticateDeezerUser();
+  const handleButtonClickDisconnectSpotify = async () => {
+    const ok = await disconnectSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
+    if (ok) {
+      await checkUserStatus(setUser, setIsAuthenticated);
+    }
+  };
+
+  const handleButtonClickConnectDeezer = async () => {
+    setProviderErrors((prev) => ({ ...prev, deezer: null }));
+    const ok = await authenticateDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
+    if (!ok) {
+      setProviderErrors((prev) => ({
+        ...prev,
+        deezer: "Impossible d’ouvrir la connexion Deezer.",
+      }));
+    }
+  };
 
   const handleButtonClickDisconnectDeezer = async () => {
-    await disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-    await checkUserStatus(setUser, setIsAuthenticated);
+    const ok = await disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
+    if (ok) {
+      await checkUserStatus(setUser, setIsAuthenticated);
+    }
   };
 
   function handlePreferredPlatform(platform) {
@@ -103,10 +143,10 @@ export default function UserSettings() {
       const response = await fetch("/users/change-password", requestOptions);
       const data = await response.json();
       if (response.ok) {
-        setErrorMessages({});
+        setPasswordErrors({});
         setShowPasswordForm(false);
       } else {
-        if (data.errors) setErrorMessages(data.errors);
+        if (data.errors) setPasswordErrors(data.errors);
         else console.log(data);
       }
     } catch (e) {
@@ -164,11 +204,11 @@ export default function UserSettings() {
                     </Grid>
                   </Grid>
 
-                  {Object.keys(errorMessages).length > 0 && (
+                  {Object.keys(passwordErrors).length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      {Object.keys(errorMessages).map((k) => (
+                      {Object.keys(passwordErrors).map((k) => (
                         <Alert key={k} severity="error" sx={{ mb: 1 }}>
-                          {errorMessages[k]}
+                          {passwordErrors[k]}
                         </Alert>
                       ))}
                     </Box>
@@ -205,6 +245,9 @@ export default function UserSettings() {
           <Divider />
           <CardContent>
             <Stack spacing={3}>
+              {providerErrors.spotify ? <Alert severity="error">{providerErrors.spotify}</Alert> : null}
+              {providerErrors.deezer ? <Alert severity="error">{providerErrors.deezer}</Alert> : null}
+
               <Box>
                 <Grid container spacing={2} alignItems="center" wrap="wrap">
                   <Grid item>
@@ -262,11 +305,7 @@ export default function UserSettings() {
           <CardHeader titleTypographyProps={{ variant: "h6" }} title="Session" />
           <Divider />
           <CardContent>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => logoutUser(setUser, setIsAuthenticated, navigate)}
-            >
+            <Button variant="outlined" color="error" onClick={() => logoutUser(setUser, setIsAuthenticated, navigate)}>
               Se déconnecter
             </Button>
           </CardContent>

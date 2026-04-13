@@ -31,6 +31,10 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = os.environ.get("SOCIAL_AUTH_REDIRECT_IS_HTTPS", "True") == "True"
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -165,6 +169,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.CustomUser'
 SOCIAL_AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_REDIRECT_URL = '/profile'
+LOGIN_ERROR_URL = '/login?social_auth=error'
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/profile'
+SOCIAL_AUTH_SANITIZE_REDIRECTS = False
+
 
 # Social-Auth settings for Spotify provider
 # https://python-social-auth.readthedocs.io/en/latest/backends/spotify.html

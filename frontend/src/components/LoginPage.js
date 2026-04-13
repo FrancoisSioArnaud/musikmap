@@ -89,7 +89,8 @@ export default function LoginPage() {
   };
 
   const handleMultiplatformLogin = (platform) => {
-    window.location.href = "/oauth/login/" + platform;
+    const next = encodeURIComponent("/profile");
+    window.location.assign(`/oauth/login/${platform}/?next=${next}`);
   };
 
   return (

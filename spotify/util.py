@@ -1,99 +1,121 @@
-from __future__ import annotations
-
-import base64
-import requests
 from datetime import timedelta
+
+import requests
 from django.utils import timezone
+from requests import get, post, put
 
-from spotify.credentials import CLIENT_ID, CLIENT_SECRET
-from users.provider_connections import (
-    disconnect_provider_connection,
-    get_provider_connection,
-    is_provider_authenticated,
-    upsert_provider_connection,
-)
+from .credentials import CLIENT_ID, CLIENT_SECRET
+from .models import SpotifyToken
 
-
-TOKEN_URL = "https://accounts.spotify.com/api/token"
-BASE_API_URL = "https://api.spotify.com/v1/"
+BASE_URL = "https://api.spotify.com/v1/me/"
 
 
 def get_user_tokens(user):
-    return get_provider_connection(user, "spotify")
+    if not getattr(user, "is_authenticated", False):
+        return None
+    try:
+        return SpotifyToken.objects.filter(user=user).order_by("-created_at", "-id").first()
+    except TypeError:
+        return None
 
 
-def update_or_create_user_tokens(user, access_token, token_type=None, expires_in=None, refresh_token=None):
-    return upsert_provider_connection(
+def update_or_create_user_tokens(user, access_token, token_type, expires_in, refresh_token):
+    if not getattr(user, "is_authenticated", False):
+        return None
+
+    tokens = get_user_tokens(user)
+    expires_at = timezone.now() + timedelta(seconds=int(expires_in or 0))
+
+    if tokens:
+        tokens.access_token = access_token
+        if refresh_token:
+            tokens.refresh_token = refresh_token
+        tokens.expires_in = expires_at
+        tokens.token_type = token_type or tokens.token_type
+        tokens.save(update_fields=["access_token", "refresh_token", "expires_in", "token_type"])
+        return tokens
+
+    return SpotifyToken.objects.create(
         user=user,
-        provider_code="spotify",
         access_token=access_token,
         refresh_token=refresh_token or "",
-        expires_in=expires_in,
-        scopes=["user-read-recently-played"],
+        expires_in=expires_at,
+        token_type=token_type or "Bearer",
     )
 
 
 def is_spotify_authenticated(user):
-    return is_provider_authenticated(user, "spotify")
+    if not getattr(user, "is_authenticated", False):
+        return False
+
+    tokens = get_user_tokens(user)
+    if not tokens:
+        return False
+
+    if tokens.expires_in <= timezone.now():
+        return refresh_spotify_token(user)
+    return True
 
 
 def disconnect_user(user):
-    return disconnect_provider_connection(user, "spotify")
+    tokens = get_user_tokens(user)
+    if tokens:
+        tokens.delete()
 
 
-def refresh_spotify_token(connection):
-    if not connection or not connection.refresh_token:
-        return connection
-    credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode("utf-8")
-    headers = {
-        "Authorization": f"Basic {credentials}",
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-    response = requests.post(
-        TOKEN_URL,
-        headers=headers,
+def refresh_spotify_token(user):
+    tokens = get_user_tokens(user)
+    if not tokens or not tokens.refresh_token:
+        return False
+
+    response = post(
+        "https://accounts.spotify.com/api/token",
         data={
             "grant_type": "refresh_token",
-            "refresh_token": connection.refresh_token,
+            "refresh_token": tokens.refresh_token,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
         },
-        timeout=10,
+        timeout=20,
     )
-    payload = response.json() if response.ok else {}
-    access_token = payload.get("access_token")
-    if not access_token:
-        return connection
-    connection.access_token = access_token
-    expires_in = payload.get("expires_in")
-    if expires_in:
-        connection.expires_at = timezone.now() + timedelta(seconds=int(expires_in))
-    if payload.get("refresh_token"):
-        connection.refresh_token = payload["refresh_token"]
-    connection.is_active = True
-    connection.save(update_fields=["access_token", "expires_at", "refresh_token", "is_active", "updated_at"])
-    return connection
+
+    if not response.ok:
+        return False
+
+    payload = response.json()
+    update_or_create_user_tokens(
+        user,
+        payload.get("access_token"),
+        payload.get("token_type", tokens.token_type),
+        payload.get("expires_in", 3600),
+        payload.get("refresh_token") or tokens.refresh_token,
+    )
+    return True
 
 
-def ensure_valid_spotify_connection(user):
-    connection = get_provider_connection(user, "spotify")
-    if not connection:
-        return None
-    if connection.expires_at and connection.expires_at <= timezone.now() and connection.refresh_token:
-        return refresh_spotify_token(connection)
-    return connection
+def execute_spotify_api_request(user, endpoint, post_=False, put_=False):
+    if not is_spotify_authenticated(user):
+        return {"error": "User not authenticated with Spotify"}
 
+    tokens = get_user_tokens(user)
+    if not tokens:
+        return {"error": "Missing Spotify token"}
 
-def execute_spotify_api_request(user, endpoint):
-    connection = ensure_valid_spotify_connection(user)
-    if not connection or not connection.access_token:
-        return {}
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {connection.access_token}",
+        "Authorization": "Bearer " + tokens.access_token,
     }
-    response = requests.get(BASE_API_URL + endpoint.lstrip("/"), headers=headers, timeout=10)
-    if response.status_code == 204:
-        return {}
+
     try:
+        if post_:
+            response = post(BASE_URL + endpoint, headers=headers, timeout=20)
+        elif put_:
+            response = put(BASE_URL + endpoint, headers=headers, timeout=20)
+        else:
+            response = get(BASE_URL + endpoint, headers=headers, timeout=20)
+
+        if response.status_code == 204:
+            return {}
         return response.json()
-    except Exception:
-        return {}
+    except requests.RequestException:
+        return {"error": "Spotify request failed"}
