@@ -250,7 +250,7 @@ export default function LiveSearch() {
 
       {canShowRecentPlays ? (
         <>
-          <Box sx={{ padding: "16px 20px -4px 20px", mt: "12px", backgroundColor: "var(--mm-color-primary-light)" }}>
+          <Box sx={{ padding: "16px 20px 4px 20px", mt: "12px", backgroundColor: "var(--mm-color-primary-light)" }}>
             <Typography sx={{ opacity:"var(--mm-opacity-light-text)" }} component="h3" variant="h5">Écoutés récemment</Typography>
           </Box>
           <SongSearchResultsList
@@ -263,7 +263,7 @@ export default function LiveSearch() {
             onAction={handleDeposit}
             actionLabel="Déposer"
             emptyContent={
-              <Box sx={{ px: 5, py: 1 }}>
+              <Box sx={{ px: 4, py: 1 }}>
                 <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
               </Box>
             }
