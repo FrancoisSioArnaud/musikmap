@@ -37,7 +37,7 @@ export default function SongSearchResultsList({
         const isThisPosting = posting && postingId === id;
 
         return (
-          <ListItem className="item" key={id}>
+          <Box className="item" key={id}>
             <Box
               aria-hidden="true"
               className="item_fill"
@@ -103,7 +103,7 @@ export default function SongSearchResultsList({
                 </Button>
               </Box>
             </Box>
-          </ListItem>
+          </Box>
         );
       })}
     </List>
