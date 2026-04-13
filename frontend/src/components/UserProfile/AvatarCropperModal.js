@@ -235,7 +235,7 @@ export default function AvatarCropperModal({ open, file, onCancel, onConfirm }) 
         </Box>
 
         <Box sx={{ px: 2 }}>
-          <Typography variant="caption" sx={{ opacity: 0.7 }}>Zoom</Typography>
+          <Typography variant="caption" sx={{ opacity: "var(--mm-opacity-light-text)" }}>Zoom</Typography>
           <Slider
             min={1}
             max={3}
