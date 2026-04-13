@@ -67,11 +67,15 @@ export default function FavoriteSongSection({
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
+
+    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
+    if (hasLastPlatform) return undefined;
+
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 60);
     return () => clearTimeout(timer);
-  }, [drawerOpen]);
+  }, [drawerOpen, user?.last_platform]);
 
   const openDrawer = () => {
     setDrawerOpen(true);
