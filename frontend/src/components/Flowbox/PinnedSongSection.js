@@ -89,7 +89,9 @@ export default function PinnedSongSection({ boxSlug }) {
     searchValue,
     setSearchValue,
     results,
+    recentPlays,
     isSearching,
+    isLoadingRecentPlays,
     resetSearch,
   } = useSongSearch();
 
@@ -451,8 +453,21 @@ export default function PinnedSongSection({ boxSlug }) {
                           <Typography variant="body1">Aucun résultat.</Typography>
                         </Box>
                       ) : (
-                        <Box sx={{ px: 5, py: 3 }}>
-                          
+                        <Box>
+                          <Box sx={{ px: 5, pt: 1 }}>
+                            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
+                          </Box>
+                          <SongSearchResultsList
+                            results={recentPlays}
+                            isSearching={isLoadingRecentPlays}
+                            onAction={handleSongSelected}
+                            actionLabel="Choisir"
+                            emptyContent={
+                              <Box sx={{ px: 5, py: 1 }}>
+                                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+                              </Box>
+                            }
+                          />
                         </Box>
                       )
                     }

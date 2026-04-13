@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from users.models import CustomUser
+from users.models import CustomUser, UserProviderConnection
 
 
 @admin.register(CustomUser)
@@ -98,3 +98,11 @@ class CustomUserAdmin(UserAdmin):
     autocomplete_fields = ("client",)
     readonly_fields = ("guest_device_token", "last_seen_at", "converted_at")
     ordering = ("username",)
+
+
+@admin.register(UserProviderConnection)
+class UserProviderConnectionAdmin(admin.ModelAdmin):
+    list_display = ("user", "provider_code", "is_active", "expires_at", "updated_at")
+    list_filter = ("provider_code", "is_active")
+    search_fields = ("user__username", "provider_user_id", "provider_code")
+    autocomplete_fields = ("user",)

@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 from social_django.models import UserSocialAuth
+from users.provider_connections import merge_provider_connections, serialize_provider_connections_for_user
 
 from .models import CustomUser
 
@@ -168,6 +169,7 @@ def build_current_user_payload(user: CustomUser):
     client_id = getattr(user, "client_id", None)
 
     favorite_deposit = build_favorite_deposit_payload(user, viewer=user)
+    provider_connections = serialize_provider_connections_for_user(user)
 
     return {
         "id": user.id,
@@ -197,6 +199,12 @@ def build_current_user_payload(user: CustomUser):
         "status": user_status,
         "total_deposits": total_deposits,
         "favorite_deposit": favorite_deposit,
+        "provider_connections": provider_connections,
+        "connected_providers": [
+            provider_code
+            for provider_code, payload in provider_connections.items()
+            if payload.get("connected")
+        ],
     }
 
 
@@ -305,8 +313,6 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         EmojiRight,
         Reaction,
     )
-    from spotify.models import SpotifyToken
-    from deezer.models import DeezerToken
 
     with transaction.atomic():
         guest = CustomUser.objects.select_for_update().get(pk=guest_user.pk)
@@ -625,51 +631,9 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         articles_moved = Article.objects.filter(author=guest).update(author=target)
 
         # -----------------------------
-        # 12) Spotify / Deezer tokens
+        # 12) Provider connections
         # -----------------------------
-        spotify_tokens_moved = 0
-        spotify_tokens_deleted = 0
-
-        target_spotify_token = SpotifyToken.objects.filter(user=target).order_by("-created_at", "-id").first()
-        guest_spotify_tokens = list(
-            SpotifyToken.objects.filter(user=guest).order_by("-created_at", "-id")
-        )
-
-        if target_spotify_token:
-            for token in guest_spotify_tokens:
-                token.delete()
-                spotify_tokens_deleted += 1
-        else:
-            for index, token in enumerate(guest_spotify_tokens):
-                if index == 0:
-                    token.user = target
-                    token.save(update_fields=["user"])
-                    spotify_tokens_moved += 1
-                else:
-                    token.delete()
-                    spotify_tokens_deleted += 1
-
-        deezer_tokens_moved = 0
-        deezer_tokens_deleted = 0
-
-        target_deezer_token = DeezerToken.objects.filter(user=target).order_by("-created_at", "-id").first()
-        guest_deezer_tokens = list(
-            DeezerToken.objects.filter(user=guest).order_by("-created_at", "-id")
-        )
-
-        if target_deezer_token:
-            for token in guest_deezer_tokens:
-                token.delete()
-                deezer_tokens_deleted += 1
-        else:
-            for index, token in enumerate(guest_deezer_tokens):
-                if index == 0:
-                    token.user = target
-                    token.save(update_fields=["user"])
-                    deezer_tokens_moved += 1
-                else:
-                    token.delete()
-                    deezer_tokens_deleted += 1
+        merge_provider_connections(guest, target)
 
         # -----------------------------
         # 13) Réécriture des snapshots historiques
@@ -713,10 +677,7 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         "restrictions_created_by_moved": restrictions_created_by_moved,
         "attempt_logs_moved": attempt_logs_moved,
         "articles_moved": articles_moved,
-        "spotify_tokens_moved": spotify_tokens_moved,
-        "spotify_tokens_deleted": spotify_tokens_deleted,
-        "deezer_tokens_moved": deezer_tokens_moved,
-        "deezer_tokens_deleted": deezer_tokens_deleted,
+        "provider_connections_merged": True,
         "comment_owner_snapshots_updated": comment_owner_snapshots_updated,
         "attempt_owner_snapshots_updated": attempt_owner_snapshots_updated,
     }

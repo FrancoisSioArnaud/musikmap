@@ -1,128 +1,42 @@
-from .models import DeezerToken
-from requests import post, put, get
+from __future__ import annotations
+
 import requests
+
+from users.provider_connections import (
+    disconnect_provider_connection,
+    get_provider_connection,
+    is_provider_authenticated,
+    upsert_provider_connection,
+)
 
 BASE_URL = "https://api.deezer.com/"
 
 
-# Check if the user already exists
-
-
 def get_user_tokens(user):
-    """
-    Retrieves the Deezer tokens associated with a user session.
-
-    Args:
-        user: The username of the user.
-
-    Returns:
-        The DeezerToken object associated with the user session, or None if no tokens are found.
-    """
-
-    # Query the DeezerToken objects for tokens associated with the user session
-    try:
-        user_tokens = DeezerToken.objects.filter(user=user)
-
-        # Check if any tokens exist for the user session
-        if user_tokens.exists():
-            return user_tokens[0]
-        else:
-            return None
-    # Return None if the user is not authenticated
-    except TypeError:
-        return None
+    return get_provider_connection(user, "deezer")
 
 
 def update_or_create_user_tokens(user, access_token):
-    """
-    Updates or creates Deezer tokens for a user session.
-
-    Args:
-        user: The username of the user.
-        access_token: The access token received from Deezer.
-
-    Returns:
-        None
-    """
-
-    # Retrieve existing tokens associated with the user session
-    tokens = get_user_tokens(user)
-
-    if tokens:
-        # Update the existing tokens with the new values
-        tokens.access_token = access_token
-        tokens.save(update_fields=['access_token'])
-    else:
-        # Create a new token object for the user session
-        tokens = DeezerToken(user=user, access_token=access_token)
-        tokens.save()
+    return upsert_provider_connection(
+        user=user,
+        provider_code="deezer",
+        access_token=access_token,
+        scopes=["listening_history"],
+    )
 
 
 def is_deezer_authenticated(user):
-    """
-    Checks if the user is authenticated with Deezer.
-    """
-    if user.is_authenticated:
-        tokens = get_user_tokens(user)
-        if tokens:
-            return True
-        else:
-            return False
-    else:
-        return False
+    return is_provider_authenticated(user, "deezer")
 
 
 def disconnect_user(user):
-    """
-    Disconnects the user from Deezer.
-    """
-    tokens = get_user_tokens(user)
-    # Delete the tokens associated with the user session if they exist
-    if tokens:
-        tokens.delete()
+    return disconnect_provider_connection(user, "deezer")
 
 
-def execute_deezer_api_request(user, endpoint, post_=False, put_=False, recent=False):
-    """
-        Executes a request to the Deezer API with the provided session ID, endpoint, and request type.
-
-        Args:
-            user: The username of the user.
-            endpoint: The API endpoint to request.
-            post_: Optional flag to indicate if the request should be a POST request (default: False).
-            put_: Optional flag to indicate if the request should be a PUT request (default: False).
-            recent: Optional flag to indicate if the request should be a recent track request (default: False).
-
-        Returns:
-            The JSON response from the Deezer API.
-    """
-    # Retrieve the Deezer tokens associated with the user session
-    if recent:
-        tokens = get_user_tokens(user).access_token
-    else:
-        tokens = ""
-
-    # Prepare the headers for the API request
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    # Prepare the user params for the API request
-    user_params = {
-        "limit": 50
-    }
-    if post_:
-        # Send a POST request to the specified API endpoint
-        post(BASE_URL + endpoint, headers=headers)
-    elif put_:
-        # Send a PUT request to the specified API endpoint
-        put(BASE_URL + endpoint, headers=headers)
-    else:
-        # Send a GET request to the specified API endpoint with user params
-        if recent:
-            response = requests.get(BASE_URL + endpoint + "&access_token=" + tokens, headers=headers,
-                                    params=user_params)
-        else:
-            response = requests.get(BASE_URL + endpoint, headers=headers, params=user_params)
-    # Return the JSON response
+def execute_deezer_api_request(user, endpoint, *, recent=False):
+    connection = get_provider_connection(user, "deezer")
+    params = {"limit": 50}
+    if recent and connection and connection.access_token:
+        params["access_token"] = connection.access_token
+    response = requests.get(BASE_URL + endpoint.lstrip("/"), params=params, timeout=10)
     return response

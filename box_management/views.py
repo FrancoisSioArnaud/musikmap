@@ -41,6 +41,7 @@ from users.utils import (
     get_current_app_user,
     touch_last_seen,
 )
+from .provider_services import resolve_provider_link_for_song
 from .models import (
     Article,
     IncitationPhrase,
@@ -52,6 +53,7 @@ from .models import (
     LocationPoint,
     Reaction,
     Song,
+    SongProviderLink,
     Sticker,
     Link,
     Comment,
@@ -770,6 +772,57 @@ class Location(APIView):
                 return Response(status=status.HTTP_200_OK)
 
         return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
+
+
+
+
+class ResolveProviderLinkView(APIView):
+    def post(self, request, format=None):
+        provider_code = (request.data.get("provider_code") or "").strip().lower()
+        song_public_key = (request.data.get("song_public_key") or "").strip()
+
+        if not provider_code or not song_public_key:
+            return Response({"detail": "Paramètres manquants."}, status=status.HTTP_400_BAD_REQUEST)
+
+        song = (
+            Song.objects
+            .prefetch_related(Prefetch("provider_links", queryset=SongProviderLink.objects.order_by("id"), to_attr="prefetched_provider_links"))
+            .filter(public_key=song_public_key)
+            .first()
+        )
+        if not song:
+            return Response({"detail": "Chanson introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        result = resolve_provider_link_for_song(song, provider_code)
+        refreshed_song = (
+            Song.objects
+            .prefetch_related(Prefetch("provider_links", queryset=SongProviderLink.objects.order_by("id"), to_attr="prefetched_provider_links"))
+            .filter(pk=song.pk)
+            .first()
+        ) or song
+
+        if not result.get("ok"):
+            return Response(
+                {
+                    "ok": False,
+                    "code": result.get("code"),
+                    "message": result.get("message"),
+                    "song": _build_song_from_instance(refreshed_song, hidden=False),
+                },
+                status=status.HTTP_404_NOT_FOUND if result.get("code") == "PROVIDER_LINK_NOT_FOUND" else status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        link = result.get("link")
+        return Response(
+            {
+                "ok": True,
+                "provider_code": provider_code,
+                "provider_url": getattr(link, "provider_url", None),
+                "provider_uri": getattr(link, "provider_uri", None),
+                "song": _build_song_from_instance(refreshed_song, hidden=False),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class RevealSong(APIView):

@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
+import CircularProgress from "@mui/material/CircularProgress";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import Typography from "@mui/material/Typography";
+
+import { getCookie } from "../Security/TokensUtils";
 
 const logoByPlatform = {
   spotify: "/static/images/spotify_logo_icon.svg",
@@ -10,40 +14,110 @@ const logoByPlatform = {
   youtube: "/static/images/youtube_logo_icon.svg",
 };
 
-export default function PlayModal({ open, song, onClose, children }) {
-  const safeText = () => `${song?.title ?? ""} ${song?.artist ?? ""}`.trim();
+export default function PlayModal({ open, song, onClose, onSongResolved, children }) {
+  const [resolvingProvider, setResolvingProvider] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const openOrAlert = (url) => {
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
+  useEffect(() => {
+    if (!open) {
+      setResolvingProvider("");
+      setErrorMessage("");
+    }
+  }, [open]);
+
+  const artistText = useMemo(() => {
+    if (song?.artist) return song.artist;
+    if (Array.isArray(song?.artists)) return song.artists.join(", ");
+    return "";
+  }, [song]);
+
+  const safeText = () => `${song?.title ?? ""} ${artistText}`.trim();
+
+  const getProviderUrl = (providerCode) => {
+    const directUrl = song?.provider_links?.[providerCode]?.provider_url;
+    if (directUrl) return directUrl;
+    if (providerCode === "spotify") return song?.spotify_url || "";
+    if (providerCode === "deezer") return song?.deezer_url || "";
+    return "";
+  };
+
+  const openWindow = (url) => {
+    if (!url) return false;
+    window.open(url, "_blank", "noopener,noreferrer");
+    return true;
+  };
+
+  const resolveAndOpenProvider = async (providerCode) => {
+    setErrorMessage("");
+
+    const existingUrl = getProviderUrl(providerCode);
+    if (existingUrl) {
+      openWindow(existingUrl);
+      onClose?.();
       return;
     }
 
-    window.alert(
-      "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
-    );
+    if (!song?.public_key) {
+      setErrorMessage("Essaie une autre plateforme ou copie le nom de la chanson.");
+      return;
+    }
+
+    try {
+      setResolvingProvider(providerCode);
+      const response = await fetch("/box-management/resolve-provider-link/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          song_public_key: song.public_key,
+          provider_code: providerCode,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.ok || !data?.provider_url) {
+        setErrorMessage(
+          data?.message || "Impossible d’ouvrir cette plateforme. Essaie une autre plateforme ou copie le nom de la chanson."
+        );
+        if (data?.song) {
+          onSongResolved?.(data.song);
+        }
+        return;
+      }
+
+      if (data?.song) {
+        onSongResolved?.(data.song);
+      }
+      openWindow(data.provider_url);
+      onClose?.();
+    } catch (error) {
+      setErrorMessage("Impossible d’ouvrir cette plateforme. Essaie une autre plateforme ou copie le nom de la chanson.");
+    } finally {
+      setResolvingProvider("");
+    }
   };
 
   const openYouTubeSearch = () => {
     const q = safeText();
-
     if (!q) {
-      window.alert(
-        "Oops ! Une erreur s'est produite, utilise le bouton « Copier le nom de la chanson » pour cette fois."
-      );
+      setErrorMessage("Copie le nom de la chanson pour cette fois.");
       return;
     }
-
     const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    openWindow(url);
+    onClose?.();
   };
 
   const copySongText = async () => {
-    const text = `${song?.title ?? ""} - ${song?.artist ?? ""}`.trim();
-
+    const text = `${song?.title ?? ""} - ${artistText}`.trim();
     try {
       await navigator.clipboard.writeText(text);
       window.alert("Copié dans le presse-papiers !");
+      onClose?.();
     } catch {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -52,6 +126,7 @@ export default function PlayModal({ open, song, onClose, children }) {
       document.execCommand("copy");
       document.body.removeChild(ta);
       window.alert("Copié dans le presse-papiers !");
+      onClose?.();
     }
   };
 
@@ -59,27 +134,17 @@ export default function PlayModal({ open, song, onClose, children }) {
     {
       key: "spotify",
       label: "Ouvrir sur Spotify",
-      onClick: () => openOrAlert(song?.spotify_url),
+      onClick: () => resolveAndOpenProvider("spotify"),
       renderIcon: () => (
-        <Box
-          component="img"
-          src={logoByPlatform.spotify}
-          alt="Spotify"
-          sx={{ width: 28, height: 28, display: "block" }}
-        />
+        <Box component="img" src={logoByPlatform.spotify} alt="Spotify" sx={{ width: 28, height: 28, display: "block" }} />
       ),
     },
     {
       key: "deezer",
       label: "Ouvrir sur Deezer",
-      onClick: () => openOrAlert(song?.deezer_url),
+      onClick: () => resolveAndOpenProvider("deezer"),
       renderIcon: () => (
-        <Box
-          component="img"
-          src={logoByPlatform.deezer}
-          alt="Deezer"
-          sx={{ width: 28, height: 28, display: "block" }}
-        />
+        <Box component="img" src={logoByPlatform.deezer} alt="Deezer" sx={{ width: 28, height: 28, display: "block" }} />
       ),
     },
     {
@@ -87,23 +152,14 @@ export default function PlayModal({ open, song, onClose, children }) {
       label: "Ouvrir la recherche YouTube",
       onClick: openYouTubeSearch,
       renderIcon: () => (
-        <Box
-          component="img"
-          src={logoByPlatform.youtube}
-          alt="YouTube"
-          sx={{ width: 28, height: 28, display: "block" }}
-        />
+        <Box component="img" src={logoByPlatform.youtube} alt="YouTube" sx={{ width: 28, height: 28, display: "block" }} />
       ),
     },
     {
       key: "copy",
       label: "Copier le nom de la chanson",
       onClick: copySongText,
-      renderIcon: () => (
-        <ContentCopyOutlinedIcon
-          sx={{ fontSize: 28, color: "var(--mm-color-text)" }}
-        />
-      ),
+      renderIcon: () => <ContentCopyOutlinedIcon sx={{ fontSize: 28, color: "var(--mm-color-text)" }} />,
     },
   ];
 
@@ -126,7 +182,7 @@ export default function PlayModal({ open, song, onClose, children }) {
             sx={{
               position: "absolute",
               left: "calc(50% - 61px)",
-              bottom: "calc(100% + 12px)",
+              bottom: errorMessage ? "calc(100% + 56px)" : "calc(100% + 12px)",
               zIndex: 1000,
               gap: "12px",
               width: "max-content",
@@ -143,11 +199,10 @@ export default function PlayModal({ open, song, onClose, children }) {
                 onClick={(event) => {
                   event.stopPropagation();
                   action.onClick();
-                  onClose?.();
                 }}
+                disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
                 sx={{
                   minWidth: 0,
-                  backgroundColor: "transparent",
                   backgroundColor: "var(--mm-color-surface)",
                   height: "56px",
                   width: "56px",
@@ -155,9 +210,29 @@ export default function PlayModal({ open, song, onClose, children }) {
                   boxShadow: "var(--mm-shadow-high)",
                 }}
               >
-                {action.renderIcon()}
+                {resolvingProvider === action.key ? <CircularProgress size={22} /> : action.renderIcon()}
               </ButtonBase>
             ))}
+          </Box>
+        ) : null}
+
+        {open && errorMessage ? (
+          <Box
+            sx={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: "calc(100% + 12px)",
+              zIndex: 1001,
+              width: 220,
+              px: 1.5,
+              py: 1,
+              backgroundColor: "var(--mm-color-surface)",
+              borderRadius: "var(--mm-radius-md)",
+              boxShadow: "var(--mm-shadow-high)",
+            }}
+          >
+            <Typography variant="body2">{errorMessage}</Typography>
           </Box>
         ) : null}
 

@@ -38,13 +38,7 @@ class CustomUser(AbstractUser):
     last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
     converted_at = models.DateTimeField(null=True, blank=True)
 
-    # Preferred platform choice
-    PLATFORM_CHOICES = [
-        ("spotify", "Spotify"),
-        ("deezer", "Deezer"),
-    ]
-
-    preferred_platform = models.CharField(max_length=10, choices=PLATFORM_CHOICES, blank=True)
+    preferred_platform = models.CharField(max_length=32, blank=True, db_index=True)
 
     # -----------------------------
     # Client portal fields
@@ -131,3 +125,26 @@ def delete_old_profile_picture(sender, instance, **kwargs):
             # Delete the old profile picture from the database
             if existing_user.profile_picture:
                 existing_user.profile_picture.delete(False)
+
+
+class UserProviderConnection(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="provider_connections")
+    provider_code = models.CharField(max_length=32, db_index=True)
+    provider_user_id = models.CharField(max_length=128, blank=True, default="")
+    access_token = models.TextField(blank=True, default="")
+    refresh_token = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    scopes = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (("user", "provider_code"),)
+        indexes = [
+            models.Index(fields=["user", "provider_code"]),
+            models.Index(fields=["provider_code", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} · {self.provider_code}"

@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from box_management.models import Box, Song, Deposit
+from box_management.models import Box, Song, SongProviderLink, Deposit
 from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID, CLIENT_SECRET as SPOTIFY_CLIENT_SECRET
 
 
@@ -135,9 +135,7 @@ def _ensure_spotify_headers():
 
 
 def spotify_search_track(title: str, artist: str):
-    """
-    Retourne {'spotify_url','image_url','duration'} ou None.
-    """
+    """Retourne un payload Spotify normalisé minimal ou None."""
     global _SPOTIFY_TOKEN, _SPOTIFY_HEADERS
 
     _ensure_spotify_headers()
@@ -167,12 +165,21 @@ def spotify_search_track(title: str, artist: str):
     spotify_url = tr.get("external_urls", {}).get("spotify") or ""
     images = (tr.get("album", {}) or {}).get("images", []) or []
     image_url = images[0]["url"] if images else ""
+    image_url_small = images[-1]["url"] if images else image_url
     duration_sec = int(round((tr.get("duration_ms") or 0) / 1000.0))
+    artists = [a.get("name") for a in (tr.get("artists") or []) if a.get("name")]
+    isrc = ((tr.get("external_ids") or {}).get("isrc")) or ""
 
     return {
-        "spotify_url": spotify_url,
+        "provider_track_id": tr.get("id") or "",
+        "provider_url": spotify_url,
+        "provider_uri": tr.get("uri") or "",
+        "title": tr.get("name") or title,
+        "artists": artists or [artist],
         "image_url": image_url,
+        "image_url_small": image_url_small,
         "duration": duration_sec,
+        "isrc": isrc,
     }
 
 
@@ -180,30 +187,16 @@ def spotify_search_track(title: str, artist: str):
 # Helpers (compatibles avec tes modèles)
 # =========================================================
 
-def gen_song_id_base36(max_len: int = 15) -> str:
-    """
-    Génère un identifiant base36 aléatoire, max_len=15,
-    cohérent avec Song.song_id (CharField(max_length=15)).
-    """
-    n = secrets.randbits(70)
-    alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-    s = ""
-    while n:
-        n, r = divmod(n, 36)
-        s = alphabet[r] + s
-    return (s[:max_len] or "0")
+def gen_public_key(max_len: int = 25) -> str:
+    return secrets.token_urlsafe(18)[:max_len]
 
 
-def _unique_song_id() -> str:
-    """
-    Essaie plusieurs IDs pour garantir l'unicité sur Song.song_id.
-    """
-    for _ in range(10):
-        sid = gen_song_id_base36(15)
-        if not Song.objects.filter(song_id=sid).exists():
-            return sid
-    # En cas de collision improbable, on régénère sans vérifier (risque quasi nul)
-    return gen_song_id_base36(15)
+def _unique_song_public_key() -> str:
+    for _ in range(20):
+        public_key = gen_public_key(25)
+        if not Song.objects.filter(public_key=public_key).exists():
+            return public_key
+    return gen_public_key(25)
 
 
 def random_datetime_within_last_48h():
@@ -253,38 +246,39 @@ def get_or_create_users(personas):
 
 
 def upsert_song(title: str, artist: str):
-    """
-    Réutilise Song si (title+artist) existent (case-insensitive),
-    sinon crée une nouvelle entrée avec song_id unique + métadonnées Spotify.
-
-    NB : ton modèle Song a :
-      - song_id (CharField max_length=15, unique)
-      - title, artist
-      - spotify_url, deezer_url (optionnel, on laisse vide ici)
-      - image_url
-      - duration (int, secondes)
-      - n_deposits (int, editable=False mais modifiable en script)
-    """
-    # On essaie de réutiliser un enregistrement existant
-    existing = Song.objects.filter(title__iexact=title, artist__iexact=artist).first()
-    if existing:
-        return existing
+    """Réutilise Song si (title + artists_json) existent, sinon crée Song + lien Spotify."""
+    existing = Song.objects.filter(title__iexact=title).all()
+    artist_key = artist.strip().lower()
+    for song in existing:
+        artists = [str(name).strip().lower() for name in (song.artists_json or []) if str(name).strip()]
+        if artists == [artist_key]:
+            return song
 
     info = spotify_search_track(title, artist)
     if not info:
-        # Si on ne trouve rien sur Spotify, on skip la création
         return None
 
-    return Song.objects.create(
-        song_id=_unique_song_id(),
-        title=title[:50],
-        artist=artist[:50],
-        spotify_url=info["spotify_url"],
-        image_url=info["image_url"],
-        duration=info["duration"],
-        # deezer_url laissé vide (default="" via blank=True)
+    song = Song.objects.create(
+        public_key=_unique_song_public_key(),
+        title=(info.get("title") or title)[:150],
+        artists_json=list(info.get("artists") or [artist]),
+        isrc=(info.get("isrc") or "")[:32],
+        image_url=info.get("image_url") or "",
+        image_url_small=info.get("image_url_small") or info.get("image_url") or "",
+        duration=int(info.get("duration") or 0),
         n_deposits=0,
     )
+
+    SongProviderLink.objects.create(
+        song=song,
+        provider_code="spotify",
+        status=SongProviderLink.STATUS_RESOLVED,
+        provider_track_id=str(info.get("provider_track_id") or ""),
+        provider_url=info.get("provider_url") or "",
+        provider_uri=info.get("provider_uri") or "",
+        last_attempt_at=timezone.now(),
+    )
+    return song
 
 
 # =========================================================

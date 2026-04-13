@@ -527,29 +527,95 @@ class Article(models.Model):
 
 
 class Song(models.Model):
-    song_id = models.CharField(max_length=25, unique=True, db_index=True)
-
-    title = models.CharField(max_length=50, db_index=True)
-    artist = models.CharField(max_length=50, db_index=True)
-
-    spotify_url = models.URLField(max_length=255, blank=True)
-    deezer_url = models.URLField(max_length=255, blank=True)
-
-    image_url = models.URLField(max_length=200, blank=True)
-    image_url_small = models.URLField(max_length=200, blank=True, default="")
+    public_key = models.CharField(max_length=25, unique=True, db_index=True)
+    title = models.CharField(max_length=150, db_index=True)
+    artists_json = models.JSONField(default=list, blank=True)
+    isrc = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    image_url = models.URLField(max_length=255, blank=True)
+    image_url_small = models.URLField(max_length=255, blank=True, default="")
     accent_color = models.CharField(max_length=7, blank=True, default="")
     duration = models.PositiveIntegerField(default=0)
     n_deposits = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        ordering = ["title", "artist"]
+        ordering = ["title", "public_key"]
         indexes = [
-            models.Index(fields=["title", "artist"]),
-            models.Index(fields=["song_id"]),
+            models.Index(fields=["title"]),
+            models.Index(fields=["public_key"]),
+            models.Index(fields=["isrc"]),
+        ]
+
+    @property
+    def artist(self):
+        artists = [str(name).strip() for name in (self.artists_json or []) if str(name).strip()]
+        return ", ".join(artists)
+
+    @property
+    def song_id(self):
+        return self.public_key
+
+    def _provider_links_iter(self):
+        prefetched = getattr(self, "prefetched_provider_links", None)
+        if prefetched is not None:
+            return prefetched
+        return list(self.provider_links.all())
+
+    def get_provider_link(self, provider_code: str):
+        normalized = (provider_code or "").strip().lower()
+        if not normalized:
+            return None
+        for link in self._provider_links_iter():
+            if getattr(link, "provider_code", "") == normalized:
+                return link
+        return None
+
+    @property
+    def spotify_url(self):
+        link = self.get_provider_link("spotify")
+        if link and link.status == SongProviderLink.STATUS_RESOLVED:
+            return link.provider_url or ""
+        return ""
+
+    @property
+    def deezer_url(self):
+        link = self.get_provider_link("deezer")
+        if link and link.status == SongProviderLink.STATUS_RESOLVED:
+            return link.provider_url or ""
+        return ""
+
+    def __str__(self):
+        artist = self.artist or "Artiste inconnu"
+        return f"{self.title} - {artist}"
+
+
+class SongProviderLink(models.Model):
+    STATUS_RESOLVED = "resolved"
+    STATUS_NOT_FOUND = "not_found"
+    STATUS_PENDING = "pending"
+    STATUS_CHOICES = (
+        (STATUS_RESOLVED, "Resolved"),
+        (STATUS_NOT_FOUND, "Not found"),
+        (STATUS_PENDING, "Pending"),
+    )
+
+    song = models.ForeignKey("Song", on_delete=models.CASCADE, related_name="provider_links")
+    provider_code = models.CharField(max_length=32, db_index=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    provider_track_id = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    provider_url = models.URLField(max_length=255, blank=True, default="")
+    provider_uri = models.CharField(max_length=255, blank=True, default="")
+    last_attempt_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        unique_together = (("song", "provider_code"),)
+        indexes = [
+            models.Index(fields=["provider_code", "provider_track_id"]),
+            models.Index(fields=["song", "provider_code"]),
+            models.Index(fields=["provider_code", "status"]),
         ]
 
     def __str__(self):
-        return f"{self.title} - {self.artist}"
+        return f"{self.song.public_key} · {self.provider_code} · {self.status}"
 
 
 class DepositQuerySet(models.QuerySet):
@@ -652,7 +718,7 @@ class Deposit(models.Model):
 
     def __str__(self):
         return (
-            f"Deposit {self.public_key} (song={self.song_id}, "
+            f"Deposit {self.public_key} (song={self.song.public_key}, "
             f"box={self.box_id}, type={self.deposit_type})"
         )
 

@@ -23,6 +23,12 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from users.models import CustomUser
+from .provider_services import (
+    get_or_create_song_from_track,
+    get_song_provider_links_map,
+    normalize_track_payload,
+    upsert_song_provider_link,
+)
 from .models import (
     Client,
     Deposit,
@@ -1193,16 +1199,26 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
 
 
 def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
-    """Ne fait AUCUNE requête : lit uniquement l'instance déjà chargée."""
+    """Construit le payload chanson depuis le modèle final Song + SongProviderLink."""
     if hidden:
         return {"image_url": song.image_url, "image_url_small": song.image_url_small or None}
+
+    provider_links = get_song_provider_links_map(song)
+    spotify_link = provider_links.get("spotify") or {}
+    deezer_link = provider_links.get("deezer") or {}
+
     return {
+        "public_key": song.public_key,
         "image_url": song.image_url,
         "image_url_small": song.image_url_small or None,
         "title": song.title,
+        "artists": list(song.artists_json or []),
         "artist": song.artist,
-        "spotify_url": song.spotify_url or None,
-        "deezer_url": song.deezer_url or None,
+        "duration": int(getattr(song, "duration", 0) or 0),
+        "isrc": (getattr(song, "isrc", "") or "") or None,
+        "provider_links": provider_links,
+        "spotify_url": spotify_link.get("provider_url") or None,
+        "deezer_url": deezer_link.get("provider_url") or None,
     }
 
 
@@ -1411,68 +1427,51 @@ def normalize_string(input_string: str) -> str:
 
 
 def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None):
-    song_name = (option.get("name") or "").strip()
-    song_author = (option.get("artist") or "").strip()
-    if not song_name or not song_author:
+    track = normalize_track_payload(option or {})
+    if not track.get("title") or not (track.get("artists") or []):
         raise ValueError("Titre ou artiste manquant")
 
-    try:
-        song_platform_id = int(option.get("platform_id"))
-    except (TypeError, ValueError):
-        song_platform_id = None
+    song = get_or_create_song_from_track(track)
 
-    incoming_url = (option.get("url") or "").strip()
-    incoming_image_url = (option.get("image_url") or "").strip()
-    incoming_image_url_small = (option.get("image_url_small") or "").strip()
+    update_fields: List[str] = []
+    if track.get("image_url") and not (song.image_url or "").strip():
+        song.image_url = track["image_url"]
+        update_fields.append("image_url")
+    if track.get("image_url_small") and not (song.image_url_small or "").strip():
+        song.image_url_small = track["image_url_small"]
+        update_fields.append("image_url_small")
+    if track.get("isrc") and not (song.isrc or "").strip():
+        song.isrc = track["isrc"]
+        update_fields.append("isrc")
+    if track.get("artists") and not (song.artists_json or []):
+        song.artists_json = list(track["artists"])
+        update_fields.append("artists_json")
+    if track.get("duration") and not int(song.duration or 0):
+        song.duration = int(track["duration"])
+        update_fields.append("duration")
 
-    existing_song = (
-        Song.objects.filter(title__iexact=song_name, artist__iexact=song_author)
-        .only("id", "accent_color", "image_url", "image_url_small", "n_deposits")
-        .first()
-    )
-
-    accent_color_to_apply = ""
-    should_compute_accent = existing_song is None or not (existing_song.accent_color or "").strip()
-    if should_compute_accent:
-        accent_color_to_apply = (
+    if not (song.accent_color or "").strip():
+        accent_color = (
             extract_accent_color_from_urls(
-                image_url_small=(getattr(existing_song, "image_url_small", "") or incoming_image_url_small or ""),
-                image_url=(getattr(existing_song, "image_url", "") or incoming_image_url or ""),
+                image_url_small=(track.get("image_url_small") or song.image_url_small or ""),
+                image_url=(track.get("image_url") or song.image_url or ""),
             )
             or ""
         )
+        if accent_color:
+            song.accent_color = accent_color
+            update_fields.append("accent_color")
 
-    try:
-        song = Song.objects.get(title__iexact=song_name, artist__iexact=song_author)
-    except Song.DoesNotExist:
-        song = Song(
-            song_id=option.get("id"),
-            title=song_name,
-            artist=song_author,
-            image_url=incoming_image_url,
-            image_url_small=incoming_image_url_small,
-            accent_color=accent_color_to_apply,
-            duration=option.get("duration") or 0,
-            n_deposits=0,
-        )
+    if update_fields:
+        song.save(update_fields=update_fields)
 
-    if incoming_image_url and not (song.image_url or "").strip():
-        song.image_url = incoming_image_url
-    if incoming_image_url_small and not (song.image_url_small or "").strip():
-        song.image_url_small = incoming_image_url_small
-    if accent_color_to_apply and not (song.accent_color or "").strip():
-        song.accent_color = accent_color_to_apply
-
-    if song_platform_id == 1 and incoming_url:
-        song.spotify_url = incoming_url
-    elif song_platform_id == 2 and incoming_url:
-        song.deezer_url = incoming_url
+    upsert_song_provider_link(song, track)
 
     if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
         if box is None:
             raise ValueError("Boîte introuvable")
-        song.n_deposits = int(getattr(song, "n_deposits", 0) or 0) + 1
-    song.save()
+        Song.objects.filter(pk=song.pk).update(n_deposits=int(song.n_deposits or 0) + 1)
+        song.n_deposits = int(song.n_deposits or 0) + 1
 
     deposit = Deposit.objects.create(
         song=song,
@@ -1513,18 +1512,18 @@ def _is_first_song_deposit_global_by_title_artist(title: str, artist: str) -> bo
     """Vrai si (title, artist) n'a jamais été déposé nulle part (case-insensitive)."""
     if not title or not artist:
         return False
-    return not Deposit.objects.filter(
-        song__title__iexact=title, song__artist__iexact=artist
-    ).exists()
+    artist_key = str(artist or "").strip().lower()
+    candidates = Deposit.objects.filter(song__title__iexact=title).select_related("song")
+    return not any((getattr(dep.song, "artist", "") or "").strip().lower() == artist_key for dep in candidates)
 
 
 def _is_first_song_deposit_in_box_by_title_artist(title: str, artist: str, box) -> bool:
     """Vrai si (title, artist) n'a jamais été déposé dans la box donnée (case-insensitive)."""
     if not title or not artist:
         return False
-    return not Deposit.objects.filter(
-        box=box, song__title__iexact=title, song__artist__iexact=artist
-    ).exists()
+    artist_key = str(artist or "").strip().lower()
+    candidates = Deposit.objects.filter(box=box, song__title__iexact=title).select_related("song")
+    return not any((getattr(dep.song, "artist", "") or "").strip().lower() == artist_key for dep in candidates)
 
 
 def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:

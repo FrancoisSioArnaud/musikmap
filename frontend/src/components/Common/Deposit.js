@@ -345,10 +345,27 @@ export default function Deposit({
   const getPlaySongKey = (currentSong) => {
     if (!currentSong) return "";
 
-    return [currentSong?.spotify_url, currentSong?.deezer_url, currentSong?.title, currentSong?.artist]
+    return [
+      currentSong?.public_key,
+      currentSong?.provider_links?.spotify?.provider_url,
+      currentSong?.provider_links?.deezer?.provider_url,
+      currentSong?.spotify_url,
+      currentSong?.deezer_url,
+      currentSong?.title,
+      currentSong?.artist,
+    ]
       .filter(Boolean)
       .join("|");
   };
+
+  const handleSongResolved = useCallback((resolvedSong) => {
+    if (!resolvedSong) return;
+
+    setPlaySong(resolvedSong);
+    setLocalDep((prev) => ({ ...(prev || {}), song: { ...(prev?.song || {}), ...resolvedSong } }));
+    updateDepositCollections((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
+    updateStorageSnapshot((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
+  }, [updateDepositCollections, updateStorageSnapshot]);
 
   const openPlayFor = (nextSong) => {
     const songToPlay = nextSong || null;
@@ -450,10 +467,7 @@ export default function Deposit({
         discovered_at: isoNow,
         song: {
           ...(prev?.song || {}),
-          title: revealed.title,
-          artist: revealed.artist,
-          spotify_url: revealed.spotify_url,
-          deezer_url: revealed.deezer_url,
+          ...revealed,
           image_url: revealed.image_url || prev?.song?.image_url,
         },
       }));
@@ -463,10 +477,7 @@ export default function Deposit({
         discovered_at: isoNow,
         song: {
           ...(item?.song || {}),
-          title: revealed.title,
-          artist: revealed.artist,
-          spotify_url: revealed.spotify_url,
-          deezer_url: revealed.deezer_url,
+          ...revealed,
           image_url: revealed.image_url || item?.song?.image_url,
         },
       }));
@@ -476,10 +487,7 @@ export default function Deposit({
         discovered_at: isoNow,
         song: {
           ...(item?.song || {}),
-          title: revealed.title,
-          artist: revealed.artist,
-          spotify_url: revealed.spotify_url,
-          deezer_url: revealed.deezer_url,
+          ...revealed,
           image_url: revealed.image_url || item?.song?.image_url,
         },
       }));
@@ -879,7 +887,7 @@ export default function Deposit({
               ) : null}
 
               {isRevealed ? (
-                <PlayModal open={playOpen} song={playSong} onClose={closePlay}>
+                <PlayModal open={playOpen} song={playSong} onClose={closePlay} onSongResolved={handleSongResolved}>
                   <Button
                     variant="depositInteract"
                     className={variant === "main" ? "play playMain" : "play playSecondary"}

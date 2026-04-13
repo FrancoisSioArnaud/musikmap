@@ -1,57 +1,29 @@
-/**
- * Checks if the user is authenticated with Deezer.
- * Makes an asynchronous request to the server to fetch the authentication status.
- * @param {function} setIsDeezerAuthenticated - A function to set the Deezer authentication status of a user.
- */
-export const checkDeezerAuthentication = async (setIsDeezerAuthenticated) => {
+import { authenticateProviderUser, disconnectProviderUser, getProviderConnection } from "./providerClient";
+
+export const checkDeezerAuthentication = async (setIsDeezerAuthenticated, user = null) => {
   try {
-    const response = await fetch("/deezer/is-authenticated");
-    const data = await response.json();
-    setIsDeezerAuthenticated(data.status);
+    if (user) {
+      setIsDeezerAuthenticated(Boolean(getProviderConnection(user, "deezer")?.connected));
+      return;
+    }
+    const response = await fetch("/deezer/is-authenticated", { credentials: "same-origin" });
+    const data = await response.json().catch(() => ({}));
+    setIsDeezerAuthenticated(Boolean(data?.status));
   } catch (error) {
     console.error(error);
+    setIsDeezerAuthenticated(false);
   }
 };
 
-/**
- * Authenticates the user with Deezer if not already authenticated.
- * @param {boolean} isDeezerAuthenticated - A boolean indicating if the user is already authenticated with Deezer.
- * @param {function} setIsDeezerAuthenticated - A function to set the Deezer authentication status of the user.
- */
-export const authenticateDeezerUser = async (
-  isDeezerAuthenticated,
-  setIsDeezerAuthenticated
-) => {
-  try {
-    checkDeezerAuthentication(setIsDeezerAuthenticated);
-    if (!isDeezerAuthenticated) {
-      const response = await fetch("/deezer/auth-redirection");
-      const data = await response.json();
-      window.location.replace(data.url);
-    }
-  } catch (error) {
-    console.error(error);
-  }
+export const authenticateDeezerUser = async () => {
+  await authenticateProviderUser("deezer");
 };
 
-/**
- * Disconnect the user with Deezer if already authenticated.
- * @param {boolean} isDeezerAuthenticated - A boolean indicating if the user is already authenticated with Deezer.
- * @param {function} setIsDeezerAuthenticated - A function to set the Deezer authentication status of the user.
- */
-export const disconnectDeezerUser = async (
-  isDeezerAuthenticated,
-  setIsDeezerAuthenticated
-) => {
+export const disconnectDeezerUser = async (isDeezerAuthenticated, setIsDeezerAuthenticated) => {
   try {
-    // Check if the user is authenticated with Deezer.
-    checkDeezerAuthentication(setIsDeezerAuthenticated);
-    // If the user is authenticated with Deezer, disconnect the user.
-    if (isDeezerAuthenticated) {
-      const response = await fetch("/deezer/disconnect");
-      const data = await response.json();
-      window.location.replace(data.url);
-    }
+    if (!isDeezerAuthenticated) return;
+    await disconnectProviderUser("deezer");
+    setIsDeezerAuthenticated(false);
   } catch (error) {
     console.error(error);
   }

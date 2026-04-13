@@ -171,7 +171,7 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
         "id",
         "public_key",
         "song__title",
-        "song__artist",
+        "song__public_key",
         "box__name",
         "user__username",
         "user__email",
@@ -328,9 +328,9 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
-    list_display = ("title", "artist", "song_id", "accent_color", "image_url_small", "n_deposits", "duration")
-    search_fields = ("title", "artist", "song_id")
-    ordering = ("title", "artist")
+    list_display = ("title", "artist", "public_key", "isrc", "accent_color", "image_url_small", "n_deposits", "duration")
+    search_fields = ("title", "public_key", "isrc")
+    ordering = ("title", "public_key")
 
 
 @admin.register(DiscoveredSong)
@@ -340,8 +340,7 @@ class DiscoveredSongAdmin(admin.ModelAdmin):
     search_fields = (
         "user__username",
         "deposit__song__title",
-        "deposit__song__artist",
-        "deposit__box__name",
+                "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit")
 
@@ -371,8 +370,7 @@ class ReactionAdmin(admin.ModelAdmin):
         "user__email",
         "deposit__public_key",
         "deposit__song__title",
-        "deposit__song__artist",
-        "deposit__box__name",
+                "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit", "emoji")
 

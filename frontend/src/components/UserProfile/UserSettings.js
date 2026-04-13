@@ -38,9 +38,9 @@ export default function UserSettings() {
   const [errorMessages, setErrorMessages] = useState({});
 
   useEffect(() => {
-    checkSpotifyAuthentication(setIsSpotifyAuthenticated);
-    checkDeezerAuthentication(setIsDeezerAuthenticated);
-  }, []);
+    checkSpotifyAuthentication(setIsSpotifyAuthenticated, user);
+    checkDeezerAuthentication(setIsDeezerAuthenticated, user);
+  }, [user]);
 
   if (user?.is_guest) {
     return (
@@ -72,19 +72,19 @@ export default function UserSettings() {
   }
 
   const handleButtonClickConnectSpotify = () =>
-    authenticateSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
+    authenticateSpotifyUser();
 
-  const handleButtonClickDisconnectSpotify = () => {
-    disconnectSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
-    window.location.reload();
+  const handleButtonClickDisconnectSpotify = async () => {
+    await disconnectSpotifyUser(isSpotifyAuthenticated, setIsSpotifyAuthenticated);
+    await checkUserStatus(setUser, setIsAuthenticated);
   };
 
   const handleButtonClickConnectDeezer = () =>
-    authenticateDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
+    authenticateDeezerUser();
 
-  const handleButtonClickDisconnectDeezer = () => {
-    disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
-    window.location.reload();
+  const handleButtonClickDisconnectDeezer = async () => {
+    await disconnectDeezerUser(isDeezerAuthenticated, setIsDeezerAuthenticated);
+    await checkUserStatus(setUser, setIsAuthenticated);
   };
 
   function handlePreferredPlatform(platform) {

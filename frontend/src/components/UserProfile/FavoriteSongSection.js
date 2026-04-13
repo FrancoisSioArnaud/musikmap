@@ -50,7 +50,9 @@ export default function FavoriteSongSection({
     searchValue,
     setSearchValue,
     results,
+    recentPlays,
     isSearching,
+    isLoadingRecentPlays,
     resetSearch,
   } = useSongSearch();
 
@@ -179,19 +181,42 @@ export default function FavoriteSongSection({
 
   const drawerEmptyContent = useMemo(() => {
     if (!searchValue.trim()) {
-      return canRemove ? (
-        <Box sx={{ p: "16px 20px" }}>
-          <Button
-            size="fullwidth"
-            variant="text"
-            onClick={handleRemoveFavorite}
-            startIcon={<RemoveCircleOutlineOutlinedIcon />}
-            sx={{ px: "auto" }}
-          >
-            Retirer ma chanson de coeur
-          </Button>
+      return (
+        <Box>
+          {canRemove ? (
+            <Box sx={{ p: "16px 20px" }}>
+              <Button
+                size="fullwidth"
+                variant="text"
+                onClick={handleRemoveFavorite}
+                startIcon={<RemoveCircleOutlineOutlinedIcon />}
+                sx={{ px: "auto" }}
+              >
+                Retirer ma chanson de coeur
+              </Button>
+            </Box>
+          ) : null}
+
+          <Box sx={{ px: 5, pt: 1 }}>
+            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
+          </Box>
+          <SongSearchResultsList
+            results={recentPlays}
+            isSearching={isLoadingRecentPlays}
+            posting={posting}
+            postingId={postingId}
+            postingProgress={postingProgress}
+            postingTransitionMs={postingTransitionMs}
+            onAction={handleSetFavorite}
+            actionLabel="Choisir"
+            emptyContent={
+              <Box sx={{ px: 5, py: 1 }}>
+                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
+              </Box>
+            }
+          />
         </Box>
-      ) : null;
+      );
     }
 
     return (
@@ -199,7 +224,7 @@ export default function FavoriteSongSection({
         <Typography variant="body1">Aucun résultat.</Typography>
       </Box>
     );
-  }, [canRemove, handleRemoveFavorite, searchValue]);
+  }, [canRemove, handleRemoveFavorite, handleSetFavorite, isLoadingRecentPlays, posting, postingId, postingProgress, postingTransitionMs, recentPlays, searchValue]);
 
   const bodyContent = useMemo(() => {
     if (isCurrentFullUser) {
