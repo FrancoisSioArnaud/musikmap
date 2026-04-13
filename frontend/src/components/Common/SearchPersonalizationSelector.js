@@ -106,8 +106,6 @@ export default function SearchPersonalizationSelector({
           Pas de résultats personnalisés
         </MenuItem>
 
-        <Divider className="search_personalization_selector_divider" />
-
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
           const label = PROVIDER_LABELS[providerCode] || providerCode;
