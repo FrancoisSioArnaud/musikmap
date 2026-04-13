@@ -29,7 +29,6 @@ urlpatterns = [
     path("box-management/", include("box_management.urls")),
     path("deezer/", include("deezer.urls")),
     path("users/", include("users.urls")),
-    path("api_agg/", include("api_aggregation.urls")),
     path("oauth/", include("social_django.urls", namespace="social")),
 ]
 
