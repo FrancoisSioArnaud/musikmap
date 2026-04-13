@@ -31,6 +31,9 @@ export function applyActiveClientTheme(clientSlug) {
   // paddings
   root.style.setProperty("--mm-padding-page-side", theme.padding.pageSide);
 
+  // paddings
+  root.style.setProperty("--mm-opacity-light-text", theme.opacity.lightText);
+  
   // colors
   root.style.setProperty("--mm-color-black", theme.colors.black);
   root.style.setProperty("--mm-color-white", theme.colors.white);
