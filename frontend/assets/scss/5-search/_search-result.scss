@@ -12,6 +12,8 @@
 }
 
 .song_search_results {
+  backgroundColor: "var(--mm-color-primary-light)";
+  
   .item {
     position: relative;
     align-items: center;
