@@ -1468,37 +1468,6 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
     elif song_platform_id == 2 and incoming_url:
         song.deezer_url = incoming_url
 
-    try:
-        request_platform = None
-        if song_platform_id == 1 and not song.deezer_url:
-            request_platform = "deezer"
-        elif song_platform_id == 2 and not song.spotify_url:
-            request_platform = "spotify"
-
-        if request_platform and request is not None:
-            aggreg_url = request.build_absolute_uri(reverse("api_agg:aggreg"))
-            payload = {
-                "song": {"title": song.title, "artist": song.artist, "duration": song.duration},
-                "platform": request_platform,
-            }
-            headers = {"Content-Type": "application/json", "X-CSRFToken": get_token(request)}
-            response = requests.post(
-                aggreg_url,
-                data=json.dumps(payload),
-                headers=headers,
-                cookies=request.COOKIES,
-                timeout=6,
-            )
-            if response.ok:
-                other_url = response.json()
-                if isinstance(other_url, str):
-                    if request_platform == "deezer":
-                        song.deezer_url = other_url
-                    elif request_platform == "spotify":
-                        song.spotify_url = other_url
-    except Exception:
-        pass
-
     if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
         if box is None:
             raise ValueError("Boîte introuvable")
