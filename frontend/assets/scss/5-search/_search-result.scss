@@ -1,5 +1,3 @@
-@use '../0-init/color' as *;
-
 /**
  * @file
  * Search Result Styling
@@ -7,98 +5,92 @@
 
 /* ---------------- DEFAULT -----------------*/
 
-/* ---------------- CUSTOM -----------------*/
-
-.song_search_results {
-  &--loading {
-    display: flex;
-    justify-content: center;
-    padding: 24px 0;
-  }
-
-  &__item {
-    position: relative;
-    overflow: hidden;
-    align-items: center;
-    padding: 12px 16px;
-  }
-
-  &__progress {
-    position: absolute;
-    top: 0;
-    right: auto;
-    bottom: 0;
-    left: 0;
-    width: var(--search-result-progress, 0%);
-    pointer-events: none;
-    background-color: var(--mm-color-primary-light);
-    transition-property: width;
-    transition-duration: var(--search-result-transition-duration, 0ms);
-    transition-timing-function: cubic-bezier(.17, .49, .88, .61);
-  }
-
-  &__content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    width: 100%;
-    min-width: 0;
-  }
-
-  &__cover {
-    width: 64px;
-    height: 64px;
-    flex-shrink: 0;
-    overflow: hidden;
-    border-radius: var(--mm-radius-xs);
-    background-color: rgba(255, 255, 255, .08);
-  }
-
-  &__cover_image {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  &__texts {
-    display: flex;
-    overflow: hidden;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  &__title,
-  &__artist {
-    overflow: hidden;
-    max-width: 100%;
-    white-space: nowrap;
-    text-align: left;
-    text-overflow: ellipsis;
-  }
-
-  &__title {
-    font-weight: 700;
-  }
-
-  &__action {
-    flex-shrink: 0;
-  }
-
-  &__button {
-    min-width: 0;
-  }
-
-  &__button_content {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__button_spinner {
-    color: var(--mm-color-primary-contrast-text);
-  }
+.song_search_results_loader {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
 }
+
+.song_search_results .result_item {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.song_search_results .progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background-color: var(--mm-color-primary-light);
+  transition-property: width;
+  transition-timing-function: cubic-bezier(.17,.49,.88,.61);
+  pointer-events: none;
+}
+
+.song_search_results .content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.song_search_results .cover {
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: var(--mm-radius-xs);
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.song_search_results .image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.song_search_results .texts {
+  display: flex;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.song_search_results .title,
+.song_search_results .artist {
+  overflow: hidden;
+  max-width: 100%;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song_search_results .title {
+  font-weight: 700;
+}
+
+.song_search_results .action {
+  flex-shrink: 0;
+}
+
+.song_search_results .action_button {
+  min-width: 0;
+}
+
+.song_search_results .action_content {
+  display: flex;
+  align-items: center;
+}
+
+.song_search_results .action_content.loading {
+  gap: 8px;
+}
+
+/* ---------------- CUSTOM -----------------*/

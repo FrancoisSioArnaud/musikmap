@@ -20,8 +20,8 @@ export default function SongSearchResultsList({
 }) {
   if (isSearching) {
     return (
-      <Box className="song_search_results song_search_results--loading">
-        <CircularProgress className="song_search_results__loading_spinner" size={28} />
+      <Box className="song_search_results_loader">
+        <CircularProgress size={28} />
       </Box>
     );
   }
@@ -31,71 +31,75 @@ export default function SongSearchResultsList({
   }
 
   return (
-    <List className="song_search_results song_search_results__list" disablePadding>
+    <List disablePadding className="song_search_results">
       {results.map((option) => {
         const id = option?.id ?? "__posting__";
         const isThisPosting = posting && postingId === id;
 
         return (
-          <ListItem
-            key={id}
-            className={`song_search_results__item${isThisPosting ? " song_search_results__item--posting" : ""}`}
-            style={{
-              "--search-result-progress": `${isThisPosting ? postingProgress : 0}%`,
-              "--search-result-transition-duration": `${isThisPosting ? postingTransitionMs : 0}ms`,
-            }}
-          >
-            <Box aria-hidden="true" className="song_search_results__progress" />
+          <ListItem key={id} className="result_item">
+            <Box
+              aria-hidden="true"
+              className="progress"
+              sx={{
+                width: isThisPosting ? `${postingProgress}%` : "0%",
+                transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
+              }}
+            />
 
-            <Box className="song_search_results__content">
-              <Box className="song_search_results__cover">
+            <Box className="content">
+              <Box className="cover">
                 {option?.image_url_small ? (
                   <Box
                     component="img"
-                    className="song_search_results__cover_image"
                     src={option.image_url_small}
                     alt={option.name || "Cover"}
+                    className="image"
                   />
                 ) : null}
               </Box>
 
-              <Box className="song_search_results__texts">
+              <Box className="texts">
                 <Typography
-                  className="song_search_results__title"
                   component="h3"
                   variant="h6"
                   noWrap
+                  className="title"
                   title={option?.name || ""}
                 >
                   {option?.name || ""}
                 </Typography>
                 <Typography
-                  className="song_search_results__artist"
                   component="p"
                   variant="body2"
                   color="text.secondary"
                   noWrap
+                  className="artist"
                   title={option?.artist || ""}
                 >
                   {option?.artist || ""}
                 </Typography>
               </Box>
 
-              <Box className="song_search_results__action">
+              <Box className="action">
                 <Button
-                  className="song_search_results__button"
                   variant="contained"
                   size="small"
                   disabled={posting}
                   onClick={() => onAction?.(option)}
+                  className="action_button"
                 >
                   {isThisPosting ? (
-                    <Box className="song_search_results__button_content">
-                      <CircularProgress className="song_search_results__button_spinner" size={16} />
+                    <Box className="action_content loading">
+                      <CircularProgress
+                        size={16}
+                        className="action_spinner"
+                        sx={{ color: "var(--mm-color-primary-contrast-text)" }}
+                      />
                       {actionLabel}
                     </Box>
                   ) : (
-                    actionLabel
+                    <Box className="action_content">{actionLabel}</Box>
                   )}
                 </Button>
               </Box>
