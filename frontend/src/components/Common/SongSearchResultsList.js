@@ -20,7 +20,7 @@ export default function SongSearchResultsList({
 }) {
   if (isSearching) {
     return (
-      <Box className="song_search_results_loader">
+      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
         <CircularProgress size={28} />
       </Box>
     );
@@ -31,40 +31,94 @@ export default function SongSearchResultsList({
   }
 
   return (
-    <List disablePadding className="song_search_results">
+    <List disablePadding>
       {results.map((option) => {
         const id = option?.id ?? "__posting__";
         const isThisPosting = posting && postingId === id;
 
         return (
-          <ListItem key={id} className="result_item">
+          <ListItem
+            key={id}
+            sx={{
+              position: "relative",
+              overflow: "hidden",
+              alignItems: "center",
+              px: 2,
+              py: 1.5,
+            }}
+          >
             <Box
               aria-hidden="true"
-              className="progress"
               sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                bottom: 0,
                 width: isThisPosting ? `${postingProgress}%` : "0%",
+                bgcolor: "var(--mm-color-primary-light)",
+                transitionProperty: "width",
                 transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
+                transitionTimingFunction: "cubic-bezier(.17,.49,.88,.61)",
+                pointerEvents: "none",
               }}
             />
 
-            <Box className="content">
-              <Box className="cover">
+            <Box
+              sx={{
+                position: "relative",
+                zIndex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                width: "100%",
+                minWidth: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "var(--mm-radius-xs)",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  bgcolor: "action.hover",
+                }}
+              >
                 {option?.image_url_small ? (
                   <Box
                     component="img"
                     src={option.image_url_small}
                     alt={option.name || "Cover"}
-                    className="image"
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
                   />
                 ) : null}
               </Box>
 
-              <Box className="texts">
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  minWidth: 0,
+                  flex: 1,
+                  overflow: "hidden",
+                }}
+              >
                 <Typography
                   component="h3"
                   variant="h6"
                   noWrap
-                  className="title"
+                  sx={{
+                    fontWeight: 700,
+                    textAlign: "left",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                  }}
                   title={option?.name || ""}
                 >
                   {option?.name || ""}
@@ -74,32 +128,36 @@ export default function SongSearchResultsList({
                   variant="body2"
                   color="text.secondary"
                   noWrap
-                  className="artist"
+                  sx={{
+                    textAlign: "left",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                  }}
                   title={option?.artist || ""}
                 >
                   {option?.artist || ""}
                 </Typography>
               </Box>
 
-              <Box className="action">
+              <Box sx={{ flexShrink: 0 }}>
                 <Button
                   variant="contained"
                   size="small"
                   disabled={posting}
                   onClick={() => onAction?.(option)}
-                  className="action_button"
+                  sx={{ minWidth: 0 }}
                 >
                   {isThisPosting ? (
-                    <Box className="action_content loading">
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <CircularProgress
                         size={16}
-                        className="action_spinner"
                         sx={{ color: "var(--mm-color-primary-contrast-text)" }}
                       />
                       {actionLabel}
                     </Box>
                   ) : (
-                    <Box className="action_content">{actionLabel}</Box>
+                    actionLabel
                   )}
                 </Button>
               </Box>
