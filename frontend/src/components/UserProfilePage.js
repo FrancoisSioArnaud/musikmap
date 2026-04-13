@@ -262,7 +262,7 @@ export default function UserProfilePage() {
                   Valider
                 </Button>
               </Box>
-              <Typography variant="body2" sx={{ opacity: "0.7", padding: "0 6px" }}>
+              <Typography variant="body2" sx={{ opacity: "var(--mm-opacity-light-text)", padding: "0 6px" }}>
                 {user.username}
               </Typography>
               {userStatusName && (
