@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useMemo, useCallback, useRef } from "r
 
 import { UserContext } from "../UserContext";
 import { setLastPlatform } from "../UsersUtils";
+import { ensureValidSpotifyAccessToken } from "../Utils/streaming/SpotifyUtils";
 import {
   PERSONALIZED_SEARCH_PROVIDER_CODES,
   SERVER_SEARCH_PROVIDER_CODE,
@@ -125,12 +126,19 @@ export default function useSongSearch({ initialPlatform = null, debounceMs = 400
 
           if (effectiveSelectedProvider && connection?.connected && connection?.access_token) {
             try {
-              nextResults = await searchTracksViaProviderClient(
-                effectiveSelectedProvider,
-                trimmedSearch,
-                connection.access_token,
-                { signal: controller.signal }
-              );
+              const accessToken =
+                effectiveSelectedProvider === "spotify"
+                  ? await ensureValidSpotifyAccessToken({ user, setUser })
+                  : connection.access_token;
+
+              if (accessToken) {
+                nextResults = await searchTracksViaProviderClient(
+                  effectiveSelectedProvider,
+                  trimmedSearch,
+                  accessToken,
+                  { signal: controller.signal }
+                );
+              }
             } catch (error) {
               if (error?.name === "AbortError") {
                 return;
@@ -185,9 +193,21 @@ export default function useSongSearch({ initialPlatform = null, debounceMs = 400
     const loadRecentPlays = async () => {
       try {
         setIsLoadingRecentPlays(true);
+        const accessToken =
+          effectiveSelectedProvider === "spotify"
+            ? await ensureValidSpotifyAccessToken({ user, setUser })
+            : connection.access_token;
+
+        if (!accessToken) {
+          if (!controller.signal.aborted) {
+            setRecentPlays([]);
+          }
+          return;
+        }
+
         const items = await fetchRecentPlaysViaProviderClient(
           effectiveSelectedProvider,
-          connection.access_token,
+          accessToken,
           { signal: controller.signal }
         );
         if (!controller.signal.aborted) {

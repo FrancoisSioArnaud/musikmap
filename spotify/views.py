@@ -9,12 +9,15 @@ from rest_framework.views import APIView
 
 from spotify.spotipy_client import sp
 from users.provider_connections import set_last_platform_for_user, upsert_provider_connection
+from users.utils import build_current_user_payload
 
 from .credentials import CLIENT_ID, CLIENT_SECRET
 from .util import (
     disconnect_user,
     execute_spotify_api_request,
+    get_user_tokens,
     is_spotify_authenticated,
+    refresh_spotify_token,
     update_or_create_user_tokens,
 )
 
@@ -117,6 +120,26 @@ def spotify_callback(request, format=None):
 class IsAuthenticated(APIView):
     def get(self, request, format=None):
         return Response({"status": is_spotify_authenticated(self.request.user)}, status=status.HTTP_200_OK)
+
+
+class RefreshAccessToken(APIView):
+    def post(self, request, format=None):
+        if not getattr(request.user, "is_authenticated", False):
+            return Response({"detail": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not refresh_spotify_token(request.user):
+            return Response({"detail": "Impossible de rafraîchir le token Spotify."}, status=status.HTTP_400_BAD_REQUEST)
+
+        tokens = get_user_tokens(request.user)
+        connection_payload = build_current_user_payload(request.user)
+        return Response(
+            {
+                "access_token": tokens.access_token if tokens else None,
+                "expires_at": tokens.expires_in.isoformat() if tokens and tokens.expires_in else None,
+                "current_user": connection_payload,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class GetRecentlyPlayedTracks(APIView):
