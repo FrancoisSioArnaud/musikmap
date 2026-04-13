@@ -98,13 +98,15 @@ export default function SearchPersonalizationSelector({
           </Typography>
         </Box>
 
-        <Box
+        <MenuItem
           selected={!selectedProviderCode}
           onClick={() => handleSelect(null)}
           className="search_personalization_selector_option search_personalization_selector_option--none"
         >
           Pas de résultats personnalisés
-        </Box>
+        </MenuItem>
+
+        <Divider className="search_personalization_selector_divider" />
 
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
@@ -112,14 +114,14 @@ export default function SearchPersonalizationSelector({
 
           if (isConnected) {
             return (
-              <Box
+              <MenuItem
                 key={providerCode}
                 selected={selectedProviderCode === providerCode}
                 onClick={() => handleSelect(providerCode)}
                 className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >
                 {label}
-              </Box>
+              </MenuItem>
             );
           }
 
