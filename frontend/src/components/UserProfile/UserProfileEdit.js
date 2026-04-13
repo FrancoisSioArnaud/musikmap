@@ -144,7 +144,7 @@ export default function UserProfileEdit() {
           fullWidth
         />
 
-        <Typography variant="body2" sx={{ opacity:"0.7", padding: "0px 6px" }}>
+        <Typography variant="body2" sx={{ opacity:"var(--mm-opacity-light-text)", padding: "0px 6px" }}>
               Ton nom doit faire entre 3 et 30 caractères, sans espaces, et avec uniquement des lettres, des chiffres ou les caractères @ . + - _ 
         </Typography>
       </Box>
