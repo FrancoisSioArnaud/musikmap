@@ -52,12 +52,12 @@
 }
 
 .search_personalization_selector_menu_list li{
-  background-color: var(--mm-color-primary-light);
   border-radius: var(--mm-radius-round);
+  border: var(--mm-color-default);
 }
 
 .search_personalization_selector_menu_list li.Mui-selected{
-  border: solid 1px var(--mm-color-primary);
+  border: solid 2px var(--mm-color-primary);
 }
 
 .search_personalization_selector_provider {
