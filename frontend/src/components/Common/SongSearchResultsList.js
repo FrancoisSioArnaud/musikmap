@@ -20,8 +20,8 @@ export default function SongSearchResultsList({
 }) {
   if (isSearching) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-        <CircularProgress size={28} />
+      <Box className="song_search_results song_search_results--loading">
+        <CircularProgress className="song_search_results__loading_spinner" size={28} />
       </Box>
     );
   }
@@ -31,7 +31,7 @@ export default function SongSearchResultsList({
   }
 
   return (
-    <List disablePadding>
+    <List className="song_search_results song_search_results__list" disablePadding>
       {results.map((option) => {
         const id = option?.id ?? "__posting__";
         const isThisPosting = posting && postingId === id;
@@ -39,121 +39,59 @@ export default function SongSearchResultsList({
         return (
           <ListItem
             key={id}
-            sx={{
-              position: "relative",
-              overflow: "hidden",
-              alignItems: "center",
-              px: 2,
-              py: 1.5,
+            className={`song_search_results__item${isThisPosting ? " song_search_results__item--posting" : ""}`}
+            style={{
+              "--search-result-progress": `${isThisPosting ? postingProgress : 0}%`,
+              "--search-result-transition-duration": `${isThisPosting ? postingTransitionMs : 0}ms`,
             }}
           >
-            <Box
-              aria-hidden="true"
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                bottom: 0,
-                width: isThisPosting ? `${postingProgress}%` : "0%",
-                bgcolor: "var(--mm-color-primary-light)",
-                transitionProperty: "width",
-                transitionDuration: `${isThisPosting ? postingTransitionMs : 0}ms`,
-                transitionTimingFunction: "cubic-bezier(.17,.49,.88,.61)",
-                pointerEvents: "none",
-              }}
-            />
+            <Box aria-hidden="true" className="song_search_results__progress" />
 
-            <Box
-              sx={{
-                position: "relative",
-                zIndex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                width: "100%",
-                minWidth: 0,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "var(--mm-radius-xs)",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  bgcolor: "action.hover",
-                }}
-              >
+            <Box className="song_search_results__content">
+              <Box className="song_search_results__cover">
                 {option?.image_url_small ? (
                   <Box
                     component="img"
+                    className="song_search_results__cover_image"
                     src={option.image_url_small}
                     alt={option.name || "Cover"}
-                    sx={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
                   />
                 ) : null}
               </Box>
 
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  minWidth: 0,
-                  flex: 1,
-                  overflow: "hidden",
-                }}
-              >
+              <Box className="song_search_results__texts">
                 <Typography
+                  className="song_search_results__title"
                   component="h3"
                   variant="h6"
                   noWrap
-                  sx={{
-                    fontWeight: 700,
-                    textAlign: "left",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: "100%",
-                  }}
                   title={option?.name || ""}
                 >
                   {option?.name || ""}
                 </Typography>
                 <Typography
+                  className="song_search_results__artist"
                   component="p"
                   variant="body2"
                   color="text.secondary"
                   noWrap
-                  sx={{
-                    textAlign: "left",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: "100%",
-                  }}
                   title={option?.artist || ""}
                 >
                   {option?.artist || ""}
                 </Typography>
               </Box>
 
-              <Box sx={{ flexShrink: 0 }}>
+              <Box className="song_search_results__action">
                 <Button
+                  className="song_search_results__button"
                   variant="contained"
                   size="small"
                   disabled={posting}
                   onClick={() => onAction?.(option)}
-                  sx={{ minWidth: 0 }}
                 >
                   {isThisPosting ? (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <CircularProgress
-                        size={16}
-                        sx={{ color: "var(--mm-color-primary-contrast-text)" }}
-                      />
+                    <Box className="song_search_results__button_content">
+                      <CircularProgress className="song_search_results__button_spinner" size={16} />
                       {actionLabel}
                     </Box>
                   ) : (
