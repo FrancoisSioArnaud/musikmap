@@ -30,8 +30,7 @@
 }
 
 .search_personalization_selector_menu_list {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 16px 12px;
 }
 
 .search_personalization_selector_modal_header {
@@ -40,7 +39,16 @@
 }
 
 .search_personalization_selector_modal_text {
-  color: var(--mm-color-text-secondary, rgba(255, 255, 255, 0.7));
+  color: var(--mm-color-text);
+}
+
+.search_personalization_selector_menu_list li{
+  background-color: var(--mm-color-primary-light);
+  border-radius: var(--mm-radius-round);
+}
+
+.search_personalization_selector_menu_list li.Mui-selected{
+  border: solid 1px var(--mm-color-primary);
 }
 
 .search_personalization_selector_provider {
