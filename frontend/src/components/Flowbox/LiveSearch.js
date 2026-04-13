@@ -250,8 +250,8 @@ export default function LiveSearch() {
 
       {canShowRecentPlays ? (
         <>
-          <Box sx={{ px: 5 }}>
-            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
+          <Box sx={{ padding: "16px 20px -4px 20px", mt: "12px", backgroundColor: "var(--mm-color-primary-light)" }}>
+            <Typography component="h3" variant="h5">Écoutés récemment</Typography>
           </Box>
           <SongSearchResultsList
             results={recentPlays}
