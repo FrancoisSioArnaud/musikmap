@@ -2,6 +2,12 @@
 
 
 
+@supports (height: 100dvh) {
+  .onBoarding {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
 .onBoarding {
   background: var(--mm-color-primary-dark, #111111);
   position: fixed;
@@ -21,19 +27,13 @@
   -webkit-touch-callout: none;
 
 
-  @supports (height: 100dvh) {
-    .onBoarding {
-      height: 100dvh;
-      min-height: 100dvh;
-    }
-  }
   
-  .onBoarding .page_container {
+  .page_container {
     display: -webkit-box;
     display: -ms-flexbox;
     display: flex;
     position: fixed;
-    top: 56px;
+ //   top: 56px;
     right: 0;
     bottom: 0;
     left: 0;
@@ -82,7 +82,7 @@
     z-index: 2;
   }
   
-  .onBoarding img.bg {
+  img.bg {
     position: absolute;
     top: 29px;
     right: 0;
@@ -260,10 +260,10 @@
     color: var(--mm-color-surface, #ffffff);
   }
   
-  .onBoarding .info_box {
+  .info_box {
   }
   
-  .onBoarding .container {
+  .container {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -279,7 +279,7 @@
   
   
   
-  .onBoarding h1 {
+  h1 {
     text-align: center;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -296,7 +296,7 @@
   
   /* Fallback si object-fit n'est pas supporté */
   @supports not ((-o-object-fit: cover) or (object-fit: cover)) {
-    .onBoarding img.bg,
+    img.bg,
     .cover img {
       width: auto;
       min-width: 100%;
@@ -316,7 +316,7 @@
   
   /* Ajustements petits écrans */
   @media (max-width: 480px) {
-    .onBoarding .page_container {
+    .page_container {
       top: 56px;
     }
   
