@@ -29,10 +29,8 @@ import {
   saveAuthReturnContext,
 } from "./authFlow";
 
-const pageContainerSx = {
-  display: "grid",
-  gap: 2,
-};
+
+
 
 function BenefitsStrip() {
   return (
@@ -178,86 +176,84 @@ export default function AuthPanel({
   const cardVariant = mode === "page" ? "outlined" : undefined;
 
   return (
-    <Card className={`auth_panel auth_panel--${mode}`} variant={cardVariant} sx={pageContainerSx}>
-      <CardContent sx={{ display: "grid", gap: 2.5 }}>
-        <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center" }}>
-          <Box sx={{ display: "flex", justifyContent: mode === "page" ? "flex-start" : "center" }}>
-            <Avatar sx={{ bgcolor: "var(--mm-color-primary)" }}>
-              <LockOutlinedIcon />
-            </Avatar>
-          </Box>
-          <Typography variant="h4">{copy.title}</Typography>
-          <Typography variant="body1">{copy.description}</Typography>
-          <BenefitsStrip />
+    <Card className={`auth_panel auth_panel--${mode}`} variant={cardVariant} sx={{ display: "grid", gap: 2.5 }}>
+      <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center" }}>
+        <Box sx={{ display: "flex", justifyContent: mode === "page" ? "flex-start" : "center" }}>
+          <Avatar sx={{ bgcolor: "var(--mm-color-primary)" }}>
+            <LockOutlinedIcon />
+          </Avatar>
         </Box>
+        <Typography variant="h4">Connecte toi</Typography>
+        <Typography variant="body1">{copy.description}</Typography>
+        <BenefitsStrip />
+      </Box>
 
-        <Box sx={{ display: "grid", gap: 1.5 }}>
-          <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
-          <Button variant="outlined" startIcon={<MusicNoteIcon />} onClick={handleSpotifyLogin}>
-            Continuer avec Spotify
+      <Box sx={{ display: "grid", gap: 1.5 }}>
+        <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
+        <Button variant="outlined" startIcon={<MusicNoteIcon />} onClick={handleSpotifyLogin}>
+          Continuer avec Spotify
+        </Button>
+      </Box>
+
+      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)}>
+        <Tab label="Login" value="login" />
+        <Tab label="Register" value="register" />
+      </Tabs>
+
+      {providerError ? <Alert severity="error">{providerError}</Alert> : null}
+      {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
+
+      {tab === "login" ? (
+        <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
+          <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
+          <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
+          {isGuest ? (
+            <FormControlLabel
+              control={<Checkbox name="merge_guest" defaultChecked={mergeGuest || isGuest} />}
+              label="Ajouter les partages faits avec cet appareil à mon profil"
+            />
+          ) : null}
+          {loginError ? <Alert severity="error">{loginError}</Alert> : null}
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={20} /> : "Se connecter"}
           </Button>
         </Box>
-
-        <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)}>
-          <Tab label="Login" value="login" />
-          <Tab label="Register" value="register" />
-        </Tabs>
-
-        {providerError ? <Alert severity="error">{providerError}</Alert> : null}
-        {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
-
-        {tab === "login" ? (
-          <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
-            <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
-            <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
-            {isGuest ? (
-              <FormControlLabel
-                control={<Checkbox name="merge_guest" defaultChecked={mergeGuest || isGuest} />}
-                label="Ajouter les partages faits avec cet appareil à mon profil"
-              />
-            ) : null}
-            {loginError ? <Alert severity="error">{loginError}</Alert> : null}
-            <Button type="submit" variant="contained" disabled={loading}>
-              {loading ? <CircularProgress size={20} /> : "Se connecter"}
-            </Button>
-          </Box>
-        ) : (
-          <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
-            <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
-            <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField required fullWidth name="password1" label="Mot de passe" type="password" autoComplete="new-password" />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField required fullWidth name="password2" label="Confirmation du mot de passe" type="password" autoComplete="new-password" />
-              </Grid>
+      ) : (
+        <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
+          <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
+          <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField required fullWidth name="password1" label="Mot de passe" type="password" autoComplete="new-password" />
             </Grid>
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Image de profil</Typography>
-              <input type="file" name="profile_picture" accept=".jpg,.jpeg,.png" />
+            <Grid item xs={12} sm={6}>
+              <TextField required fullWidth name="password2" label="Confirmation du mot de passe" type="password" autoComplete="new-password" />
+            </Grid>
+          </Grid>
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Image de profil</Typography>
+            <input type="file" name="profile_picture" accept=".jpg,.jpeg,.png" />
+          </Box>
+          {Object.keys(registerErrors).length ? (
+            <Box sx={{ display: "grid", gap: 1 }}>
+              {Object.entries(registerErrors).map(([key, values]) => (
+                <Alert key={key} severity="error">
+                  {Array.isArray(values) ? values[0] : String(values)}
+                </Alert>
+              ))}
             </Box>
-            {Object.keys(registerErrors).length ? (
-              <Box sx={{ display: "grid", gap: 1 }}>
-                {Object.entries(registerErrors).map(([key, values]) => (
-                  <Alert key={key} severity="error">
-                    {Array.isArray(values) ? values[0] : String(values)}
-                  </Alert>
-                ))}
-              </Box>
-            ) : null}
-            <Button type="submit" variant="contained" disabled={loading}>
-              {loading ? <CircularProgress size={20} /> : "Créer mon compte"}
-            </Button>
-          </Box>
-        )}
+          ) : null}
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={20} /> : "Créer mon compte"}
+          </Button>
+        </Box>
+      )}
 
-        {canClose ? (
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <Button variant="text" onClick={onClose}>Annuler</Button>
-          </Box>
-        ) : null}
-      </CardContent>
+      {canClose ? (
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Button variant="text" onClick={onClose}>Annuler</Button>
+        </Box>
+      ) : null}
     </Card>
   );
 }
