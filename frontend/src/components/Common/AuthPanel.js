@@ -206,6 +206,7 @@ export default function AuthPanel({
         <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
         <Button
           variant="outlined"
+          sx={{ justifySelf: "start" }}
           startIcon={
             <Box
               component="img"
