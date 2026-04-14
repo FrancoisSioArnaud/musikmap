@@ -123,8 +123,10 @@ export const searchTracksViaProviderClient = async (providerCode, query, accessT
 };
 
 export const fetchRecentPlaysViaProviderClient = async (providerCode, accessToken, options = {}) => {
+  const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 12;
+
   if (providerCode === "spotify") {
-    const response = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=10", {
+    const response = await fetch(`https://api.spotify.com/v1/me/player/recently-played?limit=${limit}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: options.signal,
     });
@@ -143,7 +145,7 @@ export const fetchRecentPlaysViaProviderClient = async (providerCode, accessToke
 
   if (providerCode === "deezer") {
     const response = await fetch(
-      `https://api.deezer.com/user/me/history?limit=10${accessToken ? `&access_token=${encodeURIComponent(accessToken)}` : ""}`,
+      `https://api.deezer.com/user/me/history?limit=${limit}${accessToken ? `&access_token=${encodeURIComponent(accessToken)}` : ""}`,
       { signal: options.signal }
     );
     const json = await response.json();
