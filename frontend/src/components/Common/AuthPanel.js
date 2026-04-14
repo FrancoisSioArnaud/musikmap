@@ -35,7 +35,7 @@ import {
 
 function BenefitsStrip() {
   return (
-    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: "16px", overflowX: "hidden", p:0 }}>
+    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: "16px", overflowX: "hidden", p:"0 16px" }}>
       {AUTH_BENEFITS.map((item) => (
         <Typography
           key={item}
@@ -195,14 +195,14 @@ export default function AuthPanel({
             <LockOutlinedIcon />
           </Avatar>
         </Box>
-        <Box className="header">
+        <Box className="header" sx={{ p:"0 16px" }}>
           <Typography variant="h4">{copy.title}</Typography>
           <Typography variant="body1">{copy.description}</Typography>
         </Box>
         <BenefitsStrip />
       </Box>
 
-      <Box sx={{ display: "grid", gap: 1.5 }}>
+      <Box sx={{ display: "grid", gap: "8px", p:"0 16px" }}>
         <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
         <Button
           variant="outlined"
@@ -220,7 +220,7 @@ export default function AuthPanel({
         </Button>
       </Box>
 
-      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
+      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth" sx={{ p:"0 16px" }}>
         <Tab label="Login" value="login" />
         <Tab label="Register" value="register" />
       </Tabs>
@@ -229,7 +229,7 @@ export default function AuthPanel({
       {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
 
       {tab === "login" ? (
-        <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "16px" }}>
+        <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, p:"16px" }}>
           <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
           <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
           {isGuest ? (
@@ -244,7 +244,7 @@ export default function AuthPanel({
           </Button>
         </Box>
       ) : (
-        <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "16px" }}>
+        <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, p: "16px" }}>
           <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
           <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
           <Grid container spacing={2}>
