@@ -50,7 +50,7 @@ function BenefitsStrip() {
             width: "80%",
             padding: "12px 16px",
             borderRadius: "var(--mm-radius-md)",
-            backgroundColor: "var(--mm-color-paper)",
+            backgroundColor: "var(--mm-color-paper)"
           }}
         >
           {item}
@@ -196,7 +196,7 @@ export default function AuthPanel({
             <LockOutlinedIcon />
           </Avatar>
         </Box>
-        <Box className="header" sx={{ p:"0 16px", textAlign: "center", gap: "12px", display: "grid“ }}>
+        <Box className="header" sx={{ p:"0 16px", textAlign: "center", gap: "12px", display: "grid" }}>
           <Typography variant="h4">Connecte toi !</Typography>
           <Typography variant="body1" sx={{ opacity:"var(--mm-opacity-light-text" }}>{copy.description}</Typography>
         </Box>
