@@ -28,7 +28,7 @@ export function buildMuiTheme(clientTheme) {
       divider: clientTheme.colors.divider,
     },
 
-    spacing: [0, 4, 8, 12, 16, 26, 32, 48, 56, 64],
+    spacing: [0, 4, 8, 12, 16, 20, 26, 32, 48, 56, 64],
 
     typography: {
       fontFamily: clientTheme.fonts.body1,
@@ -119,6 +119,7 @@ export function buildMuiTheme(clientTheme) {
         defaultProps: {
           maxWidth: false,
           disableGutters: true,
+          p: 6,
         },
         styleOverrides: {
           root: {
