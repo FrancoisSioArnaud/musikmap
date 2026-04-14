@@ -123,10 +123,10 @@ export function buildMuiTheme(clientTheme) {
         },
         styleOverrides: {
           root: {
-            paddingLeft: 5,
-            paddingRight: 5,
-            marginLeft: 5,
-            marginRight: 5,
+            paddingLeft: 0,
+            paddingRight: 0,
+            marginLeft: 0,
+            marginRight: 0,
           },
         },
       },
