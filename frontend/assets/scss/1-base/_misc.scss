@@ -1,43 +1,14 @@
-/**
- * @file
- * Styles for system messages and progress bar.
- */
-
-/* ---------------- Top of page link  -----------------*/
-/*.top-of-page {
-  a {}
-}*/
-
-/* ---------------- Message Styling -----------------*/
-/*.messages--status {}
-.messages--warning {}
-.messages--error {
-  p.error {}
-}*/
-
-/* ---------------- Progress Bar Styling -----------------*/
-/*.progress { }
 
 
-.ajax-progress {
-  .throbber {
-    tr & {}
-  }
-  .message {}
-}*/
-/* ---------------- Alert Styling -----------------*/
-/*.alert-sm {}
-.alert a {}
-.alert-success {}
-.alert-info {
-  a, a:hover, a:focus {}
+.no_scroll_bar{
+  -ms-overflow-style: none; /* IE / old Edge */
+  scrollbar-width: none; /* Firefox */
 }
-.alert-warning {
-  a, a:hover, a:focus {}
+
+.no_scroll_bar::-webkit-scrollbar{
+  display: none; /* Chrome / Safari */
 }
-.alert-danger {
-  a, a:hover, a:focus {}
-}*/
+
 
 .d-flex {
   display: flex;
