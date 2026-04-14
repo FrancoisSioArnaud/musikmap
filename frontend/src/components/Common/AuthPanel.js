@@ -42,12 +42,14 @@ function BenefitsStrip() {
           variant="body1"
           className="auth_benefit"
           sx={{
-            whiteSpace: "nowrap",
             px: 1.5,
             py: 0.75,
             borderRadius: 999,
             bgcolor: "action.hover",
-            flex: "0 0 auto",
+            width: "80%",
+            padding: "8px 12px",
+            borderRadius: "var(--mm-radius-sm)",
+            backgroundColor: "var(--mm-color-secondary-light)",
           }}
         >
           {item}
@@ -177,7 +179,7 @@ export default function AuthPanel({
   const cardVariant = mode === "page" ? "outlined" : undefined;
 
   return (
-    <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: 2.5 }}>
+    <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: "16px" }}>
       <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
         {canClose ? (
           <IconButton
@@ -193,8 +195,10 @@ export default function AuthPanel({
             <LockOutlinedIcon />
           </Avatar>
         </Box>
-        <Typography variant="h4">{copy.title}</Typography>
-        <Typography variant="body1">{copy.description}</Typography>
+        <Box className="header">
+          <Typography variant="h4">{copy.title}</Typography>
+          <Typography variant="body1">{copy.description}</Typography>
+        </Box>
         <BenefitsStrip />
       </Box>
 
