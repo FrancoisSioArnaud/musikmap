@@ -35,7 +35,7 @@ import {
 
 function BenefitsStrip() {
   return (
-    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: 1, overflowX: "auto", pb: 0.5 }}>
+    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: "16px", overflowX: "auto", p:0 }}>
       {AUTH_BENEFITS.map((item) => (
         <Typography
           key={item}
@@ -47,8 +47,8 @@ function BenefitsStrip() {
             borderRadius: 999,
             bgcolor: "action.hover",
             width: "80%",
-            padding: "8px 12px",
-            borderRadius: "var(--mm-radius-sm)",
+            padding: "12px 16px",
+            borderRadius: "var(--mm-radius-md)",
             backgroundColor: "var(--mm-color-secondary-light)",
           }}
         >
@@ -180,7 +180,7 @@ export default function AuthPanel({
 
   return (
     <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: "16px" }}>
-      <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
+      <Box sx={{ display: "grid", gap: "16px", textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
         {canClose ? (
           <IconButton
             aria-label="Fermer"
