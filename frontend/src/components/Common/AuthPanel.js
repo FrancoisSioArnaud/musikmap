@@ -201,7 +201,7 @@ export default function AuthPanel({
 
       <Button
         variant="outlined"
-        sx={{  }}
+        sx={{ margin: "0 16px" }}
         startIcon={
           <Box
             component="img"
