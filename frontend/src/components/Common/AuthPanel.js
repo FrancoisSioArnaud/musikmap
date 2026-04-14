@@ -221,7 +221,7 @@ export default function AuthPanel({
 
       <Divider sx={{ my: 2 }}>
         <Typography
-          variant="body2"
+          variant="h4"
           sx={{
             lineHeight: 1,
           }}
