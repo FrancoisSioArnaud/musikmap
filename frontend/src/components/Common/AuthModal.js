@@ -9,7 +9,7 @@ export default function AuthModal(props) {
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
-    <Dialog open={props.open} onClose={props.onClose} fullScreen={fullScreen} maxWidth="sm" fullWidth>
+    <Dialog open={props.open} onClose={props.onClose} fullScreen={fullScreen} maxWidth="sm" fullWidth sx={{ p:"20px"}}>
       <AuthPanel {...props} mode="modal" />
     </Dialog>
   );
