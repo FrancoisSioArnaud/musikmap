@@ -4,6 +4,7 @@ import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
+import Divider from "@mui/material/Divider";
 import CardContent from "@mui/material/CardContent";
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -221,11 +222,9 @@ export default function AuthPanel({
         </Button>
       </Box>
 
-      <Typography>
-            Ou
-      </Typography>
+      <Divider textAlign="center">ou</Divider>
             
-      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth" sx={{ p:"0 16px" }}>
+      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
         <Tab label="J'ai un compte" value="login" />
         <Tab label="Nouveau compte" value="register" />
       </Tabs>
