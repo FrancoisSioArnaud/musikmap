@@ -186,13 +186,13 @@ export default function AuthPanel({
               <LockOutlinedIcon />
             </Avatar>
           </Box>
-          <Typography variant="h2">{copy.title}</Typography>
+          <Typography variant="h4">{copy.title}</Typography>
           <Typography variant="body1">{copy.description}</Typography>
           <BenefitsStrip />
         </Box>
 
         <Box sx={{ display: "grid", gap: 1.5 }}>
-          <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming</Typography>
+          <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
           <Button variant="outlined" startIcon={<MusicNoteIcon />} onClick={handleSpotifyLogin}>
             Continuer avec Spotify
           </Button>
@@ -207,7 +207,7 @@ export default function AuthPanel({
         {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
 
         {tab === "login" ? (
-          <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2 }}>
+          <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
             <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
             <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
             {isGuest ? (
@@ -222,7 +222,7 @@ export default function AuthPanel({
             </Button>
           </Box>
         ) : (
-          <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2 }}>
+          <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
             <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
             <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
             <Grid container spacing={2}>
