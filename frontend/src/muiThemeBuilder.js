@@ -119,7 +119,6 @@ export function buildMuiTheme(clientTheme) {
         defaultProps: {
           maxWidth: false,
           disableGutters: true,
-          p: 6,
         },
         styleOverrides: {
           root: {
