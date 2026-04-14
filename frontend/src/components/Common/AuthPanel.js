@@ -38,7 +38,7 @@ function BenefitsStrip() {
       {AUTH_BENEFITS.map((item) => (
         <Typography
           key={item}
-          variant="body2"
+          variant="body1"
           className="auth_benefit"
           sx={{
             whiteSpace: "nowrap",
