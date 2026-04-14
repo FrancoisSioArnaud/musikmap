@@ -177,7 +177,7 @@ export default function AuthPanel({
   const cardVariant = mode === "page" ? "outlined" : undefined;
 
   return (
-    <Box className={`auth_panel auth_panel--${mode}`} variant={cardVariant} sx={{ display: "grid", gap: 2.5 }}>
+    <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: 2.5 }}>
       <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
         {canClose ? (
           <IconButton
