@@ -181,7 +181,7 @@ export default function AuthPanel({
 
   return (
     <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: "16px" }}>
-      <Box sx={{ backgroundColor: "var(--mm-color-secondary-light)", display: "grid", gap: "16px", textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
+      <Box sx={{ backgroundColor: "var(--mm-color-secondary-light)", pt:"46px", display: "grid", gap: "16px", textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
         {canClose ? (
           <IconButton
             aria-label="Fermer"
