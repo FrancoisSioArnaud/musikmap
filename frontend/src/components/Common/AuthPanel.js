@@ -181,7 +181,7 @@ export default function AuthPanel({
 
   return (
     <Box className={`auth_panel auth_panel--${mode}`} sx={{ display: "grid", gap: "16px" }}>
-      <Box sx={{ display: "grid", gap: "16px", textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
+      <Box sx={{ backgroundColor: "var(--mm-color-secondary-light)", display: "grid", gap: "16px", textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
         {canClose ? (
           <IconButton
             aria-label="Fermer"
@@ -191,11 +191,7 @@ export default function AuthPanel({
             <CloseIcon />
           </IconButton>
         ) : null}
-        <Box sx={{ display: "flex", justifyContent: mode === "page" ? "flex-start" : "center" }}>
-          <Avatar sx={{ bgcolor: "var(--mm-color-primary)" }}>
-            <LockOutlinedIcon />
-          </Avatar>
-        </Box>
+
         <Box className="header" sx={{ p:"0 16px", textAlign: "center", gap: "12px", display: "grid" }}>
           <Typography variant="h4">Connecte toi !</Typography>
           <Typography variant="body1" sx={{ opacity:"var(--mm-opacity-light-text" }}>{copy.description}</Typography>
