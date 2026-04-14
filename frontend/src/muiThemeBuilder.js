@@ -151,6 +151,17 @@ export function buildMuiTheme(clientTheme) {
         },
       },
 
+      MuiTab: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            ...theme.typography.subtitle1,
+            textTransform: "none",
+            minHeight: "unset",
+            padding: "12px 16px",
+          }),
+        },
+      },
+
       MuiInputLabel: {
         styleOverrides: {
           root: {
