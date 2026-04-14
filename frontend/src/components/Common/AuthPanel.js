@@ -221,9 +221,13 @@ export default function AuthPanel({
         </Button>
       </Box>
 
+      <Typography>
+            Ou
+      </Typography>
+            
       <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth" sx={{ p:"0 16px" }}>
-        <Tab label="Login" value="login" />
-        <Tab label="Register" value="register" />
+        <Tab label="J'ai un compte" value="login" />
+        <Tab label="Nouveau compte" value="register" />
       </Tabs>
 
       {providerError ? <Alert severity="error">{providerError}</Alert> : null}
