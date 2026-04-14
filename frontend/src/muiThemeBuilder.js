@@ -141,7 +141,7 @@ export function buildMuiTheme(clientTheme) {
               borderColor: "var(--mm-color-divider)",
               borderTopWidth: "2px",
               top:0,
-              margin: "0 16px",
+              margin: "0 36px",
             },
           },
           wrapper: {
