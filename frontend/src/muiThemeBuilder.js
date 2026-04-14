@@ -130,6 +130,25 @@ export function buildMuiTheme(clientTheme) {
         },
       },
 
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            margin: 0,
+            borderColor: "var(--mm-color-divider)",
+          },
+          withChildren: {
+            "&::before, &::after": {
+              borderColor: "var(--mm-color-divider)",
+              top:0,
+              padding: "0 16px",
+            },
+          },
+          wrapper: {
+            paddingLeft: "8px",
+            paddingRight: "8px",
+          },
+        },
+      },
 
       MuiInputLabel: {
         styleOverrides: {
