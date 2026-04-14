@@ -121,6 +121,10 @@ export function buildMuiTheme(clientTheme) {
           fullWidth: true,
           maxWidth: "sm",
           padding:0,
+          paddingLeft:0,
+          paddingRight:0,
+          paddingTop:0,
+          paddingBottom:0,
         },
         styleOverrides: {
           paper: {
