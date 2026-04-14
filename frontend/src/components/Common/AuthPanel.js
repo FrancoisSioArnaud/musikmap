@@ -193,7 +193,7 @@ export default function AuthPanel({
         ) : null}
 
         <Box className="header" sx={{ p:"0 16px", textAlign: "center", gap: "12px", display: "grid" }}>
-          <Typography variant="h4">Connecte toi !</Typography>
+          <Typography variant="h3">Connecte toi !</Typography>
           <Typography variant="body1" sx={{ opacity:"var(--mm-opacity-light-text" }}>{copy.description}</Typography>
         </Box>
         <BenefitsStrip />
@@ -228,7 +228,7 @@ export default function AuthPanel({
       
             
       <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
-        <Tab label="J'ai un compte" value="login" />
+        <Tab label="Me connecter" value="login" />
         <Tab label="Nouveau compte" value="register" />
       </Tabs>
 
