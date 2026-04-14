@@ -116,6 +116,35 @@ export function buildMuiTheme(clientTheme) {
         },
       },
 
+      MuiDialog: {
+        defaultProps: {
+          fullWidth: true,
+          maxWidth: "sm",
+          padding:0,
+        },
+        styleOverrides: {
+          paper: {
+            borderRadius: 16,
+            padding: 0,
+          },
+        },
+      },
+
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            margin: 0,
+          },
+        },
+      },
+      MuiFormLabel: {
+        styleOverrides: {
+          root: {
+            margin: 0,
+          },
+        },
+      },
+
       MuiAvatar: {
         styleOverrides: {
           root: {
