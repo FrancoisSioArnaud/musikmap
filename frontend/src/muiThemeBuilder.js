@@ -139,6 +139,7 @@ export function buildMuiTheme(clientTheme) {
           withChildren: {
             "&::before, &::after": {
               borderColor: "var(--mm-color-divider)",
+              borderTopWidth: "2px",
               top:0,
               padding: "0 16px",
             },
