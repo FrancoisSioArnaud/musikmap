@@ -115,6 +115,20 @@ export function buildMuiTheme(clientTheme) {
           },
         },
       },
+      MuiContainer: {
+        defaultProps: {
+          maxWidth: false,
+          disableGutters: true,
+        },
+        styleOverrides: {
+          root: {
+            paddingLeft: 0,
+            paddingRight: 0,
+            marginLeft: 0,
+            marginRight: 0,
+          },
+        },
+      },
 
       MuiDialog: {
         defaultProps: {
