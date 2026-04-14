@@ -229,7 +229,7 @@ export default function AuthPanel({
       {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
 
       {tab === "login" ? (
-        <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
+        <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "16px" }}>
           <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
           <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
           {isGuest ? (
@@ -244,7 +244,7 @@ export default function AuthPanel({
           </Button>
         </Box>
       ) : (
-        <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "26px" }}>
+        <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, paddingTop: "16px" }}>
           <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
           <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
           <Grid container spacing={2}>
