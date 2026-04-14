@@ -218,7 +218,18 @@ export default function AuthPanel({
       >
         Me connecter avec Spotify
       </Button>
-      <Divider textAlign="center">ou</Divider>
+
+      <Divider sx={{ my: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            lineHeight: 1,
+          }}
+        >
+          ou
+        </Typography>
+      </Divider>
+      
             
       <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
         <Tab label="J'ai un compte" value="login" />
