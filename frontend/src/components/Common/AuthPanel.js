@@ -196,9 +196,9 @@ export default function AuthPanel({
             <LockOutlinedIcon />
           </Avatar>
         </Box>
-        <Box className="header" sx={{ p:"0 16px" }}>
-          <Typography variant="h4">{copy.title}</Typography>
-          <Typography variant="body1">{copy.description}</Typography>
+        <Box className="header" sx={{ p:"0 16px", textAlign: "center", gap: "12px", display: "grid“ }}>
+          <Typography variant="h4">Connecte toi !</Typography>
+          <Typography variant="body1" sx={{ opacity:"var(--mm-opacity-light-text" }}>{copy.description}</Typography>
         </Box>
         <BenefitsStrip />
       </Box>
