@@ -24,7 +24,7 @@ export default function AuthPage() {
   if (isAuthenticated) return null;
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ py: { xs: 2, sm: 5 } }}>
+    <Container component="main" maxWidth="sm">
       <AuthPanel
         mode="page"
         initialTab={searchParams.get("tab") || "register"}
