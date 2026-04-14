@@ -204,8 +204,8 @@ export default function AuthPanel({
       </Box>
 
       <Button
-        variant="outlined"
-        sx={{ justifySelf: "start" }}
+        variant="light"
+        sx={{  }}
         startIcon={
           <Box
             component="img"
@@ -216,7 +216,7 @@ export default function AuthPanel({
         }
         onClick={handleSpotifyLogin}
       >
-        Continuer avec Spotify
+        Me connecter avec Spotify
       </Button>
       <Divider textAlign="center">ou</Divider>
             
