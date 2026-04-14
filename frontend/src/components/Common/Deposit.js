@@ -604,7 +604,7 @@ export default function Deposit({
   };
 
   useEffect(() => {
-    if (!viewer?.id || !localDep?.public_key) return;
+    if (!viewer?.id || viewer?.is_guest || !localDep?.public_key) return;
 
     const currentPath = buildRelativeLocation(location);
     const commentAction = consumeAuthAction({
@@ -627,7 +627,7 @@ export default function Deposit({
     if (reactionAction) {
       setAddReactionOpen(true);
     }
-  }, [viewer?.id, localDep?.public_key, location]);
+  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location]);
 
   const showShareFeedback = useCallback((message) => {
     setShareSnack({ open: true, message });

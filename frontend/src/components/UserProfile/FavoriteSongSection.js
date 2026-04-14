@@ -84,7 +84,7 @@ export default function FavoriteSongSection({
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || user?.is_guest) return;
     const pendingAction = consumeAuthAction({
       currentPath: buildRelativeLocation(location),
       actionType: "favorite_song",
@@ -92,7 +92,7 @@ export default function FavoriteSongSection({
     if (pendingAction) {
       openDrawer();
     }
-  }, [location, openDrawer, user?.id]);
+  }, [location, openDrawer, user?.id, user?.is_guest]);
 
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;

@@ -14,8 +14,9 @@ import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
+import IconButton from "@mui/material/IconButton";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import MusicNoteIcon from "@mui/icons-material/MusicNote";
+import CloseIcon from "@mui/icons-material/Close";
 import { UserContext } from "../UserContext";
 import { checkUserStatus } from "../UsersUtils";
 import { getCookie } from "../Security/TokensUtils";
@@ -177,25 +178,45 @@ export default function AuthPanel({
 
   return (
     <Card className={`auth_panel auth_panel--${mode}`} variant={cardVariant} sx={{ display: "grid", gap: 2.5 }}>
-      <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center" }}>
+      <Box sx={{ display: "grid", gap: 1, textAlign: mode === "page" ? "left" : "center", position: "relative" }}>
+        {canClose ? (
+          <IconButton
+            aria-label="Fermer"
+            onClick={onClose}
+            sx={{ position: "absolute", top: -8, right: -8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        ) : null}
         <Box sx={{ display: "flex", justifyContent: mode === "page" ? "flex-start" : "center" }}>
           <Avatar sx={{ bgcolor: "var(--mm-color-primary)" }}>
             <LockOutlinedIcon />
           </Avatar>
         </Box>
-        <Typography variant="h4">Connecte toi</Typography>
+        <Typography variant="h4">{copy.title}</Typography>
         <Typography variant="body1">{copy.description}</Typography>
         <BenefitsStrip />
       </Box>
 
       <Box sx={{ display: "grid", gap: 1.5 }}>
         <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
-        <Button variant="outlined" startIcon={<MusicNoteIcon />} onClick={handleSpotifyLogin}>
+        <Button
+          variant="outlined"
+          startIcon={
+            <Box
+              component="img"
+              src="/static/images/spotify_logo_icon.svg"
+              alt="Spotify"
+              sx={{ width: 20, height: 20, display: "block" }}
+            />
+          }
+          onClick={handleSpotifyLogin}
+        >
           Continuer avec Spotify
         </Button>
       </Box>
 
-      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)}>
+      <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
         <Tab label="Login" value="login" />
         <Tab label="Register" value="register" />
       </Tabs>

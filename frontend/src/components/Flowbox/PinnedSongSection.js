@@ -217,7 +217,7 @@ export default function PinnedSongSection({ boxSlug }) {
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || user?.is_guest) return;
     const pendingAction = consumeAuthAction({
       currentPath: buildRelativeLocation(location),
       actionType: "pinned_song",
@@ -225,7 +225,7 @@ export default function PinnedSongSection({ boxSlug }) {
     if (pendingAction) {
       openSearchDrawer();
     }
-  }, [location, openSearchDrawer, user?.id]);
+  }, [location, openSearchDrawer, user?.id, user?.is_guest]);
 
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
