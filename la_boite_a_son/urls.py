@@ -14,8 +14,7 @@ urlpatterns = [
 
     path("index", TemplateView.as_view(template_name="index.html")),
     path("", TemplateView.as_view(template_name="index.html")),
-    path("register", TemplateView.as_view(template_name="index.html")),
-    path("login", TemplateView.as_view(template_name="index.html")),
+    path("auth", TemplateView.as_view(template_name="index.html")),
     path("profile", TemplateView.as_view(template_name="index.html")),
     path("profile/<str:username>", TemplateView.as_view(template_name="index.html")),
     path("library", TemplateView.as_view(template_name="index.html")),

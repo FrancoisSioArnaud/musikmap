@@ -7,26 +7,28 @@ import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus } from "../UsersUtils";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AvatarCropperModal from "./AvatarCropperModal";
+import { startAuthPageFlow } from "../Common/authFlow";
 
 export default function UserProfileEdit() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [cropOpen, setCropOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
   if (user?.is_guest) {
     return (
       <Box sx={{ p: 2, display: "grid", gap: 3 }}>
-        <Typography variant="h4">Finaliser mon compte</Typography>
+        <Typography variant="h4">Crée ton compte</Typography>
         <Typography variant="body1">
-          Les profils invités ne peuvent pas être modifiés ici. Finalise d’abord ton compte pour choisir ton nom visible et ta photo.
+          Les profils invités ne peuvent pas être modifiés ici. Crée ton compte pour choisir ton nom visible et ta photo.
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
-          <Button variant="contained" onClick={() => navigate("/register")}>Finaliser mon compte</Button>
+          <Button variant="contained" onClick={() => startAuthPageFlow({ navigate, location, tab: "register", authContext: "account", mergeGuest: true, prefillUsername: user?.username || "" })}>Créer mon compte</Button>
           <Button variant="outlined" onClick={() => navigate("/profile")}>Retour</Button>
         </Box>
       </Box>

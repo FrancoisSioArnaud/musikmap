@@ -1,5 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -30,6 +30,8 @@ import ReactionSummary from "../Reactions/ReactionSummary";
 import CommentsDrawer from "../Comments/CommentsDrawer";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { formatRelativeTime } from "../Utils/time";
+import AuthModal from "./AuthModal";
+import { buildRelativeLocation, clearAuthReturnContext, consumeAuthAction, saveAuthReturnContext } from "./authFlow";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
@@ -238,6 +240,7 @@ export default function Deposit({
   footerSlot = null,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useContext(UserContext) || {};
 
   const [localDep, setLocalDep] = useState(dep || {});
@@ -270,6 +273,7 @@ export default function Deposit({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [snackOpen, setSnackOpen] = useState(false);
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
+  const [authModalConfig, setAuthModalConfig] = useState(null);
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHoldingReveal, setIsHoldingReveal] = useState(false);
@@ -599,6 +603,32 @@ export default function Deposit({
     updateDepositCollections((item) => ({ ...(item || {}), comments: safeComments }));
   };
 
+  useEffect(() => {
+    if (!viewer?.id || !localDep?.public_key) return;
+
+    const currentPath = buildRelativeLocation(location);
+    const commentAction = consumeAuthAction({
+      currentPath,
+      actionType: "comments",
+      matcher: (payload) => payload?.depPublicKey === localDep.public_key,
+    });
+
+    if (commentAction) {
+      setCommentsOpen(true);
+      return;
+    }
+
+    const reactionAction = consumeAuthAction({
+      currentPath,
+      actionType: "reactions",
+      matcher: (payload) => payload?.depPublicKey === localDep.public_key,
+    });
+
+    if (reactionAction) {
+      setAddReactionOpen(true);
+    }
+  }, [viewer?.id, localDep?.public_key, location]);
+
   const showShareFeedback = useCallback((message) => {
     setShareSnack({ open: true, message });
   }, []);
@@ -607,7 +637,15 @@ export default function Deposit({
     event?.stopPropagation?.();
 
     if (!viewer?.id) {
-      window.alert("Connecte-toi ou finalise ton compte pour partager cette chanson.");
+      saveAuthReturnContext({
+        returnTo: buildRelativeLocation(location),
+        authContext: "share_song",
+      });
+      setAuthModalConfig({
+        authContext: "share_song",
+        mergeGuest: Boolean(viewer?.is_guest),
+        prefillUsername: viewer?.is_guest ? (viewer?.username || "") : "",
+      });
       return;
     }
 
@@ -715,7 +753,23 @@ export default function Deposit({
                 return;
               }
               if (!viewer?.id) {
-                window.alert("Connecte toi pour pouvoir réagir.");
+                saveAuthReturnContext({
+                  returnTo: buildRelativeLocation(location),
+                  authContext: "react",
+                  action: {
+                    type: "reactions",
+                    payload: { depPublicKey: localDep?.public_key },
+                  },
+                });
+                setAuthModalConfig({
+                  authContext: "react",
+                  mergeGuest: Boolean(viewer?.is_guest),
+                  prefillUsername: viewer?.is_guest ? (viewer?.username || "") : "",
+                  action: {
+                    type: "reactions",
+                    payload: { depPublicKey: localDep?.public_key },
+                  },
+                });
                 return;
               }
               setAddReactionOpen(true);
@@ -971,6 +1025,23 @@ export default function Deposit({
           }
         />
       </Snackbar>
+
+      <AuthModal
+        open={Boolean(authModalConfig)}
+        onClose={() => { clearAuthReturnContext(); setAuthModalConfig(null); }}
+        initialTab="register"
+        authContext={authModalConfig?.authContext || "default"}
+        mergeGuest={Boolean(authModalConfig?.mergeGuest)}
+        prefillUsername={authModalConfig?.prefillUsername || ""}
+        authAction={authModalConfig?.action || null}
+        onAuthenticated={() => {
+          const actionType = authModalConfig?.action?.type;
+          setAuthModalConfig(null);
+          if (actionType === "reactions") {
+            setAddReactionOpen(true);
+          }
+        }}
+      />
 
       <Snackbar
         open={shareSnack.open}

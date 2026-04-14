@@ -18,8 +18,7 @@ import {
 import { applyActiveClientTheme } from "../applyActiveClientTheme";
 
 import HomePage from "./HomePage";
-import RegisterPage from "./RegisterPage";
-import LoginPage from "./LoginPage";
+import AuthPage from "./AuthPage";
 import UserProfilePage from "./UserProfilePage";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
@@ -167,18 +166,10 @@ export default function App() {
               </Route>
 
               <Route
-                path="/register"
+                path="/auth"
                 element={
                   authChecked
-                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <RegisterPage />)
-                    : null
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  authChecked
-                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <LoginPage />)
+                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <AuthPage />)
                     : null
                 }
               />

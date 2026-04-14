@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 
 import Container from "@mui/material/Container";
@@ -22,10 +22,12 @@ import {
   authenticateSpotifyUser,
   disconnectSpotifyUser,
 } from "../Utils/streaming/SpotifyUtils";
+import { startAuthPageFlow } from "../Common/authFlow";
 
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isSpotifyAuthenticated, setIsSpotifyAuthenticated] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -55,7 +57,7 @@ export default function UserSettings() {
     return (
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <Card variant="outlined">
-          <CardHeader titleTypographyProps={{ variant: "h6" }} title="Finaliser mon compte" />
+          <CardHeader titleTypographyProps={{ variant: "h6" }} title="Créer mon compte" />
           <Divider />
           <CardContent>
             <Stack spacing={2}>
@@ -63,11 +65,11 @@ export default function UserSettings() {
                 Ton profil invité te permet déjà de cumuler tes points, déposer, réagir et retrouver tes chansons sur cet appareil.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Finalise ton compte pour choisir un nom visible par les autres, personnaliser ton apparence et accéder aux autres fonctionnalités du compte.
+                Crée ton compte pour choisir un nom visible par les autres, personnaliser ton apparence et accéder aux autres fonctionnalités du compte.
               </Typography>
               <Box sx={{ display: "flex", gap: 1 }}>
-                <Button variant="contained" onClick={() => navigate("/register")}>
-                  Finaliser mon compte
+                <Button variant="contained" onClick={() => startAuthPageFlow({ navigate, location, tab: "register", authContext: "account", mergeGuest: true, prefillUsername: user?.username || "" })}>
+                  Créer mon compte
                 </Button>
                 <Button variant="outlined" onClick={() => navigate("/profile")}>
                   Retour

@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -15,6 +15,7 @@ import SearchBar from "../Common/SearchBar";
 import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
 
 const SLOW_PROGRESS_TARGET = 78;
 const SLOW_PROGRESS_DURATION_MS = 2800;
@@ -35,6 +36,7 @@ export default function FavoriteSongSection({
   initialFavoriteDeposit = null,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, setUser } = useContext(UserContext) || {};
 
   const [favoriteDeposit, setFavoriteDeposit] = useState(initialFavoriteDeposit || null);
@@ -44,6 +46,7 @@ export default function FavoriteSongSection({
   const [postingProgress, setPostingProgress] = useState(0);
   const [postingTransitionMs, setPostingTransitionMs] = useState(0);
   const searchInputRef = useRef(null);
+
 
   const {
     searchValue,
@@ -79,6 +82,17 @@ export default function FavoriteSongSection({
   const openDrawer = () => {
     setDrawerOpen(true);
   };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const pendingAction = consumeAuthAction({
+      currentPath: buildRelativeLocation(location),
+      actionType: "favorite_song",
+    });
+    if (pendingAction) {
+      openDrawer();
+    }
+  }, [location, openDrawer, user?.id]);
 
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
@@ -255,19 +269,23 @@ export default function FavoriteSongSection({
       return (
         <>
           <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-            Finalise ton compte pour pouvoir attacher une chanson à ton profil.
+            Crée ton compte pour pouvoir attacher une chanson à ton profil.
           </Typography>
           <Button
             variant="contained"
             onClick={() =>
-              navigate(
-                `/register?merge_guest=1&prefill_username=${encodeURIComponent(
-                  user?.username || ""
-                )}`
-              )
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "register",
+                authContext: "favorite_song",
+                mergeGuest: true,
+                prefillUsername: user?.username || "",
+                action: { type: "favorite_song", payload: {} },
+              })
             }
           >
-            Finalise ton compte
+            Créer mon compte
           </Button>
         </>
       );

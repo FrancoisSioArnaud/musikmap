@@ -169,7 +169,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.CustomUser'
 SOCIAL_AUTH_USER_MODEL = 'users.CustomUser'
 LOGIN_REDIRECT_URL = '/profile'
-LOGIN_ERROR_URL = '/login?social_auth=error'
+LOGIN_ERROR_URL = '/auth?social_auth=error&tab=login'
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/profile'
 SOCIAL_AUTH_SANITIZE_REDIRECTS = False
 

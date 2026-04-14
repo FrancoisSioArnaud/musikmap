@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -23,6 +23,8 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 
 import { getCookie } from "../Security/TokensUtils";
+import AuthModal from "../Common/AuthModal";
+import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Common/authFlow";
 
 const REPORT_REASONS = [
   { value: "harassment", label: "Insulte / harcèlement" },
@@ -30,24 +32,6 @@ const REPORT_REASONS = [
   { value: "spam", label: "Spam" },
   { value: "other", label: "Autre" },
 ];
-
-function getCommentPromptCopy(viewer) {
-  if (viewer?.is_guest) {
-    return {
-      title: "Finalise ton compte",
-      message: "Finalise la création de ton compte pour pouvoir commenter.",
-      target: "/register?merge_guest=1",
-      actionLabel: "Finaliser",
-    };
-  }
-
-  return {
-    title: "Crée ton compte",
-    message: "Crée ton compte pour pouvoir commenter.",
-    target: "/register",
-    actionLabel: "Créer mon compte",
-  };
-}
 
 export default function CommentsDrawer({
   open,
@@ -57,7 +41,7 @@ export default function CommentsDrawer({
   viewer,
   onCommentsChange,
 }) {
-  const navigate = useNavigate();
+  const location = useLocation();
 
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +68,14 @@ export default function CommentsDrawer({
   };
 
   const openAuthPrompt = () => {
+    saveAuthReturnContext({
+      returnTo: buildRelativeLocation(location),
+      authContext: "comment",
+      action: {
+        type: "comments",
+        payload: { depPublicKey },
+      },
+    });
     setAuthPromptOpen(true);
   };
 
@@ -183,7 +175,6 @@ export default function CommentsDrawer({
     }
   };
 
-  const commentPromptCopy = getCommentPromptCopy(viewer);
 
   return (
     <>
@@ -404,23 +395,19 @@ export default function CommentsDrawer({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={authPromptOpen} onClose={() => setAuthPromptOpen(false)}>
-        <DialogTitle>{commentPromptCopy.title}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">{commentPromptCopy.message}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAuthPromptOpen(false)}>Annuler</Button>
-          <Button
-            onClick={() => {
-              setAuthPromptOpen(false);
-              navigate(commentPromptCopy.target);
-            }}
-          >
-            {commentPromptCopy.actionLabel}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AuthModal
+        open={authPromptOpen}
+        onClose={() => { clearAuthReturnContext(); setAuthPromptOpen(false); }}
+        initialTab="register"
+        authContext="comment"
+        mergeGuest={Boolean(viewer?.is_guest)}
+        prefillUsername={viewer?.is_guest ? (viewer?.username || "") : ""}
+        authAction={{
+          type: "comments",
+          payload: { depPublicKey },
+        }}
+        onAuthenticated={() => setAuthPromptOpen(false)}
+      />
     </>
   );
 }

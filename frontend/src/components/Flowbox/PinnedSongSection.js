@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -17,6 +17,7 @@ import useSongSearch from "../Common/useSongSearch";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);
@@ -70,6 +71,7 @@ const TTL_MINUTES = 120;
 
 export default function PinnedSongSection({ boxSlug }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, setUser } = useContext(UserContext) || {};
 
   const [loading, setLoading] = useState(true);
@@ -82,6 +84,7 @@ export default function PinnedSongSection({ boxSlug }) {
   const [posting, setPosting] = useState(false);
   const [nowTs, setNowTs] = useState(Date.now());
   const searchInputRef = useRef(null);
+
 
   const {
     searchValue,
@@ -213,6 +216,17 @@ export default function PinnedSongSection({ boxSlug }) {
     setDrawerOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const pendingAction = consumeAuthAction({
+      currentPath: buildRelativeLocation(location),
+      actionType: "pinned_song",
+    });
+    if (pendingAction) {
+      openSearchDrawer();
+    }
+  }, [location, openSearchDrawer, user?.id]);
+
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
     setDrawerOpen(false);
@@ -338,17 +352,23 @@ export default function PinnedSongSection({ boxSlug }) {
       return (
         <>
           <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-            Finalise ton compte pour pouvoir épingler une chanson.
+            Crée ton compte pour pouvoir épingler une chanson.
           </Typography>
           <Button
             variant="contained"
             onClick={() =>
-              navigate(
-                `/register?merge_guest=1&prefill_username=${encodeURIComponent(user?.username || "")}`
-              )
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "register",
+                authContext: "pinned_song",
+                mergeGuest: true,
+                prefillUsername: user?.username || "",
+                action: { type: "pinned_song", payload: {} },
+              })
             }
           >
-            Finalise ton compte
+            Créer mon compte
           </Button>
         </>
       );

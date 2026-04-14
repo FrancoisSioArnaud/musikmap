@@ -68,7 +68,7 @@ export default function MenuAppBar() {
             variant="menu"
             endIcon={<PersonIcon />}
             component={Link}
-            to="/login"
+            to="/auth?tab=login"
             sx={{
               borderRadius: "20px",
               backgroundColor: "background.paper",

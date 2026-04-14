@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -15,24 +15,8 @@ import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-
-function getPurchasePromptCopy(viewer) {
-  if (viewer?.is_guest) {
-    return {
-      title: "Finalise ton compte",
-      message: "Finalise la création de ton compte pour utiliser tes points.",
-      target: "/register?merge_guest=1",
-      actionLabel: "Finaliser",
-    };
-  }
-
-  return {
-    title: "Crée ton compte",
-    message: "Crée ton compte pour débloquer des réactions.",
-    target: "/register",
-    actionLabel: "Créer mon compte",
-  };
-}
+import AuthModal from "../Common/AuthModal";
+import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Common/authFlow";
 
 export default function AddReactionModal({
   open,
@@ -43,7 +27,7 @@ export default function AddReactionModal({
   setUser,
   viewer,
 }) {
-  const navigate = useNavigate();
+  const location = useLocation();
   const userContext = useContext(UserContext) || {};
   const effectiveViewer = viewer || userContext.user || null;
   const [loading, setLoading] = useState(false);
@@ -115,6 +99,14 @@ export default function AddReactionModal({
     emoji?.cost === 0 || (emoji?.id && catalog.owned_ids.includes(emoji.id));
 
   const openPurchasePrompt = () => {
+    saveAuthReturnContext({
+      returnTo: buildRelativeLocation(location),
+      authContext: "unlock_reaction",
+      action: {
+        type: "reactions",
+        payload: { depPublicKey },
+      },
+    });
     setUnlockTargetId(null);
     setPurchasePromptOpen(true);
   };
@@ -348,26 +340,19 @@ export default function AddReactionModal({
         </Box>
       </Box>
 
-      <Dialog
+      <AuthModal
         open={purchasePromptOpen}
-        onClose={() => setPurchasePromptOpen(false)}
-      >
-        <DialogTitle>{purchasePromptCopy.title}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">{purchasePromptCopy.message}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPurchasePromptOpen(false)}>Annuler</Button>
-          <Button
-            onClick={() => {
-              setPurchasePromptOpen(false);
-              navigate(purchasePromptCopy.target);
-            }}
-          >
-            {purchasePromptCopy.actionLabel}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onClose={() => { clearAuthReturnContext(); setPurchasePromptOpen(false); }}
+        initialTab="register"
+        authContext="unlock_reaction"
+        mergeGuest={Boolean(effectiveViewer?.is_guest)}
+        prefillUsername={effectiveViewer?.is_guest ? (effectiveViewer?.username || "") : ""}
+        authAction={{
+          type: "reactions",
+          payload: { depPublicKey },
+        }}
+        onAuthenticated={() => setPurchasePromptOpen(false)}
+      />
     </>
   );
 }

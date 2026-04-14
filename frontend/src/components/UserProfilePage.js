@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
 import Box from "@mui/material/Box";
@@ -22,6 +22,7 @@ import {
   readPageState,
   saveProfileTabState,
 } from "./Utils/pageStateStorage";
+import { startAuthPageFlow } from "./Common/authFlow";
 
 function TabPanel({ index, value, children }) {
   if (value !== index) return null;
@@ -51,6 +52,7 @@ async function fetchUserInfo(username, signal) {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const { user } = useContext(UserContext) || {};
 
@@ -161,11 +163,14 @@ export default function UserProfilePage() {
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();
     if (!nextUsername) return;
-    navigate(
-      `/register?merge_guest=1&prefill_username=${encodeURIComponent(
-        nextUsername
-      )}`
-    );
+    startAuthPageFlow({
+      navigate,
+      location,
+      tab: "register",
+      authContext: "account",
+      mergeGuest: true,
+      prefillUsername: nextUsername,
+    });
   };
 
   if (header.status === "loading") {

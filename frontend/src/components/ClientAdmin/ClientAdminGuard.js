@@ -43,7 +43,7 @@ export default function ClientAdminGuard({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/auth?tab=login&context=client_admin" state={{ from: location }} replace />;
   }
 
   if (!hasClientPortalAccess(user)) {
