@@ -203,25 +203,21 @@ export default function AuthPanel({
         <BenefitsStrip />
       </Box>
 
-      <Box sx={{ display: "grid", gap: "8px", p:"0 16px" }}>
-        <Typography variant="subtitle1">Connecte toi avec ta plateforme de streaming favorite</Typography>
-        <Button
-          variant="outlined"
-          sx={{ justifySelf: "start" }}
-          startIcon={
-            <Box
-              component="img"
-              src="/static/images/spotify_logo_icon.svg"
-              alt="Spotify"
-              sx={{ width: 20, height: 20, display: "block" }}
-            />
-          }
-          onClick={handleSpotifyLogin}
-        >
-          Continuer avec Spotify
-        </Button>
-      </Box>
-
+      <Button
+        variant="outlined"
+        sx={{ justifySelf: "start" }}
+        startIcon={
+          <Box
+            component="img"
+            src="/static/images/spotify_logo_icon.svg"
+            alt="Spotify"
+            sx={{ width: 20, height: 20, display: "block" }}
+          />
+        }
+        onClick={handleSpotifyLogin}
+      >
+        Continuer avec Spotify
+      </Button>
       <Divider textAlign="center">ou</Divider>
             
       <Tabs value={tab} onChange={(_event, nextValue) => setTab(nextValue)} variant="fullWidth">
