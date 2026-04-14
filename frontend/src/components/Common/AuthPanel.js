@@ -50,7 +50,7 @@ function BenefitsStrip() {
             width: "80%",
             padding: "12px 16px",
             borderRadius: "var(--mm-radius-md)",
-            backgroundColor: "var(--mm-color-secondary-light)",
+            backgroundColor: "var(--mm-color-paper)",
           }}
         >
           {item}
