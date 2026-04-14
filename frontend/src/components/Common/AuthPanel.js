@@ -200,7 +200,7 @@ export default function AuthPanel({
       </Box>
 
       <Button
-        variant="light"
+        variant="outlined"
         sx={{  }}
         startIcon={
           <Box
