@@ -35,7 +35,7 @@ import {
 
 function BenefitsStrip() {
   return (
-    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: "16px", overflowX: "auto", p:0 }}>
+    <Box className="auth_benefits_strip" sx={{ display: "flex", gap: "16px", overflowX: "hidden", p:0 }}>
       {AUTH_BENEFITS.map((item) => (
         <Typography
           key={item}
