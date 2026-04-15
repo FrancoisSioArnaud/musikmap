@@ -16,7 +16,7 @@ import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
-import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);

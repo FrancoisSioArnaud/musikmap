@@ -22,7 +22,7 @@ import {
   readPageState,
   saveProfileTabState,
 } from "./Utils/pageStateStorage";
-import { startAuthPageFlow } from "./Common/authFlow";
+import { startAuthPageFlow } from "./Auth/AuthFlow";
 
 function TabPanel({ index, value, children }) {
   if (value !== index) return null;

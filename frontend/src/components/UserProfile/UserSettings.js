@@ -22,7 +22,7 @@ import {
   authenticateSpotifyUser,
   disconnectSpotifyUser,
 } from "../Utils/streaming/SpotifyUtils";
-import { startAuthPageFlow } from "../Common/authFlow";
+import { startAuthPageFlow } from "../Auth/AuthFlow";
 
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);

@@ -9,7 +9,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus } from "../UsersUtils";
 import { useLocation, useNavigate } from "react-router-dom";
 import AvatarCropperModal from "./AvatarCropperModal";
-import { startAuthPageFlow } from "../Common/authFlow";
+import { startAuthPageFlow } from "../Auth/AuthFlow";
 
 export default function UserProfileEdit() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);

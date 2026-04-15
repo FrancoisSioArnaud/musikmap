@@ -23,8 +23,8 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 
 import { getCookie } from "../Security/TokensUtils";
-import AuthModal from "../Common/AuthModal";
-import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Common/authFlow";
+import AuthModal from "../Auth/AuthModal";
+import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
 
 const REPORT_REASONS = [
   { value: "harassment", label: "Insulte / harcèlement" },

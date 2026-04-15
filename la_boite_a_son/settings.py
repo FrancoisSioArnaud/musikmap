@@ -32,8 +32,6 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SOCIAL_AUTH_REDIRECT_IS_HTTPS = os.environ.get("SOCIAL_AUTH_REDIRECT_IS_HTTPS", "True") == "True"
-
 
 # Application definition
 
@@ -143,8 +141,6 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o2775
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# General Social-Auth settings
-# https://python-social-auth.readthedocs.io/en/latest/configuration/django.html
 
 AUTH_USER_MODEL = 'users.CustomUser'
 

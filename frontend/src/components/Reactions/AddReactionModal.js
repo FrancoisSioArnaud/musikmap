@@ -15,8 +15,8 @@ import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import AuthModal from "../Common/AuthModal";
-import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Common/authFlow";
+import AuthModal from "../Auth/AuthModal";
+import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
 
 export default function AddReactionModal({
   open,

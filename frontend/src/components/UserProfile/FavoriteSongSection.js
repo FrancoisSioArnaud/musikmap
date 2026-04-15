@@ -14,7 +14,7 @@ import SearchPanel from "../Common/Search/SearchPanel";
 import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 
 const SLOW_PROGRESS_TARGET = 78;
 const SLOW_PROGRESS_DURATION_MS = 2800;
