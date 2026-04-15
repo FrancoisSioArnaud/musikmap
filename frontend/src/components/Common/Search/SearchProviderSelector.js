@@ -207,6 +207,7 @@ export default function SearchProviderSelector({
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
           const label = PROVIDER_LABELS[providerCode] || providerCode;
+          const iconPath = PROVIDER_ICON_PATHS[providerCode];
 
           if (isConnected) {
             return (
@@ -216,6 +217,15 @@ export default function SearchProviderSelector({
                 onClick={() => handleSelect(providerCode)}
                 className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >
+                {iconPath ? (
+                  <Box
+                    component="img"
+                    src={iconPath}
+                    alt={label}
+                    className={`search_personalization_selector_option_icon search_personalization_selector_option_icon--${providerCode}`}
+                    sx={{ width: 20, height: 20, display: "block", mr: 1 }}
+                  />
+                ) : null}
                 {label}
               </MenuItem>
             );
@@ -226,9 +236,6 @@ export default function SearchProviderSelector({
               key={providerCode}
               className={`search_personalization_selector_provider search_personalization_selector_provider--${providerCode}`}
             >
-              <Typography variant="body1" className="search_personalization_selector_provider_label">
-                {label}
-              </Typography>
               <Button
                 variant="light"
                 onClick={() => handleConnect(providerCode)}
@@ -236,7 +243,7 @@ export default function SearchProviderSelector({
                 startIcon={
                   <Box
                     component="img"
-                    src={PROVIDER_ICON_PATHS[providerCode]}
+                    src={iconPath}
                     alt={label}
                     sx={{ width: 20, height: 20, display: "block" }}
                   />
