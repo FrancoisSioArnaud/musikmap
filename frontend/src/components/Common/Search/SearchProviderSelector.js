@@ -207,7 +207,6 @@ export default function SearchProviderSelector({
         {Object.keys(PROVIDER_LABELS).map((providerCode) => {
           const isConnected = connectedSet.has(providerCode);
           const label = PROVIDER_LABELS[providerCode] || providerCode;
-          const iconPath = PROVIDER_ICON_PATHS[providerCode];
 
           if (isConnected) {
             return (
@@ -217,33 +216,30 @@ export default function SearchProviderSelector({
                 onClick={() => handleSelect(providerCode)}
                 className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >
-                {iconPath ? (
-                  <Box
-                    component="img"
-                    src={iconPath}
-                    alt={label}
-                    className={`search_personalization_selector_option_icon search_personalization_selector_option_icon--${providerCode}`}
-                    sx={{ width: 20, height: 20, display: "block", mr: 1 }}
-                  />
-                ) : null}
+                <Box
+                  component="img"
+                  src={PROVIDER_ICON_PATHS[providerCode]}
+                  alt={label}
+                  sx={{ width: 20, height: 20, display: "block", marginRight: "8px" }}
+                />
                 {label}
               </MenuItem>
             );
           }
 
           return (
-            <Box
+            <MenuItem
               key={providerCode}
+              onClick={() => handleConnect(providerCode)}
               className={`search_personalization_selector_provider search_personalization_selector_provider--${providerCode}`}
             >
               <Button
                 variant="light"
-                onClick={() => handleConnect(providerCode)}
                 className="search_personalization_selector_connect_button"
                 startIcon={
                   <Box
                     component="img"
-                    src={iconPath}
+                    src={PROVIDER_ICON_PATHS[providerCode]}
                     alt={label}
                     sx={{ width: 20, height: 20, display: "block" }}
                   />
@@ -251,7 +247,7 @@ export default function SearchProviderSelector({
               >
                 Connecter mon {label}
               </Button>
-            </Box>
+            </MenuItem>
           );
         })}
       </Menu>
