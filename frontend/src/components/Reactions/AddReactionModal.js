@@ -227,7 +227,6 @@ export default function AddReactionModal({
     onClose();
   };
 
-  const purchasePromptCopy = getPurchasePromptCopy(effectiveViewer);
 
   return (
     <>
