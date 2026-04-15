@@ -4,11 +4,12 @@ from urllib.parse import urlencode
 import requests
 from django.contrib.auth import login
 from django.shortcuts import redirect
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.models import CustomUser
+from users.models import CustomUser, UserProviderConnection
 from users.utils import (
     build_current_user_payload,
     clear_guest_cookie,
@@ -21,16 +22,22 @@ from .credentials import CLIENT_ID, CLIENT_SECRET
 from .spotipy_client import sp
 from .util import (
     DEFAULT_SPOTIFY_SCOPES,
+    apply_pending_spotify_auth_to_user,
     clear_pending_spotify_auth,
     disconnect_user,
     fetch_spotify_profile,
+    generate_unique_username,
+    get_pending_spotify_auth,
     get_user_tokens,
     hydrate_user_from_spotify_profile,
     is_spotify_authenticated,
+    link_spotify_to_user,
     refresh_spotify_token,
+    resolve_pending_spotify_auth,
     store_pending_spotify_auth,
     update_or_create_user_tokens,
 )
+from users.provider_connections import upsert_provider_connection
 
 SPOTIFY_SCOPES = " ".join(DEFAULT_SPOTIFY_SCOPES)
 
@@ -164,6 +171,44 @@ class ClearPendingAuth(APIView):
         return Response({"status": True}, status=status.HTTP_200_OK)
 
 
+class PendingAuthStatus(APIView):
+    def get(self, request, format=None):
+        pending = get_pending_spotify_auth(request)
+        if not pending:
+            return Response({"pending": False}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "pending": True,
+                "type": pending.get("type") or "",
+                "reason": pending.get("reason") or "",
+                "email": pending.get("email") or "",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResolvePendingAuth(APIView):
+    def post(self, request, format=None):
+        action = str(request.data.get("action") or "").strip().lower()
+        result = resolve_pending_spotify_auth(request, action=action)
+        if not result.get("ok"):
+            return Response({"detail": result.get("reason") or "Impossible de traiter la demande."}, status=result.get("status") or 400)
+
+        user = result.get("user")
+        if user:
+            login(request, user)
+            touch_last_seen(user)
+            response_data = {
+                "result": result.get("type") or "merge_success",
+                "current_user": build_current_user_payload(user),
+            }
+            response = Response(response_data, status=status.HTTP_200_OK)
+            clear_guest_cookie(response)
+            return response
+
+        return Response({"result": result.get("type") or "cancelled"}, status=status.HTTP_200_OK)
+
+
 class Search(APIView):
     def post(self, request, format=None):
         search_query = request.data.get("search_query")
@@ -235,9 +280,6 @@ def spotify_callback(request, format=None):
         return _frontend_result_redirect("error", {"reason": "spotify_profile_error"})
 
     current_user = get_current_app_user(request)
-
-    from users.models import UserProviderConnection
-
     provider_owner_connection = (
         UserProviderConnection.objects.select_related("user")
         .filter(provider_code="spotify", provider_user_id=provider_user_id, is_active=True)
@@ -255,20 +297,24 @@ def spotify_callback(request, format=None):
                     "provider_user_id": provider_user_id,
                     "target_user_id": provider_owner.pk,
                     "current_user_id": current_user.pk,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "expires_in": expires_in,
+                    "profile": profile,
+                    "scopes": DEFAULT_SPOTIFY_SCOPES,
                 },
             )
             return _frontend_result_redirect("merge_required", {"reason": "spotify_already_linked"})
 
-        update_or_create_user_tokens(
+        link_spotify_to_user(
             current_user,
-            access_token,
-            payload.get("token_type", "Bearer"),
-            expires_in,
-            refresh_token,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=expires_in,
             provider_user_id=provider_user_id,
+            profile=profile,
             scopes=DEFAULT_SPOTIFY_SCOPES,
         )
-        hydrate_user_from_spotify_profile(current_user, profile)
         touch_last_seen(current_user)
         return _frontend_result_redirect("provider_linked")
 
@@ -279,16 +325,15 @@ def spotify_callback(request, format=None):
             except Exception:
                 return _frontend_result_redirect("merge_required", {"reason": "spotify_already_linked"})
             login(request, provider_owner)
-            update_or_create_user_tokens(
+            link_spotify_to_user(
                 provider_owner,
-                access_token,
-                payload.get("token_type", "Bearer"),
-                expires_in,
-                refresh_token,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
                 provider_user_id=provider_user_id,
+                profile=profile,
                 scopes=DEFAULT_SPOTIFY_SCOPES,
             )
-            hydrate_user_from_spotify_profile(provider_owner, profile)
             touch_last_seen(provider_owner)
             response = _frontend_result_redirect("login_success")
             clear_guest_cookie(response)
@@ -323,16 +368,15 @@ def spotify_callback(request, format=None):
         return response
 
     if provider_owner:
-        update_or_create_user_tokens(
+        link_spotify_to_user(
             provider_owner,
-            access_token,
-            payload.get("token_type", "Bearer"),
-            expires_in,
-            refresh_token,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=expires_in,
             provider_user_id=provider_user_id,
+            profile=profile,
             scopes=DEFAULT_SPOTIFY_SCOPES,
         )
-        hydrate_user_from_spotify_profile(provider_owner, profile)
         login(request, provider_owner)
         touch_last_seen(provider_owner)
         return _frontend_result_redirect("login_success")

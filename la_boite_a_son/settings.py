@@ -53,9 +53,6 @@ INSTALLED_APPS = [
     'deezer.apps.DeezerConfig',
     'box_management.apps.BoxManagementConfig',
     'users',
-
-    # Django Social-Auth
-    'social_django'
 ]
 
 MIDDLEWARE = [
@@ -65,11 +62,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    # Django Social-Auth middleware
-    'social_django.middleware.SocialAuthExceptionMiddleware'
-]
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',]
 
 ROOT_URLCONF = 'la_boite_a_son.urls'
 
@@ -83,25 +76,12 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-
-                # Django Social-Auth processors
-                'social_django.context_processors.backends',
-                'social_django.context_processors.login_redirect'
-            ],
+                'django.contrib.messages.context_processors.messages',            ],
         },
     },
 ]
 
-# Authentication providers
-# https://python-social-auth.readthedocs.io/en/latest/configuration/django.html
 AUTHENTICATION_BACKENDS = [
-
-    # Music streaming platforms
-    'social_core.backends.spotify.SpotifyOAuth2',
-    'social_core.backends.deezer.DeezerOAuth2',
-
-    # Default auth model
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -167,27 +147,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # https://python-social-auth.readthedocs.io/en/latest/configuration/django.html
 
 AUTH_USER_MODEL = 'users.CustomUser'
-SOCIAL_AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_REDIRECT_URL = '/profile'
-LOGIN_ERROR_URL = '/auth?social_auth=error&tab=login'
-SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/profile'
-SOCIAL_AUTH_SANITIZE_REDIRECTS = False
-
-
-# Social-Auth settings for Spotify provider
-# https://python-social-auth.readthedocs.io/en/latest/backends/spotify.html
-
-SOCIAL_AUTH_SPOTIFY_KEY = CLIENT_ID
-SOCIAL_AUTH_SPOTIFY_SECRET = CLIENT_SECRET
-SOCIAL_AUTH_SPOTIFY_SCOPE = ['user-read-email']
-SOCIAL_AUTH_SPOTIFY_EXTRA_DATA = [('email', 'email')]
-
-# Social-Auth settings for Deezer provider
-
-SOCIAL_AUTH_DEEZER_KEY = LOGIN_APP_ID
-SOCIAL_AUTH_DEEZER_SECRET = LOGIN_APP_SECRET
-SOCIAL_AUTH_DEEZER_SCOPE = ['user-read-email']
-SOCIAL_AUTH_DEEZER_EXTRA_DATA = [('email', 'email')]
 
 
 

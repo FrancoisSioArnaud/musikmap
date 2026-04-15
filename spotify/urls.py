@@ -1,5 +1,15 @@
 from django.urls import path
-from .views import AuthURL, spotify_callback, IsAuthenticated, RefreshAccessToken, Search, Disconnect, ClearPendingAuth
+from .views import (
+    AuthURL,
+    spotify_callback,
+    IsAuthenticated,
+    RefreshAccessToken,
+    Search,
+    Disconnect,
+    ClearPendingAuth,
+    PendingAuthStatus,
+    ResolvePendingAuth,
+)
 
 
 urlpatterns = [
@@ -10,4 +20,6 @@ urlpatterns = [
     path('refresh-access-token', RefreshAccessToken.as_view()),
     path('search', Search.as_view()),
     path('clear-pending-auth', ClearPendingAuth.as_view()),
+    path('pending-auth-status', PendingAuthStatus.as_view()),
+    path('resolve-pending-auth', ResolvePendingAuth.as_view()),
 ]

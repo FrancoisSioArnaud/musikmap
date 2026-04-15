@@ -287,12 +287,12 @@ def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
 
         return True, {"status": "Points mis à jour avec succès.", "points_balance": working_user.points}, 200
 
-def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
-    if not guest_user or not target_user:
+def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, require_source_guest: bool = False):
+    if not source_user or not target_user:
         return {"merged": False, "reason": "missing_user"}
-    if guest_user.pk == target_user.pk:
+    if source_user.pk == target_user.pk:
         return {"merged": False, "reason": "same_user"}
-    if not getattr(guest_user, "is_guest", False):
+    if require_source_guest and not getattr(source_user, "is_guest", False):
         return {"merged": False, "reason": "source_not_guest"}
 
     from box_management.models import (
@@ -309,16 +309,16 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
     )
 
     with transaction.atomic():
-        guest = CustomUser.objects.select_for_update().get(pk=guest_user.pk)
+        source = CustomUser.objects.select_for_update().get(pk=source_user.pk)
         target = CustomUser.objects.select_for_update().get(pk=target_user.pk)
 
-        if not guest.is_guest:
+        if require_source_guest and not source.is_guest:
             return {"merged": False, "reason": "source_not_guest"}
 
         # -----------------------------
         # 1) Fusion des champs du user
         # -----------------------------
-        points_added = int(guest.points or 0)
+        points_added = int(source.points or 0)
         target_update_fields = ["last_seen_at"]
         moved_profile_picture = False
 
@@ -326,9 +326,20 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
             target.points = int(target.points or 0) + points_added
             target_update_fields.append("points")
 
+        if (not target.email) and source.email:
+            target.email = source.email
+            target_update_fields.append("email")
 
-        if not target.profile_picture and guest.profile_picture:
-            target.profile_picture = guest.profile_picture
+        if (not target.username or target.username.startswith("guest_")) and source.username and not source.username.startswith("guest_"):
+            target.username = source.username
+            target_update_fields.append("username")
+
+        if (not target.has_usable_password()) and source.has_usable_password():
+            target.password = source.password
+            target_update_fields.append("password")
+
+        if not target.profile_picture and source.profile_picture:
+            target.profile_picture = source.profile_picture
             target_update_fields.append("profile_picture")
             moved_profile_picture = True
 
@@ -340,8 +351,8 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         # il faut vider le champ côté guest SANS passer par save(),
         # sinon les signaux supprimeront physiquement le fichier.
         if moved_profile_picture:
-            CustomUser.objects.filter(pk=guest.pk).update(profile_picture=None)
-            guest.profile_picture = None
+            CustomUser.objects.filter(pk=source.pk).update(profile_picture=None)
+            source.profile_picture = None
 
         try:
             target_avatar_url = target.profile_picture.url if target.profile_picture else ""
@@ -351,10 +362,14 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         # -----------------------------
         # 2) Dépôts
         # -----------------------------
-        guest_deposit_ids = list(
-            Deposit.objects.filter(user=guest).values_list("id", flat=True)
+        source_deposit_ids = list(
+            Deposit.objects.filter(user=source).values_list("id", flat=True)
         )
-        moved_deposits = Deposit.objects.filter(user=guest).update(user=target)
+        moved_deposits = Deposit.objects.filter(user=source).update(user=target)
+
+        if not target.favorite_deposit_id and source.favorite_deposit_id:
+            target.favorite_deposit_id = source.favorite_deposit_id
+            target.save(update_fields=["favorite_deposit"])
 
         # -----------------------------
         # 3) Emoji rights
@@ -362,7 +377,7 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         emoji_rights_moved = 0
         emoji_rights_deleted = 0
 
-        for right in list(EmojiRight.objects.filter(user=guest).select_related("emoji")):
+        for right in list(EmojiRight.objects.filter(user=source).select_related("emoji")):
             exists = EmojiRight.objects.filter(user=target, emoji_id=right.emoji_id).exists()
             if exists:
                 right.delete()
@@ -378,12 +393,12 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         discoveries_moved = 0
         discoveries_merged = 0
 
-        guest_discoveries = list(
-            DiscoveredSong.objects.filter(user=guest)
+        source_discoveries = list(
+            DiscoveredSong.objects.filter(user=source)
             .select_related("deposit")
             .order_by("discovered_at", "id")
         )
-        for discovery in guest_discoveries:
+        for discovery in source_discoveries:
             existing = (
                 DiscoveredSong.objects.filter(user=target, deposit_id=discovery.deposit_id)
                 .order_by("discovered_at", "id")
@@ -418,20 +433,20 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         reactions_deleted = 0
         reactions_updated = 0
 
-        latest_guest_reaction_by_deposit = {}
-        guest_reactions = list(
-            Reaction.objects.filter(user=guest)
+        latest_source_reaction_by_deposit = {}
+        source_reactions = list(
+            Reaction.objects.filter(user=source)
             .select_related("emoji", "deposit")
             .order_by("-updated_at", "-created_at", "-id")
         )
-        for reaction in guest_reactions:
-            if reaction.deposit_id not in latest_guest_reaction_by_deposit:
-                latest_guest_reaction_by_deposit[reaction.deposit_id] = reaction
+        for reaction in source_reactions:
+            if reaction.deposit_id not in latest_source_reaction_by_deposit:
+                latest_source_reaction_by_deposit[reaction.deposit_id] = reaction
             else:
                 reaction.delete()
                 reactions_deleted += 1
 
-        for deposit_id, guest_reaction in latest_guest_reaction_by_deposit.items():
+        for deposit_id, source_reaction in latest_source_reaction_by_deposit.items():
             target_reactions = list(
                 Reaction.objects.filter(user=target, deposit_id=deposit_id)
                 .order_by("-updated_at", "-created_at", "-id")
@@ -444,26 +459,26 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
 
             if not target_reaction:
                 try:
-                    guest_reaction.user = target
-                    guest_reaction.save(update_fields=["user"])
+                    source_reaction.user = target
+                    source_reaction.save(update_fields=["user"])
                     reactions_moved += 1
                 except IntegrityError:
-                    Reaction.objects.filter(pk=guest_reaction.pk).delete()
+                    Reaction.objects.filter(pk=source_reaction.pk).delete()
                     reactions_deleted += 1
                 continue
 
-            guest_stamp = guest_reaction.updated_at or guest_reaction.created_at
+            source_stamp = source_reaction.updated_at or source_reaction.created_at
             target_stamp = target_reaction.updated_at or target_reaction.created_at
 
-            if guest_stamp and target_stamp and guest_stamp > target_stamp:
-                if target_reaction.emoji_id != guest_reaction.emoji_id:
-                    target_reaction.emoji_id = guest_reaction.emoji_id
+            if source_stamp and target_stamp and source_stamp > target_stamp:
+                if target_reaction.emoji_id != source_reaction.emoji_id:
+                    target_reaction.emoji_id = source_reaction.emoji_id
                     target_reaction.save(update_fields=["emoji", "updated_at"])
                 else:
                     target_reaction.save(update_fields=["updated_at"])
                 reactions_updated += 1
 
-            guest_reaction.delete()
+            source_reaction.delete()
             reactions_deleted += 1
 
         # -----------------------------
@@ -476,61 +491,61 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         comments_moved = 0
         comments_detached = 0
 
-        guest_comments = list(
-            Comment.objects.filter(user=guest)
+        source_comments = list(
+            Comment.objects.filter(user=source)
             .select_related("deposit")
             .order_by("created_at", "id")
         )
 
-        for guest_comment in guest_comments:
+        for source_comment in source_comments:
             target_comment = None
-            if guest_comment.deposit_id is not None:
+            if source_comment.deposit_id is not None:
                 target_comment = (
                     Comment.objects.filter(
                         user=target,
-                        deposit_id=guest_comment.deposit_id,
+                        deposit_id=source_comment.deposit_id,
                     )
-                    .exclude(pk=guest_comment.pk)
+                    .exclude(pk=source_comment.pk)
                     .order_by("created_at", "id")
                     .first()
                 )
 
             if target_comment:
-                guest_comment.user = None
-                guest_comment.save(update_fields=["user"])
+                source_comment.user = None
+                source_comment.save(update_fields=["user"])
                 comments_detached += 1
                 continue
 
             update_fields = ["user"]
-            guest_comment.user = target
+            source_comment.user = target
 
-            new_author_username = target.username or guest_comment.author_username or ""
+            new_author_username = target.username or source_comment.author_username or ""
             new_author_display_name = (
                 getattr(target, "display_name", None)
                 or target.username
-                or guest_comment.author_display_name
-                or guest_comment.author_username
+                or source_comment.author_display_name
+                or source_comment.author_username
                 or ""
             )
-            new_author_email = target.email or guest_comment.author_email or ""
+            new_author_email = target.email or source_comment.author_email or ""
 
-            if guest_comment.author_username != new_author_username:
-                guest_comment.author_username = new_author_username
+            if source_comment.author_username != new_author_username:
+                source_comment.author_username = new_author_username
                 update_fields.append("author_username")
 
-            if guest_comment.author_display_name != new_author_display_name:
-                guest_comment.author_display_name = new_author_display_name
+            if source_comment.author_display_name != new_author_display_name:
+                source_comment.author_display_name = new_author_display_name
                 update_fields.append("author_display_name")
 
-            if guest_comment.author_email != new_author_email:
-                guest_comment.author_email = new_author_email
+            if source_comment.author_email != new_author_email:
+                source_comment.author_email = new_author_email
                 update_fields.append("author_email")
 
-            if target_avatar_url and guest_comment.author_avatar_url != target_avatar_url:
-                guest_comment.author_avatar_url = target_avatar_url
+            if target_avatar_url and source_comment.author_avatar_url != target_avatar_url:
+                source_comment.author_avatar_url = target_avatar_url
                 update_fields.append("author_avatar_url")
 
-            guest_comment.save(update_fields=update_fields)
+            source_comment.save(update_fields=update_fields)
             comments_moved += 1
 
         # -----------------------------
@@ -543,13 +558,13 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         reports_detached = 0
         touched_report_comment_ids = set()
 
-        guest_reports = list(
-            CommentReport.objects.filter(reporter=guest)
+        source_reports = list(
+            CommentReport.objects.filter(reporter=source)
             .select_related("comment")
             .order_by("created_at", "id")
         )
 
-        for report in guest_reports:
+        for report in source_reports:
             if report.comment_id:
                 touched_report_comment_ids.add(report.comment_id)
 
@@ -595,31 +610,31 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         # 8) Comment moderation decisions
         # -----------------------------
         moderation_actions_moved = CommentModerationDecision.objects.filter(
-            acted_by=guest
+            acted_by=source
         ).update(acted_by=target)
 
         # -----------------------------
         # 9) Comment restrictions
         # -----------------------------
         restrictions_moved = CommentUserRestriction.objects.filter(
-            user=guest
+            user=source
         ).update(user=target)
 
         restrictions_created_by_moved = CommentUserRestriction.objects.filter(
-            created_by=guest
+            created_by=source
         ).update(created_by=target)
 
         # -----------------------------
         # 10) Comment attempt logs
         # -----------------------------
         attempt_logs_moved = CommentAttemptLog.objects.filter(
-            user=guest
+            user=source
         ).update(user=target)
 
         # -----------------------------
         # 11) Articles
         # -----------------------------
-        articles_moved = Article.objects.filter(author=guest).update(author=target)
+        articles_moved = Article.objects.filter(author=source).update(author=target)
 
         # -----------------------------
         # 12) Provider connections
@@ -630,14 +645,14 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         # 13) Réécriture des snapshots historiques
         # -----------------------------
         comment_owner_snapshots_updated = Comment.objects.filter(
-            Q(deposit_id__in=guest_deposit_ids) | Q(deposit_owner_user_id=guest.id)
+            Q(deposit_id__in=source_deposit_ids) | Q(deposit_owner_user_id=source.id)
         ).update(
             deposit_owner_user_id=target.id,
             deposit_owner_username=target.username or "",
         )
 
         attempt_owner_snapshots_updated = CommentAttemptLog.objects.filter(
-            Q(deposit_id__in=guest_deposit_ids) | Q(target_owner_user_id=guest.id)
+            Q(deposit_id__in=source_deposit_ids) | Q(target_owner_user_id=source.id)
         ).update(
             target_owner_user_id=target.id,
             target_owner_username=target.username or "",
@@ -646,7 +661,7 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         # -----------------------------
         # 14) Suppression du guest
         # -----------------------------
-        guest.delete()
+        source.delete()
 
     return {
         "merged": True,
@@ -673,3 +688,12 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
         "attempt_owner_snapshots_updated": attempt_owner_snapshots_updated,
     }
 
+
+
+
+def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
+    return _merge_user_into_user(guest_user, target_user, require_source_guest=True)
+
+
+def merge_user_into_user(source_user: CustomUser, target_user: CustomUser):
+    return _merge_user_into_user(source_user, target_user, require_source_guest=False)

@@ -1,6 +1,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
@@ -27,8 +28,13 @@ const RESULT_COPY = {
   },
   merge_required: {
     title: "Fusion des comptes requise",
-    description: "Ce compte Spotify est déjà lié à un autre compte. La fusion des comptes sera nécessaire pour continuer.",
-    continueLabel: "Retour",
+    description: "Ce compte Spotify est déjà lié à un autre compte. Tu peux fusionner tes comptes pour continuer avec un seul profil.",
+    continueLabel: "Fusionner mes comptes",
+  },
+  merge_success: {
+    title: "Tes comptes ont bien été fusionnés",
+    description: "Tu peux maintenant continuer avec un seul compte et retrouver toutes tes données au même endroit.",
+    continueLabel: "Continuer",
   },
   error: {
     title: "Connexion Spotify impossible",
@@ -37,7 +43,15 @@ const RESULT_COPY = {
   },
 };
 
-export default function AuthResultRouter({ result = "error", email = "", onContinue, onBackToAuth }) {
+export default function AuthResultRouter({
+  result = "error",
+  email = "",
+  onContinue,
+  onBackToAuth,
+  onMerge,
+  onCancelMerge,
+  submitting = false,
+}) {
   const copy = RESULT_COPY[result] || RESULT_COPY.error;
 
   return (
@@ -48,9 +62,20 @@ export default function AuthResultRouter({ result = "error", email = "", onConti
         <Typography variant="body2">Compte trouvé : {email}</Typography>
       ) : null}
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Button variant="contained" onClick={onContinue}>{copy.continueLabel}</Button>
+        {result === "merge_required" ? (
+          <>
+            <Button variant="contained" onClick={onMerge} disabled={submitting}>
+              {submitting ? <CircularProgress size={20} /> : copy.continueLabel}
+            </Button>
+            <Button variant="outlined" onClick={onCancelMerge} disabled={submitting}>Annuler</Button>
+          </>
+        ) : (
+          <Button variant="contained" onClick={onContinue} disabled={submitting}>
+            {copy.continueLabel}
+          </Button>
+        )}
         {result === "login_existing_required" ? (
-          <Button variant="outlined" onClick={onBackToAuth}>Créer un autre compte</Button>
+          <Button variant="outlined" onClick={onBackToAuth} disabled={submitting}>Créer un autre compte</Button>
         ) : null}
       </Box>
     </Stack>

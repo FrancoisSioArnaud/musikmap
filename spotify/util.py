@@ -17,7 +17,7 @@ from users.provider_connections import (
     is_provider_authenticated,
     upsert_provider_connection,
 )
-from users.utils import merge_guest_into_user
+from users.utils import merge_guest_into_user, merge_user_into_user
 
 from .credentials import CLIENT_ID, CLIENT_SECRET
 
@@ -224,6 +224,30 @@ def clear_pending_spotify_auth(request):
         request.session.modified = True
 
 
+def link_spotify_to_user(
+    user: CustomUser,
+    *,
+    access_token: str,
+    refresh_token: str = "",
+    expires_in: int = 3600,
+    provider_user_id: str = "",
+    profile: Optional[dict] = None,
+    scopes=None,
+):
+    update_or_create_user_tokens(
+        user,
+        access_token,
+        "Bearer",
+        expires_in,
+        refresh_token,
+        provider_user_id=provider_user_id,
+        scopes=scopes or DEFAULT_SPOTIFY_SCOPES,
+    )
+    if profile:
+        hydrate_user_from_spotify_profile(user, profile)
+    return user
+
+
 def apply_pending_spotify_auth_to_user(request, user: CustomUser):
     pending = get_pending_spotify_auth(request)
     if not pending:
@@ -238,17 +262,55 @@ def apply_pending_spotify_auth_to_user(request, user: CustomUser):
         except Exception:
             pass
 
-    scopes = pending.get("scopes") or DEFAULT_SPOTIFY_SCOPES
-    upsert_provider_connection(
-        user=user,
-        provider_code="spotify",
+    link_spotify_to_user(
+        user,
         access_token=pending.get("access_token") or "",
         refresh_token=pending.get("refresh_token") or "",
         expires_in=pending.get("expires_in") or 3600,
         provider_user_id=pending.get("provider_user_id") or "",
-        scopes=scopes,
-        is_active=True,
+        profile=pending.get("profile") or {},
+        scopes=pending.get("scopes") or DEFAULT_SPOTIFY_SCOPES,
     )
-    hydrate_user_from_spotify_profile(user, pending.get("profile") or {})
     clear_pending_spotify_auth(request)
     return {"type": "provider_linked"}
+
+
+def resolve_pending_spotify_auth(request, *, action: str):
+    pending = get_pending_spotify_auth(request)
+    if not pending:
+        return {"ok": False, "reason": "missing_pending_auth", "status": 404}
+
+    pending_type = pending.get("type")
+    if action == "cancel":
+        clear_pending_spotify_auth(request)
+        return {"ok": True, "type": "cancelled"}
+
+    if action != "merge" or pending_type != "merge_required":
+        return {"ok": False, "reason": "invalid_action", "status": 400}
+
+    source_user_id = pending.get("current_user_id")
+    target_user_id = pending.get("target_user_id")
+    if not source_user_id or not target_user_id:
+        return {"ok": False, "reason": "invalid_pending_payload", "status": 400}
+
+    source_user = CustomUser.objects.filter(pk=source_user_id).first()
+    target_user = CustomUser.objects.filter(pk=target_user_id).first()
+    if not source_user or not target_user:
+        clear_pending_spotify_auth(request)
+        return {"ok": False, "reason": "missing_users", "status": 404}
+
+    merge_result = merge_user_into_user(source_user, target_user)
+    if not merge_result.get("merged"):
+        return {"ok": False, "reason": merge_result.get("reason") or "merge_failed", "status": 400}
+
+    link_spotify_to_user(
+        target_user,
+        access_token=pending.get("access_token") or "",
+        refresh_token=pending.get("refresh_token") or "",
+        expires_in=pending.get("expires_in") or 3600,
+        provider_user_id=pending.get("provider_user_id") or "",
+        profile=pending.get("profile") or {},
+        scopes=pending.get("scopes") or DEFAULT_SPOTIFY_SCOPES,
+    )
+    clear_pending_spotify_auth(request)
+    return {"ok": True, "type": "merge_success", "user": target_user}
