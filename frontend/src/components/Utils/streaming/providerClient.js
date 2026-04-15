@@ -87,16 +87,6 @@ export const searchTracksViaBackend = async (providerCode, query, options = {}) 
   return Array.isArray(json) ? json : [];
 };
 
-export const fetchRecentPlaysViaBackend = async (providerCode, options = {}) => {
-  const response = await fetch(`/${providerCode}/recent-tracks`, {
-    credentials: "same-origin",
-    headers: { Accept: "application/json" },
-    signal: options.signal,
-  });
-  const json = await response.json().catch(() => []);
-  return Array.isArray(json) ? json : [];
-};
-
 export const searchTracksViaProviderClient = async (providerCode, query, accessToken, options = {}) => {
   if (providerCode === "spotify") {
     const response = await fetch(

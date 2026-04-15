@@ -14,7 +14,6 @@ from users.utils import build_current_user_payload
 from .credentials import CLIENT_ID, CLIENT_SECRET
 from .util import (
     disconnect_user,
-    execute_spotify_api_request,
     get_user_tokens,
     is_spotify_authenticated,
     refresh_spotify_token,
@@ -140,45 +139,6 @@ class RefreshAccessToken(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-
-class GetRecentlyPlayedTracks(APIView):
-    def get(self, request, format=None):
-        response = execute_spotify_api_request(self.request.user, "player/recently-played")
-
-        if "error" in response or "items" not in response:
-            return Response([], status=status.HTTP_200_OK)
-
-        tracks = []
-        for item in response.get("items") or []:
-            track_data = item.get("track") or {}
-            track_id = track_data.get("id")
-            if not track_id or any(existing_track["id"] == track_id for existing_track in tracks):
-                continue
-
-            artists = track_data.get("artists") or []
-            album = track_data.get("album") or {}
-            images = album.get("images") or []
-            image_url = images[0]["url"] if images else None
-            image_64 = next((img for img in images if img.get("height") == 64), None)
-            image_url_small = image_64["url"] if image_64 else (images[-1]["url"] if images else None)
-
-            tracks.append(
-                {
-                    "id": track_id,
-                    "name": track_data.get("name"),
-                    "artist": artists[0]["name"] if artists else "",
-                    "artists": [artist.get("name") for artist in artists if artist.get("name")],
-                    "album": album.get("name"),
-                    "image_url": image_url,
-                    "image_url_small": image_url_small,
-                    "duration": (track_data.get("duration_ms") or 0) // 1000,
-                    "platform_id": 1,
-                    "url": (track_data.get("external_urls") or {}).get("spotify"),
-                }
-            )
-
-        return Response(tracks, status=status.HTTP_200_OK)
 
 
 class Search(APIView):
