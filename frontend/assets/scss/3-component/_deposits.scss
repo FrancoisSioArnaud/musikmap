@@ -192,12 +192,6 @@
   background-color: rgba(0, 0, 0, 0.3);
   transform-origin: left center;
   transform: scaleX(var(--deposit-reveal-progress, 0));
-  transition: transform 180ms ease-out;
-  opacity:0;
-}
-
-.deposit_song.is_reveal_holding .deposit_reveal_fill {
-  opacity: 1;
 }
 
 .deposit_song.has_accent_color {
