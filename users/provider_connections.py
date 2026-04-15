@@ -18,11 +18,17 @@ def normalize_provider_code(value) -> str:
     return provider if provider in SUPPORTED_PROVIDER_CODES else ""
 
 
-def get_provider_connection(user: Optional[CustomUser], provider_code: str) -> Optional[UserProviderConnection]:
+def get_provider_connection(
+    user: Optional[CustomUser],
+    provider_code: str,
+) -> Optional[UserProviderConnection]:
     normalized = normalize_provider_code(provider_code)
     if not user or not getattr(user, "pk", None) or not normalized:
         return None
-    return UserProviderConnection.objects.filter(user=user, provider_code=normalized).first()
+    return UserProviderConnection.objects.filter(
+        user=user,
+        provider_code=normalized,
+    ).first()
 
 
 def _coerce_expires_at(raw_value):
@@ -30,19 +36,32 @@ def _coerce_expires_at(raw_value):
         return None
     try:
         if isinstance(raw_value, (int, float)):
-            return datetime.fromtimestamp(raw_value, tz=timezone.get_current_timezone())
+            return datetime.fromtimestamp(
+                raw_value,
+                tz=timezone.get_current_timezone(),
+            )
         if isinstance(raw_value, str) and raw_value.isdigit():
-            return datetime.fromtimestamp(int(raw_value), tz=timezone.get_current_timezone())
+            return datetime.fromtimestamp(
+                int(raw_value),
+                tz=timezone.get_current_timezone(),
+            )
     except Exception:
         return None
     return None
 
 
-def get_social_auth_connection_payload(user: Optional[CustomUser], provider_code: str):
+def get_social_auth_connection_payload(
+    user: Optional[CustomUser],
+    provider_code: str,
+):
     normalized = normalize_provider_code(provider_code)
     if not user or not getattr(user, "pk", None) or not normalized:
         return None
-    social_auth = UserSocialAuth.objects.filter(user=user, provider=normalized).first()
+
+    social_auth = UserSocialAuth.objects.filter(
+        user=user,
+        provider=normalized,
+    ).first()
     if not social_auth:
         return None
 
@@ -56,7 +75,11 @@ def get_social_auth_connection_payload(user: Optional[CustomUser], provider_code
     if not access_token:
         return None
 
-    refresh_token = extra_data.get("refresh_token") or extra_data.get("refreshToken") or ""
+    refresh_token = (
+        extra_data.get("refresh_token")
+        or extra_data.get("refreshToken")
+        or ""
+    )
     scopes_raw = extra_data.get("scope") or extra_data.get("scopes") or []
     if isinstance(scopes_raw, str):
         scopes = [value for value in scopes_raw.replace(",", " ").split() if value]
@@ -70,7 +93,9 @@ def get_social_auth_connection_payload(user: Optional[CustomUser], provider_code
         "provider_user_id": str(extra_data.get("id") or social_auth.uid or "") or None,
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "expires_at": _coerce_expires_at(extra_data.get("expires") or extra_data.get("expires_at")),
+        "expires_at": _coerce_expires_at(
+            extra_data.get("expires") or extra_data.get("expires_at")
+        ),
         "scopes": scopes,
         "connected": True,
         "can_recent_plays": normalized in set(PERSONALIZED_SEARCH_PROVIDER_CODES),
@@ -115,39 +140,53 @@ def upsert_provider_connection(
     return connection
 
 
-def has_personalized_provider_connection(user: Optional[CustomUser], provider_code: str) -> bool:
+def has_personalized_provider_connection(
+    user: Optional[CustomUser],
+    provider_code: str,
+) -> bool:
     normalized = normalize_provider_code(provider_code)
     if normalized not in PERSONALIZED_SEARCH_PROVIDER_CODES:
         return False
+
     connection = get_provider_connection(user, normalized)
     if connection and connection.is_active and connection.access_token:
         return True
+
     payload = get_social_auth_connection_payload(user, normalized)
     return bool(payload and payload.get("access_token"))
 
 
-def disconnect_provider_connection(user: Optional[CustomUser], provider_code: str) -> bool:
+def disconnect_provider_connection(
+    user: Optional[CustomUser],
+    provider_code: str,
+) -> bool:
     normalized = normalize_provider_code(provider_code)
     connection = get_provider_connection(user, normalized)
     removed = False
+
     if connection:
         connection.delete()
         removed = True
-    if user and getattr(user, "pk", None) and getattr(user, "last_platform", None) == normalized:
-        user.last_platform = ""
-        user.save(update_fields=["last_platform"])
+
     return removed
 
 
-def is_provider_authenticated(user: Optional[CustomUser], provider_code: str) -> bool:
+def is_provider_authenticated(
+    user: Optional[CustomUser],
+    provider_code: str,
+) -> bool:
     connection = get_provider_connection(user, provider_code)
     if connection and connection.is_active and connection.access_token:
         return True
+
     payload = get_social_auth_connection_payload(user, provider_code)
     return bool(payload and payload.get("access_token"))
 
 
-def serialize_provider_connection(connection: Optional[UserProviderConnection], provider_code: Optional[str] = None):
+def serialize_provider_connection(
+    connection: Optional[UserProviderConnection],
+    provider_code: Optional[str] = None,
+):
     if not connection:
         return {
             "connected": False,
@@ -158,6 +197,7 @@ def serialize_provider_connection(connection: Optional[UserProviderConnection], 
             "can_recent_plays": False,
             "source": None,
         }
+
     scopes = list(connection.scopes or [])
     return {
         "connected": bool(connection.is_active and connection.access_token),
@@ -166,17 +206,26 @@ def serialize_provider_connection(connection: Optional[UserProviderConnection], 
         "access_token": connection.access_token or None,
         "expires_at": connection.expires_at.isoformat() if connection.expires_at else None,
         "scopes": scopes,
-        "can_recent_plays": connection.provider_code in set(PERSONALIZED_SEARCH_PROVIDER_CODES) and bool(connection.is_active and connection.access_token),
+        "can_recent_plays": (
+            connection.provider_code in set(PERSONALIZED_SEARCH_PROVIDER_CODES)
+            and bool(connection.is_active and connection.access_token)
+        ),
         "source": "provider_connection",
     }
 
 
 def serialize_provider_connections_for_user(user: Optional[CustomUser]):
-    mapping = {provider: serialize_provider_connection(None, provider) for provider in SUPPORTED_PROVIDER_CODES}
+    mapping = {
+        provider: serialize_provider_connection(None, provider)
+        for provider in SUPPORTED_PROVIDER_CODES
+    }
     if not user or not getattr(user, "pk", None):
         return mapping
 
-    for connection in UserProviderConnection.objects.filter(user=user, provider_code__in=SUPPORTED_PROVIDER_CODES):
+    for connection in UserProviderConnection.objects.filter(
+        user=user,
+        provider_code__in=SUPPORTED_PROVIDER_CODES,
+    ):
         mapping[connection.provider_code] = serialize_provider_connection(connection)
 
     for provider in PERSONALIZED_SEARCH_PROVIDER_CODES:
@@ -189,41 +238,13 @@ def serialize_provider_connections_for_user(user: Optional[CustomUser]):
     return mapping
 
 
-def get_default_last_platform(user: Optional[CustomUser]):
-    if not user or not getattr(user, "pk", None):
-        return None
-    raw_value = str(getattr(user, "last_platform", "") or "").strip().lower()
-    if raw_value and has_personalized_provider_connection(user, raw_value):
-        return raw_value
-    for provider in PERSONALIZED_SEARCH_PROVIDER_CODES:
-        if has_personalized_provider_connection(user, provider):
-            return provider
-    return None
-
-
-def set_last_platform_for_user(user: Optional[CustomUser], provider_code: Optional[str]):
-    if not user or not getattr(user, "pk", None):
-        return None
-
-    normalized = normalize_provider_code(provider_code)
-    if not normalized:
-        user.last_platform = ""
-        user.last_seen_at = timezone.now()
-        user.save(update_fields=["last_platform", "last_seen_at"])
-        return None
-
-    if normalized not in PERSONALIZED_SEARCH_PROVIDER_CODES or not has_personalized_provider_connection(user, normalized):
-        raise ValueError("Plateforme personnalisée invalide.")
-
-    user.last_platform = normalized
-    user.last_seen_at = timezone.now()
-    user.save(update_fields=["last_platform", "last_seen_at"])
-    return normalized
-
-
 def merge_provider_connections(guest: CustomUser, target: CustomUser):
     for connection in UserProviderConnection.objects.filter(user=guest).order_by("id"):
-        target_connection = UserProviderConnection.objects.filter(user=target, provider_code=connection.provider_code).first()
+        target_connection = UserProviderConnection.objects.filter(
+            user=target,
+            provider_code=connection.provider_code,
+        ).first()
+
         if target_connection:
             if not target_connection.access_token and connection.access_token:
                 target_connection.access_token = connection.access_token
@@ -235,5 +256,6 @@ def merge_provider_connections(guest: CustomUser, target: CustomUser):
                 target_connection.save()
             connection.delete()
             continue
+
         connection.user = target
         connection.save(update_fields=["user"])
