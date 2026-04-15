@@ -10,9 +10,7 @@ import Typography from "@mui/material/Typography";
 import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
 
 import Deposit from "../Common/Deposit";
-import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchBar from "../Common/SearchBar";
-import useSongSearch from "../Common/useSongSearch";
+import SearchPanel from "../Common/Search/SearchPanel";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
@@ -48,21 +46,6 @@ export default function FavoriteSongSection({
   const searchInputRef = useRef(null);
 
 
-  const {
-    searchValue,
-    setSearchValue,
-    results,
-    recentPlays,
-    isSearching,
-    isLoadingRecentPlays,
-    resetSearch,
-    selectedStreamingService,
-    setSelectedStreamingService,
-    connectedPersonalizedProviderCodes,
-    connectProvider,
-    canShowRecentPlays,
-  } = useSongSearch();
-
   useEffect(() => {
     setFavoriteDeposit(initialFavoriteDeposit || null);
   }, [initialFavoriteDeposit]);
@@ -97,12 +80,11 @@ export default function FavoriteSongSection({
   const closeDrawer = useCallback((force = false) => {
     if (posting && !force) return;
     setDrawerOpen(false);
-    resetSearch();
     setPosting(false);
     setPostingId(null);
     setPostingProgress(0);
     setPostingTransitionMs(0);
-  }, [posting, resetSearch]);
+  }, [posting]);
 
   const syncCurrentUser = useCallback((payload) => {
     if (!payload || !setUser) return;
@@ -200,57 +182,6 @@ export default function FavoriteSongSection({
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
   const canRemove = Boolean(hasFavorite);
   const showOwnerActions = Boolean(isCurrentFullUser && hasFavorite);
-
-  const drawerEmptyContent = useMemo(() => {
-    if (!searchValue.trim()) {
-      return (
-        <Box>
-          {canRemove ? (
-            <Box sx={{ p: "16px 20px" }}>
-              <Button
-                size="fullwidth"
-                variant="text"
-                onClick={handleRemoveFavorite}
-                startIcon={<RemoveCircleOutlineOutlinedIcon />}
-                sx={{ px: "auto" }}
-              >
-                Retirer ma chanson de coeur
-              </Button>
-            </Box>
-          ) : null}
-
-          {canShowRecentPlays ? (
-            <>
-              <Box sx={{ px: 5, pt: 1 }}>
-                <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
-              </Box>
-              <SongSearchResultsList
-                results={recentPlays}
-                isSearching={isLoadingRecentPlays}
-                posting={posting}
-                postingId={postingId}
-                postingProgress={postingProgress}
-                postingTransitionMs={postingTransitionMs}
-                onAction={handleSetFavorite}
-                actionLabel="Choisir"
-                emptyContent={
-                  <Box sx={{ px: 5, py: 1 }}>
-                    <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
-                  </Box>
-                }
-              />
-            </>
-          ) : null}
-        </Box>
-      );
-    }
-
-    return (
-      <Box sx={{ px: 5, py: 3 }}>
-        <Typography variant="body1">Aucun résultat.</Typography>
-      </Box>
-    );
-  }, [canRemove, canShowRecentPlays, handleRemoveFavorite, handleSetFavorite, isLoadingRecentPlays, posting, postingId, postingProgress, postingTransitionMs, recentPlays, searchValue]);
 
   const bodyContent = useMemo(() => {
     if (isCurrentFullUser) {
@@ -376,31 +307,22 @@ export default function FavoriteSongSection({
               <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
                 Choisis une chanson de coeur
               </Typography>
-
-              <SearchBar
-                inputRef={searchInputRef}
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                selectedProviderCode={selectedStreamingService}
-                connectedProviderCodes={connectedPersonalizedProviderCodes}
-                onSelectProvider={setSelectedStreamingService}
-                onConnectProvider={connectProvider}
-              />
             </Box>
 
-            <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
-              <SongSearchResultsList
-                results={results}
-                isSearching={isSearching}
+            {drawerOpen ? (
+              <SearchPanel
+                inputRef={searchInputRef}
+                onSelectSong={handleSetFavorite}
+                actionLabel="Choisir"
                 posting={posting}
                 postingId={postingId}
                 postingProgress={postingProgress}
                 postingTransitionMs={postingTransitionMs}
-                onAction={handleSetFavorite}
-                actionLabel="Choisir"
-                emptyContent={drawerEmptyContent}
+                rootSx={{ flex: 1, minHeight: 0 }}
+                searchBarWrapperSx={{ px: 5, pb: 2 }}
+                contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
               />
-            </Box>
+            ) : null}
 
             <Button
               variant="contained"

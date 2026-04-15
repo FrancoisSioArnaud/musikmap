@@ -2,17 +2,12 @@ import React, { useContext, useEffect, useCallback, useRef, useState } from "rea
 import { useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
-import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchBar from "../Common/SearchBar";
-import useSongSearch from "../Common/useSongSearch";
+import SearchPanel from "../Common/Search/SearchPanel";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
@@ -44,7 +39,6 @@ export default function LiveSearch() {
   const { user, setUser } = useContext(UserContext) || {};
 
   const [incitationText, setIncitationText] = useState("");
-  const [incitationLoading, setIncitationLoading] = useState(true);
 
   const [posting, setPosting] = useState(false);
   const [postingId, setPostingId] = useState(null);
@@ -54,19 +48,6 @@ export default function LiveSearch() {
   const searchInputRef = useRef(null);
   const isMountedRef = useRef(true);
 
-  const {
-    searchValue,
-    setSearchValue,
-    results,
-    recentPlays,
-    isSearching,
-    isLoadingRecentPlays,
-    selectedStreamingService,
-    setSelectedStreamingService,
-    connectedPersonalizedProviderCodes,
-    connectProvider,
-    canShowRecentPlays,
-  } = useSongSearch();
 
   useEffect(() => {
     return () => {
@@ -85,8 +66,6 @@ export default function LiveSearch() {
   }, [user?.last_platform]);
 
   useEffect(() => {
-    setIncitationLoading(true);
-
     try {
       const raw = localStorage.getItem("mm_current_box");
       const storedBox = raw ? JSON.parse(raw) : null;
@@ -98,8 +77,6 @@ export default function LiveSearch() {
       }
     } catch {
       setIncitationText("");
-    } finally {
-      setIncitationLoading(false);
     }
   }, [boxSlug]);
 
@@ -226,85 +203,27 @@ export default function LiveSearch() {
     [posting, boxSlug, navigate, setUser, goOnboardingWithError, resetPostingState]
   );
 
-  const emptyContent = searchValue.trim() ? null : (
-    <Box spacing={2} sx={{ pb: 3 }}>
-      {incitationLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><Typography variant="body2">Chargement…</Typography></Box>
-      ) : incitationText ? (
-        <Box
-          sx={{
-            margin: "0px 20px",
-            backgroundColor: "var(--mm-color-secondary-light)",
-            padding: "16px 20px",
-            borderRadius: "var(--mm-radius-lg)",
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
-          }}
-        >
-          <CampaignRoundedIcon />
-          <Typography variant="subtitle1">{incitationText}</Typography>
-        </Box>
-      ) : null}
-
-      {canShowRecentPlays ? (
-        <>
-          <Box sx={{ padding: "16px 20px 4px 20px", mt: "12px", backgroundColor: "var(--mm-color-primary-light)" }}>
-            <Typography sx={{ opacity:"var(--mm-opacity-light-text)" }} component="h3" variant="h5">Écoutés récemment</Typography>
-          </Box>
-          <SongSearchResultsList
-            results={recentPlays}
-            isSearching={isLoadingRecentPlays}
-            posting={posting}
-            postingId={postingId}
-            postingProgress={postingProgress}
-            postingTransitionMs={postingTransitionMs}
-            onAction={handleDeposit}
-            actionLabel="Déposer"
-            emptyContent={
-              <Box sx={{ px: 4, py: 1 }}>
-                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
-              </Box>
-            }
-          />
-        </>
-      ) : null}
-    </Box>
-  );
-
   return (
-    <Box spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)" }}>
+    <Box spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)", display: "flex", flexDirection: "column" }}>
       <Box sx={{ p: 4, pb: 2 }}>
-        <Box spacing={2}>
-          <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-            Choisis une chanson à partager
-          </Typography>
-
-          <SearchBar
-            inputRef={searchInputRef}
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            selectedProviderCode={selectedStreamingService}
-            connectedProviderCodes={connectedPersonalizedProviderCodes}
-            onSelectProvider={setSelectedStreamingService}
-            onConnectProvider={connectProvider}
-          />
-        </Box>
+        <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+          Choisis une chanson à partager
+        </Typography>
       </Box>
 
-      <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}>
-        <SongSearchResultsList
-          results={results}
-          isSearching={isSearching}
-          posting={posting}
-          postingId={postingId}
-          postingProgress={postingProgress}
-          postingTransitionMs={postingTransitionMs}
-          onAction={handleDeposit}
-          actionLabel="Déposer"
-          emptyContent={emptyContent}
-        />
-      </Box>
+      <SearchPanel
+        inputRef={searchInputRef}
+        onSelectSong={handleDeposit}
+        actionLabel="Déposer"
+        posting={posting}
+        postingId={postingId}
+        postingProgress={postingProgress}
+        postingTransitionMs={postingTransitionMs}
+        searchIncitationText={incitationText}
+        rootSx={{ flex: 1, minHeight: 0 }}
+        searchBarWrapperSx={{ px: 4, pb: 2 }}
+        contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1 }}
+      />
     </Box>
   );
 }

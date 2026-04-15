@@ -11,9 +11,7 @@ import MusicNote from "@mui/icons-material/MusicNote";
 import PushPinIcon from '@mui/icons-material/PushPin';
 
 import Deposit from "../Common/Deposit";
-import SongSearchResultsList from "../Common/SongSearchResultsList";
-import SearchBar from "../Common/SearchBar";
-import useSongSearch from "../Common/useSongSearch";
+import SearchPanel from "../Common/Search/SearchPanel";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
@@ -85,21 +83,6 @@ export default function PinnedSongSection({ boxSlug }) {
   const [nowTs, setNowTs] = useState(Date.now());
   const searchInputRef = useRef(null);
 
-
-  const {
-    searchValue,
-    setSearchValue,
-    results,
-    recentPlays,
-    isSearching,
-    isLoadingRecentPlays,
-    resetSearch,
-    selectedStreamingService,
-    setSelectedStreamingService,
-    connectedPersonalizedProviderCodes,
-    connectProvider,
-    canShowRecentPlays,
-  } = useSongSearch();
 
   const isGuestUser = Boolean(user?.is_guest);
   const hasActivePinned = Boolean(activePinnedDeposit?.public_key);
@@ -232,8 +215,7 @@ export default function PinnedSongSection({ boxSlug }) {
     setDrawerOpen(false);
     setDrawerStep("search");
     setSelectedSong(null);
-    resetSearch();
-  }, [posting, resetSearch]);
+  }, [posting]);
 
   const handleSongSelected = useCallback((option) => {
     setSelectedSong(option || null);
@@ -444,54 +426,18 @@ export default function PinnedSongSection({ boxSlug }) {
                   <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
                     Choisis une chanson à épingler
                   </Typography>
-  
-                  <SearchBar
+                </Box>
+
+                {drawerOpen ? (
+                  <SearchPanel
                     inputRef={searchInputRef}
-                    value={searchValue}
-                    onChange={(event) => setSearchValue(event.target.value)}
-                    selectedProviderCode={selectedStreamingService}
-                    connectedProviderCodes={connectedPersonalizedProviderCodes}
-                    onSelectProvider={setSelectedStreamingService}
-                    onConnectProvider={connectProvider}
-                  />
-                </Box>
-  
-                <Box sx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}>
-                  <SongSearchResultsList
-                    results={results}
-                    isSearching={isSearching}
-                    onAction={handleSongSelected}
+                    onSelectSong={handleSongSelected}
                     actionLabel="Choisir"
-                    emptyContent={
-                      searchValue.trim() ? (
-                        <Box sx={{ px: 5, py: 3 }}>
-                          <Typography variant="body1">Aucun résultat.</Typography>
-                        </Box>
-                      ) : canShowRecentPlays ? (
-                        <Box>
-                          <Box sx={{ px: 5, pt: 1 }}>
-                            <Typography component="h3" variant="h5" sx={{ mb: 1 }}>Écoutés récemment</Typography>
-                          </Box>
-                          <SongSearchResultsList
-                            results={recentPlays}
-                            isSearching={isLoadingRecentPlays}
-                            onAction={handleSongSelected}
-                            actionLabel="Choisir"
-                            emptyContent={
-                              <Box sx={{ px: 5, py: 1 }}>
-                                <Typography variant="body2" color="text.secondary">Aucune écoute récente disponible.</Typography>
-                              </Box>
-                            }
-                          />
-                        </Box>
-                      ) : (
-                        <Box sx={{ px: 5, py: 3 }}>
-                          <Typography variant="body1">Aucun résultat.</Typography>
-                        </Box>
-                      )
-                    }
+                    rootSx={{ flex: 1, minHeight: 0 }}
+                    searchBarWrapperSx={{ px: 5, pb: 2 }}
+                    contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
                   />
-                </Box>
+                ) : null}
               </>
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
