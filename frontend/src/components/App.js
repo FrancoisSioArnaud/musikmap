@@ -18,7 +18,8 @@ import {
 import { applyActiveClientTheme } from "../applyActiveClientTheme";
 
 import HomePage from "./HomePage";
-import AuthPage from "./AuthPage";
+import AuthPage from "./Auth/AuthPage";
+import AuthReturnPage from "./Auth/AuthReturnPage";
 import UserProfilePage from "./UserProfilePage";
 import UserSettings from "./UserProfile/UserSettings";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
@@ -173,6 +174,7 @@ export default function App() {
                     : null
                 }
               />
+              <Route path="/auth/return" element={<AuthReturnPage />} />
             </Routes>
           </UserContext.Provider>
         </Router>

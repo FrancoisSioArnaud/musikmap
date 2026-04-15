@@ -15,6 +15,7 @@ urlpatterns = [
     path("index", TemplateView.as_view(template_name="index.html")),
     path("", TemplateView.as_view(template_name="index.html")),
     path("auth", TemplateView.as_view(template_name="index.html")),
+    path("auth/return", TemplateView.as_view(template_name="index.html")),
     path("profile", TemplateView.as_view(template_name="index.html")),
     path("profile/<str:username>", TemplateView.as_view(template_name="index.html")),
     path("library", TemplateView.as_view(template_name="index.html")),
@@ -28,7 +29,6 @@ urlpatterns = [
     path("box-management/", include("box_management.urls")),
     path("deezer/", include("deezer.urls")),
     path("users/", include("users.urls")),
-    path("oauth/", include("social_django.urls", namespace="social")),
 ]
 
 if settings.DEBUG:

@@ -7,7 +7,6 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
-from social_django.models import UserSocialAuth
 from users.provider_connections import merge_provider_connections, serialize_provider_connections_for_user
 
 from .models import CustomUser
@@ -161,10 +160,6 @@ def build_current_user_payload(user: CustomUser):
         except Exception:
             profile_picture_url = None
 
-    is_social_auth = False
-    if not getattr(user, "is_guest", False):
-        is_social_auth = UserSocialAuth.objects.filter(user=user).exists()
-
     client = getattr(user, "client", None)
     client_id = getattr(user, "client_id", None)
 
@@ -177,7 +172,7 @@ def build_current_user_payload(user: CustomUser):
         "display_name": getattr(user, "display_name", None) or ("Invité" if user.is_guest else user.username),
         "email": user.email,
         "points": user.points,
-        "is_social_auth": is_social_auth,
+        "is_social_auth": bool((not getattr(user, "is_guest", False)) and (not user.has_usable_password())),
         "profile_picture_url": profile_picture_url,
         "is_guest": bool(getattr(user, "is_guest", False)),
         "last_seen_at": user.last_seen_at.isoformat() if getattr(user, "last_seen_at", None) else None,
@@ -331,9 +326,6 @@ def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):
             target.points = int(target.points or 0) + points_added
             target_update_fields.append("points")
 
-        if not target.last_platform and guest.last_platform:
-            target.last_platform = guest.last_platform
-            target_update_fields.append("last_platform")
 
         if not target.profile_picture and guest.profile_picture:
             target.profile_picture = guest.profile_picture

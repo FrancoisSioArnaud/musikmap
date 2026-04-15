@@ -19,13 +19,6 @@ import {
   NO_PERSONALIZED_RESULTS_PROVIDER,
 } from "./SearchProviderSelector";
 
-function buildSocialSpotifyLoginUrl() {
-  const next = encodeURIComponent(
-    `${window.location.pathname || "/"}${window.location.search || ""}${window.location.hash || ""}`
-  );
-  return `/oauth/login/spotify/?next=${next}`;
-}
-
 export default function SearchPanel({
   inputRef,
   onSelectSong,
@@ -41,7 +34,7 @@ export default function SearchPanel({
   contentSx,
   searchBarSx,
 }) {
-  const { user, isAuthenticated } = useContext(UserContext) || {};
+  const { user } = useContext(UserContext) || {};
 
   const [searchValue, setSearchValue] = useState("");
   const [selectedProvider, setSelectedProvider] = useState(() => resolveInitialSelectedProvider(user));
@@ -68,15 +61,9 @@ export default function SearchPanel({
   const handleConnectProvider = useCallback(
     async (providerCode) => {
       if (providerCode !== "spotify") return;
-
-      if (isAuthenticated && !user?.is_guest) {
-        await authenticateProviderUser("spotify");
-        return;
-      }
-
-      window.location.assign(buildSocialSpotifyLoginUrl());
+      await authenticateProviderUser("spotify");
     },
-    [isAuthenticated, user?.is_guest]
+    []
   );
 
   const hasSearchValue = Boolean(String(searchValue || "").trim());

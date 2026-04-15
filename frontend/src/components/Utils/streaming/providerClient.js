@@ -1,3 +1,4 @@
+import { buildRelativeLocation, getAuthReturnContext, saveAuthReturnContext } from "../../Auth/AuthFlow";
 import { getCookie } from "../../Security/TokensUtils";
 
 export const SUPPORTED_PROVIDER_CODES = ["spotify", "deezer"];
@@ -152,12 +153,20 @@ export const fetchRecentPlaysViaProviderClient = async (providerCode, accessToke
 };
 
 export const authenticateProviderUser = async (providerCode) => {
-  const response = await fetch(`/${providerCode}/auth-redirection`, { credentials: "same-origin" });
+  const existing = getAuthReturnContext();
+  if (!existing?.returnTo) {
+    saveAuthReturnContext({
+      returnTo: buildRelativeLocation(),
+      authContext: "account",
+      action: existing?.action || null,
+    });
+  }
+  const response = await fetch(`/${providerCode}/auth-redirection`, { credentials: "same-origin", headers: { Accept: "application/json" } });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data?.url) {
     throw new Error(data?.detail || `Impossible de connecter ${providerCode}.`);
   }
-  window.location.replace(data.url);
+  window.location.assign(data.url);
 };
 
 export const disconnectProviderUser = async (providerCode) => {

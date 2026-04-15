@@ -1,4 +1,5 @@
 import { getCookie } from "../../Security/TokensUtils";
+import { authenticateProviderUser } from "./providerClient";
 
 function getSpotifyConnection(user) {
   return user?.provider_connections?.spotify || null;
@@ -90,16 +91,7 @@ export const authenticateSpotifyUser = async (isSpotifyAuthenticated, setIsSpoti
       return true;
     }
 
-    const response = await fetch("/spotify/auth-redirection", {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.url) {
-      throw new Error(data?.detail || "Spotify auth-redirection failed");
-    }
-
-    window.location.assign(data.url);
+    await authenticateProviderUser("spotify");
     return true;
   } catch (error) {
     console.error(error);

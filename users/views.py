@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from box_management.models import Deposit
 from box_management.utils import create_song_deposit
+from spotify.util import apply_pending_spotify_auth_to_user
 
 from .forms import RegisterUserForm
 from .models import CustomUser
@@ -74,16 +75,20 @@ class LoginUser(APIView):
         login(request, user)
         touch_last_seen(user)
 
+        pending_spotify_result = apply_pending_spotify_auth_to_user(request, user)
+
         response = Response(
             {
                 "status": True,
                 "guest_merged": guest_merged,
                 "merge_attempted": merge_attempted,
                 "merge_error": merge_error,
+                "auth_result": pending_spotify_result.get("type") if pending_spotify_result else None,
+                "auth_redirect_to": f"/auth/return?result={pending_spotify_result.get('type')}" if pending_spotify_result else None,
             },
             status=status.HTTP_200_OK,
         )
-        if guest_merged:
+        if guest_merged or pending_spotify_result:
             clear_guest_cookie(response)
         return response
 
