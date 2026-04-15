@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from spotify.spotipy_client import sp
-from users.provider_connections import set_last_platform_for_user, upsert_provider_connection
+from users.provider_connections import upsert_provider_connection
 from users.utils import build_current_user_payload
 
 from .credentials import CLIENT_ID, CLIENT_SECRET
@@ -110,7 +110,6 @@ def spotify_callback(request, format=None):
             scopes=[value for value in SPOTIFY_SCOPES.split() if value],
             is_active=True,
         )
-        set_last_platform_for_user(request.user, "spotify")
     except Exception:
         pass
     return redirect("/profile/settings?spotify=connected")

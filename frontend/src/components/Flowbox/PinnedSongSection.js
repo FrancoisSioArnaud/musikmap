@@ -12,6 +12,7 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
+import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
@@ -174,14 +175,14 @@ export default function PinnedSongSection({ boxSlug }) {
     if (!drawerOpen) return undefined;
     if (drawerStep !== "search") return undefined;
 
-    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
-    if (hasLastPlatform) return undefined;
+    const initialSelectedProvider = resolveInitialSelectedProvider(user);
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 60);
     return () => clearTimeout(timer);
-  }, [drawerOpen, drawerStep, user?.last_platform]);
+  }, [drawerOpen, drawerStep, user?.id, user?.provider_connections]);
 
   useEffect(() => {
     if (!priceSteps.length) {

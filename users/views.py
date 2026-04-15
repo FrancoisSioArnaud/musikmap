@@ -16,7 +16,6 @@ from rest_framework.views import APIView
 
 from box_management.models import Deposit
 from box_management.utils import create_song_deposit
-from users.provider_connections import set_last_platform_for_user
 
 from .forms import RegisterUserForm
 from .models import CustomUser
@@ -252,32 +251,6 @@ class ChangeProfilePicture(APIView):
         except Exception as e:
             return Response({"errors": [str(e)]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class ChangeLastPlatform(APIView):
-    def post(self, request, format=None):
-        user = get_current_app_user(request)
-        if not user:
-            return Response({"errors": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        next_last_platform = request.data.get("last_platform")
-        if next_last_platform in (None, "", "none"):
-            next_last_platform = None
-
-        try:
-            set_last_platform_for_user(user, next_last_platform)
-            touch_last_seen(user)
-            return Response(
-                {
-                    "status": "La plateforme personnalisée a été mise à jour.",
-                    "last_platform": getattr(user, "last_platform", "") or None,
-                    "current_user": _build_authenticated_user_payload(user),
-                },
-                status=status.HTTP_200_OK,
-            )
-        except ValueError as exc:
-            return Response({"errors": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CheckAuthentication(APIView):

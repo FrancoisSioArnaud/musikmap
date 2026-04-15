@@ -7,6 +7,7 @@ import { UserContext } from "../../UserContext";
 import { ensureValidSpotifyAccessToken } from "../../Utils/streaming/SpotifyUtils";
 import { fetchRecentPlaysViaProviderClient, getProviderConnection } from "../../Utils/streaming/providerClient";
 import SongList from "./SongList";
+import { NO_PERSONALIZED_RESULTS_PROVIDER } from "./SearchProviderSelector";
 
 export default function RecentlyPlayed({
   provider,
@@ -19,9 +20,8 @@ export default function RecentlyPlayed({
   postingTransitionMs = 0,
 }) {
   const { user, setUser } = useContext(UserContext) || {};
-  const [items, setItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const fetchedProviderRef = useRef(null);
+  const [itemsByProvider, setItemsByProvider] = useState({});
+  const [statusByProvider, setStatusByProvider] = useState({});
   const latestUserRef = useRef(user);
 
   useEffect(() => {
@@ -29,26 +29,18 @@ export default function RecentlyPlayed({
   }, [user]);
 
   const connection = useMemo(
-    () => (provider ? getProviderConnection(user, provider) : null),
+    () => (provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? getProviderConnection(user, provider) : null),
     [provider, user?.provider_connections]
   );
 
   useEffect(() => {
-    if (!provider) {
-      fetchedProviderRef.current = null;
-      setItems([]);
-      setIsLoading(false);
+    if (!provider || provider === NO_PERSONALIZED_RESULTS_PROVIDER) {
       return undefined;
     }
 
     if (!connection?.connected || !connection?.can_recent_plays || !connection?.access_token) {
-      fetchedProviderRef.current = null;
-      setItems([]);
-      setIsLoading(false);
-      return undefined;
-    }
-
-    if (fetchedProviderRef.current === provider) {
+      setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
+      setStatusByProvider((prev) => ({ ...prev, [provider]: "idle" }));
       return undefined;
     }
 
@@ -56,7 +48,8 @@ export default function RecentlyPlayed({
 
     const loadRecentPlays = async () => {
       try {
-        setIsLoading(true);
+        setStatusByProvider((prev) => ({ ...prev, [provider]: "loading" }));
+
         const accessToken =
           provider === "spotify"
             ? await ensureValidSpotifyAccessToken({ user: latestUserRef.current, setUser })
@@ -64,7 +57,8 @@ export default function RecentlyPlayed({
 
         if (!accessToken || controller.signal.aborted) {
           if (!controller.signal.aborted) {
-            setItems([]);
+            setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
+            setStatusByProvider((prev) => ({ ...prev, [provider]: "error" }));
           }
           return;
         }
@@ -75,27 +69,27 @@ export default function RecentlyPlayed({
         });
 
         if (!controller.signal.aborted) {
-          fetchedProviderRef.current = provider;
-          setItems(Array.isArray(nextItems) ? nextItems : []);
+          setItemsByProvider((prev) => ({ ...prev, [provider]: Array.isArray(nextItems) ? nextItems : [] }));
+          setStatusByProvider((prev) => ({ ...prev, [provider]: "success" }));
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          setItems([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
+          setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
+          setStatusByProvider((prev) => ({ ...prev, [provider]: "error" }));
         }
       }
     };
 
     loadRecentPlays();
     return () => controller.abort();
-  }, [connection?.can_recent_plays, connection?.connected, provider, setUser]);
+  }, [connection?.access_token, connection?.can_recent_plays, connection?.connected, provider, setUser]);
 
-  if (!provider || !visible) {
+  if (!visible || !provider || provider === NO_PERSONALIZED_RESULTS_PROVIDER) {
     return null;
   }
+
+  const items = itemsByProvider[provider] || [];
+  const isLoading = statusByProvider[provider] === "loading";
 
   return (
     <Box>

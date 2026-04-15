@@ -96,7 +96,10 @@ export const searchTracksViaProviderClient = async (providerCode, query, accessT
         signal: options.signal,
       }
     );
-    const json = await response.json();
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json?.error?.message || `Spotify search failed with status ${response.status}`);
+    }
     return Array.isArray(json?.tracks?.items) ? json.tracks.items.map(normalizeSpotifyTrack) : [];
   }
 
@@ -120,7 +123,10 @@ export const fetchRecentPlaysViaProviderClient = async (providerCode, accessToke
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: options.signal,
     });
-    const json = await response.json();
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json?.error?.message || `Spotify recently-played failed with status ${response.status}`);
+    }
     const seen = new Set();
     return Array.isArray(json?.items)
       ? json.items

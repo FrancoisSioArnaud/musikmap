@@ -11,11 +11,17 @@ import {
   searchTracksViaProviderClient,
 } from "../../Utils/streaming/providerClient";
 import SongList from "./SongList";
+import { NO_PERSONALIZED_RESULTS_PROVIDER } from "./SearchProviderSelector";
 
 const SERVER_SEARCH_PROVIDER_CODE = "spotify";
 const SEARCH_DEBOUNCE_MS = 400;
 
+function normalizeSearchValue(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
 export default function Search({
+  visible = true,
   searchValue,
   provider,
   onSelectSong,
@@ -29,20 +35,30 @@ export default function Search({
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const latestUserRef = useRef(user);
+  const cacheRef = useRef(new Map());
 
   useEffect(() => {
     latestUserRef.current = user;
   }, [user]);
 
   const connection = useMemo(
-    () => (provider ? getProviderConnection(user, provider) : null),
+    () => (provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? getProviderConnection(user, provider) : null),
     [provider, user?.provider_connections]
   );
 
+  const normalizedQuery = useMemo(() => normalizeSearchValue(searchValue), [searchValue]);
+  const normalizedQueryKey = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
+
   useEffect(() => {
-    const trimmedSearch = String(searchValue || "").trim();
-    if (!trimmedSearch) {
-      setResults([]);
+    if (!normalizedQuery) {
+      setIsSearching(false);
+      return undefined;
+    }
+
+    const effectiveProvider = provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? provider : "server";
+    const cacheKey = `${effectiveProvider}::${normalizedQueryKey}`;
+    if (cacheRef.current.has(cacheKey)) {
+      setResults(cacheRef.current.get(cacheKey) || []);
       setIsSearching(false);
       return undefined;
     }
@@ -53,16 +69,19 @@ export default function Search({
         try {
           setIsSearching(true);
           let nextResults = [];
+          let shouldFallbackToServer = provider === NO_PERSONALIZED_RESULTS_PROVIDER;
 
-          if (provider && connection?.connected && connection?.access_token) {
+          if (!shouldFallbackToServer && connection?.connected && connection?.access_token) {
             try {
               const accessToken =
                 provider === "spotify"
                   ? await ensureValidSpotifyAccessToken({ user: latestUserRef.current, setUser })
                   : connection.access_token;
 
-              if (accessToken) {
-                nextResults = await searchTracksViaProviderClient(provider, trimmedSearch, accessToken, {
+              if (!accessToken) {
+                shouldFallbackToServer = true;
+              } else {
+                nextResults = await searchTracksViaProviderClient(provider, normalizedQuery, accessToken, {
                   signal: controller.signal,
                 });
               }
@@ -70,18 +89,22 @@ export default function Search({
               if (error?.name === "AbortError") {
                 return;
               }
-              nextResults = [];
+              shouldFallbackToServer = true;
             }
+          } else if (!shouldFallbackToServer) {
+            shouldFallbackToServer = true;
           }
 
-          if (!Array.isArray(nextResults) || nextResults.length === 0) {
-            nextResults = await searchTracksViaBackend(SERVER_SEARCH_PROVIDER_CODE, trimmedSearch, {
+          if (shouldFallbackToServer) {
+            nextResults = await searchTracksViaBackend(SERVER_SEARCH_PROVIDER_CODE, normalizedQuery, {
               signal: controller.signal,
             });
           }
 
           if (!controller.signal.aborted) {
-            setResults(Array.isArray(nextResults) ? nextResults : []);
+            const safeResults = Array.isArray(nextResults) ? nextResults : [];
+            cacheRef.current.set(cacheKey, safeResults);
+            setResults(safeResults);
           }
         } catch (error) {
           if (!controller.signal.aborted && error?.name !== "AbortError") {
@@ -101,7 +124,11 @@ export default function Search({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [connection?.connected, provider, searchValue, setUser]);
+  }, [connection?.access_token, connection?.connected, normalizedQuery, normalizedQueryKey, provider, setUser]);
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <SongList

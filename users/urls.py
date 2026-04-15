@@ -9,7 +9,6 @@ urlpatterns = [
     path('check-authentication/', views.CheckAuthentication.as_view(), name='check-authentication'),
     path('change-password', views.ChangePasswordUser.as_view(), name="change-password"),
     path('change-profile-pic', views.ChangeProfilePicture.as_view(), name="change-profile-pic"),
-    path('change-last-platform', views.ChangeLastPlatform.as_view(), name='change-last-platform'),
     path('get-points', views.GetUserPoints.as_view(), name='get-points'),
     path('get-user-info', views.GetUserInfo.as_view(), name='get-user-info'),
     path('set-favorite-song', views.SetFavoriteSong.as_view(), name='set-favorite-song'),

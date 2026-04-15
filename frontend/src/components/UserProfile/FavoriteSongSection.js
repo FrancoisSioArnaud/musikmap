@@ -11,6 +11,7 @@ import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOut
 
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
+import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Common/authFlow";
@@ -53,14 +54,14 @@ export default function FavoriteSongSection({
   useEffect(() => {
     if (!drawerOpen) return undefined;
 
-    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
-    if (hasLastPlatform) return undefined;
+    const initialSelectedProvider = resolveInitialSelectedProvider(user);
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 60);
     return () => clearTimeout(timer);
-  }, [drawerOpen, user?.last_platform]);
+  }, [drawerOpen, user?.id, user?.provider_connections]);
 
   const openDrawer = () => {
     setDrawerOpen(true);

@@ -8,6 +8,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { setWithTTL } from "../Utils/mmStorage";
 import SearchPanel from "../Common/Search/SearchPanel";
+import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
@@ -56,14 +57,14 @@ export default function LiveSearch() {
   }, []);
 
   useEffect(() => {
-    const hasLastPlatform = Boolean(String(user?.last_platform || "").trim());
-    if (hasLastPlatform) return undefined;
+    const initialSelectedProvider = resolveInitialSelectedProvider(user);
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
     }, 50);
     return () => clearTimeout(timer);
-  }, [user?.last_platform]);
+  }, [user?.id, user?.provider_connections]);
 
   useEffect(() => {
     try {

@@ -11,6 +11,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
 export const PERSONALIZED_SEARCH_PROVIDER_CODES = ["spotify"];
+export const NO_PERSONALIZED_RESULTS_PROVIDER = "none";
 
 const PROVIDER_LABELS = {
   spotify: "Spotify",
@@ -27,19 +28,84 @@ export function getConnectedPersonalizedProviderCodes(user) {
   });
 }
 
-export function getDefaultSelectedProvider(user) {
-  const connectedProviders = getConnectedPersonalizedProviderCodes(user);
-  const rawLastPlatform = String(user?.last_platform || "").trim().toLowerCase();
+export function getLastPlatformStorageKey(user) {
+  const userId = user?.id;
+  if (!userId || user?.is_guest) return null;
+  return `mm_last_platform:user:${userId}`;
+}
 
-  if (rawLastPlatform && connectedProviders.includes(rawLastPlatform)) {
-    return rawLastPlatform;
+export function readStoredSelectedProvider(user) {
+  const storageKey = getLastPlatformStorageKey(user);
+  if (!storageKey || typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const normalized = String(raw).trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized === NO_PERSONALIZED_RESULTS_PROVIDER) return NO_PERSONALIZED_RESULTS_PROVIDER;
+    return PERSONALIZED_SEARCH_PROVIDER_CODES.includes(normalized) ? normalized : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredSelectedProvider(user, providerCode) {
+  const storageKey = getLastPlatformStorageKey(user);
+  if (!storageKey || typeof window === "undefined") return;
+
+  const normalized = normalizeSelectedProviderCode(providerCode);
+  try {
+    window.localStorage.setItem(storageKey, normalized);
+  } catch {}
+}
+
+export function normalizeSelectedProviderCode(providerCode) {
+  const normalized = String(providerCode || "").trim().toLowerCase();
+  if (!normalized || normalized === NO_PERSONALIZED_RESULTS_PROVIDER) {
+    return NO_PERSONALIZED_RESULTS_PROVIDER;
+  }
+  return PERSONALIZED_SEARCH_PROVIDER_CODES.includes(normalized)
+    ? normalized
+    : NO_PERSONALIZED_RESULTS_PROVIDER;
+}
+
+export function resolveInitialSelectedProvider(user) {
+  const connectedProviders = getConnectedPersonalizedProviderCodes(user);
+  const stored = readStoredSelectedProvider(user);
+
+  if (stored === NO_PERSONALIZED_RESULTS_PROVIDER) {
+    return NO_PERSONALIZED_RESULTS_PROVIDER;
   }
 
-  return connectedProviders[0] || null;
+  if (stored && connectedProviders.includes(stored)) {
+    return stored;
+  }
+
+  return connectedProviders[0] || NO_PERSONALIZED_RESULTS_PROVIDER;
+}
+
+export function reconcileSelectedProvider(currentProvider, user) {
+  const connectedProviders = getConnectedPersonalizedProviderCodes(user);
+  const normalizedCurrent = normalizeSelectedProviderCode(currentProvider);
+
+  if (normalizedCurrent === NO_PERSONALIZED_RESULTS_PROVIDER) {
+    return NO_PERSONALIZED_RESULTS_PROVIDER;
+  }
+
+  if (connectedProviders.includes(normalizedCurrent)) {
+    return normalizedCurrent;
+  }
+
+  return resolveInitialSelectedProvider(user);
 }
 
 function SelectorLeadingIcon({ providerCode }) {
-  const iconPath = providerCode ? PROVIDER_ICON_PATHS[providerCode] : null;
+  const normalizedProvider = normalizeSelectedProviderCode(providerCode);
+  const iconPath =
+    normalizedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER
+      ? PROVIDER_ICON_PATHS[normalizedProvider]
+      : null;
 
   if (!iconPath) {
     return (
@@ -54,14 +120,14 @@ function SelectorLeadingIcon({ providerCode }) {
     <Box
       component="img"
       src={iconPath}
-      alt={PROVIDER_LABELS[providerCode] || providerCode}
-      className={`search_personalization_selector_icon search_personalization_selector_icon--${providerCode}`}
+      alt={PROVIDER_LABELS[normalizedProvider] || normalizedProvider}
+      className={`search_personalization_selector_icon search_personalization_selector_icon--${normalizedProvider}`}
     />
   );
 }
 
 export default function SearchProviderSelector({
-  selectedProviderCode = null,
+  selectedProviderCode = NO_PERSONALIZED_RESULTS_PROVIDER,
   connectedProviderCodes = [],
   onSelectProvider,
   onConnectProvider,
@@ -70,6 +136,7 @@ export default function SearchProviderSelector({
   const open = Boolean(anchorEl);
 
   const connectedSet = useMemo(() => new Set(connectedProviderCodes || []), [connectedProviderCodes]);
+  const normalizedSelectedProvider = normalizeSelectedProviderCode(selectedProviderCode);
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -81,7 +148,7 @@ export default function SearchProviderSelector({
 
   const handleSelect = async (providerCode) => {
     handleClose();
-    await onSelectProvider?.(providerCode);
+    await onSelectProvider?.(normalizeSelectedProviderCode(providerCode));
   };
 
   const handleConnect = async (providerCode) => {
@@ -97,7 +164,7 @@ export default function SearchProviderSelector({
           className="search_personalization_selector_button"
           aria-label="Sélectionner la source des résultats personnalisés"
         >
-          <SelectorLeadingIcon providerCode={selectedProviderCode} />
+          <SelectorLeadingIcon providerCode={normalizedSelectedProvider} />
           <ArrowDropDownIcon
             fontSize="medium"
             className="search_personalization_selector_arrow"
@@ -130,8 +197,8 @@ export default function SearchProviderSelector({
         </Box>
 
         <MenuItem
-          selected={!selectedProviderCode}
-          onClick={() => handleSelect(null)}
+          selected={normalizedSelectedProvider === NO_PERSONALIZED_RESULTS_PROVIDER}
+          onClick={() => handleSelect(NO_PERSONALIZED_RESULTS_PROVIDER)}
           className="search_personalization_selector_option search_personalization_selector_option--none"
         >
           Pas de résultats personnalisés
@@ -145,7 +212,7 @@ export default function SearchProviderSelector({
             return (
               <MenuItem
                 key={providerCode}
-                selected={selectedProviderCode === providerCode}
+                selected={normalizedSelectedProvider === providerCode}
                 onClick={() => handleSelect(providerCode)}
                 className={`search_personalization_selector_option search_personalization_selector_option--${providerCode}`}
               >

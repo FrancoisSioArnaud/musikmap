@@ -57,35 +57,6 @@ export const checkUserStatus = async (
   }
 };
 
-export const setLastPlatform = async (nextLastPlatform) => {
-  const csrftoken = getCookie("csrftoken");
-  const form = JSON.stringify({
-    last_platform: nextLastPlatform,
-  });
-
-  const requestOptions = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrftoken,
-    },
-    credentials: "same-origin",
-    body: form,
-  };
-
-  try {
-    const response = await fetch("/users/change-last-platform", requestOptions);
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
-      return data;
-    }
-    return null;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
-
 export const getUserDetails = async (userID) => {
   try {
     const response = await fetch("/users/get-user-info?userID=" + userID, {

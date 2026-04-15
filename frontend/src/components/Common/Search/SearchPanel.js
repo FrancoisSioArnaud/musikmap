@@ -5,14 +5,18 @@ import Typography from "@mui/material/Typography";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 
 import { UserContext } from "../../UserContext";
-import { setLastPlatform } from "../../UsersUtils";
 import { authenticateProviderUser } from "../../Utils/streaming/providerClient";
 import SearchBar from "./SearchBar";
 import Search from "./Search";
 import RecentlyPlayed from "./RecentlyPlayed";
 import {
   getConnectedPersonalizedProviderCodes,
-  getDefaultSelectedProvider,
+  getLastPlatformStorageKey,
+  normalizeSelectedProviderCode,
+  reconcileSelectedProvider,
+  resolveInitialSelectedProvider,
+  writeStoredSelectedProvider,
+  NO_PERSONALIZED_RESULTS_PROVIDER,
 } from "./SearchProviderSelector";
 
 function buildSocialSpotifyLoginUrl() {
@@ -37,32 +41,29 @@ export default function SearchPanel({
   contentSx,
   searchBarSx,
 }) {
-  const { user, setUser, isAuthenticated } = useContext(UserContext) || {};
+  const { user, isAuthenticated } = useContext(UserContext) || {};
 
   const [searchValue, setSearchValue] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState(getDefaultSelectedProvider(user));
+  const [selectedProvider, setSelectedProvider] = useState(() => resolveInitialSelectedProvider(user));
 
   const connectedPersonalizedProviderCodes = useMemo(
     () => getConnectedPersonalizedProviderCodes(user),
-    [user?.provider_connections, user?.last_platform]
+    [user?.provider_connections]
   );
 
   useEffect(() => {
-    setSelectedProvider(getDefaultSelectedProvider(user));
-  }, [user?.id, user?.last_platform, user?.provider_connections]);
+    setSelectedProvider((currentProvider) => reconcileSelectedProvider(currentProvider, user));
+  }, [user?.id, user?.provider_connections]);
 
-  const handleSelectProvider = useCallback(
-    async (nextProviderCode) => {
-      const normalizedProvider = nextProviderCode ? String(nextProviderCode).trim().toLowerCase() : null;
-      setSelectedProvider(normalizedProvider || null);
+  useEffect(() => {
+    const storageKey = getLastPlatformStorageKey(user);
+    if (!storageKey) return;
+    writeStoredSelectedProvider(user, selectedProvider);
+  }, [selectedProvider, user]);
 
-      const responseData = await setLastPlatform(normalizedProvider);
-      if (responseData?.current_user && setUser) {
-        setUser(responseData.current_user);
-      }
-    },
-    [setUser]
-  );
+  const handleSelectProvider = useCallback((nextProviderCode) => {
+    setSelectedProvider(normalizeSelectedProviderCode(nextProviderCode));
+  }, []);
 
   const handleConnectProvider = useCallback(
     async (providerCode) => {
@@ -116,18 +117,17 @@ export default function SearchPanel({
           ...(Array.isArray(contentSx) ? contentSx : contentSx ? [contentSx] : []),
         ]}
       >
-        {hasSearchValue ? (
-          <Search
-            searchValue={searchValue}
-            provider={selectedProvider}
-            onSelectSong={onSelectSong}
-            actionLabel={actionLabel}
-            posting={posting}
-            postingId={postingId}
-            postingProgress={postingProgress}
-            postingTransitionMs={postingTransitionMs}
-          />
-        ) : null}
+        <Search
+          visible={hasSearchValue}
+          searchValue={searchValue}
+          provider={selectedProvider}
+          onSelectSong={onSelectSong}
+          actionLabel={actionLabel}
+          posting={posting}
+          postingId={postingId}
+          postingProgress={postingProgress}
+          postingTransitionMs={postingTransitionMs}
+        />
 
         {!hasSearchValue && shouldShowIncitation ? (
           <Box

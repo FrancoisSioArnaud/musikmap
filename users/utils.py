@@ -176,7 +176,6 @@ def build_current_user_payload(user: CustomUser):
         "username": user.username,
         "display_name": getattr(user, "display_name", None) or ("Invité" if user.is_guest else user.username),
         "email": user.email,
-        "last_platform": (getattr(user, "last_platform", "") or None),
         "points": user.points,
         "is_social_auth": is_social_auth,
         "profile_picture_url": profile_picture_url,
