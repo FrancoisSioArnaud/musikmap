@@ -12,12 +12,14 @@
 }
 
 .song_search_results {
-  background-color: var(--mm-color-primary-light);
+  background-color: transparent;
   
   .item {
     position: relative;
     align-items: center;
     padding: 12px 20px;
+    overflow: hidden;
+    background-color: var(--mm-color-primary-light);
   }
 
   .item_fill {
@@ -25,7 +27,7 @@
     top: 0;
     left: 0;
     bottom: 0;
-    background-color: var(--mm-color-primary-light);
+    background-color: rgba(0, 0, 0, 0.08);
     transition-property: width;
     transition-timing-function: cubic-bezier(.17,.49,.88,.61);
     pointer-events: none;
