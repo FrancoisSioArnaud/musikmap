@@ -1,5 +1,5 @@
 // frontend/src/components/AvatarCropperModal.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Cropper from "react-easy-crop";
 import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
