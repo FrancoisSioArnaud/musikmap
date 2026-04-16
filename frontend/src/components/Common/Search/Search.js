@@ -26,10 +26,8 @@ export default function Search({
   provider,
   onSelectSong,
   actionLabel = "Déposer",
-  posting = false,
-  postingId = null,
-  postingProgress = 0,
-  postingTransitionMs = 0,
+  depositFlowState = null,
+  onDepositVisualComplete,
 }) {
   const { user, setUser } = useContext(UserContext) || {};
   const [results, setResults] = useState([]);
@@ -134,11 +132,9 @@ export default function Search({
     <SongList
       items={results}
       isLoading={isSearching}
-      posting={posting}
-      postingId={postingId}
-      postingProgress={postingProgress}
-      postingTransitionMs={postingTransitionMs}
+      depositFlowState={depositFlowState}
       onSelectSong={onSelectSong}
+      onDepositVisualComplete={onDepositVisualComplete}
       actionLabel={actionLabel}
       emptyContent={
         <Box sx={{ px: 5, py: 3 }}>

@@ -13,11 +13,6 @@ import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
 
-const SLOW_PROGRESS_TARGET = 78;
-const SLOW_PROGRESS_DURATION_MS = 2800;
-const FAST_PROGRESS_DURATION_MS = 700;
-const MIN_VISUAL_DURATION_MS = 600;
-const SUCCESS_HOLD_MS = 120;
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
@@ -28,12 +23,6 @@ function normalizeOptionToSong(option) {
   };
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export default function LiveSearch() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
@@ -41,10 +30,11 @@ export default function LiveSearch() {
 
   const [incitationText, setIncitationText] = useState("");
 
-  const [posting, setPosting] = useState(false);
-  const [postingId, setPostingId] = useState(null);
-  const [postingProgress, setPostingProgress] = useState(0);
-  const [postingTransitionMs, setPostingTransitionMs] = useState(0);
+  const [depositFlowState, setDepositFlowState] = useState({
+    requestKey: null,
+    status: "idle",
+    errorMessage: null,
+  });
 
   const searchInputRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -91,30 +81,14 @@ export default function LiveSearch() {
     [navigate, boxSlug]
   );
 
-  const resetPostingState = useCallback(() => {
-    if (!isMountedRef.current) return;
-    setPosting(false);
-    setPostingId(null);
-    setPostingProgress(0);
-    setPostingTransitionMs(0);
-  }, []);
-
   const handleDeposit = useCallback(
-    async (option) => {
-      if (posting) return;
+    async (option, requestKey) => {
+      if (depositFlowState.status === "pending") return;
 
-      const id = option?.id ?? "__posting__";
-      const startedAt = Date.now();
-
-      setPosting(true);
-      setPostingId(id);
-      setPostingProgress(0);
-      setPostingTransitionMs(0);
-
-      requestAnimationFrame(() => {
-        if (!isMountedRef.current) return;
-        setPostingTransitionMs(SLOW_PROGRESS_DURATION_MS);
-        setPostingProgress(SLOW_PROGRESS_TARGET);
+      setDepositFlowState({
+        requestKey,
+        status: "pending",
+        errorMessage: null,
       });
 
       try {
@@ -178,32 +152,34 @@ export default function LiveSearch() {
 
         setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
 
-        const elapsed = Date.now() - startedAt;
-        const remainingMinVisual = Math.max(0, MIN_VISUAL_DURATION_MS - elapsed);
-        if (remainingMinVisual > 0) {
-          await sleep(remainingMinVisual);
-        }
-
         if (!isMountedRef.current) return;
 
-        setPostingTransitionMs(FAST_PROGRESS_DURATION_MS);
-        setPostingProgress(100);
-
-        await sleep(FAST_PROGRESS_DURATION_MS + SUCCESS_HOLD_MS);
-
-        if (!isMountedRef.current) return;
-
-        navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
-          replace: true,
+        setDepositFlowState({
+          requestKey,
+          status: "success",
+          errorMessage: null,
         });
       } catch {
-        resetPostingState();
+        setDepositFlowState({
+          requestKey,
+          status: "error",
+          errorMessage: "Erreur pendant le dépôt",
+        });
         goOnboardingWithError("Erreur pendant le dépôt");
       }
     },
-    [posting, boxSlug, navigate, setUser, goOnboardingWithError, resetPostingState]
+    [boxSlug, depositFlowState.status, goOnboardingWithError, setUser]
   );
 
+  const handleDepositVisualComplete = useCallback((requestKey) => {
+    if (depositFlowState.requestKey !== requestKey || depositFlowState.status !== "success") {
+      return;
+    }
+
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
+      replace: true,
+    });
+  }, [boxSlug, depositFlowState.requestKey, depositFlowState.status, navigate]);
   return (
     <Box spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)", display: "flex", flexDirection: "column" }}>
       <Box sx={{ p: 4, pb: 2 }}>
@@ -215,11 +191,9 @@ export default function LiveSearch() {
       <SearchPanel
         inputRef={searchInputRef}
         onSelectSong={handleDeposit}
+        onDepositVisualComplete={handleDepositVisualComplete}
         actionLabel="Déposer"
-        posting={posting}
-        postingId={postingId}
-        postingProgress={postingProgress}
-        postingTransitionMs={postingTransitionMs}
+        depositFlowState={depositFlowState}
         searchIncitationText={incitationText}
         rootSx={{ flex: 1, minHeight: 0 }}
         searchBarWrapperSx={{ px: 4, pb: 2 }}

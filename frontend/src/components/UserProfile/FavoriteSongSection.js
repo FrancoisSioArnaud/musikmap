@@ -16,18 +16,6 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 
-const SLOW_PROGRESS_TARGET = 78;
-const SLOW_PROGRESS_DURATION_MS = 2800;
-const FAST_PROGRESS_DURATION_MS = 700;
-const MIN_VISUAL_DURATION_MS = 600;
-const SUCCESS_HOLD_MS = 120;
-
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export default function FavoriteSongSection({
   profileUser,
   isOwner,
@@ -40,10 +28,11 @@ export default function FavoriteSongSection({
 
   const [favoriteDeposit, setFavoriteDeposit] = useState(initialFavoriteDeposit || null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [posting, setPosting] = useState(false);
-  const [postingId, setPostingId] = useState(null);
-  const [postingProgress, setPostingProgress] = useState(0);
-  const [postingTransitionMs, setPostingTransitionMs] = useState(0);
+  const [depositFlowState, setDepositFlowState] = useState({
+    requestKey: null,
+    status: "idle",
+    errorMessage: null,
+  });
   const searchInputRef = useRef(null);
 
 
@@ -79,33 +68,27 @@ export default function FavoriteSongSection({
   }, [location, openDrawer, user?.id, user?.is_guest]);
 
   const closeDrawer = useCallback((force = false) => {
-    if (posting && !force) return;
+    if (depositFlowState.status === "pending" && !force) return;
     setDrawerOpen(false);
-    setPosting(false);
-    setPostingId(null);
-    setPostingProgress(0);
-    setPostingTransitionMs(0);
-  }, [posting]);
+    setDepositFlowState({
+      requestKey: null,
+      status: "idle",
+      errorMessage: null,
+    });
+  }, [depositFlowState.status]);
 
   const syncCurrentUser = useCallback((payload) => {
     if (!payload || !setUser) return;
     setUser(payload);
   }, [setUser]);
 
-  const handleSetFavorite = useCallback(async (option) => {
-    if (posting) return;
+  const handleSetFavorite = useCallback(async (option, requestKey) => {
+    if (depositFlowState.status === "pending") return;
 
-    const startedAt = Date.now();
-    const itemId = option?.id ?? "__posting__";
-
-    setPosting(true);
-    setPostingId(itemId);
-    setPostingProgress(0);
-    setPostingTransitionMs(0);
-
-    requestAnimationFrame(() => {
-      setPostingTransitionMs(SLOW_PROGRESS_DURATION_MS);
-      setPostingProgress(SLOW_PROGRESS_TARGET);
+    setDepositFlowState({
+      requestKey,
+      status: "pending",
+      errorMessage: null,
     });
 
     try {
@@ -124,34 +107,38 @@ export default function FavoriteSongSection({
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         window.alert(data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.");
-        setPosting(false);
-        setPostingId(null);
-        setPostingProgress(0);
-        setPostingTransitionMs(0);
+        setDepositFlowState({
+          requestKey,
+          status: "error",
+          errorMessage: data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.",
+        });
         return;
       }
 
-      const elapsed = Date.now() - startedAt;
-      const remainingMinVisual = Math.max(0, MIN_VISUAL_DURATION_MS - elapsed);
-      if (remainingMinVisual > 0) {
-        await sleep(remainingMinVisual);
-      }
-
-      setPostingTransitionMs(FAST_PROGRESS_DURATION_MS);
-      setPostingProgress(100);
-      await sleep(FAST_PROGRESS_DURATION_MS + SUCCESS_HOLD_MS);
-
       setFavoriteDeposit(data?.favorite_deposit || null);
       syncCurrentUser(data?.current_user || null);
-      closeDrawer(true);
+      setDepositFlowState({
+        requestKey,
+        status: "success",
+        errorMessage: null,
+      });
     } catch {
       window.alert("Impossible d’enregistrer cette chanson de coeur.");
-      setPosting(false);
-      setPostingId(null);
-      setPostingProgress(0);
-      setPostingTransitionMs(0);
+      setDepositFlowState({
+        requestKey,
+        status: "error",
+        errorMessage: "Impossible d’enregistrer cette chanson de coeur.",
+      });
     }
-  }, [closeDrawer, posting, syncCurrentUser]);
+  }, [depositFlowState.status, syncCurrentUser]);
+
+  const handleDepositVisualComplete = useCallback((requestKey) => {
+    if (depositFlowState.requestKey !== requestKey || depositFlowState.status !== "success") {
+      return;
+    }
+
+    closeDrawer(true);
+  }, [closeDrawer, depositFlowState.requestKey, depositFlowState.status]);
 
   const handleRemoveFavorite = useCallback(async () => {
     try {
@@ -314,11 +301,9 @@ export default function FavoriteSongSection({
               <SearchPanel
                 inputRef={searchInputRef}
                 onSelectSong={handleSetFavorite}
+                onDepositVisualComplete={handleDepositVisualComplete}
                 actionLabel="Choisir"
-                posting={posting}
-                postingId={postingId}
-                postingProgress={postingProgress}
-                postingTransitionMs={postingTransitionMs}
+                depositFlowState={depositFlowState}
                 rootSx={{ flex: 1, minHeight: 0 }}
                 searchBarWrapperSx={{ px: 5, pb: 2 }}
                 contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}

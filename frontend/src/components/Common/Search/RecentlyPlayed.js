@@ -14,10 +14,8 @@ export default function RecentlyPlayed({
   visible = true,
   onSelectSong,
   actionLabel = "Déposer",
-  posting = false,
-  postingId = null,
-  postingProgress = 0,
-  postingTransitionMs = 0,
+  depositFlowState = null,
+  onDepositVisualComplete,
 }) {
   const { user, setUser } = useContext(UserContext) || {};
   const [itemsByProvider, setItemsByProvider] = useState({});
@@ -101,11 +99,9 @@ export default function RecentlyPlayed({
       <SongList
         items={items}
         isLoading={isLoading}
-        posting={posting}
-        postingId={postingId}
-        postingProgress={postingProgress}
-        postingTransitionMs={postingTransitionMs}
+        depositFlowState={depositFlowState}
         onSelectSong={onSelectSong}
+        onDepositVisualComplete={onDepositVisualComplete}
         actionLabel={actionLabel}
         emptyContent={
           <Box sx={{ px: 5, py: 1 }}>

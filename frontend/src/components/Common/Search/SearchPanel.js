@@ -23,10 +23,8 @@ export default function SearchPanel({
   inputRef,
   onSelectSong,
   actionLabel = "Déposer",
-  posting = false,
-  postingId = null,
-  postingProgress = 0,
-  postingTransitionMs = 0,
+  depositFlowState = null,
+  onDepositVisualComplete,
   searchIncitationText = "",
   placeholder = "Chercher une chanson",
   rootSx,
@@ -110,10 +108,8 @@ export default function SearchPanel({
           provider={selectedProvider}
           onSelectSong={onSelectSong}
           actionLabel={actionLabel}
-          posting={posting}
-          postingId={postingId}
-          postingProgress={postingProgress}
-          postingTransitionMs={postingTransitionMs}
+          depositFlowState={depositFlowState}
+          onDepositVisualComplete={onDepositVisualComplete}
         />
 
         {!hasSearchValue && shouldShowIncitation ? (
@@ -138,10 +134,8 @@ export default function SearchPanel({
           visible={!hasSearchValue}
           onSelectSong={onSelectSong}
           actionLabel={actionLabel}
-          posting={posting}
-          postingId={postingId}
-          postingProgress={postingProgress}
-          postingTransitionMs={postingTransitionMs}
+          depositFlowState={depositFlowState}
+          onDepositVisualComplete={onDepositVisualComplete}
         />
       </Box>
     </Box>
