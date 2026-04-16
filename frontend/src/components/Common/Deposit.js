@@ -245,6 +245,7 @@ export default function Deposit({
   dateLabel = null,
   userPrefix = "Partagée par",
   footerSlot = null,
+  boxName = "",
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -301,6 +302,32 @@ export default function Deposit({
   const reactionCount = reactionsDetail.length;
   const commentsCount = Array.isArray(comments?.items) ? comments.items.length : 0;
   const canShare = Boolean(viewer?.id && isRevealed);
+  const resolvedShareBoxName = useMemo(() => {
+    const propName = String(boxName || "").trim();
+    if (propName) return propName;
+
+    const localBoxName = String(localDep?.box?.name || localDep?.box_name || "").trim();
+    if (localBoxName) return localBoxName;
+
+    try {
+      const raw = localStorage.getItem("mm_current_box");
+      if (!raw) return "";
+
+      const storedBox = JSON.parse(raw);
+      const storedBoxName = String(storedBox?.box_name || "").trim();
+      if (!storedBoxName) return "";
+
+      const routeMatch = location?.pathname?.match(/^\/flowbox\/([^/]+)/);
+      const currentRouteBoxSlug = routeMatch?.[1] || "";
+      if (currentRouteBoxSlug && storedBox?.box_slug !== currentRouteBoxSlug) {
+        return "";
+      }
+
+      return storedBoxName;
+    } catch {
+      return "";
+    }
+  }, [boxName, localDep?.box?.name, localDep?.box_name, location?.pathname]);
 
   const updateDepositCollections = useCallback((transform) => {
     setDispDeposits?.((prev) => {
@@ -684,12 +711,16 @@ export default function Deposit({
         return;
       }
 
+      const shareMessagePrefix = resolvedShareBoxName
+        ? `Regarde ce que j'ai découvert dans la Boîte à Chanson de ${resolvedShareBoxName} :`
+        : "Regarde ce que j'ai découvert dans une boîte à chanson :";
+
       const shareData = {
         title: song?.title || "Chanson partagée",
         text:
           song?.title && song?.artist
-            ? `Regarde ce que j'ai découvert dans une boîte à chanson : ${song.title} — ${song.artist} ${shareUrl}`
-            : `Regarde ce que j'ai découvert dans une boîte à chanson : ${shareUrl}`,
+            ? `${shareMessagePrefix} ${song.title} — ${song.artist} ${shareUrl}`
+            : `${shareMessagePrefix} ${shareUrl}`,
         url: shareUrl,
       };
 
@@ -710,7 +741,15 @@ export default function Deposit({
     } catch (error) {
       window.alert("Impossible de créer le lien de partage.");
     }
-  }, [viewer?.id, isRevealed, localDep?.public_key, showShareFeedback, song?.artist, song?.title]);
+  }, [
+    viewer?.id,
+    isRevealed,
+    localDep?.public_key,
+    resolvedShareBoxName,
+    showShareFeedback,
+    song?.artist,
+    song?.title,
+  ]);
 
   const renderDepositUser = (currentUser) => {
     const canNavigate = Boolean(currentUser?.username && !currentUser?.is_guest);
