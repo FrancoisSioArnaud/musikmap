@@ -5,7 +5,7 @@ import json
 import re
 from io import BytesIO
 from pathlib import Path
-from datetime import date, timedelta, timezone as dt_timezone
+from datetime import timedelta, timezone as dt_timezone
 from html.parser import HTMLParser
 from math import radians, sin, cos, sqrt, atan2, log2
 from typing import Any, Dict, List, Optional, Union, Iterable, Sequence, Tuple
@@ -14,10 +14,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from PIL import Image
 from django.conf import settings
-from django.db.models import QuerySet, Prefetch, Q, Count
+from django.db.models import Prefetch, Q
 from django.utils import timezone
-from django.urls import reverse
-from django.middleware.csrf import get_token
 from django.utils.timezone import localtime, localdate
 from rest_framework import status
 from rest_framework.response import Response
@@ -49,7 +47,6 @@ from utils import (
     NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
     NB_POINTS_CONSECUTIVE_DAYS_BOX,
-    COST_REVEAL_BOX,
 )
 
 COMMENT_MAX_LENGTH = 100
