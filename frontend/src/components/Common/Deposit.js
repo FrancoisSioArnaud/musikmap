@@ -23,6 +23,7 @@ import DialogActions from "@mui/material/DialogActions";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import PlayModal from "../Common/PlayModal";
+import AuthModal from "../Auth/AuthModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import AddReactionModal from "../Reactions/AddReactionModal";
