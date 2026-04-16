@@ -58,6 +58,7 @@ export default function Onboarding() {
             "mm_current_box",
             JSON.stringify({
               box_slug: boxSlug,
+              box_name: (data?.name || "").trim(),
               search_incitation_text: (data?.search_incitation_text || "").trim(),
             })
           );
