@@ -22,7 +22,6 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
