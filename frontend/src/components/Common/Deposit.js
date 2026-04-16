@@ -1,36 +1,29 @@
-import React, { useState, useContext, useMemo, useEffect, useCallback, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
-import Snackbar from "@mui/material/Snackbar";
-import SnackbarContent from "@mui/material/SnackbarContent";
-import Slide from "@mui/material/Slide";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import MusicNote from "@mui/icons-material/MusicNote";
-import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
-import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
-import SendIcon from "@mui/icons-material/Send";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import MusicOffRoundedIcon from "@mui/icons-material/MusicOffRounded";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import PlayModal from "../Common/PlayModal";
-import AuthModal from "../Auth/AuthModal";
-import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
 import AddReactionModal from "../Reactions/AddReactionModal";
 import ReactionSummary from "../Reactions/ReactionSummary";
-import CommentsDrawer from "../Comments/CommentsDrawer";
+import CommentIcon from "@mui/icons-material/Comment";
+import CommentDrawer from "../Comments/CommentsDrawer";
+import SongPlayModal from "./SongPlayModal";
+import MusicNote from "@mui/icons-material/MusicNote";
+import LockOpen from "@mui/icons-material/LockOpen";
+import CircularProgress from "@mui/material/CircularProgress";
+import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
-import { formatRelativeTime } from "../Utils/time";
+import AuthModal from "../Auth/AuthModal";
+import {
+  buildRelativeLocation,
+  consumeAuthAction,
+  saveAuthReturnContext,
+} from "../Auth/AuthFlow";
+
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
