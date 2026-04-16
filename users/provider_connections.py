@@ -67,18 +67,6 @@ def upsert_provider_connection(
     return connection
 
 
-def has_personalized_provider_connection(
-    user: Optional[CustomUser],
-    provider_code: str,
-) -> bool:
-    normalized = normalize_provider_code(provider_code)
-    if normalized not in PERSONALIZED_SEARCH_PROVIDER_CODES:
-        return False
-
-    connection = get_provider_connection(user, normalized)
-    return bool(connection and connection.is_active and connection.access_token)
-
-
 def disconnect_provider_connection(
     user: Optional[CustomUser],
     provider_code: str,
