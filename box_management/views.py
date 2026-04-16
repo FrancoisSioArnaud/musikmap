@@ -1,7 +1,7 @@
 # ===== Standard library =====
 import base64
 import io
-import json
+
 import re
 import xml.etree.ElementTree as ET
 import zipfile
@@ -14,14 +14,11 @@ import requests
 # ===== Django =====
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.db import transaction, IntegrityError
 from django.db.models import Count, Max, Prefetch, Q, F
-from django.middleware.csrf import get_token
 from django.http import Http404, HttpResponse, HttpResponseGone
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.timezone import localtime, localdate
 
@@ -94,7 +91,6 @@ from .utils import (
     _build_incitation_overlap_counts,
     _get_incitation_overlap_queryset,
     _coerce_bool,
-    COMMENT_MAX_LENGTH,
     COMMENT_COOLDOWN_SECONDS,
     COMMENT_TARGET_USER_DAILY_LIMIT,
     COMMENT_REASON_ALREADY_COMMENTED,
@@ -118,7 +114,6 @@ from .utils import (
     _get_profile_picture_url,
     _get_active_comment_restrictions_for_clients,
     _log_blocked_comment_attempt,
-    extract_accent_color_from_urls,
     create_song_deposit,
     build_pinned_price_steps_payload,
     get_pinned_price_step,
