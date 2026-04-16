@@ -10,9 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from deezer.credentials import APP_ID as DEEZER_APP_ID
-from deezer.credentials import APP_SECRET as DEEZER_APP_SECRET
 from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID
-from spotify.credentials import CLIENT_SECRET as SPOTIFY_CLIENT_SECRET
 from spotify.credentials import REDIRECT_URI as SPOTIFY_REDIRECT_URI
 from spotify.spotipy_client import sp
 
