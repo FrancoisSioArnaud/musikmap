@@ -33,6 +33,7 @@ export default function UserSettings() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const [providerErrors, setProviderErrors] = useState({});
+  const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
@@ -71,7 +72,7 @@ export default function UserSettings() {
                 <Button variant="contained" onClick={() => startAuthPageFlow({ navigate, location, tab: "register", authContext: "account", mergeGuest: true, prefillUsername: user?.username || "" })}>
                   Créer mon compte
                 </Button>
-                <Button variant="outlined" onClick={() => navigate("/profile")}>
+                <Button variant="outlined" onClick={() => navigate(ownProfilePath)}>
                   Retour
                 </Button>
               </Box>

@@ -19,6 +19,7 @@ export default function UserProfileEdit() {
   const location = useLocation();
   const [cropOpen, setCropOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   if (user?.is_guest) {
     return (
@@ -29,7 +30,7 @@ export default function UserProfileEdit() {
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button variant="contained" onClick={() => startAuthPageFlow({ navigate, location, tab: "register", authContext: "account", mergeGuest: true, prefillUsername: user?.username || "" })}>Créer mon compte</Button>
-          <Button variant="outlined" onClick={() => navigate("/profile")}>Retour</Button>
+          <Button variant="outlined" onClick={() => navigate(ownProfilePath)}>Retour</Button>
         </Box>
       </Box>
     );
@@ -107,7 +108,8 @@ export default function UserProfileEdit() {
       }
 
       await checkUserStatus(setUser, setIsAuthenticated);
-      navigate("/profile");
+      const nextProfilePath = username.trim() ? `/profile/${username.trim()}` : ownProfilePath;
+      navigate(nextProfilePath);
     } catch (err) {
       console.error(err);
       alert("Impossible de sauvegarder. Vérifie ta connexion.");
@@ -151,7 +153,7 @@ export default function UserProfileEdit() {
         </Typography>
       </Box>
       <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
-        <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate("/profile")}>Annuler</Button>
+        <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate(ownProfilePath)}>Annuler</Button>
         <Button sx={{ width: "100%" }} variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
       </Box>
     </Box>

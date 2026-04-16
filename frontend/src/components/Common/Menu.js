@@ -18,6 +18,7 @@ export default function MenuAppBar() {
   // States & Variables
   const { user, isAuthenticated } = useContext(UserContext);
   const hasIdentity = Boolean(user?.id);
+  const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   return (
     <AppBar
@@ -57,7 +58,7 @@ export default function MenuAppBar() {
               aria-controls="menu-appbar"
               color="inherit"
               component={Link}
-              to="/profile"
+              to={ownProfilePath}
             >
               <Avatar alt={user?.display_name || user?.username || "Invité"} src={user?.profile_picture_url || undefined} />
             </IconButton>

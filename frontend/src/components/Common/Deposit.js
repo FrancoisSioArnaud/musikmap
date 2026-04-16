@@ -1063,7 +1063,7 @@ export default function Deposit({
               size="small"
               onClick={() => {
                 setSnackOpen(false);
-                navigate("/profile");
+                navigate(viewer?.username ? `/profile/${viewer.username}` : "/profile");
               }}
             >
               Voir

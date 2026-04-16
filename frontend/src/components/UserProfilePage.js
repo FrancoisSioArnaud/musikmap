@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "./UserContext";
 
 import Box from "@mui/material/Box";
@@ -57,7 +57,20 @@ export default function UserProfilePage() {
   const { user } = useContext(UserContext) || {};
 
   const routeUsername = (params?.username || "").trim();
-  const pageStateKey = getProfilePageStateKey({ pathname: routeUsername ? `/profile/${routeUsername}` : "/profile", search: "" });
+  const normalizedRouteUsername = routeUsername.toLowerCase();
+  const currentUsername = (user?.username || "").trim();
+  const normalizedCurrentUsername = currentUsername.toLowerCase();
+  const shouldCanonicalRedirect = Boolean(
+    routeUsername &&
+      currentUsername &&
+      normalizedRouteUsername === normalizedCurrentUsername
+  );
+  const profilePathname = shouldCanonicalRedirect
+    ? "/profile"
+    : routeUsername
+      ? `/profile/${routeUsername}`
+      : "/profile";
+  const pageStateKey = getProfilePageStateKey({ pathname: profilePathname, search: "" });
   const isOwner = !routeUsername && Boolean(user?.id);
   const isGuestOwner = Boolean(isOwner && user?.is_guest);
 
@@ -172,6 +185,15 @@ export default function UserProfilePage() {
       prefillUsername: nextUsername,
     });
   };
+
+  if (shouldCanonicalRedirect) {
+    return (
+      <Navigate
+        to={`/profile${location.search || ""}${location.hash || ""}`}
+        replace
+      />
+    );
+  }
 
   if (header.status === "loading") {
     return (
