@@ -5,9 +5,7 @@ import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
-import IconButton from "@mui/material/IconButton";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CloseIcon from "@mui/icons-material/Close";
 
 import { getCookie } from "../Security/TokensUtils";
 
