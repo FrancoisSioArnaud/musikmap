@@ -36,8 +36,8 @@ import ReactionSummary from "../Reactions/ReactionSummary";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import PlayModal from "./PlayModal";
-import { getCookie } from "../UsersUtils";
-import { formatRelativeTime } from "../Utils/date";
+import { getCookie } from "../Security/TokensUtils";
+import { formatRelativeTime } from "../Utils/time";
 
 
 function SlideDownTransition(props) {
