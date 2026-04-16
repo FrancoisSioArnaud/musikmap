@@ -30,8 +30,6 @@ import ReactionSummary from "../Reactions/ReactionSummary";
 import CommentsDrawer from "../Comments/CommentsDrawer";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { formatRelativeTime } from "../Utils/time";
-import AuthModal from "./AuthModal";
-import { buildRelativeLocation, clearAuthReturnContext, consumeAuthAction, saveAuthReturnContext } from "./authFlow";
 
 function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
