@@ -1412,15 +1412,6 @@ def _get_prev_head_and_older(box, limit: int = 10):
 
 # ---------- Normalisation & distance ----------
 
-def normalize_string(input_string: str) -> str:
-    """
-    Normalise une chaîne : supprime les caractères spéciaux et met en minuscule.
-    """
-    normalized_string = re.sub(r'[^a-zA-Z0-9\s]', '', input_string).lower()
-    normalized_string = re.sub(r'\s+', ' ', normalized_string).strip()
-    return normalized_string
-
-
 
 
 def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None):
@@ -1506,29 +1497,6 @@ def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
 
 # ============ Achievements centralisés ============
 
-def _is_first_user_deposit(user: Optional[CustomUser], box) -> bool:
-    """Vrai si l'utilisateur n'a jamais déposé dans cette box."""
-    if not user:
-        return False
-    return not Deposit.objects.filter(user=user, box=box).exists()
-
-
-def _is_first_song_deposit_global_by_title_artist(title: str, artist: str) -> bool:
-    """Vrai si (title, artist) n'a jamais été déposé nulle part (case-insensitive)."""
-    if not title or not artist:
-        return False
-    artist_key = str(artist or "").strip().lower()
-    candidates = Deposit.objects.filter(song__title__iexact=title).select_related("song")
-    return not any((getattr(dep.song, "artist", "") or "").strip().lower() == artist_key for dep in candidates)
-
-
-def _is_first_song_deposit_in_box_by_title_artist(title: str, artist: str, box) -> bool:
-    """Vrai si (title, artist) n'a jamais été déposé dans la box donnée (case-insensitive)."""
-    if not title or not artist:
-        return False
-    artist_key = str(artist or "").strip().lower()
-    candidates = Deposit.objects.filter(box=box, song__title__iexact=title).select_related("song")
-    return not any((getattr(dep.song, "artist", "") or "").strip().lower() == artist_key for dep in candidates)
 
 
 def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
