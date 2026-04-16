@@ -455,24 +455,3 @@ def resolve_provider_link_for_song(song: Song, target_provider_code: str) -> Dic
         }
 
 
-def get_spotify_auth_url() -> str:
-    params = {
-        "client_id": SPOTIFY_CLIENT_ID,
-        "response_type": "code",
-        "redirect_uri": SPOTIFY_REDIRECT_URI,
-        "scope": "user-read-recently-played",
-    }
-    return "https://accounts.spotify.com/authorize?" + urlencode(params)
-
-
-def get_deezer_auth_url(redirect_uri: str) -> str:
-    return (
-        "https://connect.deezer.com/oauth/auth.php?"
-        + urlencode(
-            {
-                "app_id": DEEZER_APP_ID,
-                "redirect_uri": redirect_uri,
-                "perms": "email,basic_access,offline_access,listening_history",
-            }
-        )
-    )
