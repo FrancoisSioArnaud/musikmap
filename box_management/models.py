@@ -2,11 +2,10 @@ from datetime import timedelta
 from django.db import models
 import re
 from django.utils import timezone
-from django.db.models import Count
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from typing import Union, Optional, Iterable
+from typing import Union, Optional
 from users.models import CustomUser
 from utils import generate_unique_filename
 import secrets
