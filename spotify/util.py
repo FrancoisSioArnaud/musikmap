@@ -98,34 +98,6 @@ def refresh_spotify_token(user):
     return True
 
 
-def execute_spotify_api_request(user, endpoint, post_=False, put_=False):
-    if not is_spotify_authenticated(user):
-        return {"error": "User not authenticated with Spotify"}
-
-    connection = get_user_tokens(user)
-    if not connection:
-        return {"error": "Missing Spotify token"}
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + connection.access_token,
-    }
-
-    try:
-        if post_:
-            response = post(BASE_URL + endpoint, headers=headers, timeout=20)
-        elif put_:
-            response = put(BASE_URL + endpoint, headers=headers, timeout=20)
-        else:
-            response = get(BASE_URL + endpoint, headers=headers, timeout=20)
-
-        if response.status_code == 204:
-            return {}
-        return response.json()
-    except requests.RequestException:
-        return {"error": "Spotify request failed"}
-
-
 def fetch_spotify_profile(access_token: str) -> dict:
     response = requests.get(
         "https://api.spotify.com/v1/me",
