@@ -90,10 +90,15 @@ export default function RecentlyPlayed({
   const isLoading = statusByProvider[provider] === "loading";
 
   return (
-    <Box>
+    <Box
+      sx={{
+        mt: 2,
+        backgroundColor: "var(--mm-color-primary-light)",
+      }}
+    >
       <Box sx={{ px: 5, pt: 1 }}>
         <Typography component="h3" variant="subtitle1" sx={{ mb: 1 }}>
-          Écouté récemment
+          Dernières écoutes
         </Typography>
       </Box>
       <SongList

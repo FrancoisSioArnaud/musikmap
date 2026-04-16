@@ -11,6 +11,7 @@ const FAST_PROGRESS_DURATION_MS = 700;
 const MIN_VISUAL_DURATION_MS = 600;
 const SUCCESS_HOLD_MS = 120;
 const ERROR_HOLD_MS = 220;
+const LOADING_SETTLE_MS = 100;
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -36,6 +37,7 @@ export default function SongList({
   const [activeItemId, setActiveItemId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [transitionMs, setTransitionMs] = useState(0);
+  const [showLoading, setShowLoading] = useState(Boolean(isLoading));
 
   const startedAtRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -63,6 +65,25 @@ export default function SongList({
       window.cancelAnimationFrame(animationFrameRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    let timer = null;
+
+    if (isLoading) {
+      setShowLoading(true);
+      return undefined;
+    }
+
+    timer = window.setTimeout(() => {
+      setShowLoading(false);
+    }, LOADING_SETTLE_MS);
+
+    return () => {
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [isLoading]);
 
   const displayItems = useMemo(() => {
     if (activeRequestKey && Array.isArray(frozenItems)) {
@@ -169,7 +190,7 @@ export default function SongList({
     return undefined;
   }, [activeRequestKey, depositFlowState?.requestKey, depositFlowState?.status, hasVisualFlow, onDepositVisualComplete, resetVisualFlow]);
 
-  if (isLoading) {
+  if (showLoading) {
     return (
       <Box className="song_search_loading">
         <CircularProgress className="spinner" size={28} />

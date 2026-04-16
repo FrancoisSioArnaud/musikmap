@@ -14,10 +14,17 @@ import SongList from "./SongList";
 import { NO_PERSONALIZED_RESULTS_PROVIDER } from "./SearchProviderSelector";
 
 const SERVER_SEARCH_PROVIDER_CODE = "spotify";
-const SEARCH_DEBOUNCE_MS = 400;
+const SEARCH_DEBOUNCE_MS = 550;
+const CACHE_LOADING_MS = 50;
 
 function normalizeSearchValue(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 export default function Search({
@@ -55,10 +62,25 @@ export default function Search({
 
     const effectiveProvider = provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? provider : "server";
     const cacheKey = `${effectiveProvider}::${normalizedQueryKey}`;
+
     if (cacheRef.current.has(cacheKey)) {
-      setResults(cacheRef.current.get(cacheKey) || []);
-      setIsSearching(false);
-      return undefined;
+      let cancelled = false;
+
+      const applyCachedResults = async () => {
+        setIsSearching(true);
+        await sleep(CACHE_LOADING_MS);
+        if (cancelled) {
+          return;
+        }
+        setResults(cacheRef.current.get(cacheKey) || []);
+        setIsSearching(false);
+      };
+
+      applyCachedResults();
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     const controller = new AbortController();
