@@ -27,6 +27,16 @@ import {
   saveAuthReturnContext,
 } from "./AuthFlow";
 
+function normalizeFieldErrors(payload, fallbackMessage) {
+  if (payload?.field_errors && typeof payload.field_errors === "object") {
+    return payload.field_errors;
+  }
+  if (payload?.detail) {
+    return { global: [payload.detail] };
+  }
+  return { global: [fallbackMessage] };
+}
+
 function BenefitsStrip() {
   return (
     <Box className="auth_benefits_strip no_scroll_bar" sx={{ display: "flex", gap: "16px", overflowX: "auto", p: "16px", backgroundColor: "var(--mm-color-secondary-light)" }}>
@@ -115,7 +125,7 @@ export default function AuthPanel({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setLoginError(response.status === 401 ? "Informations d'identification non valides" : "Impossible de te connecter.");
+        setLoginError(data?.detail || (response.status === 401 ? "Informations d'identification non valides" : "Impossible de te connecter."));
         return;
       }
       if (data?.merge_error) {
@@ -150,7 +160,7 @@ export default function AuthPanel({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setRegisterErrors(data?.errors || { global: ["Impossible de créer ton compte."] });
+        setRegisterErrors(normalizeFieldErrors(data, "Impossible de créer ton compte."));
         return;
       }
       setSuccessMessage("Compte créé avec succès.");

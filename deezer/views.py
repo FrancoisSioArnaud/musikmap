@@ -1,11 +1,12 @@
-import json
+import requests
 from urllib.parse import urlencode
 
-import requests
 from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from la_boite_a_son.api_errors import api_error
 
 from .credentials import APP_ID, APP_SECRET
 from .util import disconnect_user, execute_deezer_api_request, is_deezer_authenticated, update_or_create_user_tokens
@@ -24,7 +25,7 @@ def _absolute_callback_uri(request):
 class AuthURL(APIView):
     def get(self, request, format=None):
         if not getattr(request.user, "is_authenticated", False):
-            return Response({"detail": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
 
         params = {
             "app_id": APP_ID,
@@ -76,9 +77,12 @@ class IsAuthenticated(APIView):
 
 class GetRecentlyPlayedTracks(APIView):
     def get(self, request, format=None):
+        if not getattr(request.user, "is_authenticated", False):
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
+
         response = execute_deezer_api_request(self.request.user, "/user/me/history", recent=True)
         if response is None or not response.ok:
-            return Response([], status=status.HTTP_200_OK)
+            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "DEEZER_RECENT_TRACKS_UNAVAILABLE", "Impossible de charger les dernières écoutes Deezer.")
 
         results = response.json() if response.content else {}
         tracks = []
@@ -104,10 +108,13 @@ class GetRecentlyPlayedTracks(APIView):
 
 class Search(APIView):
     def post(self, request, format=None):
-        search_query = request.data.get("search_query") or ""
+        search_query = str(request.data.get("search_query") or "").strip()
+        if not search_query:
+            return api_error(status.HTTP_400_BAD_REQUEST, "SEARCH_QUERY_REQUIRED", "search_query manquant")
+
         response = execute_deezer_api_request(self.request.user, f"search/track?q={search_query}&output=json")
         if response is None or not response.ok:
-            return Response([], status=status.HTTP_200_OK)
+            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "DEEZER_SEARCH_UNAVAILABLE", "Recherche Deezer indisponible.")
 
         results = response.json() if response.content else {}
         tracks = []

@@ -13,6 +13,16 @@ import { UserContext } from "../UserContext";
 import AvatarCropperModal from "./AvatarCropperModal";
 import { startAuthPageFlow } from "../Auth/AuthFlow";
 
+function getApiErrorMessage(payload, fallbackMessage) {
+  if (payload?.field_errors && typeof payload.field_errors === "object") {
+    const firstField = Object.values(payload.field_errors)[0];
+    if (Array.isArray(firstField) && firstField[0]) return String(firstField[0]);
+    if (firstField) return String(firstField);
+  }
+  if (payload?.detail) return payload.detail;
+  return fallbackMessage;
+}
+
 export default function UserProfileEdit() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
@@ -69,8 +79,7 @@ export default function UserProfileEdit() {
       const ct = res.headers.get("content-type") || "";
       const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
       if (!res.ok) {
-        const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
-        setErrorMessage(msg);
+        setErrorMessage(getApiErrorMessage(payload, `Erreur serveur ${res.status}`));
         return;
       }
       if (payload?.profile_picture_url) {
@@ -108,8 +117,7 @@ export default function UserProfileEdit() {
       const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
 
       if (!res.ok) {
-        const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
-        setErrorMessage(msg);
+        setErrorMessage(getApiErrorMessage(payload, `Erreur serveur ${res.status}`));
         return;
       }
 

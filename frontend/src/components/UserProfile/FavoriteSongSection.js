@@ -115,7 +115,7 @@ export default function FavoriteSongSection({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const message = data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.";
+        const message = data?.detail || "Impossible d’enregistrer cette chanson de coeur.";
         openErrorDialog("Impossible d’enregistrer la chanson de cœur", message);
         setDepositFlowState({
           requestKey,
@@ -167,7 +167,7 @@ export default function FavoriteSongSection({
       if (!response.ok) {
         openErrorDialog(
           "Impossible de retirer la chanson de cœur",
-          data?.detail || data?.errors?.[0] || "Impossible de retirer la chanson de coeur."
+          data?.detail || "Impossible de retirer la chanson de coeur."
         );
         return;
       }

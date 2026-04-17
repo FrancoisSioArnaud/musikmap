@@ -24,6 +24,16 @@ import {
 } from "../Utils/streaming/SpotifyUtils";
 import { startAuthPageFlow } from "../Auth/AuthFlow";
 
+function normalizeFieldErrors(payload, fallbackMessage) {
+  if (payload?.field_errors && typeof payload.field_errors === "object") {
+    return payload.field_errors;
+  }
+  if (payload?.detail) {
+    return { global: [payload.detail] };
+  }
+  return { global: [fallbackMessage] };
+}
+
 export default function UserSettings() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const navigate = useNavigate();
@@ -109,16 +119,16 @@ export default function UserSettings() {
     const requestOptions = { method: "POST", headers: { "X-CSRFToken": csrftoken }, body: form };
     try {
       const response = await fetch("/users/change-password", requestOptions);
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
         setPasswordErrors({});
         setShowPasswordForm(false);
       } else {
-        if (data.errors) setPasswordErrors(data.errors);
-        else console.log(data);
+        setPasswordErrors(normalizeFieldErrors(data, "Impossible de modifier le mot de passe."));
       }
     } catch (e) {
       console.error(e);
+      setPasswordErrors({ global: ["Impossible de modifier le mot de passe."] });
     }
   };
 
@@ -176,7 +186,7 @@ export default function UserSettings() {
                     <Box sx={{ mt: 2 }}>
                       {Object.keys(passwordErrors).map((k) => (
                         <Alert key={k} severity="error" sx={{ mb: 1 }}>
-                          {passwordErrors[k]}
+                          {Array.isArray(passwordErrors[k]) ? passwordErrors[k][0] : String(passwordErrors[k])}
                         </Alert>
                       ))}
                     </Box>

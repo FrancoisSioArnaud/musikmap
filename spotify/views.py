@@ -9,6 +9,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from la_boite_a_son.api_errors import api_error
+
 from users.models import CustomUser, UserProviderConnection
 from users.utils import (
     build_current_user_payload,
@@ -40,6 +42,18 @@ from .util import (
 from users.provider_connections import upsert_provider_connection
 
 SPOTIFY_SCOPES = " ".join(DEFAULT_SPOTIFY_SCOPES)
+
+
+def _pending_auth_error_payload(result):
+    reason = str((result or {}).get("reason") or "").strip().lower()
+    mapping = {
+        "missing_pending_auth": ("PENDING_AUTH_NOT_FOUND", "Aucune action Spotify en attente."),
+        "invalid_action": ("INVALID_PENDING_AUTH_ACTION", "Action de connexion Spotify invalide."),
+        "invalid_pending_payload": ("INVALID_PENDING_AUTH_PAYLOAD", "Les données de connexion Spotify sont invalides."),
+        "missing_users": ("PENDING_AUTH_USERS_NOT_FOUND", "Les comptes à fusionner sont introuvables."),
+        "merge_failed": ("SPOTIFY_ACCOUNT_MERGE_FAILED", "Impossible de fusionner les comptes."),
+    }
+    return mapping.get(reason, ("SPOTIFY_PENDING_AUTH_FAILED", "Impossible de traiter la demande."))
 
 
 def _frontend_result_redirect(result_type: str, extra_params: dict | None = None):
@@ -148,10 +162,10 @@ class IsAuthenticated(APIView):
 class RefreshAccessToken(APIView):
     def post(self, request, format=None):
         if not getattr(request.user, "is_authenticated", False):
-            return Response({"detail": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
 
         if not refresh_spotify_token(request.user):
-            return Response({"detail": "Impossible de rafraîchir le token Spotify."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "SPOTIFY_TOKEN_REFRESH_FAILED", "Impossible de rafraîchir la connexion Spotify.")
 
         connection = get_user_tokens(request.user)
         connection_payload = build_current_user_payload(request.user)
@@ -192,7 +206,8 @@ class ResolvePendingAuth(APIView):
         action = str(request.data.get("action") or "").strip().lower()
         result = resolve_pending_spotify_auth(request, action=action)
         if not result.get("ok"):
-            return Response({"detail": result.get("reason") or "Impossible de traiter la demande."}, status=result.get("status") or 400)
+            error_code, error_detail = _pending_auth_error_payload(result)
+            return api_error(result.get("status") or 400, error_code, error_detail)
 
         user = result.get("user")
         if user:
@@ -211,8 +226,14 @@ class ResolvePendingAuth(APIView):
 
 class Search(APIView):
     def post(self, request, format=None):
-        search_query = request.data.get("search_query")
-        results = sp.search(q=search_query, type="track", limit=15)
+        search_query = str(request.data.get("search_query") or "").strip()
+        if not search_query:
+            return api_error(status.HTTP_400_BAD_REQUEST, "SEARCH_QUERY_REQUIRED", "search_query manquant")
+
+        try:
+            results = sp.search(q=search_query, type="track", limit=15)
+        except Exception:
+            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "SPOTIFY_SEARCH_UNAVAILABLE", "Recherche Spotify indisponible.")
 
         tracks = []
         for item in results.get("tracks", {}).get("items", []):

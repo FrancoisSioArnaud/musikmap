@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -16,11 +15,11 @@ from rest_framework.views import APIView
 
 from box_management.models import Deposit
 from box_management.utils import create_song_deposit
+from la_boite_a_son.api_errors import api_error
 from spotify.util import apply_pending_spotify_auth_to_user
 
 from .forms import RegisterUserForm
 from .models import CustomUser
-from .serializer import CustomUserSerializer
 from .utils import (
     build_current_user_payload,
     build_favorite_deposit_payload,
@@ -50,6 +49,33 @@ def _is_truthy(value):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_field_errors(errors):
+    if not errors:
+        return {}
+
+    if isinstance(errors, ValidationError):
+        return {"global": [str(message) for message in errors.messages if str(message)]}
+
+    if hasattr(errors, "items"):
+        normalized = {}
+        for key, value in errors.items():
+            field_key = "global" if str(key) in {"__all__", "non_field_errors"} else str(key)
+            if isinstance(value, (list, tuple)):
+                messages = [str(item) for item in value if str(item)]
+            else:
+                messages = [str(value)] if str(value) else []
+            if messages:
+                normalized[field_key] = messages
+        return normalized
+
+    if isinstance(errors, (list, tuple)):
+        messages = [str(item) for item in errors if str(item)]
+        return {"global": messages} if messages else {}
+
+    text = str(errors).strip()
+    return {"global": [text]} if text else {}
+
+
 class LoginUser(APIView):
     def post(self, request, format=None):
         username = request.data.get("username")
@@ -59,7 +85,7 @@ class LoginUser(APIView):
 
         user = authenticate(request, username=username, password=password)
         if user is None:
-            return Response({"status": False}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_INVALID", "Informations d'identification non valides.")
 
         guest_merged = False
         merge_error = None
@@ -115,7 +141,12 @@ class RegisterUser(APIView):
             instance=guest_user if guest_user else None,
         )
         if not form.is_valid():
-            return Response({"errors": form.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Le formulaire contient des erreurs.",
+                field_errors=_normalize_field_errors(form.errors),
+            )
 
         user = form.save(commit=False)
         user.set_password(form.cleaned_data["password1"])
@@ -146,25 +177,41 @@ class RegisterUser(APIView):
 class ChangePasswordUser(APIView):
     def post(self, request, format=None):
         if not request.user.is_authenticated:
-            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(request.user, "is_guest", False):
-            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
 
         user = request.user
         new_password1 = request.data.get("new_password1")
         new_password2 = request.data.get("new_password2")
 
         if new_password1 != new_password2:
-            return Response({"errors": ["Les mots de passe ne correspondent pas."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "PASSWORD_MISMATCH",
+                "Les mots de passe ne correspondent pas.",
+                field_errors={"new_password2": ["Les mots de passe ne correspondent pas."]},
+            )
 
         old_password = request.data.get("old_password")
         if not user.check_password(old_password):
-            return Response({"errors": ["Ancien mot de passe invalide."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "CURRENT_PASSWORD_INVALID",
+                "Ancien mot de passe invalide.",
+                field_errors={"old_password": ["Ancien mot de passe invalide."]},
+            )
 
         try:
             validate_password(new_password1, user=user)
-        except ValidationError as e:
-            return Response({"errors": list(e.messages)}, status=status.HTTP_401_UNAUTHORIZED)
+        except ValidationError as exc:
+            messages_list = [str(message) for message in exc.messages if str(message)]
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "PASSWORD_VALIDATION_FAILED",
+                "Le nouveau mot de passe est invalide.",
+                field_errors={"new_password1": messages_list},
+            )
 
         user.set_password(new_password1)
         user.last_seen_at = timezone.now()
@@ -180,27 +227,42 @@ class ChangeProfilePicture(APIView):
     def post(self, request, format=None):
         user = request.user
         if not user.is_authenticated:
-            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(user, "is_guest", False):
-            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
 
         rl_key = f"avatar:rate:{user.id}"
         if cache.get(rl_key):
-            return Response({"errors": ["Trop d'essais. Réessaie dans quelques secondes."]}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            return api_error(status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED", "Trop d'essais. Réessaie dans quelques secondes.")
         cache.set(rl_key, 1, RATE_LIMIT_SECONDS)
 
         if "profile_picture" not in request.FILES:
-            return Response({"errors": ["Aucune image fournie."]}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "PROFILE_PICTURE_REQUIRED",
+                "Aucune image fournie.",
+                field_errors={"profile_picture": ["Aucune image fournie."]},
+            )
 
-        f = request.FILES["profile_picture"]
-        if not (f.content_type or "").lower().startswith("image/"):
-            return Response({"errors": ["Le fichier doit être une image."]}, status=status.HTTP_400_BAD_REQUEST)
+        uploaded_file = request.FILES["profile_picture"]
+        if not (uploaded_file.content_type or "").lower().startswith("image/"):
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "INVALID_IMAGE_TYPE",
+                "Le fichier doit être une image.",
+                field_errors={"profile_picture": ["Le fichier doit être une image."]},
+            )
 
-        if f.size > MAX_SIZE_BYTES:
-            return Response({"errors": ["Image trop volumineuse (max 2 Mo)."]}, status=status.HTTP_400_BAD_REQUEST)
+        if uploaded_file.size > MAX_SIZE_BYTES:
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "IMAGE_TOO_LARGE",
+                "Image trop volumineuse (max 2 Mo).",
+                field_errors={"profile_picture": ["Image trop volumineuse (max 2 Mo)."]},
+            )
 
         try:
-            img = Image.open(f)
+            img = Image.open(uploaded_file)
 
             if img.mode not in ("RGB", "RGBA"):
                 img = img.convert("RGB")
@@ -217,7 +279,12 @@ class ChangeProfilePicture(APIView):
             data = buf.getvalue()
 
             if len(data) > MAX_SIZE_BYTES:
-                return Response({"errors": ["Image finale trop lourde (> 2 Mo)."]}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    "PROCESSED_IMAGE_TOO_LARGE",
+                    "Image finale trop lourde (> 2 Mo).",
+                    field_errors={"profile_picture": ["Image finale trop lourde (> 2 Mo)."]},
+                )
 
             base_name = "avatar_" + timezone.now().strftime("%Y%m%d_%H%M%S")
             main_name = f"{base_name}.jpg"
@@ -231,17 +298,17 @@ class ChangeProfilePicture(APIView):
             urls = {"main": getattr(user.profile_picture, "url", None), "variants": {}}
 
             for size in VARIANTS:
-                v = img.copy()
-                v.thumbnail((size, size), Image.LANCZOS)
-                vbuf = io.BytesIO()
-                v.save(vbuf, format="JPEG", quality=80, optimize=True)
-                vdata = vbuf.getvalue()
-                vname = os.path.join(dir_name, f"{base_stem}_{size}.jpg")
-                if default_storage.exists(vname):
-                    default_storage.delete(vname)
-                default_storage.save(vname, ContentFile(vdata))
+                variant_image = img.copy()
+                variant_image.thumbnail((size, size), Image.LANCZOS)
+                variant_buffer = io.BytesIO()
+                variant_image.save(variant_buffer, format="JPEG", quality=80, optimize=True)
+                variant_data = variant_buffer.getvalue()
+                variant_name = os.path.join(dir_name, f"{base_stem}_{size}.jpg")
+                if default_storage.exists(variant_name):
+                    default_storage.delete(variant_name)
+                default_storage.save(variant_name, ContentFile(variant_data))
                 try:
-                    urls["variants"][str(size)] = default_storage.url(vname)
+                    urls["variants"][str(size)] = default_storage.url(variant_name)
                 except Exception:
                     urls["variants"][str(size)] = None
 
@@ -253,16 +320,15 @@ class ChangeProfilePicture(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        except Exception as e:
-            return Response({"errors": [str(e)]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        except Exception:
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "PROFILE_PICTURE_UPLOAD_FAILED", "Échec de l’envoi de l’image.")
 
 
 class CheckAuthentication(APIView):
     def get(self, request, format=None):
         user = get_current_app_user(request)
         if not user:
-            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
 
         touch_last_seen(user)
         return Response(_build_authenticated_user_payload(user), status=status.HTTP_200_OK)
@@ -272,7 +338,7 @@ class GetUserPoints(APIView):
     def get(self, request, format=None):
         user = get_current_app_user(request)
         if not user:
-            return Response({"errors": "Utilisateur non connecté."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
 
         touch_last_seen(user)
         return Response({"points": user.points}, status=status.HTTP_200_OK)
@@ -281,10 +347,23 @@ class GetUserPoints(APIView):
 class GetUserInfo(APIView):
     def get(self, request, format=None):
         username = (request.GET.get("username") or "").strip()
-        if not username:
-            return Response({"errors": ["username query param is required"]}, status=status.HTTP_400_BAD_REQUEST)
+        user_id = (request.GET.get("userID") or request.GET.get("userId") or "").strip()
 
-        user = get_object_or_404(CustomUser, username=username, is_guest=False)
+        if not username and not user_id:
+            return api_error(status.HTTP_400_BAD_REQUEST, "USER_LOOKUP_REQUIRED", "username or userID query param is required")
+
+        lookup = {"is_guest": False}
+        if username:
+            lookup["username"] = username
+        else:
+            try:
+                lookup["pk"] = int(user_id)
+            except (TypeError, ValueError):
+                return api_error(status.HTTP_400_BAD_REQUEST, "USER_ID_INVALID", "userID query param is invalid")
+
+        user = CustomUser.objects.filter(**lookup).first()
+        if not user:
+            return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
 
         profile_picture_url = None
         try:
@@ -310,9 +389,9 @@ class SetFavoriteSong(APIView):
     def post(self, request, format=None):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(current_user, "is_guest", False):
-            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
         touch_last_seen(current_user)
 
         option = request.data.get("option") or {}
@@ -329,9 +408,9 @@ class SetFavoriteSong(APIView):
                 user.favorite_deposit = deposit
                 user.save(update_fields=["favorite_deposit"])
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return api_error(status.HTTP_400_BAD_REQUEST, "FAVORITE_SONG_INVALID", str(exc) or "Impossible d’enregistrer cette chanson de cœur.")
+        except Exception:
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "FAVORITE_SONG_SAVE_FAILED", "Impossible d’enregistrer cette chanson de cœur.")
 
         refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
         return Response(
@@ -347,9 +426,9 @@ class RemoveFavoriteSong(APIView):
     def post(self, request, format=None):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(current_user, "is_guest", False):
-            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
         touch_last_seen(current_user)
 
         with transaction.atomic():
@@ -370,25 +449,45 @@ class RemoveFavoriteSong(APIView):
 class ChangeUsername(APIView):
     def post(self, request, format=None):
         if not request.user.is_authenticated:
-            return Response({"errors": ["Utilisateur non connecté."]}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(request.user, "is_guest", False):
-            return Response({"errors": ["Finalise d’abord ton compte."]}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
 
         new_username = request.data.get("username") or request.data.get("new_username")
         if not new_username:
-            return Response({"errors": ["Veuillez fournir un nom d’utilisateur."]}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "USERNAME_REQUIRED",
+                "Veuillez fournir un nom d’utilisateur.",
+                field_errors={"username": ["Veuillez fournir un nom d’utilisateur."]},
+            )
 
         validator = UnicodeUsernameValidator()
         try:
             validator(new_username)
-        except ValidationError as e:
-            return Response({"errors": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as exc:
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "USERNAME_INVALID",
+                "Le nom d’utilisateur est invalide.",
+                field_errors={"username": [str(message) for message in exc.messages if str(message)]},
+            )
 
         if len(new_username) < 3 or len(new_username) > 30:
-            return Response({"errors": ["Le nom d’utilisateur doit contenir entre 3 et 30 caractères."]}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "USERNAME_LENGTH_INVALID",
+                "Le nom d’utilisateur doit contenir entre 3 et 30 caractères.",
+                field_errors={"username": ["Le nom d’utilisateur doit contenir entre 3 et 30 caractères."]},
+            )
 
         if CustomUser.objects.filter(username__iexact=new_username).exclude(pk=request.user.pk).exists():
-            return Response({"errors": ["Ce nom d’utilisateur est déjà pris."]}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_409_CONFLICT,
+                "USERNAME_ALREADY_TAKEN",
+                "Ce nom d’utilisateur est déjà pris.",
+                field_errors={"username": ["Ce nom d’utilisateur est déjà pris."]},
+            )
 
         try:
             with transaction.atomic():
@@ -397,8 +496,13 @@ class ChangeUsername(APIView):
                 user.last_seen_at = timezone.now()
                 user.save(update_fields=["username", "last_seen_at"])
         except IntegrityError:
-            return Response({"errors": ["Conflit d’unicité sur le nom d’utilisateur."]}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"errors": [f"Erreur serveur: {str(e)}"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return api_error(
+                status.HTTP_409_CONFLICT,
+                "USERNAME_CONFLICT",
+                "Conflit d’unicité sur le nom d’utilisateur.",
+                field_errors={"username": ["Conflit d’unicité sur le nom d’utilisateur."]},
+            )
+        except Exception:
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "USERNAME_UPDATE_FAILED", "Impossible de modifier le nom d’utilisateur.")
 
         return Response({"status": "Nom d’utilisateur modifié avec succès.", "username": new_username}, status=status.HTTP_200_OK)

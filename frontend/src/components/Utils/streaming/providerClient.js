@@ -84,7 +84,10 @@ export const searchTracksViaBackend = async (providerCode, query, options = {}) 
     body: JSON.stringify({ search_query: query }),
     signal: options.signal,
   });
-  const json = await response.json().catch(() => []);
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json?.detail || `Recherche ${providerCode} indisponible.`);
+  }
   return Array.isArray(json) ? json : [];
 };
 
