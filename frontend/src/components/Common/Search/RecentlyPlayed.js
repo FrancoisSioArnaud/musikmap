@@ -93,6 +93,7 @@ export default function RecentlyPlayed({
     <Box
       sx={{
         mt: 2,
+        pt: 2,
         backgroundColor: "var(--mm-color-primary-light)",
       }}
     >
