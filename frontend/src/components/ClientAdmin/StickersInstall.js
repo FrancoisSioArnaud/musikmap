@@ -44,7 +44,7 @@ async function parseErrorResponse(response) {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     const data = await response.json().catch(() => ({}));
-    return data?.detail || data?.message || "Action impossible.";
+    return data?.detail || "Action impossible.";
   }
   return (await response.text().catch(() => "")) || "Action impossible.";
 }

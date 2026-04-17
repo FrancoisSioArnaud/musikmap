@@ -144,23 +144,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'la_boite_a_son.api_errors.api_exception_handler',
+}

@@ -2625,6 +2625,31 @@ class ClientAdminStickerDownloadView(APIView):
                 str(error_code or "STICKER_EXPORT_DEPENDENCY_MISSING").upper(),
                 detail,
             )
+        except FileNotFoundError:
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "STICKER_TEMPLATE_NOT_FOUND",
+                "Le template SVG sticker est introuvable sur le serveur.",
+            )
+        except ValueError as exc:
+            error_text = str(exc or "")
+            if "zone QR du template SVG doit définir" in error_text:
+                return api_error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "STICKER_TEMPLATE_QR_ZONE_INVALID",
+                    "La zone QR du template sticker est invalide.",
+                )
+            if "template SVG doit contenir" in error_text:
+                return api_error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "STICKER_TEMPLATE_QR_ZONE_MISSING",
+                    "Le template sticker doit contenir une zone QR.",
+                )
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "STICKER_TEMPLATE_INVALID",
+                "Le template SVG sticker est invalide.",
+            )
 
 
 class ClientAdminStickerConfirmDownloadView(APIView):

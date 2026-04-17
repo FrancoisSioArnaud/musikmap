@@ -85,20 +85,6 @@ function extractErrorMessage(data, fallback) {
     }
   }
 
-  if (typeof data.error === "string" && data.error.trim()) {
-    return data.error.trim();
-  }
-
-  const values = Object.values(data);
-  for (const value of values) {
-    if (Array.isArray(value) && value.length > 0) {
-      return String(value[0]);
-    }
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-
   return fallback;
 }
 
