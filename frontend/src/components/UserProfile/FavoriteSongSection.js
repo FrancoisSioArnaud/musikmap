@@ -1,8 +1,13 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
 import SearchIcon from "@mui/icons-material/Search";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -33,8 +38,8 @@ export default function FavoriteSongSection({
     status: "idle",
     errorMessage: null,
   });
+  const [errorDialog, setErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
   const searchInputRef = useRef(null);
-
 
   useEffect(() => {
     setFavoriteDeposit(initialFavoriteDeposit || null);
@@ -82,6 +87,10 @@ export default function FavoriteSongSection({
     setUser(payload);
   }, [setUser]);
 
+  const openErrorDialog = useCallback((title, message) => {
+    setErrorDialog({ open: true, title, message });
+  }, []);
+
   const handleSetFavorite = useCallback(async (option, requestKey) => {
     if (depositFlowState.status === "pending") return;
 
@@ -106,11 +115,12 @@ export default function FavoriteSongSection({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        window.alert(data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.");
+        const message = data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.";
+        openErrorDialog("Impossible d’enregistrer la chanson de cœur", message);
         setDepositFlowState({
           requestKey,
           status: "error",
-          errorMessage: data?.detail || data?.errors?.[0] || "Impossible d’enregistrer cette chanson de coeur.",
+          errorMessage: message,
         });
         return;
       }
@@ -123,14 +133,15 @@ export default function FavoriteSongSection({
         errorMessage: null,
       });
     } catch {
-      window.alert("Impossible d’enregistrer cette chanson de coeur.");
+      const message = "Impossible d’enregistrer cette chanson de coeur.";
+      openErrorDialog("Impossible d’enregistrer la chanson de cœur", message);
       setDepositFlowState({
         requestKey,
         status: "error",
-        errorMessage: "Impossible d’enregistrer cette chanson de coeur.",
+        errorMessage: message,
       });
     }
-  }, [depositFlowState.status, syncCurrentUser]);
+  }, [depositFlowState.status, openErrorDialog, syncCurrentUser]);
 
   const handleDepositVisualComplete = useCallback((requestKey) => {
     if (depositFlowState.requestKey !== requestKey || depositFlowState.status !== "success") {
@@ -154,21 +165,23 @@ export default function FavoriteSongSection({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        window.alert(data?.detail || data?.errors?.[0] || "Impossible de retirer la chanson de coeur.");
+        openErrorDialog(
+          "Impossible de retirer la chanson de cœur",
+          data?.detail || data?.errors?.[0] || "Impossible de retirer la chanson de coeur."
+        );
         return;
       }
       setFavoriteDeposit(null);
       syncCurrentUser(data?.current_user || null);
       closeDrawer();
     } catch {
-      window.alert("Impossible de retirer la chanson de coeur.");
+      openErrorDialog("Impossible de retirer la chanson de cœur", "Impossible de retirer la chanson de coeur.");
     }
-  }, [closeDrawer, syncCurrentUser]);
+  }, [closeDrawer, openErrorDialog, syncCurrentUser]);
 
   const displayName = profileUser?.display_name || profileUser?.username || "Cet utilisateur";
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
   const hasFavorite = Boolean(favoriteDeposit?.public_key);
-  const canRemove = Boolean(hasFavorite);
   const showOwnerActions = Boolean(isCurrentFullUser && hasFavorite);
 
   const bodyContent = useMemo(() => {
@@ -226,100 +239,112 @@ export default function FavoriteSongSection({
   }, [displayName, isCurrentFullUser, isGuestOwner, navigate, openDrawer, user?.username]);
 
   return (
-    <Box className="favorite_song_section">
-      <Box className="icon_container info_box">
-        <FavoriteIcon />
-      </Box>
-
-      <Box className="favorite_song_container">
-        <Box
-          sx={{
-            display: "grid",
-            gap: 2,
-            px: 2.5,
-            pb: "16px",
-          }}
-        >
-          <Typography variant="h4">Chanson de coeur</Typography>
-          {bodyContent ? (
-            <Typography component="p" variant="body1">
-              {bodyContent}
-            </Typography>
-          ) : null}
-
-          {showOwnerActions ? (
-            <Box className="favorite_song_actions">
-              <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
-                Changer
-              </Button>
-              <Button
-                variant="light"
-                onClick={handleRemoveFavorite}
-                startIcon={<RemoveCircleOutlineOutlinedIcon />}
-                sx={{ color: "var(--mm-color-error)" }}
-              >
-                Supprimer
-              </Button>
-            </Box>
-          ) : null}
+    <>
+      <Box className="favorite_song_section">
+        <Box className="icon_container info_box">
+          <FavoriteIcon />
         </Box>
 
-        {hasFavorite ? (
-          <Deposit
-            dep={favoriteDeposit}
-            user={user}
-            variant="list"
-            showUser={false}
-            showDate={false}
-            fitContainer
-          />
-        ) : (
-          <Box className="slot">{slotContent}</Box>
-        )}
-
-        <Drawer
-          anchor="right"
-          open={drawerOpen}
-          onClose={closeDrawer}
-          PaperProps={{
-            sx: {
-              width: "100vw",
-              maxWidth: "100vw",
-              height: "100vh",
-              overflow: "hidden",
-            },
-          }}
-        >
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <Box sx={{ p: 5, pb: 2 }}>
-              <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                Choisis une chanson de coeur
+        <Box className="favorite_song_container">
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              px: 2.5,
+              pb: "16px",
+            }}
+          >
+            <Typography variant="h4">Chanson de coeur</Typography>
+            {bodyContent ? (
+              <Typography component="p" variant="body1">
+                {bodyContent}
               </Typography>
-            </Box>
-
-            {drawerOpen ? (
-              <SearchPanel
-                inputRef={searchInputRef}
-                onSelectSong={handleSetFavorite}
-                onDepositVisualComplete={handleDepositVisualComplete}
-                actionLabel="Choisir"
-                depositFlowState={depositFlowState}
-                rootSx={{ flex: 1, minHeight: 0 }}
-                searchBarWrapperSx={{ px: 5, pb: 2 }}
-                contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
-              />
             ) : null}
 
-            <Button
-              variant="contained"
-              onClick={() => closeDrawer()}
-              className="bottom_fixed"
-            >
-              Fermer
-            </Button>
+            {showOwnerActions ? (
+              <Box className="favorite_song_actions">
+                <Button variant="light" onClick={openDrawer} startIcon={<SearchIcon />}>
+                  Changer
+                </Button>
+                <Button
+                  variant="light"
+                  onClick={handleRemoveFavorite}
+                  startIcon={<RemoveCircleOutlineOutlinedIcon />}
+                  sx={{ color: "var(--mm-color-error)" }}
+                >
+                  Supprimer
+                </Button>
+              </Box>
+            ) : null}
           </Box>
-        </Drawer>
+
+          {hasFavorite ? (
+            <Deposit
+              dep={favoriteDeposit}
+              user={user}
+              variant="list"
+              showUser={false}
+              showDate={false}
+              fitContainer
+            />
+          ) : (
+            <Box className="slot">{slotContent}</Box>
+          )}
+
+          <Drawer
+            anchor="right"
+            open={drawerOpen}
+            onClose={closeDrawer}
+            PaperProps={{
+              sx: {
+                width: "100vw",
+                maxWidth: "100vw",
+                height: "100vh",
+                overflow: "hidden",
+              },
+            }}
+          >
+            <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+              <Box sx={{ p: 5, pb: 2 }}>
+                <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                  Choisis une chanson de coeur
+                </Typography>
+              </Box>
+
+              {drawerOpen ? (
+                <SearchPanel
+                  inputRef={searchInputRef}
+                  onSelectSong={handleSetFavorite}
+                  onDepositVisualComplete={handleDepositVisualComplete}
+                  actionLabel="Choisir"
+                  depositFlowState={depositFlowState}
+                  rootSx={{ flex: 1, minHeight: 0 }}
+                  searchBarWrapperSx={{ px: 5, pb: 2 }}
+                  contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
+                />
+              ) : null}
+
+              <Button
+                variant="contained"
+                onClick={() => closeDrawer()}
+                className="bottom_fixed"
+              >
+                Fermer
+              </Button>
+            </Box>
+          </Drawer>
+        </Box>
       </Box>
-    </Box>
+
+      <Dialog open={errorDialog.open} onClose={() => setErrorDialog({ open: false, title: "Erreur", message: "" })}>
+        <DialogTitle>{errorDialog.title}</DialogTitle>
+        <DialogContent>
+          <Alert severity="error">{errorDialog.message}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorDialog({ open: false, title: "Erreur", message: "" })}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

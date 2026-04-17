@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -283,9 +284,14 @@ export default function Deposit({
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
   const [authModalConfig, setAuthModalConfig] = useState(null);
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
+  const [actionErrorDialog, setActionErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHoldingReveal, setIsHoldingReveal] = useState(false);
   const [isRevealLoading, setIsRevealLoading] = useState(false);
+
+  const openActionErrorDialog = useCallback((title, message) => {
+    setActionErrorDialog({ open: true, title, message });
+  }, []);
 
   const revealHoldFrameRef = useRef(null);
   const revealHoldStartRef = useRef(null);
@@ -456,7 +462,8 @@ export default function Deposit({
 
     try {
       if (!viewer?.id) {
-        window.alert(
+        openActionErrorDialog(
+          "Connecte-toi pour révéler",
           "Dépose d’abord une chanson pour commencer à cumuler des points et révéler des morceaux."
         );
         return;
@@ -487,11 +494,11 @@ export default function Deposit({
 
       if (!res.ok) {
         if (payload?.message) {
-          alert(payload.message);
+          openActionErrorDialog("Impossible de révéler la chanson", payload.message);
         } else if (payload?.error === "insufficient_funds") {
-          alert("Tu n’as pas assez de points pour effectuer cette action.");
+          openActionErrorDialog("Pas assez de points", "Tu n’as pas assez de points pour effectuer cette action.");
         } else {
-          alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+          openActionErrorDialog("Erreur", "Oops, une erreur s’est produite. Réessaie dans quelques instants.");
         }
         return;
       }
@@ -538,7 +545,7 @@ export default function Deposit({
         setSnackOpen((prev) => !prev);
       }
     } catch {
-      alert("Oops une erreur s’est produite, réessaie dans quelques instants.");
+      openActionErrorDialog("Erreur", "Oops, une erreur s’est produite. Réessaie dans quelques instants.");
     } finally {
       setIsRevealLoading(false);
 
@@ -546,7 +553,7 @@ export default function Deposit({
         resetRevealHold();
       }
     }
-  }, [context, localDep.public_key, resetRevealHold, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
+  }, [context, localDep.public_key, openActionErrorDialog, resetRevealHold, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
 
   const beginRevealHold = useCallback((event) => {
     if (isRevealed || isRevealLoading || isHoldingReveal) {
@@ -684,7 +691,6 @@ export default function Deposit({
     }
 
     if (!isRevealed) {
-      window.alert("Révèle d’abord la chanson avant de la partager.");
       return;
     }
 
@@ -701,13 +707,13 @@ export default function Deposit({
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        window.alert(payload?.detail || "Impossible de créer le lien de partage.");
+        openActionErrorDialog("Impossible de créer le lien", "Impossible de créer le lien de partage.");
         return;
       }
 
       const shareUrl = payload?.url;
       if (!shareUrl) {
-        window.alert("Impossible de créer le lien de partage.");
+        openActionErrorDialog("Impossible de créer le lien", "Impossible de créer le lien de partage.");
         return;
       }
 
@@ -739,12 +745,13 @@ export default function Deposit({
       await copyText(shareUrl);
       showShareFeedback("Lien copié.");
     } catch (error) {
-      window.alert("Impossible de créer le lien de partage.");
+      openActionErrorDialog("Impossible de créer le lien", "Impossible de créer le lien de partage.");
     }
   }, [
     viewer?.id,
     isRevealed,
     localDep?.public_key,
+    openActionErrorDialog,
     resolvedShareBoxName,
     showShareFeedback,
     song?.artist,
@@ -1143,6 +1150,19 @@ export default function Deposit({
         viewer={viewer}
         onCommentsChange={handleCommentsChange}
       />
+
+      <Dialog
+        open={actionErrorDialog.open}
+        onClose={() => setActionErrorDialog({ open: false, title: "Erreur", message: "" })}
+      >
+        <DialogTitle>{actionErrorDialog.title}</DialogTitle>
+        <DialogContent>
+          <Alert severity="error">{actionErrorDialog.message}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setActionErrorDialog({ open: false, title: "Erreur", message: "" })}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={reactionRevealPromptOpen}

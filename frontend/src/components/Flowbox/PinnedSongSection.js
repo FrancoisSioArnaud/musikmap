@@ -1,8 +1,13 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
@@ -82,6 +87,7 @@ export default function PinnedSongSection({ boxSlug }) {
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
   const [posting, setPosting] = useState(false);
   const [nowTs, setNowTs] = useState(Date.now());
+  const [errorDialog, setErrorDialog] = useState({ open: false, message: "" });
   const searchInputRef = useRef(null);
 
 
@@ -108,14 +114,23 @@ export default function PinnedSongSection({ boxSlug }) {
   const hydratePinnedFromStorage = useCallback(() => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap || snap.boxSlug !== boxSlug) return false;
+      if (!snap || snap.boxSlug !== boxSlug) {
+        return { hydrated: false, shouldRefresh: true };
+      }
 
-      setActivePinnedDeposit(snap.activePinnedDeposit || null);
-      return true;
+      const cachedPinnedDeposit = snap.activePinnedDeposit || null;
+      if (cachedPinnedDeposit && getRemainingMs(cachedPinnedDeposit, Date.now()) <= 0) {
+        setActivePinnedDeposit(null);
+        updateBoxContentStorage(null);
+        return { hydrated: true, shouldRefresh: true };
+      }
+
+      setActivePinnedDeposit(cachedPinnedDeposit);
+      return { hydrated: true, shouldRefresh: !cachedPinnedDeposit };
     } catch {
-      return false;
+      return { hydrated: false, shouldRefresh: true };
     }
-  }, [boxSlug]);
+  }, [boxSlug, updateBoxContentStorage]);
 
   const refreshPinnedSection = useCallback(async ({ preserveLoadedState = false } = {}) => {
     try {
@@ -142,19 +157,19 @@ export default function PinnedSongSection({ boxSlug }) {
       updateBoxContentStorage(nextActivePinnedDeposit);
     } catch {
       setActivePinnedDeposit(null);
-      setPriceSteps([]);
-      updateBoxContentStorage(null);
     } finally {
       setLoading(false);
     }
   }, [boxSlug, updateBoxContentStorage]);
 
   useEffect(() => {
-    const hydrated = hydratePinnedFromStorage();
+    const { hydrated, shouldRefresh } = hydratePinnedFromStorage();
     if (hydrated) {
       setLoading(false);
     }
-    refreshPinnedSection({ preserveLoadedState: hydrated });
+    if (shouldRefresh) {
+      refreshPinnedSection({ preserveLoadedState: hydrated });
+    }
   }, [hydratePinnedFromStorage, refreshPinnedSection]);
 
   useEffect(() => {
@@ -262,7 +277,10 @@ export default function PinnedSongSection({ boxSlug }) {
           setActivePinnedDeposit(data.active_pinned_deposit);
           updateBoxContentStorage(data.active_pinned_deposit);
         }
-        window.alert(data?.detail || "Impossible d’épingler cette chanson.");
+        setErrorDialog({
+          open: true,
+          message: data?.detail || "Impossible d’épingler cette chanson.",
+        });
         return;
       }
 
@@ -275,7 +293,10 @@ export default function PinnedSongSection({ boxSlug }) {
       }
       closeDrawer(true);
     } catch {
-      window.alert("Impossible d’épingler cette chanson.");
+      setErrorDialog({
+        open: true,
+        message: "Impossible d’épingler cette chanson.",
+      });
     } finally {
       setPosting(false);
     }
@@ -559,6 +580,29 @@ export default function PinnedSongSection({ boxSlug }) {
           </Box>
         </Drawer>
       </Box>
+
+      <Dialog
+        open={errorDialog.open}
+        onClose={() => setErrorDialog({ open: false, message: "" })}
+      >
+        <DialogTitle>Impossible d’épingler la chanson</DialogTitle>
+        <DialogContent>
+          <Alert severity="error">{errorDialog.message}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorDialog({ open: false, message: "" })}>Fermer</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setErrorDialog({ open: false, message: "" });
+              handleSubmitPinned();
+            }}
+            disabled={posting}
+          >
+            Réessayer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

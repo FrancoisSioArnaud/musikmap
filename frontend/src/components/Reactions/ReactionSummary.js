@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import Alert from "@mui/material/Alert";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
-import Avatar from "@mui/material/Avatar";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import { getCookie } from "../Security/TokensUtils";
@@ -35,6 +36,13 @@ export default function ReactionSummary({
 }) {
   const navigate = useNavigate();
   const viewerId = viewer?.id || null;
+  const [inlineAlert, setInlineAlert] = useState({ severity: "error", message: "" });
+
+  useEffect(() => {
+    if (!open) {
+      setInlineAlert({ severity: "error", message: "" });
+    }
+  }, [open]);
 
   const orderedReactions = useMemo(() => {
     const list = Array.isArray(reactions) ? [...reactions] : [];
@@ -48,37 +56,42 @@ export default function ReactionSummary({
 
   const handleDeleteOwnReaction = async () => {
     if (!depPublicKey) {
-      alert("Impossible de supprimer la réaction : dépôt introuvable.");
+      setInlineAlert({ severity: "error", message: "Impossible de supprimer la réaction : dépôt introuvable." });
       return;
     }
 
+    setInlineAlert({ severity: "error", message: "" });
     const csrftoken = getCookie("csrftoken");
 
-    const res = await fetch("/box-management/reactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
-      },
-      credentials: "same-origin",
-      body: JSON.stringify({
-        dep_public_key: depPublicKey,
-        emoji_id: null,
-      }),
-    });
+    try {
+      const res = await fetch("/box-management/reactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          dep_public_key: depPublicKey,
+          emoji_id: null,
+        }),
+      });
 
-    const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      if (data?.error === "forbidden") {
-        alert("Tu n’as pas débloqué cet emoji.");
-      } else {
-        alert("Oops, impossible d’appliquer ta réaction.");
+      if (!res.ok) {
+        if (data?.error === "forbidden") {
+          setInlineAlert({ severity: "warning", message: "Tu n’as pas débloqué cet emoji." });
+        } else {
+          setInlineAlert({ severity: "error", message: "Oops, impossible d’appliquer ta réaction." });
+        }
+        return;
       }
-      return;
-    }
 
-    onApplied?.(data);
+      onApplied?.(data);
+    } catch (error) {
+      setInlineAlert({ severity: "error", message: "Oops, impossible d’appliquer ta réaction." });
+    }
   };
 
   const renderReactionRow = (reaction, index) => {
@@ -180,8 +193,10 @@ export default function ReactionSummary({
           <Typography variant="h3" component="h3">
             Réactions
           </Typography>
-        </Box>  
-        
+        </Box>
+
+        {inlineAlert.message ? <Alert severity={inlineAlert.severity}>{inlineAlert.message}</Alert> : null}
+
         <Box className="reactions_list">
           {!orderedReactions.length ? (
             <Typography variant="body1" sx={{ py: 2 }}>

@@ -1,18 +1,25 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Typography from "@mui/material/Typography";
 import MusicNote from "@mui/icons-material/MusicNote";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import AuthModal from "../Auth/AuthModal";
 import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
+
+const EMOJI_POINTS_MESSAGE = "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.";
 
 export default function AddReactionModal({
   open,
@@ -36,6 +43,9 @@ export default function AddReactionModal({
   const [selected, setSelected] = useState(currentEmoji);
   const [unlockTargetId, setUnlockTargetId] = useState(null);
   const [purchasePromptOpen, setPurchasePromptOpen] = useState(false);
+  const [catalogReloadKey, setCatalogReloadKey] = useState(0);
+  const [inlineAlert, setInlineAlert] = useState({ severity: "error", message: "", retryAction: "" });
+  const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -44,6 +54,7 @@ export default function AddReactionModal({
 
     const loadCatalog = async () => {
       setLoading(true);
+      setInlineAlert({ severity: "error", message: "", retryAction: "" });
       try {
         const query = depPublicKey
           ? `?dep_public_key=${encodeURIComponent(depPublicKey)}`
@@ -61,7 +72,13 @@ export default function AddReactionModal({
           setSelected(currentEmoji ?? data.current_reaction?.emoji ?? null);
         }
       } catch (error) {
-        alert("Impossible de charger les réactions.");
+        if (!cancelled) {
+          setInlineAlert({
+            severity: "error",
+            message: "Oops, impossible de charger les réactions. Réessaie dans un instant.",
+            retryAction: "reload_catalog",
+          });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -72,13 +89,15 @@ export default function AddReactionModal({
     return () => {
       cancelled = true;
     };
-  }, [open, currentEmoji, depPublicKey]);
+  }, [open, currentEmoji, depPublicKey, catalogReloadKey]);
 
   useEffect(() => {
     if (!open) {
       setUnlockTargetId(null);
       setPurchasePromptOpen(false);
       setSubmittingPurchase(false);
+      setInlineAlert({ severity: "error", message: "", retryAction: "" });
+      setPointsDialogOpen(false);
     }
   }, [open]);
 
@@ -108,6 +127,7 @@ export default function AddReactionModal({
   };
 
   const onClickEmoji = (emoji) => {
+    setInlineAlert({ severity: "error", message: "", retryAction: "" });
     const alreadyOwned = isOwned(emoji);
 
     if (!alreadyOwned) {
@@ -148,6 +168,7 @@ export default function AddReactionModal({
     }
 
     setSubmittingPurchase(true);
+    setInlineAlert({ severity: "error", message: "", retryAction: "" });
     try {
       const res = await fetch("/box-management/emojis/purchase", {
         method: "POST",
@@ -161,14 +182,29 @@ export default function AddReactionModal({
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(
-          data?.detail || data?.message || "Impossible de débloquer cet emoji."
-        );
+        if (typeof data?.points_balance === "number" && setUser) {
+          setUser((u) => ({ ...(u || {}), points: data.points_balance }));
+        }
+        if (data?.error === "insufficient_funds") {
+          setPointsDialogOpen(true);
+          return;
+        }
+
+        setInlineAlert({
+          severity: "error",
+          message: data?.detail || data?.message || "Impossible de débloquer cet emoji.",
+          retryAction: "retry_unlock",
+        });
+        return;
       }
 
       onPurchaseSuccess({ emoji, points_balance: data?.points_balance });
     } catch (error) {
-      alert(error?.message || "Impossible de débloquer cet emoji.");
+      setInlineAlert({
+        severity: "error",
+        message: "Impossible de débloquer cet emoji.",
+        retryAction: "retry_unlock",
+      });
     } finally {
       setSubmittingPurchase(false);
     }
@@ -177,10 +213,15 @@ export default function AddReactionModal({
   const validate = async () => {
     if (!hasChanged) return onClose();
     if (!depPublicKey) {
-      alert("Impossible d’appliquer la réaction : dépôt introuvable.");
+      setInlineAlert({
+        severity: "error",
+        message: "Impossible d’appliquer la réaction : dépôt introuvable.",
+        retryAction: "",
+      });
       return;
     }
 
+    setInlineAlert({ severity: "error", message: "", retryAction: "" });
     const csrftoken = getCookie("csrftoken");
 
     const emojiId =
@@ -189,40 +230,55 @@ export default function AddReactionModal({
         : [...(catalog.actives_paid || [])].find((e) => e.char === selected)?.id ??
           null;
 
-    const res = await fetch("/box-management/reactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
-      },
-      credentials: "same-origin",
-      body: JSON.stringify({
-        dep_public_key: depPublicKey,
-        emoji_id: emojiId,
-      }),
-    });
+    try {
+      const res = await fetch("/box-management/reactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          dep_public_key: depPublicKey,
+          emoji_id: emojiId,
+        }),
+      });
 
-    const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      if (data?.error === "forbidden") {
-        alert(data?.message || "Tu n’as pas débloqué cet emoji.");
-      } else {
-        alert(data?.detail || data?.message || "Oops, impossible d’appliquer ta réaction.");
+      if (!res.ok) {
+        if (data?.error === "forbidden") {
+          setInlineAlert({
+            severity: "warning",
+            message: data?.message || "Tu n’as pas débloqué cet emoji.",
+            retryAction: "",
+          });
+        } else {
+          setInlineAlert({
+            severity: "error",
+            message: data?.detail || data?.message || "Oops, impossible d’appliquer ta réaction.",
+            retryAction: "retry_validate",
+          });
+        }
+        return;
       }
-      return;
+
+      onApplied?.(data);
+      setCatalog((prev) => ({
+        ...prev,
+        current_reaction: data?.my_reaction || null,
+      }));
+      setSelected(data?.my_reaction?.emoji || null);
+      setUnlockTargetId(null);
+      onClose();
+    } catch (error) {
+      setInlineAlert({
+        severity: "error",
+        message: "Oops, impossible d’appliquer ta réaction.",
+        retryAction: "retry_validate",
+      });
     }
-
-    onApplied?.(data);
-    setCatalog((prev) => ({
-      ...prev,
-      current_reaction: data?.my_reaction || null,
-    }));
-    setSelected(data?.my_reaction?.emoji || null);
-    setUnlockTargetId(null);
-    onClose();
   };
-
 
   return (
     <>
@@ -259,6 +315,43 @@ export default function AddReactionModal({
                   Choisis un emoji pour dire ce que tu as pensé de la chanson.
                 </Typography>
               </Box>
+
+              {inlineAlert.message ? (
+                <Alert
+                  severity={inlineAlert.severity}
+                  sx={{ mb: 2 }}
+                  action={
+                    inlineAlert.retryAction ? (
+                      <Button
+                        variant="light"
+                        onClick={() => {
+                          if (inlineAlert.retryAction === "reload_catalog") {
+                            setCatalogReloadKey((prev) => prev + 1);
+                            return;
+                          }
+
+                          if (inlineAlert.retryAction === "retry_unlock") {
+                            const emoji = (catalog.actives_paid || []).find((item) => item.id === unlockTargetId);
+                            if (emoji) {
+                              unlockEmoji(emoji);
+                            }
+                            return;
+                          }
+
+                          if (inlineAlert.retryAction === "retry_validate") {
+                            validate();
+                          }
+                        }}
+                      >
+                        Réessayer
+                      </Button>
+                    ) : null
+                  }
+                >
+                  {inlineAlert.message}
+                </Alert>
+              ) : null}
+
               {loading ? (
                 <Box>
                   <CircularProgress />
@@ -348,6 +441,16 @@ export default function AddReactionModal({
         }}
         onAuthenticated={() => setPurchasePromptOpen(false)}
       />
+
+      <Dialog open={pointsDialogOpen} onClose={() => setPointsDialogOpen(false)}>
+        <DialogTitle>Pas assez de points</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning">{EMOJI_POINTS_MESSAGE}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointsDialogOpen(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

@@ -1799,6 +1799,11 @@ class PurchaseEmojiView(APIView):
                 lock_user=False,
             )
             if not ok_points:
+                if payload_points.get("error") == "insufficient_funds":
+                    payload_points = {
+                        **payload_points,
+                        "message": "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.",
+                    }
                 return Response(payload_points, status=code_points)
 
             EmojiRight.objects.create(user=current_user, emoji=emoji)

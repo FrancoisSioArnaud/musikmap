@@ -1,13 +1,15 @@
 import React, { useContext, useState } from "react";
-import { UserContext } from "../UserContext";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
+import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useLocation, useNavigate } from "react-router-dom";
+
 import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus } from "../UsersUtils";
-import { useLocation, useNavigate } from "react-router-dom";
+import { UserContext } from "../UserContext";
 import AvatarCropperModal from "./AvatarCropperModal";
 import { startAuthPageFlow } from "../Auth/AuthFlow";
 
@@ -15,6 +17,7 @@ export default function UserProfileEdit() {
   const { user, setUser, setIsAuthenticated } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const [cropOpen, setCropOpen] = useState(false);
@@ -39,6 +42,7 @@ export default function UserProfileEdit() {
   const onAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setErrorMessage("");
     setSelectedFile(file);
     setCropOpen(true);
   };
@@ -46,6 +50,7 @@ export default function UserProfileEdit() {
   const onConfirmCropped = async (blob) => {
     setCropOpen(false);
     setSaving(true);
+    setErrorMessage("");
     const csrftoken = getCookie("csrftoken");
     const form = new FormData();
     const namedFile = new File([blob], "avatar.jpg", { type: "image/jpeg" });
@@ -65,7 +70,7 @@ export default function UserProfileEdit() {
       const payload = ct.includes("application/json") ? await res.json() : { html: await res.text() };
       if (!res.ok) {
         const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
-        alert(msg);
+        setErrorMessage(msg);
         return;
       }
       if (payload?.profile_picture_url) {
@@ -75,7 +80,7 @@ export default function UserProfileEdit() {
       }
     } catch (err) {
       console.error(err);
-      alert("Échec de l’envoi de l’image.");
+      setErrorMessage("Échec de l’envoi de l’image.");
     } finally {
       setSaving(false);
       setSelectedFile(null);
@@ -84,6 +89,7 @@ export default function UserProfileEdit() {
 
   const onSaveUsername = async () => {
     setSaving(true);
+    setErrorMessage("");
     const csrftoken = getCookie("csrftoken");
 
     try {
@@ -103,7 +109,7 @@ export default function UserProfileEdit() {
 
       if (!res.ok) {
         const msg = Array.isArray(payload?.errors) ? payload.errors.join(" ") : `Erreur serveur ${res.status}`;
-        alert(msg);
+        setErrorMessage(msg);
         return;
       }
 
@@ -112,7 +118,7 @@ export default function UserProfileEdit() {
       navigate(nextProfilePath);
     } catch (err) {
       console.error(err);
-      alert("Impossible de sauvegarder. Vérifie ta connexion.");
+      setErrorMessage("Impossible de sauvegarder. Vérifie ta connexion.");
     } finally {
       setSaving(false);
     }
@@ -121,6 +127,7 @@ export default function UserProfileEdit() {
   return (
     <Box sx={{ p: "20px", display: "grid", gap: "26px" }}>
       <Typography variant="h1">Modifier le profil</Typography>
+      {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
 
       <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <Avatar src={user?.profile_picture_url} alt={user?.username} sx={{ width: 72, height: 72 }} />
@@ -144,7 +151,10 @@ export default function UserProfileEdit() {
         <TextField
           label="Nom d’utilisateur"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            if (errorMessage) setErrorMessage("");
+          }}
           fullWidth
         />
 

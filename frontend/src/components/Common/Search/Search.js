@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -39,6 +40,7 @@ export default function Search({
   const { user, setUser } = useContext(UserContext) || {};
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const latestUserRef = useRef(user);
   const cacheRef = useRef(new Map());
 
@@ -57,6 +59,7 @@ export default function Search({
   useEffect(() => {
     if (!normalizedQuery) {
       setIsSearching(false);
+      setSearchError("");
       return undefined;
     }
 
@@ -67,6 +70,7 @@ export default function Search({
       let cancelled = false;
 
       const applyCachedResults = async () => {
+        setSearchError("");
         setIsSearching(true);
         await sleep(CACHE_LOADING_MS);
         if (cancelled) {
@@ -87,6 +91,7 @@ export default function Search({
     const timer = setTimeout(() => {
       const doFetch = async () => {
         try {
+          setSearchError("");
           setIsSearching(true);
           let nextResults = [];
           let shouldFallbackToServer = provider === NO_PERSONALIZED_RESULTS_PROVIDER;
@@ -125,10 +130,12 @@ export default function Search({
             const safeResults = Array.isArray(nextResults) ? nextResults : [];
             cacheRef.current.set(cacheKey, safeResults);
             setResults(safeResults);
+            setSearchError("");
           }
         } catch (error) {
           if (!controller.signal.aborted && error?.name !== "AbortError") {
             setResults([]);
+            setSearchError("Oops, une erreur s’est produite. Réessaie dans un instant.");
           }
         } finally {
           if (!controller.signal.aborted) {
@@ -160,7 +167,11 @@ export default function Search({
       actionLabel={actionLabel}
       emptyContent={
         <Box sx={{ px: 5, py: 3 }}>
-          <Typography variant="body1">Aucun résultat.</Typography>
+          {searchError ? (
+            <Alert severity="error">{searchError}</Alert>
+          ) : (
+            <Typography variant="body1">Aucun résultat.</Typography>
+          )}
         </Box>
       }
     />

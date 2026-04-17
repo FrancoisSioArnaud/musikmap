@@ -1,6 +1,8 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 
 import { UserContext } from "../../UserContext";
@@ -8,6 +10,11 @@ import { ensureValidSpotifyAccessToken } from "../../Utils/streaming/SpotifyUtil
 import { fetchRecentPlaysViaProviderClient, getProviderConnection } from "../../Utils/streaming/providerClient";
 import SongList from "./SongList";
 import { NO_PERSONALIZED_RESULTS_PROVIDER } from "./SearchProviderSelector";
+
+const PROVIDER_LABELS = {
+  spotify: "Spotify",
+  deezer: "Deezer",
+};
 
 export default function RecentlyPlayed({
   provider,
@@ -20,6 +27,7 @@ export default function RecentlyPlayed({
   const { user, setUser } = useContext(UserContext) || {};
   const [itemsByProvider, setItemsByProvider] = useState({});
   const [statusByProvider, setStatusByProvider] = useState({});
+  const [retryCountByProvider, setRetryCountByProvider] = useState({});
   const latestUserRef = useRef(user);
 
   useEffect(() => {
@@ -31,6 +39,9 @@ export default function RecentlyPlayed({
     [provider, user?.provider_connections]
   );
 
+  const providerLabel = PROVIDER_LABELS[provider] || provider || "ce service";
+  const retryCount = retryCountByProvider[provider] || 0;
+
   useEffect(() => {
     if (!provider || provider === NO_PERSONALIZED_RESULTS_PROVIDER) {
       return undefined;
@@ -38,7 +49,7 @@ export default function RecentlyPlayed({
 
     if (!connection?.connected || !connection?.can_recent_plays || !connection?.access_token) {
       setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
-      setStatusByProvider((prev) => ({ ...prev, [provider]: "idle" }));
+      setStatusByProvider((prev) => ({ ...prev, [provider]: "connection_error" }));
       return undefined;
     }
 
@@ -56,7 +67,7 @@ export default function RecentlyPlayed({
         if (!accessToken || controller.signal.aborted) {
           if (!controller.signal.aborted) {
             setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
-            setStatusByProvider((prev) => ({ ...prev, [provider]: "error" }));
+            setStatusByProvider((prev) => ({ ...prev, [provider]: "connection_error" }));
           }
           return;
         }
@@ -67,27 +78,71 @@ export default function RecentlyPlayed({
         });
 
         if (!controller.signal.aborted) {
-          setItemsByProvider((prev) => ({ ...prev, [provider]: Array.isArray(nextItems) ? nextItems : [] }));
-          setStatusByProvider((prev) => ({ ...prev, [provider]: "success" }));
+          const safeItems = Array.isArray(nextItems) ? nextItems : [];
+          setItemsByProvider((prev) => ({ ...prev, [provider]: safeItems }));
+          setStatusByProvider((prev) => ({
+            ...prev,
+            [provider]: safeItems.length ? "success" : "empty",
+          }));
         }
       } catch (error) {
         if (!controller.signal.aborted) {
           setItemsByProvider((prev) => ({ ...prev, [provider]: [] }));
-          setStatusByProvider((prev) => ({ ...prev, [provider]: "error" }));
+          setStatusByProvider((prev) => ({ ...prev, [provider]: "request_error" }));
         }
       }
     };
 
     loadRecentPlays();
     return () => controller.abort();
-  }, [connection?.access_token, connection?.can_recent_plays, connection?.connected, provider, setUser]);
+  }, [connection?.access_token, connection?.can_recent_plays, connection?.connected, provider, retryCount, setUser]);
 
   if (!visible || !provider || provider === NO_PERSONALIZED_RESULTS_PROVIDER) {
     return null;
   }
 
   const items = itemsByProvider[provider] || [];
-  const isLoading = statusByProvider[provider] === "loading";
+  const status = statusByProvider[provider] || "idle";
+  const isLoading = status === "loading";
+
+  let emptyContent = (
+    <Box sx={{ px: 5, py: 1 }}>
+      <Alert severity="info">Aucune écoute récente disponible</Alert>
+    </Box>
+  );
+
+  if (status === "connection_error") {
+    emptyContent = (
+      <Box sx={{ px: 5, py: 1 }}>
+        <Alert severity="warning">Connexion à {providerLabel} impossible</Alert>
+      </Box>
+    );
+  }
+
+  if (status === "request_error") {
+    emptyContent = (
+      <Box sx={{ px: 5, py: 1 }}>
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              variant="light"
+              onClick={() => {
+                setRetryCountByProvider((prev) => ({
+                  ...prev,
+                  [provider]: (prev[provider] || 0) + 1,
+                }));
+              }}
+            >
+              Réessayer
+            </Button>
+          }
+        >
+          La connexion à {providerLabel} a échoué
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -109,13 +164,7 @@ export default function RecentlyPlayed({
         onSelectSong={onSelectSong}
         onDepositVisualComplete={onDepositVisualComplete}
         actionLabel={actionLabel}
-        emptyContent={
-          <Box sx={{ px: 5, py: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Aucune écoute récente disponible.
-            </Typography>
-          </Box>
-        }
+        emptyContent={emptyContent}
       />
     </Box>
   );
