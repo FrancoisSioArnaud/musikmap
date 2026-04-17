@@ -261,7 +261,7 @@ export default function Deposit({
   const comments = localDep?.comments || { items: [], viewer_state: {} };
   const accentColor = localDep?.accent_color || undefined;
   const rootClassName = `deposit deposit_${variant}`;
-  const cardClassName = `deposit_card deposit_${variant}_card`;
+
 
   const isRevealed = useMemo(
     () => Boolean(song?.title && song?.artist),
@@ -961,7 +961,7 @@ export default function Deposit({
             {dateLabel || naturalDate || ""}
           </Typography>
         ) : null}
-        <Card className={cardClassName}>
+        <Card className={deposit_card}>
           {depositInfosBlock}
 
           <Box
