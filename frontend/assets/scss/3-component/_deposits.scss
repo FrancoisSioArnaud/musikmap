@@ -58,6 +58,10 @@
   gap: 16px;
 }
 
+#older_deposit{
+  background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
+}
+
 #older_deposits_list .deposit::after {
   content: "...";
   transform: rotate(90deg) translate(0, -15px);
@@ -88,7 +92,6 @@
   gap: 32px;
   padding: 26px;
   padding-bottom: 32px;
-  background-color: var(--mm-color-bg-gradient);
 }
 
 #older_deposits_list .deposit_card {
