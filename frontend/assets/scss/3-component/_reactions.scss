@@ -40,8 +40,13 @@
   margin-top: -15px;
 }
 
+.react_item_wrap.selected .react_emoji{
+  transform: scale(1.5);
+}
+
 .react_emoji {
   font-size: 2.5em;
+  transition: all 0.3s ease-in;
 }
 
 .react_notOwned .react_emoji {
