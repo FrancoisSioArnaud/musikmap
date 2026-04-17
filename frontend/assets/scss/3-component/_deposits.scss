@@ -93,7 +93,7 @@
 #older_deposits_list .deposit_card {
 }
 
-.deposit_card .deposit_infos {
+.deposit .deposit_infos {
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -101,7 +101,7 @@
   padding: 12px 16px;
 }
 
-.deposit_card .deposit_interact {
+.deposit .deposit_interact {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -111,13 +111,13 @@
   padding: 4px 12px;
 }
 
-.deposit_card .deposit_interact .left,
-.deposit_card .deposit_interact .right {
+.deposit .deposit_interact .left,
+.deposit .deposit_interact .right {
   display: flex;
   gap: 4px;
 }
 
-.deposit_card .deposit_action_button {
+.deposit .deposit_action_button {
   min-width: auto;
   width: auto;
   padding: 8px 12px;
@@ -126,43 +126,43 @@
   font-size: 1em;
 }
 
-.deposit_card .deposit_action_button svg {
+.deposit .deposit_action_button svg {
   font-size: 26px;
 }
 
-.deposit_card .deposit_action_group {
+.deposit .deposit_action_group {
   display: flex;
   align-items: center;
   gap: 0;
 }
 
-.deposit_card .addreaction_icon_button {
+.deposit .addreaction_icon_button {
   min-width: auto;
   padding-right: 4px;
 }
 
-.deposit_card .reactionsummary_button {
+.deposit .reactionsummary_button {
   min-width: auto;
   padding-left: 0;
 }
 
-.deposit_card .deposit_date {
+.deposit .deposit_date {
 }
 
-.deposit_card .deposit_user {
+.deposit .deposit_user {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
 }
 
-.deposit_card .deposit_user span {
+.deposit .deposit_user span {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.deposit_card .avatar {
+.deposit .avatar {
   width: 26px;
   height: 26px;
 }
@@ -198,7 +198,7 @@
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main_card .deposit_song {
+.deposit_main .deposit_song {
   flex-direction: column;
   gap: 16px;
   //  background : var(--mm-color-primary-dark);
@@ -206,7 +206,7 @@
   padding-bottom: 32px;
 }
 
-.deposit_list_card .deposit_song,
+.deposit_list .deposit_song,
 .my_deposit.deposit_song {
   display: flex;
   flex-direction: row;
@@ -224,19 +224,19 @@
   background-color: var(--mm-color-surface);
 }
 
-.deposit_card .cover_media {
+.deposit .cover_media {
   position: relative;
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
   transition: margin 1s;
 }
-.deposit_list_card .deposit_song:not(.is_hidden) .cover_media{
+.deposit_list .deposit_song:not(.is_hidden) .cover_media{
   margin:16px;
 }
 
 
-.deposit_card .img_container {
+.deposit .img_container {
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -266,16 +266,16 @@
   filter: blur(6px);
 }
 
-.deposit_main_card .cover_media {
+.deposit_main .cover_media {
   width: 66%;
   margin: auto;
 }
 
-.deposit_list_card .cover_media {
+.deposit_list .cover_media {
   width: 33%;
 }
 
-.deposit_card .texts {
+.deposit .texts {
   display: flex;
   flex-direction: column;
   padding: 6px 0;
@@ -283,36 +283,36 @@
   //  color : var(--mm-color-black);
 }
 
-.deposit_main_card .texts {
+.deposit_main .texts {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
-.deposit_list_card .texts {
+.deposit_list .texts {
   text-align: left;
 }
 
-.deposit_card .interact {
+.deposit .interact {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
   min-width: 0;
 }
-.deposit_main_card .interact {
+.deposit_main .interact {
   align-items: center;
   gap: 12px;
 }
 
-.deposit_list_card .interact {
+.deposit_list .interact {
   justify-content: left;
 }
 
-.deposit_list_card .texts .titre,
-.deposit_list_card .texts .artist,
-.deposit_list_card .interact button.play {
+.deposit_list .texts .titre,
+.deposit_list .texts .artist,
+.deposit_list .interact button.play {
   opacity: 0;
   transform-origin: left center;
   transform: scale(0.88);
@@ -320,23 +320,23 @@
   will-change: transform, opacity;
 }
 
-.deposit_list_card .texts .titre {
+.deposit_list .texts .titre {
   animation-delay: 0ms;
 }
 
-.deposit_list_card .texts .artist {
+.deposit_list .texts .artist {
   animation-delay: 200ms;
 }
 
-.deposit_list_card .interact button.play {
+.deposit_list .interact button.play {
   animation-delay: 400ms;
 }
 
-.deposit_card .deposit_song.is_hidden .interact {
+.deposit .deposit_song.is_hidden .interact {
   justify-content: center;
 }
 
-.deposit_card .deposit_song.is_hidden .decouvrir {
+.deposit .deposit_song.is_hidden .decouvrir {
   max-width: 100%;
   min-height: 48px;
   height: auto;
@@ -346,13 +346,13 @@
   width: 100%;
 }
 
-.deposit_card .decouvrir {
+.deposit .decouvrir {
   display: flex;
   align-items: center;
   width: 100%;
 }
 
-.deposit_list_card .decouvrir {
+.deposit_list .decouvrir {
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -361,18 +361,18 @@
   height: auto;
 }
 
-.deposit_list_card .points_container {
+.deposit_list .points_container {
   margin: 0;
 }
 
-.deposit_card .emojis {
+.deposit .emojis {
   position: absolute;
   inset: 0;
   overflow: visible;
   pointer-events: none;
 }
 
-.deposit_card .emojis .emoji_shell {
+.deposit .emojis .emoji_shell {
   position: absolute;
   display: inline-flex;
   align-items: center;
@@ -389,7 +389,7 @@
   user-select: none;
 }
 
-.deposit_card .emojis .emoji {
+.deposit .emojis .emoji {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -402,12 +402,12 @@
   will-change: transform;
 }
 
-.deposit_card .emojis.is_revealed .emoji_shell {
+.deposit .emojis.is_revealed .emoji_shell {
   left: var(--emoji-target-left);
   top: var(--emoji-target-top);
 }
 
-.deposit_main_card .emojis .emoji {
+.deposit_main .emojis .emoji {
   font-size: 4rem;
 }
 
