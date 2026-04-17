@@ -33,9 +33,11 @@ from .views import (
     ShareLinkCreateView,
     ShareLinkPublicDetailView,
     PinnedSongView,
+    EconomyConfigView,
 )
 
 urlpatterns = [
+    path("economy/", EconomyConfigView.as_view(), name="economy"),
     path("get-box/", GetBox.as_view(), name="get-box"),
     path("get-main/<slug:box_url>/", GetMain.as_view(), name="get-main"),
     path("verify-location", Location.as_view(), name="verify-location"),

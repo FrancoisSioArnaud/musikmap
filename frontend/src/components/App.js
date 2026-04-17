@@ -75,6 +75,7 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentBoxName, setCurrentBoxName] = useState("");
   const [currentClient, setCurrentClient] = useState(() => getStoredCurrentClient());
+  const [economy, setEconomy] = useState(null);
 
   const providerValue = useMemo(
     () => ({
@@ -88,6 +89,8 @@ export default function App() {
       setCurrentBoxName,
       currentClient,
       setCurrentClient,
+      economy,
+      setEconomy,
     }),
     [
       user,
@@ -95,6 +98,7 @@ export default function App() {
       authChecked,
       currentBoxName,
       currentClient,
+      economy,
     ]
   );
 
@@ -117,6 +121,25 @@ export default function App() {
       null,
       setAuthChecked
     );
+  }, []);
+
+  useEffect(() => {
+    const loadEconomy = async () => {
+      try {
+        const response = await fetch("/box-management/economy/", {
+          method: "GET",
+          credentials: "same-origin",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          setEconomy(data);
+        }
+      } catch (error) {
+        // Economy config is optional; the UI will fall back to safe defaults.
+      }
+    };
+
+    loadEconomy();
   }, []);
 
   useEffect(() => {

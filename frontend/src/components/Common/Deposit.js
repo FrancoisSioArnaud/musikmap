@@ -237,7 +237,7 @@ export default function Deposit({
   dep,
   user: viewer,
   setDispDeposits,
-  cost = 100,
+  cost,
   variant = "list",
   showDate = true,
   showUser = true,
@@ -250,7 +250,15 @@ export default function Deposit({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser } = useContext(UserContext) || {};
+  const { setUser, economy } = useContext(UserContext) || {};
+
+  const revealCost = (() => {
+    const parsed = Number(cost);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    const ecoCost = Number(economy?.reveal_cost);
+    if (Number.isFinite(ecoCost) && ecoCost > 0) return ecoCost;
+    return 100;
+  })();
 
   const [localDep, setLocalDep] = useState(dep || {});
   useEffect(() => {
@@ -1021,7 +1029,7 @@ export default function Deposit({
                   {isRevealLoading ? "Révélation..." : "Maintiens pour révéler la chanson"}
                   <Box className="points_container" sx={{ ml: "12px" }}>
                     <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
-                      {cost}
+                      {revealCost}
                     </Typography>
                     <MusicNote />
                   </Box>

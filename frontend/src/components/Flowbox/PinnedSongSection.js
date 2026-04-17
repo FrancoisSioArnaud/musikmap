@@ -288,8 +288,8 @@ export default function PinnedSongSection({ boxSlug }) {
       setActivePinnedDeposit(nextActivePinnedDeposit);
       setPriceSteps(Array.isArray(data?.price_steps) ? data.price_steps : []);
       updateBoxContentStorage(nextActivePinnedDeposit);
-      if (data?.current_user && setUser) {
-        setUser(data.current_user);
+      if (typeof data?.points_balance === "number" && setUser) {
+        setUser((prev) => ({ ...(prev || {}), points: data.points_balance }));
       }
       closeDrawer(true);
     } catch {

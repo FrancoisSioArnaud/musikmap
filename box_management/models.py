@@ -871,8 +871,9 @@ class EmojiRight(models.Model):
 
 class Reaction(models.Model):
     """
-    Une réaction = un user + un dépôt + un emoji.
-    Upsert côté API : si déjà présent => update updated_at (pas de doublon).
+    Une réaction = un user + un dépôt.
+    L'emoji est modifiable (upsert côté API) : un user ne peut avoir qu'une seule
+    réaction active par dépôt.
     """
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reactions")
     deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE, related_name="reactions")
@@ -883,7 +884,7 @@ class Reaction(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "deposit", "emoji"], name="uniq_user_deposit_emoji"),
+            models.UniqueConstraint(fields=["user", "deposit"], name="uniq_user_deposit_reaction"),
         ]
         indexes = [
             models.Index(fields=["deposit", "emoji"]),

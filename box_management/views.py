@@ -117,14 +117,13 @@ from .utils import (
     _log_blocked_comment_attempt,
     create_song_deposit,
     build_pinned_price_steps_payload,
+    get_pinned_price_steps_raw,
     get_pinned_price_step,
     get_active_pinned_deposit_for_box,
 )
 
-# Barèmes & coûts (importés depuis ton module utils global)
-from utils import (
-    COST_REVEAL_BOX,
-)
+# Barèmes & coûts
+from la_boite_a_son.economy import COST_REVEAL_BOX, build_economy_payload
 
 User = get_user_model()
 
@@ -562,6 +561,20 @@ class GetMain(APIView):
             force_song_infos_for=force_ids,
         )
 
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class EconomyConfigView(APIView):
+    """GET /box-management/economy/
+
+    Public, cacheable economy configuration for the frontend.
+    """
+
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+        payload = build_economy_payload()
+        payload["pinned_price_steps"] = get_pinned_price_steps_raw()
         return Response(payload, status=status.HTTP_200_OK)
 
 
@@ -1215,7 +1228,7 @@ class PinnedSongView(APIView):
             "action": action,
             "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
             "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
-            "current_user": build_current_user_payload(refreshed_user),
+            "points_balance": int(getattr(refreshed_user, "points", 0) or 0),
         }, status=status.HTTP_200_OK)
 
 
@@ -1595,9 +1608,25 @@ class ReactionView(APIView):
         if not is_revealed_for_user:
             return api_error(status.HTTP_403_FORBIDDEN, "DEPOSIT_NOT_REVEALED", "Écoute la chanson avant de réagir")
 
+        # Enforce: one reaction per (user, deposit). We lock the user row so
+        # concurrent requests from the same user cannot create duplicates even
+        # if the DB constraint is missing / not migrated yet.
         if emoji_id in (None, "", 0, "none"):
-            Reaction.objects.filter(user=current_user, deposit=deposit).delete()
-            deposit = (Deposit.objects.filter(pk=deposit.pk).prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions")).first())
+            with transaction.atomic():
+                locked_user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
+                Reaction.objects.filter(user=locked_user, deposit=deposit).delete()
+
+            deposit = (
+                Deposit.objects.filter(pk=deposit.pk)
+                .prefetch_related(
+                    Prefetch(
+                        "reactions",
+                        queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                        to_attr="prefetched_reactions",
+                    )
+                )
+                .first()
+            )
             rx = _build_reactions_from_instance(deposit, current_user=current_user)
             return Response({"my_reaction": None, "reactions": rx["detail"]}, status=status.HTTP_200_OK)
 
@@ -1605,15 +1634,16 @@ class ReactionView(APIView):
         if not emoji:
             return api_error(status.HTTP_404_NOT_FOUND, "EMOJI_NOT_FOUND", "Emoji invalide")
 
-        if not emoji.cost == 0:
-            has_right = EmojiRight.objects.filter(user=current_user, emoji=emoji).exists()
-            if not has_right:
-                return api_error(status.HTTP_403_FORBIDDEN, "EMOJI_NOT_UNLOCKED", "Emoji non débloqué")
+        with transaction.atomic():
+            locked_user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
 
-        obj, created = Reaction.objects.get_or_create(user=current_user, deposit=deposit, defaults={"emoji": emoji})
-        if not created and obj.emoji_id != emoji.id:
-            obj.emoji = emoji
-            obj.save(update_fields=["emoji", "updated_at"])
+            if int(emoji.cost or 0) > 0:
+                has_right = EmojiRight.objects.filter(user=locked_user, emoji=emoji).exists()
+                if not has_right:
+                    return api_error(status.HTTP_403_FORBIDDEN, "EMOJI_NOT_UNLOCKED", "Emoji non débloqué")
+
+            Reaction.objects.filter(user=locked_user, deposit=deposit).delete()
+            Reaction.objects.create(user=locked_user, deposit=deposit, emoji=emoji)
 
         deposit = (Deposit.objects.filter(pk=deposit.pk).prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions")).first())
         rx = _build_reactions_from_instance(deposit, current_user=current_user)

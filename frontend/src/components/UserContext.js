@@ -9,4 +9,6 @@ export const UserContext = createContext({
   setCurrentClient: () => {},
   authChecked: false,
   setAuthChecked: () => {},
+  economy: null,
+  setEconomy: () => {},
 });

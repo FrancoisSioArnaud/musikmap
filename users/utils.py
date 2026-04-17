@@ -287,7 +287,8 @@ def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
             user.points = working_user.points
             user.last_seen_at = working_user.last_seen_at
 
-        return True, {"status": "Points mis à jour avec succès.", "points_balance": working_user.points}, 200
+        # Keep the success payload minimal and stable.
+        return True, {"points_balance": working_user.points}, 200
 
 
 def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, require_source_guest: bool = False):

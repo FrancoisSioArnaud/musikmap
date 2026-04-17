@@ -41,8 +41,8 @@ from .models import (
     CommentAttemptLog,
 )
 
-# Barèmes & coûts (importés depuis ton module utils global)
-from utils import (
+# Barèmes & coûts
+from la_boite_a_son.economy import (
     NB_POINTS_ADD_SONG,
     NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
@@ -117,6 +117,11 @@ def load_pinned_price_steps() -> List[Dict[str, int]]:
 
     steps.sort(key=lambda entry: entry["minutes"])
     return steps
+
+
+def get_pinned_price_steps_raw() -> List[Dict[str, int]]:
+    """Raw pinned price steps (minutes/points), without affordability flags."""
+    return load_pinned_price_steps()
 
 
 def get_pinned_price_step(duration_minutes: int) -> Optional[Dict[str, int]]:
