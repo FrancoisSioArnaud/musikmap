@@ -61,7 +61,7 @@ export default function LinkDepositPage() {
         if (cancelled) return;
 
         if (!response.ok) {
-          setPageCode(data?.code || "link_error");
+          setPageCode(data?.code || "LINK_ERROR");
           setPageMessage(
             data?.detail || "Impossible d’ouvrir ce lien pour le moment."
           );
@@ -78,7 +78,7 @@ export default function LinkDepositPage() {
         setBoxData(data?.box || null);
       } catch {
         if (cancelled) return;
-        setPageCode("network_error");
+        setPageCode("NETWORK_ERROR");
         setPageMessage("Impossible d’ouvrir ce lien pour le moment.");
       } finally {
         if (!cancelled) {
@@ -109,7 +109,7 @@ export default function LinkDepositPage() {
 
   if (!deposit) {
     const senderLabel = getSenderLabel(sender);
-    const isExpired = pageCode === "link_expired";
+    const isExpired = pageCode === "LINK_EXPIRED";
 
     return (
       <Box sx={{ px: "20px", py: 7, textAlign: "center" }}>

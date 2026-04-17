@@ -185,14 +185,14 @@ export default function AddReactionModal({
         if (typeof data?.points_balance === "number" && setUser) {
           setUser((u) => ({ ...(u || {}), points: data.points_balance }));
         }
-        if (data?.error === "insufficient_funds") {
+        if (data?.code === "INSUFFICIENT_POINTS") {
           setPointsDialogOpen(true);
           return;
         }
 
         setInlineAlert({
           severity: "error",
-          message: data?.detail || data?.message || "Impossible de débloquer cet emoji.",
+          message: data?.detail || "Impossible de débloquer cet emoji.",
           retryAction: "retry_unlock",
         });
         return;
@@ -247,16 +247,16 @@ export default function AddReactionModal({
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        if (data?.error === "forbidden") {
+        if (data?.code === "EMOJI_NOT_UNLOCKED") {
           setInlineAlert({
             severity: "warning",
-            message: data?.message || "Tu n’as pas débloqué cet emoji.",
+            message: data?.detail || "Tu n’as pas débloqué cet emoji.",
             retryAction: "",
           });
         } else {
           setInlineAlert({
             severity: "error",
-            message: data?.detail || data?.message || "Oops, impossible d’appliquer ta réaction.",
+            message: data?.detail || "Oops, impossible d’appliquer ta réaction.",
             retryAction: "retry_validate",
           });
         }

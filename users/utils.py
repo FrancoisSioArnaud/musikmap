@@ -7,6 +7,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
+from la_boite_a_son.api_errors import api_error_payload
 from users.provider_connections import merge_provider_connections, serialize_provider_connections_for_user
 
 from .models import CustomUser
@@ -248,7 +249,7 @@ def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
     try:
         delta = int(delta)
     except (TypeError, ValueError):
-        return False, {"errors": "Nombre de points invalide."}, 400
+        return False, api_error_payload(400, "INVALID_POINTS_DELTA", "Nombre de points invalide."), 400
 
     with transaction.atomic():
         working_user = user
@@ -266,12 +267,13 @@ def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
         if new_balance < 0:
             return (
                 False,
-                {
-                    "error": "insufficient_funds",
-                    "message": "Pas assez de points pour effectuer cette action.",
-                    "points_balance": current,
-                },
-                400,
+                api_error_payload(
+                    403,
+                    "INSUFFICIENT_POINTS",
+                    "Pas assez de points pour effectuer cette action.",
+                    points_balance=current,
+                ),
+                403,
             )
 
         working_user.points = new_balance
@@ -286,6 +288,7 @@ def apply_points_delta(user: CustomUser, delta: int, *, lock_user: bool = True):
             user.last_seen_at = working_user.last_seen_at
 
         return True, {"status": "Points mis à jour avec succès.", "points_balance": working_user.points}, 200
+
 
 def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, require_source_guest: bool = False):
     if not source_user or not target_user:

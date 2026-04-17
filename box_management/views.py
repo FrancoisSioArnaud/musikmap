@@ -27,6 +27,7 @@ from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from la_boite_a_son.api_errors import api_error, api_error_payload
 
 # ===== Project =====
 from users.models import CustomUser
@@ -288,6 +289,41 @@ def _get_comment_error_message(reason_code):
     return messages.get(reason_code, "Impossible d’enregistrer ce commentaire.")
 
 
+def _comment_reason_to_error_code(reason_code):
+    mapping = {
+        COMMENT_REASON_ALREADY_COMMENTED: "COMMENT_ALREADY_EXISTS",
+        COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED: "COMMENT_TARGET_DAILY_LIMIT_REACHED",
+        COMMENT_REASON_RATE_LIMIT: "COMMENT_RATE_LIMITED",
+        COMMENT_REASON_LINK_FORBIDDEN: "COMMENT_LINK_FORBIDDEN",
+        COMMENT_REASON_EMAIL_FORBIDDEN: "COMMENT_EMAIL_FORBIDDEN",
+        COMMENT_REASON_PHONE_FORBIDDEN: "COMMENT_PHONE_FORBIDDEN",
+        COMMENT_REASON_EMPTY: "COMMENT_EMPTY",
+        COMMENT_REASON_TOO_LONG: "COMMENT_TOO_LONG",
+        COMMENT_REASON_RESTRICTED: "COMMENT_RESTRICTED",
+        COMMENT_REASON_REPORT_THRESHOLD: "COMMENT_REPORT_THRESHOLD",
+        COMMENT_REASON_RISK_QUARANTINE: "COMMENT_RISK_QUARANTINED",
+    }
+    return mapping.get(reason_code, "COMMENT_CREATION_FAILED")
+
+
+def _comment_error(status_code, reason_code, detail=None, **extra):
+    return api_error(
+        status_code,
+        _comment_reason_to_error_code(reason_code),
+        detail or _get_comment_error_message(reason_code),
+        reason_code=reason_code,
+        **extra,
+    )
+
+
+def _provider_error_status(error_code):
+    if error_code == "INVALID_PROVIDER":
+        return status.HTTP_400_BAD_REQUEST
+    if error_code == "PROVIDER_LINK_NOT_FOUND":
+        return status.HTTP_404_NOT_FOUND
+    return status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 def _serialize_client_admin_comment(comment):
     reports = list(getattr(comment, "prefetched_reports", []) or [])
     decisions = list(getattr(comment, "prefetched_decisions", []) or [])
@@ -361,12 +397,12 @@ class ShareLinkCreateView(APIView):
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
         dep_public_key = (request.data.get("dep_public_key") or "").strip()
         if not dep_public_key:
-            return Response({"detail": "dep_public_key manquant"}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_PUBLIC_KEY_REQUIRED", "dep_public_key manquant")
 
         deposit = (
             Deposit.objects
@@ -375,13 +411,10 @@ class ShareLinkCreateView(APIView):
             .first()
         )
         if not deposit:
-            return Response({"detail": "Dépôt introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
 
         if not _is_deposit_revealed_for_user(current_user, deposit):
-            return Response(
-                {"detail": "Ce dépôt doit déjà être révélé pour pouvoir être partagé."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return api_error(status.HTTP_403_FORBIDDEN, "DEPOSIT_NOT_REVEALED", "Ce dépôt doit déjà être révélé pour pouvoir être partagé.")
 
         with transaction.atomic():
             link = (
@@ -410,7 +443,7 @@ class ShareLinkPublicDetailView(APIView):
     def get(self, request, link_slug):
         slug = _normalize_link_slug(link_slug)
         if not slug:
-            return Response({"detail": "Lien introuvable.", "code": "link_not_found"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "LINK_NOT_FOUND", "Lien introuvable.")
 
         link = (
             Link.objects
@@ -429,20 +462,18 @@ class ShareLinkPublicDetailView(APIView):
         )
 
         if not link:
-            return Response({"detail": "Lien introuvable.", "code": "link_not_found"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "LINK_NOT_FOUND", "Lien introuvable.")
 
         if link.deposit_deleted or not getattr(link, "deposit", None):
-            return Response({"detail": "Ce dépôt n’est plus disponible.", "code": "deposit_deleted"}, status=status.HTTP_410_GONE)
+            return api_error(status.HTTP_410_GONE, "DEPOSIT_DELETED", "Ce dépôt n’est plus disponible.")
 
         now = timezone.now()
         if link.expires_at and link.expires_at <= now:
-            return Response(
-                {
-                    "detail": "Ce lien a expiré.",
-                    "code": "link_expired",
-                    "sender": _build_user_from_instance(link.created_by),
-                },
-                status=status.HTTP_410_GONE,
+            return api_error(
+                status.HTTP_410_GONE,
+                "LINK_EXPIRED",
+                "Ce lien a expiré.",
+                sender=_build_user_from_instance(link.created_by),
             )
 
         viewer = get_current_app_user(request)
@@ -459,18 +490,22 @@ class ShareLinkPublicDetailView(APIView):
                     "link_sender": link.created_by,
                 },
             )
-            if not created:
-                update_fields = ["discovered_at", "context", "link_sender"]
-                discovery.discovered_at = now
+            updates = []
+            if discovery.context != "link":
                 discovery.context = "link"
+                updates.append("context")
+            if discovery.link_sender_id != getattr(link.created_by, "id", None):
                 discovery.link_sender = link.created_by
-                discovery.save(update_fields=update_fields)
-        else:
-            Link.objects.filter(pk=link.pk).update(anonymous_view_count=F("anonymous_view_count") + 1)
-            link.anonymous_view_count = int(link.anonymous_view_count or 0) + 1
+                updates.append("link_sender")
+            if updates:
+                discovery.save(update_fields=updates + ["updated_at"])
+
+        link.extend_expiration()
+        link.save(update_fields=["expires_at", "updated_at"])
 
         payload = _build_public_link_payload(link, viewer) or {}
-        payload["link"] = _serialize_share_link(link, request)
+        if payload:
+            link.increment_open_counters(viewer)
         return Response(payload, status=status.HTTP_200_OK)
 
 
@@ -488,7 +523,9 @@ class GetMain(APIView):
     """
 
     def get(self, request, box_url: str, *args, **kwargs):
-        box = get_object_or_404(Box, url=box_url)
+        box = Box.objects.filter(url=box_url).first()
+        if not box:
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
         qs = (
             Deposit.objects
@@ -550,10 +587,7 @@ class GetBox(APIView):
         slug = request.GET.get("name")
 
         if not slug:
-            return Response(
-                {"detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_NAME_REQUIRED", "Merci de spécifier le nom d'une boîte (paramètre ?name=)")
 
         box = (
             Box.objects
@@ -574,10 +608,7 @@ class GetBox(APIView):
         )
 
         if not box:
-            return Response(
-                {"detail": "Désolé. Cette boîte n'existe pas."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Désolé. Cette boîte n'existe pas.")
 
         last_deposit = (
             box.deposits
@@ -587,17 +618,8 @@ class GetBox(APIView):
             .first()
         )
 
-        last_deposit_date = (
-            naturaltime(localtime(box.last_deposit_at))
-            if box.last_deposit_at else None
-        )
-
-        last_deposit_song_image_url = (
-            last_deposit.song.image_url
-            if last_deposit and last_deposit.song
-            else None
-        )
-
+        last_deposit_date = naturaltime(localtime(box.last_deposit_at)) if box.last_deposit_at else None
+        last_deposit_song_image_url = last_deposit.song.image_url if last_deposit and last_deposit.song else None
         current_incitation = _get_current_incitation_for_box(box)
 
         data = {
@@ -606,40 +628,20 @@ class GetBox(APIView):
             "deposit_count": box.deposit_count,
             "last_deposit_date": last_deposit_date,
             "last_deposit_song_image_url": last_deposit_song_image_url,
-            "search_incitation_text": (
-                current_incitation.text if current_incitation else None
-            ),
+            "search_incitation_text": current_incitation.text if current_incitation else None,
         }
 
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
-        """
-        POST /box-management/get-box/
-        Body: { option: {...}, boxSlug: "<slug>" }
-
-        Réponse:
-        {
-          "main": <payload prev_head>,
-          "older_deposits": [...],
-          "successes": [...],
-          "points_balance": <int|None>
-        }
-
-        - Snapshot AVANT création: prev_head + older (limit=15)
-        - Crée DiscoveredSong(main) pour prev_head uniquement si user authentifié
-        - Sérialise main+older en un seul batch
-        - force_song_infos_for(prev_head) uniquement pour anonymes
-        """
-
         option = request.data.get("option") or {}
         box_slug = request.data.get("boxSlug")
         if not box_slug:
-            return Response({"detail": "boxSlug manquant"}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
 
         box = Box.objects.filter(url=box_slug).first()
         if not box:
-            return Response({"detail": "Boîte introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable")
 
         user = get_current_app_user(request)
         guest_created = False
@@ -661,11 +663,10 @@ class GetBox(APIView):
                     deposit_type="box",
                     box=box,
                 )
-            except ValueError as exc:
-                return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            except ValueError:
+                return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide.")
 
             successes, points_to_add = _build_successes(box=box, user=user, song=song, current_deposit=_deposit)
-
 
             if prev_head is not None:
                 try:
@@ -677,46 +678,30 @@ class GetBox(APIView):
                 except Exception:
                     pass
 
-            ok_points, points_payload, _points_code = apply_points_delta(
-                user,
-                points_to_add,
-                lock_user=False,
-            )
+            ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add, lock_user=False)
             if ok_points:
                 points_balance = points_payload.get("points_balance")
 
-        deps_to_serialize = []
-        if prev_head is not None:
-            deps_to_serialize.append(prev_head)
-        deps_to_serialize.extend(older_list)
-
-        force_ids = []
-
-        payloads = _build_deposits_payload(
-            deps_to_serialize,
+        reveal_ids = [prev_head.pk] if prev_head else []
+        deposits_to_serialize = ([prev_head] if prev_head else []) + list(older_list or [])
+        serialized = _build_deposits_payload(
+            deposits_to_serialize,
             viewer=user,
             include_user=True,
-            force_song_infos_for=force_ids,
+            force_song_infos_for=reveal_ids if not getattr(user, "is_guest", False) else reveal_ids,
         )
 
-        if prev_head is None:
-            main_payload = None
-            older_payloads = payloads
-        else:
-            main_payload = payloads[0] if payloads else None
-            older_payloads = payloads[1:] if len(payloads) > 1 else []
+        main_payload = serialized[0] if serialized else None
+        older_payloads = serialized[1:] if len(serialized) > 1 else []
 
-        response = Response(
-            {
-                "main": main_payload,
-                "older_deposits": older_payloads,
-                "successes": list(successes),
-                "points_balance": points_balance,
-                "current_user": build_current_user_payload(user),
-                "active_pinned_deposit": _serialize_active_pinned_deposit_for_box(box, user),
-            },
-            status=status.HTTP_200_OK,
-        )
+        response_payload = {
+            "main": main_payload,
+            "older_deposits": older_payloads,
+            "successes": successes,
+            "points_balance": points_balance,
+            "active_pinned_deposit": _serialize_active_pinned_deposit_for_box(box, user),
+        }
+        response = Response(response_payload, status=status.HTTP_200_OK)
         if guest_created and getattr(user, "guest_device_token", None):
             attach_guest_cookie(response, user.guest_device_token)
         return response
@@ -725,19 +710,6 @@ class GetBox(APIView):
 class Location(APIView):
     """
     POST /box-management/verify-location
-
-    Corps attendu:
-    {
-      "latitude": <float>,
-      "longitude": <float>,
-      "box": { "url": "<box_slug>" }
-    }
-
-    Réponses:
-      - 200: localisation valide
-      - 403: localisation invalide (trop loin)
-      - 404: pas de points de localisation configurés pour cette box
-      - 400: payload invalide
     """
 
     def post(self, request):
@@ -745,28 +717,29 @@ class Location(APIView):
             latitude = float(request.data.get("latitude"))
             longitude = float(request.data.get("longitude"))
         except (TypeError, ValueError):
-            return Response({"error": "Invalid latitude/longitude"}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_COORDINATES", "Invalid latitude/longitude")
 
         box_payload = request.data.get("box") or {}
         box_url = box_payload.get("url")
         if not box_url:
-            return Response({"error": "Missing box.url"}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_URL_REQUIRED", "Missing box.url")
 
-        box = get_object_or_404(Box, url=box_url)
+        box = Box.objects.filter(url=box_url).first()
+        if not box:
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
         points = LocationPoint.objects.filter(box=box)
         if not points.exists():
-            return Response({"error": "No location points for this box"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_LOCATION_NOT_CONFIGURED", "No location points for this box")
 
         for point in points:
-            max_dist = point.dist_location
-            target_lat = point.latitude
-            target_lng = point.longitude
-            dist = _calculate_distance(latitude, longitude, target_lat, target_lng)
-            if dist <= max_dist:
+            dist = _calculate_distance(latitude, longitude, point.latitude, point.longitude)
+            if dist <= point.dist_location:
                 return Response(status=status.HTTP_200_OK)
 
-        return Response({"error": "Tu n'est pas à coté de la boîte"}, status=status.HTTP_403_FORBIDDEN)
+        return api_error(status.HTTP_403_FORBIDDEN, "OUTSIDE_ALLOWED_BOX_RANGE", "Tu n'est pas à coté de la boîte")
+
+
 
 
 
@@ -777,7 +750,7 @@ class ResolveProviderLinkView(APIView):
         song_public_key = (request.data.get("song_public_key") or "").strip()
 
         if not provider_code or not song_public_key:
-            return Response({"detail": "Paramètres manquants."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "PROVIDER_LINK_PARAMS_REQUIRED", "Paramètres manquants.")
 
         song = (
             Song.objects
@@ -786,7 +759,7 @@ class ResolveProviderLinkView(APIView):
             .first()
         )
         if not song:
-            return Response({"detail": "Chanson introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "SONG_NOT_FOUND", "Chanson introuvable.")
 
         result = resolve_provider_link_for_song(song, provider_code)
         refreshed_song = (
@@ -797,14 +770,12 @@ class ResolveProviderLinkView(APIView):
         ) or song
 
         if not result.get("ok"):
-            return Response(
-                {
-                    "ok": False,
-                    "code": result.get("code"),
-                    "message": result.get("message"),
-                    "song": _build_song_from_instance(refreshed_song, hidden=False),
-                },
-                status=status.HTTP_404_NOT_FOUND if result.get("code") == "PROVIDER_LINK_NOT_FOUND" else status.HTTP_503_SERVICE_UNAVAILABLE,
+            error_code = result.get("code") or "PROVIDER_RESOLUTION_ERROR"
+            return api_error(
+                _provider_error_status(error_code),
+                error_code,
+                result.get("message") or "La plateforme est indisponible pour le moment. Réessaie plus tard.",
+                song=_build_song_from_instance(refreshed_song, hidden=False),
             )
 
         link = result.get("link")
@@ -830,60 +801,36 @@ class RevealSong(APIView):
     def post(self, request, format=None):
         user = get_current_app_user(request)
         if not user:
-            return Response(
-                {"detail": "Identité requise."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(user)
 
         public_key = request.data.get("dep_public_key")
         if not public_key:
-            return Response(
-                {"detail": "Clé publique manquante"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_PUBLIC_KEY_REQUIRED", "Clé publique manquante")
 
         context = request.data.get("context")
         if context in (None, ""):
             context = "box"
         if context not in ("box", "profile"):
-            return Response(
-                {"detail": "Contexte invalide."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DISCOVERY_CONTEXT", "Contexte invalide.")
 
         with transaction.atomic():
             user = CustomUser.objects.select_for_update().get(pk=user.pk)
 
             try:
-                deposit = (
-                    Deposit.objects
-                    .select_related("song")
-                    .get(public_key=public_key)
-                )
+                deposit = Deposit.objects.select_related("song").get(public_key=public_key)
             except Deposit.DoesNotExist:
-                return Response(
-                    {"detail": "Dépôt introuvable"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
 
             song = deposit.song
             if not song:
-                return Response(
-                    {"detail": "Chanson introuvable pour ce dépôt"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_SONG_NOT_FOUND", "Chanson introuvable pour ce dépôt")
 
             discovery = DiscoveredSong.objects.filter(user=user, deposit=deposit).first()
             points_balance = int(getattr(user, "points", 0) or 0)
 
             if discovery is None:
-                cost = int(COST_REVEAL_BOX)
-                ok_points, points_payload, points_status = apply_points_delta(
-                    user,
-                    -cost,
-                    lock_user=False,
-                )
+                ok_points, points_payload, points_status = apply_points_delta(user, -int(COST_REVEAL_BOX), lock_user=False)
                 if not ok_points:
                     return Response(points_payload, status=points_status)
 
@@ -899,13 +846,13 @@ class RevealSong(APIView):
                 except IntegrityError:
                     pass
 
-        song_payload = _build_song_from_instance(song, hidden=False)
-
-        data = {
-            "song": song_payload,
-            "points_balance": points_balance,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "song": _build_song_from_instance(song, hidden=False),
+                "points_balance": points_balance,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ManageDiscoveredSongs(APIView):
@@ -917,18 +864,12 @@ class ManageDiscoveredSongs(APIView):
     def post(self, request, format=None):
         user = get_current_app_user(request)
         if not user:
-            return Response(
-                {"error": "Vous devez être connecté pour effectuer cette action."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action.")
         touch_last_seen(user)
 
         deposit_id = request.data.get("deposit_id")
         if not deposit_id:
-            return Response(
-                {"error": "Identifiant de dépôt manquant."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_ID_REQUIRED", "Identifiant de dépôt manquant.")
 
         discovered_type = request.data.get("discovered_type") or "revealed"
         if discovered_type not in ("main", "revealed"):
@@ -938,28 +879,15 @@ class ManageDiscoveredSongs(APIView):
         if context in (None, ""):
             context = "box"
         if context not in ("box", "profile"):
-            return Response(
-                {"error": "Contexte invalide."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DISCOVERY_CONTEXT", "Contexte invalide.")
 
         try:
-            deposit = (
-                Deposit.objects
-                .select_related("song", "box", "user")
-                .get(pk=deposit_id)
-            )
+            deposit = Deposit.objects.select_related("song", "box", "user").get(pk=deposit_id)
         except Deposit.DoesNotExist:
-            return Response(
-                {"error": "Dépôt introuvable."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
 
         if DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
-            return Response(
-                {"error": "Ce dépôt est déjà découvert."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_409_CONFLICT, "DEPOSIT_ALREADY_DISCOVERED", "Ce dépôt est déjà découvert.")
 
         DiscoveredSong.objects.create(
             user=user,
@@ -973,10 +901,7 @@ class ManageDiscoveredSongs(APIView):
     def get(self, request):
         user = get_current_app_user(request)
         if not user:
-            return Response(
-                {"error": "Vous devez être connecté pour effectuer cette action."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action.")
         touch_last_seen(user)
 
         try:
@@ -993,19 +918,11 @@ class ManageDiscoveredSongs(APIView):
         events = list(
             DiscoveredSong.objects
             .filter(user_id=user.id)
-            .select_related(
-                "deposit",
-                "deposit__song",
-                "deposit__user",
-                "deposit__box",
-                "link_sender",
-            )
+            .select_related("deposit", "deposit__song", "deposit__user", "deposit__box", "link_sender")
             .prefetch_related(
                 Prefetch(
                     "deposit__reactions",
-                    queryset=Reaction.objects
-                    .select_related("emoji", "user", "deposit")
-                    .order_by("created_at", "id"),
+                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
                     to_attr="prefetched_reactions",
                 )
             )
@@ -1013,14 +930,7 @@ class ManageDiscoveredSongs(APIView):
         )
 
         if not events:
-            payload = {
-                "sessions": [],
-                "limit": limit,
-                "offset": offset,
-                "has_more": False,
-                "next_offset": offset,
-            }
-            return Response(payload, status=status.HTTP_200_OK)
+            return Response({"sessions": [], "limit": limit, "offset": offset, "has_more": False, "next_offset": offset}, status=status.HTTP_200_OK)
 
         deposits = [ds.deposit for ds in events]
         unique_deposits = []
@@ -1030,37 +940,17 @@ class ManageDiscoveredSongs(APIView):
                 seen_ids.add(d.pk)
                 unique_deposits.append(d)
 
-        deposits_payload_list = _build_deposits_payload(
-            unique_deposits,
-            viewer=user,
-            include_user=True,
-            include_deposit_time=False,
-        )
-
-        deposit_payload_by_id = {
-            dep.pk: payload
-            for dep, payload in zip(unique_deposits, deposits_payload_list)
-        }
+        deposits_payload_list = _build_deposits_payload(unique_deposits, viewer=user, include_user=True, include_deposit_time=False)
+        deposit_payload_by_id = {dep.pk: payload for dep, payload in zip(unique_deposits, deposits_payload_list)}
 
         def deposit_payload(ds_obj):
             dep = ds_obj.deposit
             base = deposit_payload_by_id.get(dep.pk, {})
-            return {
-                **base,
-                "type": ds_obj.discovered_type,
-                "context": ds_obj.context or "box",
-                "discovered_at": ds_obj.discovered_at.isoformat(),
-                "deposit_id": dep.pk,
-            }
+            return {**base, "type": ds_obj.discovered_type, "context": ds_obj.context or "box", "discovered_at": ds_obj.discovered_at.isoformat(), "deposit_id": dep.pk}
 
         sessions_all = []
         consumed = [False] * len(events)
-
-        box_main_indices = [
-            i
-            for i, event in enumerate(events)
-            if (event.context or "box") == "box" and event.discovered_type == "main"
-        ]
+        box_main_indices = [i for i, event in enumerate(events) if (event.context or "box") == "box" and event.discovered_type == "main"]
 
         for idx, main_index in enumerate(box_main_indices):
             main_ds = events[main_index]
@@ -1068,37 +958,16 @@ class ManageDiscoveredSongs(APIView):
             if not box:
                 consumed[main_index] = True
                 continue
-
-            next_main_index = (
-                box_main_indices[idx + 1]
-                if (idx + 1) < len(box_main_indices)
-                else len(events)
-            )
-
+            next_main_index = box_main_indices[idx + 1] if (idx + 1) < len(box_main_indices) else len(events)
             deposits_list = [deposit_payload(main_ds)]
             consumed[main_index] = True
-
             for event_index in range(main_index + 1, next_main_index):
                 ds = events[event_index]
-                if consumed[event_index]:
+                if consumed[event_index] or (ds.context or "box") != "box" or ds.discovered_type != "revealed" or ds.deposit.box_id != box.id:
                     continue
-                if (ds.context or "box") != "box":
-                    continue
-                if ds.discovered_type != "revealed":
-                    continue
-                if ds.deposit.box_id != box.id:
-                    continue
-
                 deposits_list.append(deposit_payload(ds))
                 consumed[event_index] = True
-
-            sessions_all.append({
-                "session_id": f"box-{main_ds.id}",
-                "session_type": "box",
-                "box": {"id": box.id, "name": box.name, "url": box.url},
-                "started_at": main_ds.discovered_at.isoformat(),
-                "deposits": deposits_list,
-            })
+            sessions_all.append({"session_id": f"box-{main_ds.id}", "session_type": "box", "box": {"id": box.id, "name": box.name, "url": box.url}, "started_at": main_ds.discovered_at.isoformat(), "deposits": deposits_list})
 
         next_box_main_pos_from = [None] * len(events)
         next_box_main_idx = None
@@ -1112,20 +981,16 @@ class ManageDiscoveredSongs(APIView):
         index = 0
         while index < len(events):
             event = events[index]
-
             if consumed[index]:
                 index += 1
                 continue
-
             event_context = event.context or "box"
-
             if event_context == "profile":
                 owner = event.deposit.user
                 owner_id = getattr(owner, "id", None)
                 deposits_list = []
                 start = event.discovered_at
                 session_indices = []
-
                 cursor = index
                 while cursor < len(events):
                     current = events[cursor]
@@ -1133,63 +998,30 @@ class ManageDiscoveredSongs(APIView):
                     current_owner_id = getattr(current.deposit.user, "id", None)
                     if current_context != "profile" or current_owner_id != owner_id:
                         break
-
                     deposits_list.append(deposit_payload(current))
                     session_indices.append(cursor)
                     cursor += 1
-
                 for consumed_index in session_indices:
                     consumed[consumed_index] = True
-
-                deposits_list.sort(
-                    key=lambda deposit: (
-                        deposit.get("discovered_at") or "",
-                        deposit.get("deposit_id") or 0,
-                    ),
-                    reverse=True,
-                )
-
-                sessions_all.append({
-                    "session_id": f"profile-{event.id}",
-                    "session_type": "profile",
-                    "profile_user": _build_user_from_instance(owner),
-                    "started_at": start.isoformat(),
-                    "deposits": deposits_list,
-                })
+                deposits_list.sort(key=lambda deposit: (deposit.get("discovered_at") or "", deposit.get("deposit_id") or 0), reverse=True)
+                sessions_all.append({"session_id": f"profile-{event.id}", "session_type": "profile", "profile_user": _build_user_from_instance(owner), "started_at": start.isoformat(), "deposits": deposits_list})
                 index = cursor
                 continue
-
             if event_context == "link":
                 consumed[index] = True
-                sessions_all.append({
-                    "session_id": f"link-{event.id}",
-                    "session_type": "link",
-                    "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)),
-                    "started_at": event.discovered_at.isoformat(),
-                    "deposits": [deposit_payload(event)],
-                })
+                sessions_all.append({"session_id": f"link-{event.id}", "session_type": "link", "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)), "started_at": event.discovered_at.isoformat(), "deposits": [deposit_payload(event)]})
                 index += 1
                 continue
-
             if event.discovered_type == "revealed":
                 box = event.deposit.box
                 if box:
-                    stop_at = (
-                        next_box_main_pos_from[index]
-                        if next_box_main_pos_from[index] is not None
-                        else len(events)
-                    )
-
+                    stop_at = next_box_main_pos_from[index] if next_box_main_pos_from[index] is not None else len(events)
                     deposits_list = [deposit_payload(event)]
                     consumed[index] = True
-
                     cursor = index + 1
                     while cursor < stop_at:
                         current = events[cursor]
-                        if consumed[cursor]:
-                            cursor += 1
-                            continue
-                        if (current.context or "box") != "box":
+                        if consumed[cursor] or (current.context or "box") != "box":
                             cursor += 1
                             continue
                         if current.discovered_type != "revealed":
@@ -1200,56 +1032,31 @@ class ManageDiscoveredSongs(APIView):
                         if current.deposit.box_id != box.id:
                             cursor += 1
                             continue
-
                         deposits_list.append(deposit_payload(current))
                         consumed[cursor] = True
                         cursor += 1
-
-                    sessions_all.append({
-                        "session_id": f"orph-{orphan_counter}",
-                        "session_type": "box",
-                        "box": {"id": box.id, "name": box.name, "url": box.url},
-                        "started_at": event.discovered_at.isoformat(),
-                        "deposits": deposits_list,
-                    })
+                    sessions_all.append({"session_id": f"orph-{orphan_counter}", "session_type": "box", "box": {"id": box.id, "name": box.name, "url": box.url}, "started_at": event.discovered_at.isoformat(), "deposits": deposits_list})
                     orphan_counter += 1
-
             index += 1
 
         sessions_all.sort(key=lambda session: session["started_at"], reverse=True)
-
         total_sessions = len(sessions_all)
         slice_start = offset
         slice_end = offset + limit
         sessions_page = sessions_all[slice_start:slice_end]
         has_more = slice_end < total_sessions
         next_offset = slice_end if has_more else slice_end
-
-        payload = {
-            "sessions": sessions_page,
-            "limit": limit,
-            "offset": offset,
-            "has_more": has_more,
-            "next_offset": next_offset,
-        }
-        return Response(payload, status=status.HTTP_200_OK)
+        return Response({"sessions": sessions_page, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset}, status=status.HTTP_200_OK)
 
 
 class UserDepositsView(APIView):
     permission_classes = []
 
     def get(self, request):
-        """
-        GET /box-management/user-deposits?username=<str>&limit=<int>&offset=<int>
-        """
-
         me = _coerce_bool(request.GET.get("me"))
         raw_username = (request.GET.get("username") or "").strip()
         if not me and not raw_username:
-            return Response(
-                {"errors": ["Pas d'utilisateur spécifié"]},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "USERNAME_REQUIRED", "Pas d'utilisateur spécifié")
 
         try:
             limit = int(request.GET.get("limit", 20))
@@ -1270,57 +1077,27 @@ class UserDepositsView(APIView):
         if me:
             target_user = get_current_app_user(request)
             if not target_user:
-                return Response(
-                    {"errors": ["Utilisateur non connecté"]},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+                return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté")
             touch_last_seen(target_user)
         else:
             target_user = User.objects.filter(username__iexact=raw_username, is_guest=False).first()
             if not target_user:
-                return Response(
-                    {"errors": ["Utilisateur inexistant"]},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur inexistant")
 
         base_qs = (
-            Deposit.objects
-            .filter(user=target_user).exclude(deposit_type="favorite")
+            Deposit.objects.filter(user=target_user).exclude(deposit_type="favorite")
             .select_related("song", "box", "user")
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
+            .prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"), to_attr="prefetched_reactions"))
             .order_by("-deposited_at", "-id")
         )
 
         page_qs = list(base_qs[offset: offset + limit + 1])
         has_more = len(page_qs) > limit
         deposits = page_qs[:limit]
-
         viewer = get_current_app_user(request)
-
-        items = _build_deposits_payload(
-            deposits,
-            viewer=viewer,
-            include_user=False,
-        )
-
+        items = _build_deposits_payload(deposits, viewer=viewer, include_user=False)
         next_offset = offset + len(deposits)
-
-        return Response(
-            {
-                "items": items,
-                "limit": limit,
-                "offset": offset,
-                "has_more": has_more,
-                "next_offset": next_offset,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({"items": items, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset}, status=status.HTTP_200_OK)
 
 
 class PinnedSongView(APIView):
@@ -1329,18 +1106,17 @@ class PinnedSongView(APIView):
     def _get_box(self, request):
         box_slug = (request.query_params.get("boxSlug") or request.data.get("boxSlug") or "").strip()
         if not box_slug:
-            return None, Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+            return None, api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant.")
 
         box = Box.objects.select_related("client").filter(url=box_slug).first()
         if not box:
-            return None, Response({"detail": "Boîte introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return None, api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
         return box, None
 
     def _serialize_active_deposit(self, deposit, viewer):
         if not deposit:
             return None
-
         return _serialize_active_pinned_deposit_for_box(deposit.box, viewer)
 
     def get(self, request):
@@ -1353,22 +1129,17 @@ class PinnedSongView(APIView):
             touch_last_seen(viewer)
 
         active_pinned = get_active_pinned_deposit_for_box(box)
-        return Response(
-            {
-                "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
-                "price_steps": build_pinned_price_steps_payload(
-                    user_points=getattr(viewer, "points", None) if viewer else None
-                ),
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
+            "price_steps": build_pinned_price_steps_payload(user_points=getattr(viewer, "points", None) if viewer else None),
+        }, status=status.HTTP_200_OK)
 
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         if getattr(current_user, "is_guest", False):
-            return Response({"detail": "Finalise d’abord ton compte pour épingler une chanson."}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte pour épingler une chanson.")
         touch_last_seen(current_user)
 
         box, error_response = self._get_box(request)
@@ -1379,16 +1150,15 @@ class PinnedSongView(APIView):
         try:
             duration_minutes = int(request.data.get("duration_minutes"))
         except (TypeError, ValueError):
-            return Response({"detail": "Durée invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_DURATION_INVALID", "Durée invalide.")
 
         price_step = get_pinned_price_step(duration_minutes)
         if not price_step:
-            return Response({"detail": "Durée non disponible."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_DURATION_UNAVAILABLE", "Durée non disponible.")
 
         points_cost = int(price_step["points"])
-
         if not option:
-            return Response({"detail": "Chanson manquante."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_SONG_REQUIRED", "Chanson manquante.")
 
         try:
             with transaction.atomic():
@@ -1397,30 +1167,22 @@ class PinnedSongView(APIView):
                 active_pinned = get_active_pinned_deposit_for_box(box, for_update=True)
 
                 if active_pinned:
-                    return Response(
-                        {
-                            "detail": "Une chanson est déjà épinglée pour le moment.",
-                            "code": "slot_occupied",
-                            "active_pinned_deposit": self._serialize_active_deposit(active_pinned, user),
-                            "price_steps": build_pinned_price_steps_payload(user_points=user.points),
-                        },
-                        status=status.HTTP_409_CONFLICT,
+                    return api_error(
+                        status.HTTP_409_CONFLICT,
+                        "PIN_SLOT_OCCUPIED",
+                        "Une chanson est déjà épinglée pour le moment.",
+                        active_pinned_deposit=self._serialize_active_deposit(active_pinned, user),
+                        price_steps=build_pinned_price_steps_payload(user_points=user.points),
                     )
 
-                ok_points, points_payload, points_status = apply_points_delta(
-                    user,
-                    -points_cost,
-                    lock_user=False,
-                )
+                ok_points, points_payload, points_status = apply_points_delta(user, -points_cost, lock_user=False)
                 if not ok_points:
-                    return Response(
-                        {
-                            "detail": points_payload.get("errors") or "Points insuffisants.",
-                            "code": "insufficient_funds",
-                            "points_balance": points_payload.get("points_balance", user.points),
-                            "price_steps": build_pinned_price_steps_payload(user_points=user.points),
-                        },
-                        status=points_status,
+                    return api_error(
+                        points_status,
+                        points_payload.get("code") or "INSUFFICIENT_POINTS",
+                        points_payload.get("detail") or "Pas assez de points pour effectuer cette action.",
+                        points_balance=points_payload.get("points_balance", user.points),
+                        price_steps=build_pinned_price_steps_payload(user_points=user.points),
                     )
 
                 pin_expires_at = timezone.now() + timedelta(minutes=duration_minutes)
@@ -1436,42 +1198,32 @@ class PinnedSongView(APIView):
                 )
                 action = "created"
 
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError:
+            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_CREATION_INVALID", "Impossible d’épingler cette chanson avec les paramètres fournis.")
+        except Exception:
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "PIN_CREATION_FAILED", "Impossible d’épingler cette chanson pour le moment.")
 
         refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
         pinned_deposit = (
-            Deposit.objects
-            .select_related("song", "user", "box")
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
+            Deposit.objects.select_related("song", "user", "box")
+            .prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions"))
             .filter(pk=pinned_deposit.pk)
             .first()
         )
 
-        return Response(
-            {
-                "action": action,
-                "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
-                "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
-                "current_user": build_current_user_payload(refreshed_user),
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "action": action,
+            "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
+            "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
+            "current_user": build_current_user_payload(refreshed_user),
+        }, status=status.HTTP_200_OK)
 
 
 class PublicVisibleArticlesView(APIView):
     def get_box(self, request):
         box_slug = (request.query_params.get("boxSlug") or request.query_params.get("box_slug") or "").strip()
         if not box_slug:
-            return None, Response({"detail": "boxSlug manquant."}, status=status.HTTP_400_BAD_REQUEST)
+            return None, api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant.")
 
         box = Box.objects.select_related("client").filter(url=box_slug).first()
         if not box or not box.client_id:
@@ -1511,7 +1263,7 @@ class PublicVisibleArticleDetailView(APIView):
         if error_response:
             return error_response
         if not box:
-            return Response({"detail": "Article introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "ARTICLE_NOT_FOUND", "Article introuvable.")
 
         article = (
             Article.objects
@@ -1523,7 +1275,7 @@ class PublicVisibleArticleDetailView(APIView):
         )
 
         if not article:
-            return Response({"detail": "Article introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "ARTICLE_NOT_FOUND", "Article introuvable.")
 
         serializer = PublicVisibleArticleDetailSerializer(article)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1753,18 +1505,18 @@ class PurchaseEmojiView(APIView):
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Authentification requise.")
         if getattr(current_user, "is_guest", False):
-            return Response({"detail": "Compte complet requis."}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Compte complet requis.")
         touch_last_seen(current_user)
 
         emoji_id = request.data.get("emoji_id")
         if not emoji_id:
-            return Response({"detail": "emoji_id manquant"}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "EMOJI_ID_REQUIRED", "emoji_id manquant")
 
         emoji = Emoji.objects.filter(id=emoji_id).first()
         if not emoji or not emoji.active:
-            return Response({"detail": "Emoji indisponible"}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "EMOJI_NOT_FOUND", "Emoji indisponible")
 
         cost = int(emoji.cost or 0)
 
@@ -1773,48 +1525,22 @@ class PurchaseEmojiView(APIView):
 
             if cost == 0:
                 _, created = EmojiRight.objects.get_or_create(user=current_user, emoji=emoji)
-                return Response(
-                    {
-                        "ok": True,
-                        "owned": True,
-                        "created": bool(created),
-                        "points_balance": current_user.points,
-                    },
-                    status=status.HTTP_200_OK,
-                )
+                return Response({"ok": True, "owned": True, "created": bool(created), "points_balance": current_user.points}, status=status.HTTP_200_OK)
 
             if EmojiRight.objects.filter(user=current_user, emoji=emoji).exists():
-                return Response(
-                    {
-                        "ok": True,
-                        "owned": True,
-                        "points_balance": current_user.points,
-                    },
-                    status=status.HTTP_200_OK,
-                )
+                return Response({"ok": True, "owned": True, "points_balance": current_user.points}, status=status.HTTP_200_OK)
 
-            ok_points, payload_points, code_points = apply_points_delta(
-                current_user,
-                -cost,
-                lock_user=False,
-            )
+            ok_points, payload_points, code_points = apply_points_delta(current_user, -cost, lock_user=False)
             if not ok_points:
-                if payload_points.get("error") == "insufficient_funds":
+                if payload_points.get("code") == "INSUFFICIENT_POINTS":
                     payload_points = {
                         **payload_points,
-                        "message": "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.",
+                        "detail": "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.",
                     }
                 return Response(payload_points, status=code_points)
 
             EmojiRight.objects.create(user=current_user, emoji=emoji)
-            return Response(
-                {
-                    "ok": True,
-                    "owned": True,
-                    "points_balance": payload_points.get("points_balance"),
-                },
-                status=status.HTTP_200_OK,
-            )
+            return Response({"ok": True, "owned": True, "points_balance": payload_points.get("points_balance")}, status=status.HTTP_200_OK)
 
 
 class ReactionView(APIView):
@@ -1827,100 +1553,50 @@ class ReactionView(APIView):
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
         dep_public_key = request.data.get("dep_public_key")
         emoji_id = request.data.get("emoji_id")
 
         if not dep_public_key:
-            return Response(
-                {"detail": "dep_public_key manquant"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_PUBLIC_KEY_REQUIRED", "dep_public_key manquant")
 
         deposit = Deposit.objects.filter(public_key=dep_public_key).first()
         if not deposit:
-            return Response(
-                {"detail": "Dépôt introuvable"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
 
         is_revealed_for_user = bool(
             getattr(deposit, "user_id", None) == getattr(current_user, "id", None)
-            or getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (
-                Deposit.DEPOSIT_TYPE_FAVORITE,
-                Deposit.DEPOSIT_TYPE_PINNED,
-            )
+            or getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (Deposit.DEPOSIT_TYPE_FAVORITE, Deposit.DEPOSIT_TYPE_PINNED)
             or DiscoveredSong.objects.filter(user=current_user, deposit=deposit).exists()
         )
         if not is_revealed_for_user:
-            return Response(
-                {"detail": "Écoute la chanson avant de réagir"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return api_error(status.HTTP_403_FORBIDDEN, "DEPOSIT_NOT_REVEALED", "Écoute la chanson avant de réagir")
 
         if emoji_id in (None, "", 0, "none"):
             Reaction.objects.filter(user=current_user, deposit=deposit).delete()
-            deposit = (
-                Deposit.objects.filter(pk=deposit.pk)
-                .prefetch_related(
-                    Prefetch(
-                        "reactions",
-                        queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                        to_attr="prefetched_reactions",
-                    )
-                )
-                .first()
-            )
+            deposit = (Deposit.objects.filter(pk=deposit.pk).prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions")).first())
             rx = _build_reactions_from_instance(deposit, current_user=current_user)
-            return Response(
-                {"my_reaction": None, "reactions": rx["detail"]},
-                status=status.HTTP_200_OK,
-            )
+            return Response({"my_reaction": None, "reactions": rx["detail"]}, status=status.HTTP_200_OK)
 
         emoji = Emoji.objects.filter(id=emoji_id, active=True).first()
         if not emoji:
-            return Response(
-                {"detail": "Emoji invalide"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return api_error(status.HTTP_404_NOT_FOUND, "EMOJI_NOT_FOUND", "Emoji invalide")
 
         if not emoji.cost == 0:
-            has_right = EmojiRight.objects.filter(
-                user=current_user, emoji=emoji
-            ).exists()
+            has_right = EmojiRight.objects.filter(user=current_user, emoji=emoji).exists()
             if not has_right:
-                return Response(
-                    {"error": "forbidden", "message": "Emoji non débloqué"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                return api_error(status.HTTP_403_FORBIDDEN, "EMOJI_NOT_UNLOCKED", "Emoji non débloqué")
 
-        obj, created = Reaction.objects.get_or_create(
-            user=current_user,
-            deposit=deposit,
-            defaults={"emoji": emoji},
-        )
+        obj, created = Reaction.objects.get_or_create(user=current_user, deposit=deposit, defaults={"emoji": emoji})
         if not created and obj.emoji_id != emoji.id:
             obj.emoji = emoji
             obj.save(update_fields=["emoji", "updated_at"])
 
-        deposit = (
-            Deposit.objects.filter(pk=deposit.pk)
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
-            .first()
-        )
+        deposit = (Deposit.objects.filter(pk=deposit.pk).prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions")).first())
         rx = _build_reactions_from_instance(deposit, current_user=current_user)
-        return Response(
-            {"my_reaction": rx["mine"], "reactions": rx["detail"]},
-            status=status.HTTP_200_OK,
-        )
+        return Response({"my_reaction": rx["mine"], "reactions": rx["detail"]}, status=status.HTTP_200_OK)
 
 
 class CommentCreateView(APIView):
@@ -1929,9 +1605,9 @@ class CommentCreateView(APIView):
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         if getattr(current_user, "is_guest", False):
-            return Response({"detail": "Compte complet requis."}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Compte complet requis.")
         touch_last_seen(current_user)
 
         dep_public_key = (request.data.get("dep_public_key") or "").strip()
@@ -1946,17 +1622,14 @@ class CommentCreateView(APIView):
             .first()
         )
         if not deposit:
-            return Response({"detail": "Dépôt introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
 
         client = getattr(getattr(deposit, "box", None), "client", None)
         if not client and getattr(deposit, "deposit_type", "box") != "favorite":
-            return Response({"detail": "Client introuvable pour ce dépôt."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_CLIENT_NOT_FOUND", "Client introuvable pour ce dépôt.")
 
         if Comment.objects.filter(deposit=deposit, user=current_user).exists():
-            return Response(
-                {"detail": _get_comment_error_message(COMMENT_REASON_ALREADY_COMMENTED), "reason_code": COMMENT_REASON_ALREADY_COMMENTED},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return _comment_error(status.HTTP_400_BAD_REQUEST, COMMENT_REASON_ALREADY_COMMENTED)
 
         active_restriction = None
         if client:
@@ -1973,10 +1646,7 @@ class CommentCreateView(APIView):
                 author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 meta={"restriction_type": active_restriction.restriction_type},
             )
-            return Response(
-                {"detail": _get_comment_error_message(COMMENT_REASON_RESTRICTED), "reason_code": COMMENT_REASON_RESTRICTED},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return _comment_error(status.HTTP_403_FORBIDDEN, COMMENT_REASON_RESTRICTED)
 
         recent_cutoff = timezone.now() - timedelta(seconds=COMMENT_COOLDOWN_SECONDS)
         has_recent_comment = Comment.objects.filter(user=current_user, created_at__gte=recent_cutoff).exists()
@@ -1991,10 +1661,7 @@ class CommentCreateView(APIView):
                 author_ip=_get_request_ip(request),
                 author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
-            return Response(
-                {"detail": _get_comment_error_message(COMMENT_REASON_RATE_LIMIT), "reason_code": COMMENT_REASON_RATE_LIMIT},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+            return _comment_error(status.HTTP_429_TOO_MANY_REQUESTS, COMMENT_REASON_RATE_LIMIT)
 
         pre_creation_error = _detect_comment_pre_creation_error(text_value)
         if pre_creation_error:
@@ -2008,10 +1675,7 @@ class CommentCreateView(APIView):
                 author_ip=_get_request_ip(request),
                 author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
-            return Response(
-                {"detail": _get_comment_error_message(pre_creation_error), "reason_code": pre_creation_error},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return _comment_error(status.HTTP_400_BAD_REQUEST, pre_creation_error)
 
         if deposit.user_id and deposit.user_id != current_user.id:
             daily_target_count = Comment.objects.filter(
@@ -2032,13 +1696,7 @@ class CommentCreateView(APIView):
                     author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
                     meta={"target_owner_user_id": deposit.user_id},
                 )
-                return Response(
-                    {
-                        "detail": _get_comment_error_message(COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED),
-                        "reason_code": COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED,
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                return _comment_error(status.HTTP_403_FORBIDDEN, COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED)
 
         risk_score, risk_flags = _score_comment_risk(text=text_value, normalized_text=normalized_text)
         comment_status = Comment.STATUS_PUBLISHED
@@ -2072,10 +1730,7 @@ class CommentCreateView(APIView):
                 author_user_agent=(request.META.get("HTTP_USER_AGENT", "") or "")[:255],
             )
         except IntegrityError:
-            return Response(
-                {"detail": _get_comment_error_message(COMMENT_REASON_ALREADY_COMMENTED), "reason_code": COMMENT_REASON_ALREADY_COMMENTED},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return _comment_error(status.HTTP_400_BAD_REQUEST, COMMENT_REASON_ALREADY_COMMENTED)
 
         if comment_status == Comment.STATUS_QUARANTINED:
             CommentModerationDecision.objects.create(
@@ -2108,7 +1763,7 @@ class CommentDetailView(APIView):
     def delete(self, request, comment_id: int):
         current_user = get_current_app_user(request)
         if not current_user or getattr(current_user, "is_guest", False):
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
         comment = (
@@ -2118,9 +1773,9 @@ class CommentDetailView(APIView):
             .first()
         )
         if not comment:
-            return Response({"detail": "Commentaire introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "COMMENT_NOT_FOUND", "Commentaire introuvable.")
         if comment.user_id != current_user.id:
-            return Response({"detail": "Action non autorisée."}, status=status.HTTP_403_FORBIDDEN)
+            return api_error(status.HTTP_403_FORBIDDEN, "COMMENT_DELETE_FORBIDDEN", "Action non autorisée.")
 
         comment.status = Comment.STATUS_DELETED_BY_AUTHOR
         comment.reason_code = COMMENT_REASON_DELETE_BY_AUTHOR
@@ -2148,7 +1803,7 @@ class CommentReportView(APIView):
     def post(self, request, comment_id: int):
         current_user = get_current_app_user(request)
         if not current_user or getattr(current_user, "is_guest", False):
-            return Response({"detail": "Identité requise."}, status=status.HTTP_401_UNAUTHORIZED)
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
         comment = (
@@ -2158,11 +1813,11 @@ class CommentReportView(APIView):
             .first()
         )
         if not comment:
-            return Response({"detail": "Commentaire introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "COMMENT_NOT_FOUND", "Commentaire introuvable.")
         if comment.user_id == current_user.id:
-            return Response({"detail": "Vous ne pouvez pas signaler votre propre commentaire."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "COMMENT_SELF_REPORT_FORBIDDEN", "Vous ne pouvez pas signaler votre propre commentaire.")
         if comment.status != Comment.STATUS_PUBLISHED:
-            return Response({"detail": "Ce commentaire ne peut plus être signalé."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(status.HTTP_400_BAD_REQUEST, "COMMENT_REPORT_NOT_ALLOWED", "Ce commentaire ne peut plus être signalé.")
 
         reason_code = (request.data.get("reason") or "other").strip()
         if reason_code not in COMMENT_REPORT_REASON_CHOICES:
@@ -2249,7 +1904,7 @@ class ClientAdminCommentModerateView(APIView):
             .first()
         )
         if not comment:
-            return Response({"detail": "Commentaire introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(status.HTTP_404_NOT_FOUND, "COMMENT_NOT_FOUND", "Commentaire introuvable.")
 
         action = (request.data.get("action") or "").strip()
         reason_code = (request.data.get("reason") or "").strip()

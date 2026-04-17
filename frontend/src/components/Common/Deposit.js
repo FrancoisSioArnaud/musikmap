@@ -493,10 +493,10 @@ export default function Deposit({
       }
 
       if (!res.ok) {
-        if (payload?.message) {
-          openActionErrorDialog("Impossible de révéler la chanson", payload.message);
-        } else if (payload?.error === "insufficient_funds") {
-          openActionErrorDialog("Pas assez de points", "Tu n’as pas assez de points pour effectuer cette action.");
+        if (payload?.code === "INSUFFICIENT_POINTS") {
+          openActionErrorDialog("Pas assez de points", payload?.detail || "Tu n’as pas assez de points pour effectuer cette action.");
+        } else if (payload?.detail) {
+          openActionErrorDialog("Impossible de révéler la chanson", payload.detail);
         } else {
           openActionErrorDialog("Erreur", "Oops, une erreur s’est produite. Réessaie dans quelques instants.");
         }

@@ -84,7 +84,7 @@ export default function PlayModal({ open, song, onClose, onSongResolved, childre
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.ok || !data?.provider_url) {
         setErrorMessage(
-          data?.message || "Impossible d’ouvrir cette plateforme. Essaie une autre plateforme ou copie le nom de la chanson."
+          data?.detail || "Impossible d’ouvrir cette plateforme. Essaie une autre plateforme ou copie le nom de la chanson."
         );
         if (data?.song) {
           onSongResolved?.(data.song);
