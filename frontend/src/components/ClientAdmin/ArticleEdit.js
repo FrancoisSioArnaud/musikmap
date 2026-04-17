@@ -73,6 +73,18 @@ function extractErrorMessage(data, fallback) {
     return data.detail.trim();
   }
 
+  if (data.field_errors && typeof data.field_errors === "object") {
+    const fieldValues = Object.values(data.field_errors);
+    for (const value of fieldValues) {
+      if (Array.isArray(value) && value.length > 0) {
+        return String(value[0]);
+      }
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+
   if (typeof data.error === "string" && data.error.trim()) {
     return data.error.trim();
   }

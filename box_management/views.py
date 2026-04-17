@@ -1291,26 +1291,31 @@ class ClientAdminArticleImportPageView(APIView):
 
         link = (request.data.get("link") or "").strip()
         if not link:
-            return Response(
-                {"link": ["Le lien externe est obligatoire pour importer une page."]},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Le lien externe est obligatoire pour importer une page.",
+                field_errors={"link": ["Le lien externe est obligatoire pour importer une page."]},
             )
 
         url_field = serializers.URLField()
         try:
             link = url_field.run_validation(link)
         except serializers.ValidationError as exc:
-            return Response(
-                {"link": exc.detail},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Le lien externe est invalide.",
+                field_errors={"link": list(exc.detail) if isinstance(exc.detail, (list, tuple)) else exc.detail},
             )
 
         try:
             preview = _extract_import_preview_from_url(link)
         except requests.Timeout:
-            return Response(
-                {"detail": "Le site a mis trop de temps à répondre."},
-                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            return api_error(
+                status.HTTP_504_GATEWAY_TIMEOUT,
+                "ARTICLE_IMPORT_TIMEOUT",
+                "Le site a mis trop de temps à répondre.",
             )
         except requests.HTTPError as exc:
             status_code = exc.response.status_code if exc.response is not None else 502
@@ -1321,24 +1326,29 @@ class ClientAdminArticleImportPageView(APIView):
                     f"Le site refuse l'import automatique de cette page (HTTP {status_code})."
                 )
 
-            return Response(
-                {"detail": detail},
-                status=status.HTTP_502_BAD_GATEWAY,
+            return api_error(
+                status.HTTP_502_BAD_GATEWAY,
+                "ARTICLE_IMPORT_REMOTE_FORBIDDEN" if status_code in {401, 402, 403} else "ARTICLE_IMPORT_REMOTE_UNAVAILABLE",
+                detail,
+                remote_status=status_code,
             )
         except ValueError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "ARTICLE_IMPORT_INVALID_CONTENT",
+                "Le contenu importé est invalide.",
             )
         except requests.RequestException:
-            return Response(
-                {"detail": "Impossible de récupérer cette page pour le moment."},
-                status=status.HTTP_502_BAD_GATEWAY,
+            return api_error(
+                status.HTTP_502_BAD_GATEWAY,
+                "ARTICLE_IMPORT_REMOTE_UNAVAILABLE",
+                "Impossible de récupérer cette page pour le moment.",
             )
         except Exception:
-            return Response(
-                {"detail": "Impossible d'analyser cette page."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "ARTICLE_IMPORT_PARSE_FAILED",
+                "Impossible d'analyser cette page.",
             )
 
         return Response(preview, status=status.HTTP_200_OK)
@@ -1373,7 +1383,12 @@ class ClientAdminArticleListCreateView(APIView):
 
         serializer = ClientAdminArticleSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Impossible d’enregistrer l’article.",
+                field_errors=serializer.errors,
+            )
 
         article = serializer.save(
             client_id=user.client_id,
@@ -1401,9 +1416,10 @@ class ClientAdminArticleDetailView(APIView):
         )
 
         if not article:
-            return None, Response(
-                {"detail": "Article introuvable."},
-                status=status.HTTP_404_NOT_FOUND,
+            return None, api_error(
+                status.HTTP_404_NOT_FOUND,
+                "ARTICLE_NOT_FOUND",
+                "Article introuvable.",
             )
 
         return article, None
@@ -1433,7 +1449,12 @@ class ClientAdminArticleDetailView(APIView):
             partial=True,
         )
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Impossible d’enregistrer l’article.",
+                field_errors=serializer.errors,
+            )
 
         article = serializer.save()
         output = ClientAdminArticleSerializer(article)
@@ -1919,7 +1940,11 @@ class ClientAdminCommentModerateView(APIView):
             comment.reason_code = reason_code or COMMENT_REASON_REMOVE_BY_MODERATION
             decision_code = "remove"
         else:
-            return Response({"detail": "Action de modération invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "COMMENT_MODERATION_ACTION_INVALID",
+                "Action de modération invalide.",
+            )
 
         comment.save(update_fields=["status", "reason_code", "updated_at"])
         CommentModerationDecision.objects.create(
@@ -1971,18 +1996,27 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
         try:
             target_user_id = int(request.data.get("user_id"))
         except (TypeError, ValueError):
-            return Response({"detail": "user_id invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "COMMENT_RESTRICTION_USER_ID_INVALID",
+                "user_id invalide.",
+            )
 
         target_user = CustomUser.objects.filter(pk=target_user_id, is_guest=False).first()
         if not target_user:
-            return Response({"detail": "Utilisateur introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(
+                status.HTTP_404_NOT_FOUND,
+                "USER_NOT_FOUND",
+                "Utilisateur introuvable.",
+            )
 
         has_client_comment_activity = Comment.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
         has_client_attempt_activity = CommentAttemptLog.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
         if not (has_client_comment_activity or has_client_attempt_activity):
-            return Response(
-                {"detail": "Vous ne pouvez sanctionner que des utilisateurs ayant déjà interagi avec vos commentaires."},
-                status=status.HTTP_403_FORBIDDEN,
+            return api_error(
+                status.HTTP_403_FORBIDDEN,
+                "COMMENT_RESTRICTION_TARGET_NOT_ELIGIBLE",
+                "Vous ne pouvez sanctionner que des utilisateurs ayant déjà interagi avec vos commentaires.",
             )
 
         restriction_type = (request.data.get("restriction_type") or "").strip()
@@ -1991,7 +2025,11 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
             CommentUserRestriction.TYPE_MUTE_7D,
             CommentUserRestriction.TYPE_BAN,
         }:
-            return Response({"detail": "restriction_type invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "COMMENT_RESTRICTION_TYPE_INVALID",
+                "restriction_type invalide.",
+            )
 
         reason_code = (request.data.get("reason_code") or "manual_restriction").strip()
         internal_note = str(request.data.get("internal_note") or "").strip()
@@ -2057,7 +2095,12 @@ class ClientAdminIncitationListCreateView(APIView):
 
         serializer = ClientAdminIncitationSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Impossible d’enregistrer la phrase d’incitation.",
+                field_errors=serializer.errors,
+            )
 
         start_date = serializer.validated_data.get("start_date")
         end_date = serializer.validated_data.get("end_date")
@@ -2075,13 +2118,11 @@ class ClientAdminIncitationListCreateView(APIView):
                 many=True,
                 context={"today": localtime().date()},
             )
-            return Response(
-                {
-                    "error": "overlap_warning",
-                    "detail": "La période se superpose avec une autre phrase d’incitation.",
-                    "overlaps": overlap_serializer.data,
-                },
-                status=status.HTTP_409_CONFLICT,
+            return api_error(
+                status.HTTP_409_CONFLICT,
+                "INCITATION_OVERLAP",
+                "La période se superpose avec une autre phrase d’incitation.",
+                overlaps=overlap_serializer.data,
             )
 
         phrase = serializer.save(client_id=user.client_id)
@@ -2112,9 +2153,10 @@ class ClientAdminIncitationDetailView(APIView):
         )
 
         if not phrase:
-            return None, Response(
-                {"detail": "Phrase d’incitation introuvable."},
-                status=status.HTTP_404_NOT_FOUND,
+            return None, api_error(
+                status.HTTP_404_NOT_FOUND,
+                "INCITATION_NOT_FOUND",
+                "Phrase d’incitation introuvable.",
             )
 
         return phrase, None
@@ -2148,7 +2190,12 @@ class ClientAdminIncitationDetailView(APIView):
             partial=True,
         )
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "VALIDATION_ERROR",
+                "Impossible d’enregistrer la phrase d’incitation.",
+                field_errors=serializer.errors,
+            )
 
         start_date = serializer.validated_data.get("start_date", phrase.start_date)
         end_date = serializer.validated_data.get("end_date", phrase.end_date)
@@ -2167,13 +2214,11 @@ class ClientAdminIncitationDetailView(APIView):
                 many=True,
                 context={"today": localtime().date()},
             )
-            return Response(
-                {
-                    "error": "overlap_warning",
-                    "detail": "La période se superpose avec une autre phrase d’incitation.",
-                    "overlaps": overlap_serializer.data,
-                },
-                status=status.HTTP_409_CONFLICT,
+            return api_error(
+                status.HTTP_409_CONFLICT,
+                "INCITATION_OVERLAP",
+                "La période se superpose avec une autre phrase d’incitation.",
+                overlaps=overlap_serializer.data,
             )
 
         phrase = serializer.save()
@@ -2523,7 +2568,11 @@ class ClientAdminStickerGenerateView(APIView):
         sticker_ids = _get_sticker_ids_from_request(request)
         stickers = _get_client_stickers_by_ids(user, sticker_ids)
         if not stickers:
-            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "STICKER_SELECTION_REQUIRED",
+                "Aucun sticker sélectionné.",
+            )
 
         _mark_stickers_generated(stickers)
         return Response(
@@ -2547,7 +2596,11 @@ class ClientAdminStickerDownloadView(APIView):
         sticker_ids = _get_sticker_ids_from_request(request)
         stickers = _get_client_stickers_by_ids(user, sticker_ids)
         if not stickers:
-            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "STICKER_SELECTION_REQUIRED",
+                "Aucun sticker sélectionné.",
+            )
 
         export_format = (request.data.get("format") or "images").strip().lower()
         _mark_stickers_generated(stickers)
@@ -2567,7 +2620,11 @@ class ClientAdminStickerDownloadView(APIView):
             detail = details_by_code.get(error_code)
             if not detail:
                 raise
-            return Response({"detail": detail}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return api_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                str(error_code or "STICKER_EXPORT_DEPENDENCY_MISSING").upper(),
+                detail,
+            )
 
 
 class ClientAdminStickerConfirmDownloadView(APIView):
@@ -2581,7 +2638,11 @@ class ClientAdminStickerConfirmDownloadView(APIView):
         sticker_ids = _get_sticker_ids_from_request(request)
         stickers = _get_client_stickers_by_ids(user, sticker_ids)
         if not stickers:
-            return Response({"detail": "Aucun sticker sélectionné."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "STICKER_SELECTION_REQUIRED",
+                "Aucun sticker sélectionné.",
+            )
 
         _mark_stickers_downloaded(stickers)
         return Response(
@@ -2608,7 +2669,11 @@ class ClientAdminStickerInstallView(APIView):
         sticker = None
         if sticker_slug:
             if not re.fullmatch(r"\d{11}", sticker_slug):
-                return Response({"detail": "Slug sticker invalide."}, status=status.HTTP_400_BAD_REQUEST)
+                return api_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    "INVALID_STICKER_SLUG",
+                    "Slug sticker invalide.",
+                )
 
             sticker = (
                 Sticker.objects.select_related("client", "box")
@@ -2616,9 +2681,17 @@ class ClientAdminStickerInstallView(APIView):
                 .first()
             )
             if not sticker:
-                return Response({"detail": "Sticker introuvable pour ce client."}, status=status.HTTP_404_NOT_FOUND)
+                return api_error(
+                    status.HTTP_404_NOT_FOUND,
+                    "STICKER_NOT_FOUND",
+                    "Sticker introuvable pour ce client.",
+                )
             if not sticker.is_active:
-                return Response({"detail": "Sticker désactivé."}, status=status.HTTP_410_GONE)
+                return api_error(
+                    status.HTTP_410_GONE,
+                    "STICKER_DISABLED",
+                    "Sticker désactivé.",
+                )
 
         boxes_qs = Box.objects.filter(client_id=user.client_id)
         if search:
@@ -2671,26 +2744,41 @@ class ClientAdminStickerAssignView(APIView):
             .first()
         )
         if not sticker:
-            return Response({"detail": "Sticker introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(
+                status.HTTP_404_NOT_FOUND,
+                "STICKER_NOT_FOUND",
+                "Sticker introuvable.",
+            )
         if not sticker.is_active:
-            return Response({"detail": "Sticker désactivé."}, status=status.HTTP_410_GONE)
+            return api_error(
+                status.HTTP_410_GONE,
+                "STICKER_DISABLED",
+                "Sticker désactivé.",
+            )
         if sticker.box_id:
-            return Response(
-                {
-                    "detail": f"Sticker assigné à {sticker.box.url}.",
-                    "sticker": _serialize_client_admin_sticker(sticker),
-                },
-                status=status.HTTP_409_CONFLICT,
+            return api_error(
+                status.HTTP_409_CONFLICT,
+                "STICKER_ALREADY_ASSIGNED",
+                f"Sticker assigné à {sticker.box.url}.",
+                sticker=_serialize_client_admin_sticker(sticker),
             )
 
         try:
             box_id = int(request.data.get("box_id"))
         except (TypeError, ValueError):
-            return Response({"detail": "Box invalide."}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "BOX_ID_INVALID",
+                "Box invalide.",
+            )
 
         box = Box.objects.filter(client_id=user.client_id, id=box_id).first()
         if not box:
-            return Response({"detail": "Box introuvable pour ce client."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(
+                status.HTTP_404_NOT_FOUND,
+                "BOX_NOT_FOUND",
+                "Box introuvable pour ce client.",
+            )
 
         sticker.assign_box(box)
         sticker.save(update_fields=["box", "assigned_at", "status", "updated_at", "qr_generated_at", "downloaded_at"])
@@ -2712,7 +2800,11 @@ class ClientAdminStickerUnassignView(APIView):
             .first()
         )
         if not sticker:
-            return Response({"detail": "Sticker introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            return api_error(
+                status.HTTP_404_NOT_FOUND,
+                "STICKER_NOT_FOUND",
+                "Sticker introuvable.",
+            )
 
         sticker.unassign_box()
         sticker.save(update_fields=["box", "assigned_at", "status", "updated_at", "qr_generated_at", "downloaded_at"])

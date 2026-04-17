@@ -408,7 +408,7 @@ class SetFavoriteSong(APIView):
                 user.favorite_deposit = deposit
                 user.save(update_fields=["favorite_deposit"])
         except ValueError as exc:
-            return api_error(status.HTTP_400_BAD_REQUEST, "FAVORITE_SONG_INVALID", str(exc) or "Impossible d’enregistrer cette chanson de cœur.")
+            return api_error(status.HTTP_400_BAD_REQUEST, "FAVORITE_SONG_INVALID", "Impossible d’enregistrer cette chanson de cœur.")
         except Exception:
             return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "FAVORITE_SONG_SAVE_FAILED", "Impossible d’enregistrer cette chanson de cœur.")
 

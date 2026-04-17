@@ -610,7 +610,7 @@ export default function IncitationsList() {
 
         const data = await response.json().catch(() => ({}));
 
-        if (response.status === 409 && data?.error === "overlap_warning") {
+        if (response.status === 409 && data?.code === "INCITATION_OVERLAP") {
           setOverlapItems(Array.isArray(data?.overlaps) ? data.overlaps : []);
           setOverlapDialogOpen(true);
           return;

@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.utils.timezone import localtime, localdate
 from rest_framework import status
 from rest_framework.response import Response
+from la_boite_a_son.api_errors import api_error
 
 from users.models import CustomUser
 from .provider_services import (
@@ -739,27 +740,31 @@ def _get_active_client_user_or_response(request):
     user = request.user
 
     if not user or not user.is_authenticated:
-        return None, Response(
-            {"detail": "Authentification requise."},
-            status=status.HTTP_401_UNAUTHORIZED,
+        return None, api_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "AUTH_REQUIRED",
+            "Authentification requise.",
         )
 
     if not getattr(user, "client_id", None):
-        return None, Response(
-            {"detail": "Ce compte n'est rattaché à aucun client."},
-            status=status.HTTP_403_FORBIDDEN,
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_NOT_ATTACHED",
+            "Ce compte n'est rattaché à aucun client.",
         )
 
     if getattr(user, "portal_status", None) != "active":
-        return None, Response(
-            {"detail": "Ce compte n'a pas accès au portail client."},
-            status=status.HTTP_403_FORBIDDEN,
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_PORTAL_INACTIVE",
+            "Ce compte n'a pas accès au portail client.",
         )
 
     if getattr(user, "client_role", "") not in {"client_owner", "client_editor"}:
-        return None, Response(
-            {"detail": "Ce compte n'a pas les droits nécessaires."},
-            status=status.HTTP_403_FORBIDDEN,
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_ROLE_FORBIDDEN",
+            "Ce compte n'a pas les droits nécessaires.",
         )
 
     return user, None
