@@ -961,7 +961,7 @@ export default function Deposit({
             {dateLabel || naturalDate || ""}
           </Typography>
         ) : null}
-        <Card className={deposit_card}>
+        <Card className="deposit_card">
           {depositInfosBlock}
 
           <Box
