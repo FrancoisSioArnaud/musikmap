@@ -35,6 +35,7 @@ export default function AddReactionModal({
   const effectiveViewer = viewer || userContext.user || null;
   const [loading, setLoading] = useState(false);
   const [submittingPurchase, setSubmittingPurchase] = useState(false);
+  const [submittingReaction, setSubmittingReaction] = useState(false);
   const [catalog, setCatalog] = useState({
     actives_paid: [],
     owned_ids: [],
@@ -96,6 +97,7 @@ export default function AddReactionModal({
       setUnlockTargetId(null);
       setPurchasePromptOpen(false);
       setSubmittingPurchase(false);
+      setSubmittingReaction(false);
       setInlineAlert({ severity: "error", message: "", retryAction: "" });
       setPointsDialogOpen(false);
     }
@@ -127,6 +129,8 @@ export default function AddReactionModal({
   };
 
   const onClickEmoji = (emoji) => {
+    if (submittingReaction || submittingPurchase) return;
+
     setInlineAlert({ severity: "error", message: "", retryAction: "" });
     const alreadyOwned = isOwned(emoji);
 
@@ -211,6 +215,7 @@ export default function AddReactionModal({
   };
 
   const validate = async () => {
+    if (submittingReaction) return;
     if (!hasChanged) return onClose();
     if (!depPublicKey) {
       setInlineAlert({
@@ -222,6 +227,7 @@ export default function AddReactionModal({
     }
 
     setInlineAlert({ severity: "error", message: "", retryAction: "" });
+    setSubmittingReaction(true);
     const csrftoken = getCookie("csrftoken");
 
     const emojiId =
@@ -277,6 +283,8 @@ export default function AddReactionModal({
         message: "Oops, impossible d’appliquer ta réaction.",
         retryAction: "retry_validate",
       });
+    } finally {
+      setSubmittingReaction(false);
     }
   };
 
@@ -400,7 +408,7 @@ export default function AddReactionModal({
                               <Button
                                 className="unlock_cta_button"
                                 variant="contained"
-                                disabled={submittingPurchase}
+                                disabled={submittingPurchase || submittingReaction}
                                 onClick={() => unlockEmoji(emoji)}
                               >
                                 Débloquer
@@ -417,6 +425,7 @@ export default function AddReactionModal({
                       variant={hasChanged ? "contained" : "outlined"}
                       fullWidth
                       onClick={hasChanged ? validate : onClose}
+                      disabled={submittingReaction || submittingPurchase}
                     >
                       {hasChanged ? "Valider" : "Sortir"}
                     </Button>

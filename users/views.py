@@ -399,11 +399,12 @@ class SetFavoriteSong(APIView):
         try:
             with transaction.atomic():
                 user = CustomUser.objects.select_for_update().get(pk=current_user.pk)
-                deposit, _song = create_song_deposit(
+                deposit, _song, _created_new_deposit = create_song_deposit(
                     request=request,
                     user=user,
                     option=option,
                     deposit_type="favorite",
+                    reuse_recent_window_seconds=10,
                 )
                 user.favorite_deposit = deposit
                 user.save(update_fields=["favorite_deposit"])

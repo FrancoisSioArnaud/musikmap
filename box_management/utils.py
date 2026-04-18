@@ -1389,12 +1389,15 @@ def _build_deposits_payload(
 
 
 
-def _get_prev_head_and_older(box, limit: int = 10):
+def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: Optional[List[int]] = None):
     """
     Snapshot AVANT création:
     - récupère d'un coup les (limit+1) derniers dépôts
     - prev_head = le plus récent
     - older = les suivants (jusqu'à limit)
+
+    exclude_deposit_ids permet d'ignorer un dépôt déjà créé récemment quand on
+    veut rejouer le résultat logique d'une requête idempotente.
     """
     qs = (
         Deposit.objects
@@ -1412,6 +1415,10 @@ def _get_prev_head_and_older(box, limit: int = 10):
         .order_by("-deposited_at", "-id")
     )
 
+    exclude_ids = [int(dep_id) for dep_id in (exclude_deposit_ids or []) if dep_id]
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
+
     deposits = list(qs[: limit + 1])  # head + older
     if not deposits:
         return None, []
@@ -1424,7 +1431,32 @@ def _get_prev_head_and_older(box, limit: int = 10):
 
 
 
-def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None):
+def _find_recent_duplicate_deposit(*, user: CustomUser, song: Song, deposit_type: str, box=None, window_seconds: int = 0):
+    if int(window_seconds or 0) <= 0:
+        return None
+
+    threshold = timezone.now() - timedelta(seconds=int(window_seconds))
+    qs = (
+        Deposit.objects
+        .filter(
+            user=user,
+            song=song,
+            deposit_type=deposit_type,
+            deposited_at__gte=threshold,
+        )
+        .select_related("song", "box", "user")
+        .order_by("-deposited_at", "-id")
+    )
+
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+        qs = qs.filter(box=box)
+    else:
+        qs = qs.filter(box__isnull=True)
+
+    return qs.first()
+
+
+def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None, reuse_recent_window_seconds: int = 0):
     track = normalize_track_payload(option or {})
     if not track.get("title") or not (track.get("artists") or []):
         raise ValueError("Titre ou artiste manquant")
@@ -1473,9 +1505,20 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
         except Exception:
             pass
 
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) and box is None:
+        raise ValueError("Boîte introuvable")
+
+    recent_duplicate = _find_recent_duplicate_deposit(
+        user=user,
+        song=song,
+        deposit_type=deposit_type,
+        box=box,
+        window_seconds=reuse_recent_window_seconds,
+    )
+    if recent_duplicate is not None:
+        return recent_duplicate, song, False
+
     if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
-        if box is None:
-            raise ValueError("Boîte introuvable")
         Song.objects.filter(pk=song.pk).update(n_deposits=int(song.n_deposits or 0) + 1)
         song.n_deposits = int(song.n_deposits or 0) + 1
 
@@ -1488,7 +1531,7 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
         pin_points_spent=int(pin_points_spent or 0),
         pin_expires_at=pin_expires_at,
     )
-    return deposit, song
+    return deposit, song, True
 
 def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
     """

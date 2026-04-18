@@ -290,6 +290,7 @@ export default function Deposit({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [snackOpen, setSnackOpen] = useState(false);
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
+  const [isSharing, setIsSharing] = useState(false);
   const [authModalConfig, setAuthModalConfig] = useState(null);
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
   const [actionErrorDialog, setActionErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
@@ -685,6 +686,10 @@ export default function Deposit({
   const handleShareDeposit = useCallback(async (event) => {
     event?.stopPropagation?.();
 
+    if (isSharing) {
+      return;
+    }
+
     if (!viewer?.id) {
       saveAuthReturnContext({
         returnTo: buildRelativeLocation(location),
@@ -701,6 +706,8 @@ export default function Deposit({
     if (!isRevealed) {
       return;
     }
+
+    setIsSharing(true);
 
     try {
       const response = await fetch("/box-management/links/", {
@@ -754,8 +761,11 @@ export default function Deposit({
       showShareFeedback("Lien copié.");
     } catch (error) {
       openActionErrorDialog("Impossible de créer le lien", "Impossible de créer le lien de partage.");
+    } finally {
+      setIsSharing(false);
     }
   }, [
+    isSharing,
     viewer?.id,
     isRevealed,
     localDep?.public_key,
@@ -883,6 +893,7 @@ export default function Deposit({
             onClick={handleShareDeposit}
             aria-label="Partager"
             title="Partager"
+            disabled={isSharing}
           >
             <SendIcon />
           </Button>

@@ -37,10 +37,12 @@ export default function ReactionSummary({
   const navigate = useNavigate();
   const viewerId = viewer?.id || null;
   const [inlineAlert, setInlineAlert] = useState({ severity: "error", message: "" });
+  const [deletingReaction, setDeletingReaction] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setInlineAlert({ severity: "error", message: "" });
+      setDeletingReaction(false);
     }
   }, [open]);
 
@@ -55,12 +57,17 @@ export default function ReactionSummary({
   }, [reactions, viewerId]);
 
   const handleDeleteOwnReaction = async () => {
+    if (deletingReaction) {
+      return;
+    }
+
     if (!depPublicKey) {
       setInlineAlert({ severity: "error", message: "Impossible de supprimer la réaction : dépôt introuvable." });
       return;
     }
 
     setInlineAlert({ severity: "error", message: "" });
+    setDeletingReaction(true);
     const csrftoken = getCookie("csrftoken");
 
     try {
@@ -91,6 +98,8 @@ export default function ReactionSummary({
       onApplied?.(data);
     } catch (error) {
       setInlineAlert({ severity: "error", message: "Oops, impossible d’appliquer ta réaction." });
+    } finally {
+      setDeletingReaction(false);
     }
   };
 

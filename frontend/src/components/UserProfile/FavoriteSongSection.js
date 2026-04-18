@@ -39,6 +39,7 @@ export default function FavoriteSongSection({
     errorMessage: null,
   });
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
+  const [removingFavorite, setRemovingFavorite] = useState(false);
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -152,6 +153,9 @@ export default function FavoriteSongSection({
   }, [closeDrawer, depositFlowState.requestKey, depositFlowState.status]);
 
   const handleRemoveFavorite = useCallback(async () => {
+    if (removingFavorite) return;
+
+    setRemovingFavorite(true);
     try {
       const csrftoken = getCookie("csrftoken");
       const response = await fetch("/users/remove-favorite-song", {
@@ -176,8 +180,10 @@ export default function FavoriteSongSection({
       closeDrawer();
     } catch {
       openErrorDialog("Impossible de retirer la chanson de cœur", "Impossible de retirer la chanson de coeur.");
+    } finally {
+      setRemovingFavorite(false);
     }
-  }, [closeDrawer, openErrorDialog, syncCurrentUser]);
+  }, [closeDrawer, openErrorDialog, removingFavorite, syncCurrentUser]);
 
   const displayName = profileUser?.display_name || profileUser?.username || "Cet utilisateur";
   const isCurrentFullUser = Boolean(isOwner && !isGuestOwner && user?.id);
@@ -271,6 +277,7 @@ export default function FavoriteSongSection({
                   onClick={handleRemoveFavorite}
                   startIcon={<RemoveCircleOutlineOutlinedIcon />}
                   sx={{ color: "var(--mm-color-error)" }}
+                  disabled={removingFavorite}
                 >
                   Supprimer
                 </Button>

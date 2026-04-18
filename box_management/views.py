@@ -669,31 +669,37 @@ class GetBox(APIView):
             user = CustomUser.objects.select_for_update().get(pk=user.pk)
 
             try:
-                _deposit, song = create_song_deposit(
+                _deposit, song, created_new_deposit = create_song_deposit(
                     request=request,
                     user=user,
                     option=option,
                     deposit_type="box",
                     box=box,
+                    reuse_recent_window_seconds=10,
                 )
             except ValueError:
                 return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide.")
 
-            successes, points_to_add = _build_successes(box=box, user=user, song=song, current_deposit=_deposit)
+            if not created_new_deposit:
+                prev_head, older_list = _get_prev_head_and_older(box, limit=15, exclude_deposit_ids=[_deposit.pk])
+                successes = []
+                points_balance = int(user.points or 0)
+            else:
+                successes, points_to_add = _build_successes(box=box, user=user, song=song, current_deposit=_deposit)
 
-            if prev_head is not None:
-                try:
-                    DiscoveredSong.objects.get_or_create(
-                        user=user,
-                        deposit_id=prev_head.pk,
-                        defaults={"discovered_type": "main"},
-                    )
-                except Exception:
-                    pass
+                if prev_head is not None:
+                    try:
+                        DiscoveredSong.objects.get_or_create(
+                            user=user,
+                            deposit_id=prev_head.pk,
+                            defaults={"discovered_type": "main"},
+                        )
+                    except Exception:
+                        pass
 
-            ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add, lock_user=False)
-            if ok_points:
-                points_balance = points_payload.get("points_balance")
+                ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add, lock_user=False)
+                if ok_points:
+                    points_balance = points_payload.get("points_balance")
 
         reveal_ids = [prev_head.pk] if prev_head else []
         deposits_to_serialize = ([prev_head] if prev_head else []) + list(older_list or [])
@@ -1199,7 +1205,7 @@ class PinnedSongView(APIView):
                     )
 
                 pin_expires_at = timezone.now() + timedelta(minutes=duration_minutes)
-                pinned_deposit, _song = create_song_deposit(
+                pinned_deposit, _song, _created_new_pinned = create_song_deposit(
                     request=request,
                     user=user,
                     option=option,
@@ -1828,15 +1834,24 @@ class CommentDetailView(APIView):
         if comment.user_id != current_user.id:
             return api_error(status.HTTP_403_FORBIDDEN, "COMMENT_DELETE_FORBIDDEN", "Action non autorisée.")
 
-        comment.status = Comment.STATUS_DELETED_BY_AUTHOR
-        comment.reason_code = COMMENT_REASON_DELETE_BY_AUTHOR
-        comment.save(update_fields=["status", "reason_code", "updated_at"])
-        CommentModerationDecision.objects.create(
+        if comment.status != Comment.STATUS_DELETED_BY_AUTHOR or comment.reason_code != COMMENT_REASON_DELETE_BY_AUTHOR:
+            comment.status = Comment.STATUS_DELETED_BY_AUTHOR
+            comment.reason_code = COMMENT_REASON_DELETE_BY_AUTHOR
+            comment.save(update_fields=["status", "reason_code", "updated_at"])
+
+        already_logged = CommentModerationDecision.objects.filter(
             comment=comment,
             acted_by=current_user,
             decision_code="delete_by_author",
             reason_code=COMMENT_REASON_DELETE_BY_AUTHOR,
-        )
+        ).exists()
+        if not already_logged:
+            CommentModerationDecision.objects.create(
+                comment=comment,
+                acted_by=current_user,
+                decision_code="delete_by_author",
+                reason_code=COMMENT_REASON_DELETE_BY_AUTHOR,
+            )
 
         comments_context = {"items": [], "viewer_state": {}}
         if comment.deposit_id:
