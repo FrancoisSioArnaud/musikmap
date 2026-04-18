@@ -11,6 +11,7 @@ from box_management.tests.base import FlowboxAPITestCase
 from la_boite_a_son.economy import (
     COST_REVEAL_BOX,
     NB_POINTS_ADD_SONG,
+    NB_POINTS_CONSECUTIVE_DAYS_BOX,
     NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
@@ -362,7 +363,6 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         expected = (
             NB_POINTS_ADD_SONG
             + NB_POINTS_FIRST_SONG_DEPOSIT_BOX
-            + NB_POINTS_CONSECUTIVE_DAYS_BOX
             + NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             + NB_POINTS_CONSECUTIVE_DAYS_BOX
         )
