@@ -22,10 +22,9 @@
     "svg-url-loader": "^8.0.0",
     "webpack": "^5.79.0",
     "webpack-cli": "^5.0.1",
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^16.0.1",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^14.3.1",
     "@testing-library/user-event": "^14.5.2",
-    "babel-jest": "^29.7.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "whatwg-fetch": "^3.6.20"
