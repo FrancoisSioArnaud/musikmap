@@ -359,7 +359,12 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
             "option": self.track_option(track_id="dep-track-2", title="Deposit Track 2"),
         }, format="json")
 
-        expected = NB_POINTS_ADD_SONG + NB_POINTS_FIRST_SONG_DEPOSIT_BOX + NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+        expected = (
+            NB_POINTS_ADD_SONG
+            + NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+            + NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+            + NB_POINTS_CONSECUTIVE_DAYS_BOX
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["points_balance"], expected)
 

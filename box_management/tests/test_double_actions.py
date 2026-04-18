@@ -169,4 +169,4 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(Link.objects.filter(created_by=sharer, deposit=self.deposit).count(), 1)
-        self.assertEqual(first.data["link_slug"], second.data["link_slug"])
+        self.assertEqual(first.data["slug"], second.data["slug"])

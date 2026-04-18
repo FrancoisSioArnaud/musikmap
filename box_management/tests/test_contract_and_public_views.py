@@ -84,7 +84,9 @@ class PublicContractViewTests(FlowboxAPITestCase):
 
         response = self.client.get(reverse("get-main", kwargs={"box_url": box.url}))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["public_key"], latest.public_key)
+        self.assertIsInstance(response.data, list)
+        self.assertTrue(response.data)
+        self.assertEqual(response.data[0]["public_key"], latest.public_key)
 
     def test_share_link_public_detail_returns_link_expired_for_expired_link(self):
         owner = self.make_user(username="owner-link")
