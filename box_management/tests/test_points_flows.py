@@ -362,6 +362,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         expected = (
             NB_POINTS_ADD_SONG
             + NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+            + NB_POINTS_CONSECUTIVE_DAYS_BOX
             + NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
             + NB_POINTS_CONSECUTIVE_DAYS_BOX
         )
