@@ -876,8 +876,9 @@ class RevealSong(APIView):
 
 class ManageDiscoveredSongs(APIView):
     """
-    POST: enregistrer une découverte pour un dépôt donné (deposit_id) et un type (main/revealed).
     GET : renvoie des sessions de découvertes, groupées par connexion à une boîte.
+    Le POST manuel est volontairement désactivé pour éviter de contourner les
+    règles d’accès/révélation côté serveur.
     """
 
     def post(self, request, format=None):
@@ -885,37 +886,11 @@ class ManageDiscoveredSongs(APIView):
         if not user:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action.")
         touch_last_seen(user)
-
-        deposit_id = request.data.get("deposit_id")
-        if not deposit_id:
-            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_ID_REQUIRED", "Identifiant de dépôt manquant.")
-
-        discovered_type = request.data.get("discovered_type") or "revealed"
-        if discovered_type not in ("main", "revealed"):
-            discovered_type = "revealed"
-
-        context = request.data.get("context")
-        if context in (None, ""):
-            context = "box"
-        if context not in ("box", "profile"):
-            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DISCOVERY_CONTEXT", "Contexte invalide.")
-
-        try:
-            deposit = Deposit.objects.select_related("song", "box", "user").get(pk=deposit_id)
-        except Deposit.DoesNotExist:
-            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
-
-        if DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
-            return api_error(status.HTTP_409_CONFLICT, "DEPOSIT_ALREADY_DISCOVERED", "Ce dépôt est déjà découvert.")
-
-        DiscoveredSong.objects.create(
-            user=user,
-            deposit=deposit,
-            discovered_type=discovered_type,
-            context=context,
+        return api_error(
+            status.HTTP_403_FORBIDDEN,
+            "MANUAL_DISCOVERY_FORBIDDEN",
+            "L’enregistrement manuel d’une découverte n’est pas autorisé.",
         )
-
-        return Response({"success": True}, status=status.HTTP_200_OK)
 
     def get(self, request):
         user = get_current_app_user(request)

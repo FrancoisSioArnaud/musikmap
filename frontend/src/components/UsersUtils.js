@@ -57,11 +57,17 @@ export const checkUserStatus = async (
   }
 };
 
-export const getUserDetails = async (userID) => {
+export const getUserDetails = async (username) => {
   try {
-    const response = await fetch("/users/get-user-info?userID=" + userID, {
-      credentials: "same-origin",
-    });
+    if (!username) {
+      return null;
+    }
+    const response = await fetch(
+      "/users/get-user-info?username=" + encodeURIComponent(username),
+      {
+        credentials: "same-origin",
+      }
+    );
     if (!response.ok) {
       return null;
     }

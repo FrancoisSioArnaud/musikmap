@@ -349,17 +349,12 @@ class GetUserInfo(APIView):
         username = (request.GET.get("username") or "").strip()
         user_id = (request.GET.get("userID") or request.GET.get("userId") or "").strip()
 
-        if not username and not user_id:
-            return api_error(status.HTTP_400_BAD_REQUEST, "USER_LOOKUP_REQUIRED", "username or userID query param is required")
+        if not username:
+            if user_id:
+                return api_error(status.HTTP_403_FORBIDDEN, "USER_ID_LOOKUP_FORBIDDEN", "La consultation publique par userID n’est pas autorisée.")
+            return api_error(status.HTTP_400_BAD_REQUEST, "USERNAME_REQUIRED", "username query param is required")
 
-        lookup = {"is_guest": False}
-        if username:
-            lookup["username"] = username
-        else:
-            try:
-                lookup["pk"] = int(user_id)
-            except (TypeError, ValueError):
-                return api_error(status.HTTP_400_BAD_REQUEST, "USER_ID_INVALID", "userID query param is invalid")
+        lookup = {"is_guest": False, "username": username}
 
         user = CustomUser.objects.filter(**lookup).first()
         if not user:
