@@ -1,112 +1,66 @@
-from __future__ import annotations
+from datetime import date, timedelta
 
-from datetime import timedelta
-
-from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from box_management.models import Box, Client, Deposit, DiscoveredSong, Emoji, Song
+from box_management.models import Article, Box, Client, IncitationPhrase, Sticker
+from users.models import CustomUser
 
 
-User = get_user_model()
+class ClientAdminTestCase(APITestCase):
+    def make_client(self, name="Client test", slug="client-test"):
+        return Client.objects.create(name=name, slug=slug)
 
-
-class FlowboxAPITestCase(APITestCase):
-    def make_user(self, *, username: str = "user", points: int = 0, is_guest: bool = False, client=None, client_role: str = ""):
-        user = User.objects.create_user(
-            username=username,
-            password="testpass123",
-            email=f"{username}@example.com",
-            is_guest=is_guest,
-            points=points,
-            client=client,
-            client_role=client_role,
-        )
+    def make_client_user(
+        self,
+        *,
+        username="client-user",
+        client=None,
+        client_role="client_owner",
+        portal_status="active",
+        is_guest=False,
+    ):
+        user = CustomUser.objects.create_user(username=username, password="testpass123")
+        user.client = client
+        user.client_role = client_role
+        user.portal_status = portal_status
+        user.is_guest = is_guest
+        user.save(update_fields=["client", "client_role", "portal_status", "is_guest"])
         return user
 
     def auth(self, user):
         self.client.force_authenticate(user=user)
         return user
 
-    def unauth(self):
-        self.client.force_authenticate(user=None)
+    def make_box(self, *, client=None, name="Box test", url="box-test"):
+        return Box.objects.create(name=name, url=url, client=client)
 
-    def make_client(self, *, name: str = "Client", slug: str = "client"):
-        return Client.objects.create(name=name, slug=slug)
-
-    def make_box(self, *, url: str = "box-test", name: str = "Box test", client=None):
-        return Box.objects.create(url=url, name=name, client=client)
-
-    def make_song(self, *, public_key: str = "song_pk", title: str = "Track", artists=None, duration: int = 180, n_deposits: int = 0):
-        return Song.objects.create(
-            public_key=public_key,
+    def make_article(self, *, client, author=None, title="Titre", short_text="Texte", status="draft"):
+        return Article.objects.create(
+            client=client,
+            author=author,
             title=title,
-            artists_json=list(artists or ["Artist"]),
-            duration=duration,
-            n_deposits=n_deposits,
+            short_text=short_text,
+            status=status,
         )
 
-    def make_deposit(
-        self,
-        *,
-        user,
-        song,
-        box=None,
-        deposit_type: str = Deposit.DEPOSIT_TYPE_BOX,
-        public_key: str | None = None,
-        deposited_at=None,
-        pin_duration_minutes=None,
-        pin_points_spent: int = 0,
-        pin_expires_at=None,
-    ):
-        deposit = Deposit.objects.create(
-            user=user,
-            song=song,
-            box=box,
-            deposit_type=deposit_type,
-            public_key=public_key or Deposit._generate_unique_key(),
-            deposited_at=deposited_at or timezone.now(),
-            pin_duration_minutes=pin_duration_minutes,
-            pin_points_spent=pin_points_spent,
-            pin_expires_at=pin_expires_at,
+    def make_incitation(self, *, client, text="Incitation", start_date=None, end_date=None):
+        start_date = start_date or date.today()
+        end_date = end_date or (start_date + timedelta(days=3))
+        return IncitationPhrase.objects.create(
+            client=client,
+            text=text,
+            start_date=start_date,
+            end_date=end_date,
         )
-        return deposit
 
-    def make_revealed_for(self, *, user, deposit, context: str = "box"):
-        return DiscoveredSong.objects.create(user=user, deposit=deposit, discovered_type="revealed", context=context)
+    def make_sticker(self, *, client, slug="12345678901", is_active=True, box=None):
+        return Sticker.objects.create(client=client, slug=slug, is_active=is_active, box=box)
 
-    def make_emoji(self, *, char: str = "🔥", cost: int = 0, active: bool = True):
-        return Emoji.objects.create(char=char, cost=cost, active=active)
-
-    def track_option(
-        self,
-        *,
-        track_id: str = "track-1",
-        title: str = "Track",
-        artists=None,
-        provider_code: str = "spotify",
-        duration: int = 180,
-        image_url: str = "",
-        image_url_small: str = "",
-    ):
-        return {
-            "provider_code": provider_code,
-            "id": track_id,
-            "provider_track_id": track_id,
-            "title": title,
-            "artists": list(artists or ["Artist"]),
-            "duration": duration,
-            "image_url": image_url,
-            "image_url_small": image_url_small,
-        }
-
-    def assert_api_error(self, response, expected_status: int, expected_code: str):
-        self.assertEqual(response.status_code, expected_status)
-        self.assertEqual(response.data.get("status"), expected_status)
-        self.assertEqual(response.data.get("code"), expected_code)
+    def assert_api_error(self, response, *, status_code, code):
+        self.assertEqual(response.status_code, status_code)
+        self.assertEqual(response.data.get("status"), status_code)
+        self.assertEqual(response.data.get("code"), code)
         self.assertIn("title", response.data)
         self.assertIn("detail", response.data)
-
-    def make_old(self, dt, *, seconds=0, minutes=0, hours=0, days=0):
-        return dt - timedelta(seconds=seconds, minutes=minutes, hours=hours, days=days)
