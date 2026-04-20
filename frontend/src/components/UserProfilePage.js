@@ -225,7 +225,7 @@ export default function UserProfilePage() {
 
   const headerUser = header.user || {};
   const totalDeposits = headerUser?.total_deposits ?? 0;
-  const depositsLabel = `${totalDeposits} partage${
+  const depositsCount = `${totalDeposits} partage${
     totalDeposits > 1 ? "s" : ""
   }`;
   const trimmedGuestUsername = guestUsernameDraft.trim();
@@ -315,9 +315,12 @@ export default function UserProfilePage() {
         )}
 
       {userStatusName && (
-        <Typography className="status" variant="body1">{userStatusName}</Typography>
+        <Box className="status">
+          <Typography className="statusName" variant="body1">{userStatusName}</Typography>
+          <Typography variant="h5">{depositsCount}</Typography>
+        </Box>
       )}
-      <Typography variant="h5">{depositsLabel}</Typography>
+
         
       </Box>
 
