@@ -162,7 +162,7 @@ export default function Discover() {
 
         {mySong ? (
           <Box
-            className={`my_deposit deposit_card deposit_song${
+            className={`my_deposit deposit deposit_song${
               myDepositAccentColor ? " has_accent_color" : ""
             }`}
             style={
