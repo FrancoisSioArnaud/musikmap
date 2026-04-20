@@ -316,8 +316,8 @@ export default function UserProfilePage() {
 
       {userStatusName && (
         <Box className="status">
-          <Typography className="statusName" variant="body1">{userStatusName}</Typography>
-          <Typography variant="h5">{depositsCount}</Typography>
+          <Typography className="statusName" variant="h5">{userStatusName}</Typography>
+          <Typography variant="body1">{depositsCount}</Typography>
         </Box>
       )}
 
