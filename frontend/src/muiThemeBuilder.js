@@ -187,6 +187,63 @@ export function buildMuiTheme(clientTheme) {
         },
       },
 
+      MuiDialog: {
+        defaultProps: {
+          fullWidth: true,
+          maxWidth: "xs",
+        },
+        styleOverrides: {
+          paper: {
+            backgroundColor: clientTheme.colors.surface,
+            color: clientTheme.colors.text,
+            borderRadius: parseInt(clientTheme.radius.md),
+            margin: 16,
+            overflow: "hidden",
+          },
+        },
+      },
+      
+      MuiDialogTitle: {
+        styleOverrides: {
+          root: {
+            padding: "20px 20px 8px",
+            ...theme.typography.h3,
+            color: clientTheme.colors.text,
+          },
+        },
+      },
+      
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            padding: "0 20px 20px",
+            ...theme.typography.body1,
+          },
+        },
+      },
+      
+      MuiDialogActions: {
+        styleOverrides: {
+          root: {
+            padding: "0 20px 20px",
+            gap: 12,
+            justifyContent: "flex-end",
+            "& > :not(:first-of-type)": {
+              marginLeft: 0,
+            },
+          },
+        },
+      },
+      
+      MuiBackdrop: {
+        styleOverrides: {
+          root: {
+            backgroundColor: "rgba(0, 0, 0, 0.45)",
+            backdropFilter: "blur(2px)",
+          },
+        },
+      },
+
       MuiButton: {
         defaultProps: {
           disableElevation: true,
