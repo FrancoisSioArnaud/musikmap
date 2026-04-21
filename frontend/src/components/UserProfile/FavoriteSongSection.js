@@ -16,11 +16,18 @@ import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOut
 
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
-import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
+import {
+  closeDrawerWithHistory,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
+
+const FAVORITE_SONG_DRAWER_PARAM = "profileDrawer";
+const FAVORITE_SONG_DRAWER_VALUE = "favorite-song";
 
 export default function FavoriteSongSection({
   profileUser,
@@ -41,12 +48,38 @@ export default function FavoriteSongSection({
   });
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
   const [removingFavorite, setRemovingFavorite] = useState(false);
-  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const searchInputRef = useRef(null);
+
+  const resetDrawerState = useCallback(() => {
+    setDepositFlowState({
+      requestKey: null,
+      status: "idle",
+      errorMessage: null,
+    });
+  }, []);
 
   useEffect(() => {
     setFavoriteDeposit(initialFavoriteDeposit || null);
   }, [initialFavoriteDeposit]);
+
+  useEffect(() => {
+    const shouldOpenDrawer = matchesDrawerSearch(
+      location,
+      FAVORITE_SONG_DRAWER_PARAM,
+      FAVORITE_SONG_DRAWER_VALUE
+    );
+
+    if (shouldOpenDrawer) {
+      setDrawerOpen((prev) => (prev ? prev : true));
+      return;
+    }
+
+    setDrawerOpen((prev) => {
+      if (!prev) return prev;
+      resetDrawerState();
+      return false;
+    });
+  }, [location, resetDrawerState]);
 
   useEffect(() => {
     if (!drawerOpen) return undefined;
@@ -60,9 +93,14 @@ export default function FavoriteSongSection({
     return () => clearTimeout(timer);
   }, [drawerOpen, user?.id, user?.provider_connections]);
 
-  const openDrawer = () => {
-    setDrawerOpen(true);
-  };
+  const openDrawer = useCallback(() => {
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: FAVORITE_SONG_DRAWER_PARAM,
+      value: FAVORITE_SONG_DRAWER_VALUE,
+    });
+  }, [location, navigate]);
 
   useEffect(() => {
     if (!user?.id || user?.is_guest) return;
@@ -75,15 +113,28 @@ export default function FavoriteSongSection({
     }
   }, [location, openDrawer, user?.id, user?.is_guest]);
 
-  const closeDrawer = useCallback((force = false) => {
-    if (depositFlowState.status === "pending" && !force) return;
-    setDrawerOpen(false);
-    setDepositFlowState({
-      requestKey: null,
-      status: "idle",
-      errorMessage: null,
-    });
-  }, [depositFlowState.status]);
+  const closeDrawer = useCallback(
+    (force = false, options = {}) => {
+      if (depositFlowState.status === "pending" && !force) return;
+
+      const shouldReplaceHistory = Boolean(options?.replace);
+      if (
+        closeDrawerWithHistory({
+          navigate,
+          location,
+          param: FAVORITE_SONG_DRAWER_PARAM,
+          value: FAVORITE_SONG_DRAWER_VALUE,
+          replace: shouldReplaceHistory,
+        })
+      ) {
+        return;
+      }
+
+      setDrawerOpen(false);
+      resetDrawerState();
+    },
+    [depositFlowState.status, location, navigate, resetDrawerState]
+  );
 
   const syncCurrentUser = useCallback((payload) => {
     if (!payload || !setUser) return;
@@ -179,7 +230,7 @@ export default function FavoriteSongSection({
       }
       setFavoriteDeposit(null);
       syncCurrentUser(data?.current_user || null);
-      closeDrawer();
+      closeDrawer(false, { replace: true });
     } catch {
       openErrorDialog("Impossible de retirer la chanson de cœur", "Impossible de retirer la chanson de coeur.");
     } finally {
@@ -244,7 +295,7 @@ export default function FavoriteSongSection({
         {displayName} n&apos;a pas épinglé de chanson à son profil
       </Typography>
     );
-  }, [displayName, isCurrentFullUser, isGuestOwner, navigate, openDrawer, user?.username]);
+  }, [displayName, isCurrentFullUser, isGuestOwner, location, navigate, openDrawer, user?.username]);
 
   return (
     <>
@@ -276,7 +327,7 @@ export default function FavoriteSongSection({
                 </Button>
                 <Button
                   variant="light"
-                  onClick={() => setRemoveDialogOpen(true)}
+                  onClick={handleRemoveFavorite}
                   startIcon={<RemoveCircleOutlineOutlinedIcon />}
                   sx={{ color: "var(--mm-color-error)" }}
                   disabled={removingFavorite}
@@ -303,7 +354,7 @@ export default function FavoriteSongSection({
           <Drawer
             anchor="right"
             open={drawerOpen}
-            onClose={closeDrawer}
+            onClose={() => closeDrawer()}
             PaperProps={{
               sx: {
                 width: "100vw",
@@ -344,20 +395,6 @@ export default function FavoriteSongSection({
           </Drawer>
         </Box>
       </Box>
-
-      <ConfirmActionDialog
-        open={removeDialogOpen}
-        onClose={() => setRemoveDialogOpen(false)}
-        onConfirm={async () => {
-          setRemoveDialogOpen(false);
-          await handleRemoveFavorite();
-        }}
-        title="Retirer ta chanson de cœur ?"
-        description="Elle ne sera plus affichée sur ton profil."
-        confirmLabel={removingFavorite ? "Retrait…" : "Retirer"}
-        confirmColor="error"
-        loading={removingFavorite}
-      />
 
       <Dialog open={errorDialog.open} onClose={() => setErrorDialog({ open: false, title: "Erreur", message: "" })}>
         <DialogTitle>{errorDialog.title}</DialogTitle>

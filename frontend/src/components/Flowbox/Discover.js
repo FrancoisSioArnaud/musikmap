@@ -1,6 +1,6 @@
 // frontend/src/components/Flowbox/Discover.js
 import React, { useEffect, useState, useContext, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -18,11 +18,21 @@ import { getValid } from "../Utils/mmStorage";
 import ArticleCard from "../Common/Article/ArticleCard";
 import ArticleDrawer from "../Common/Article/ArticleDrawer";
 import PinnedSongSection from "./PinnedSongSection";
+import {
+  closeDrawerWithHistory,
+  getDrawerParamValue,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const MAX_VISIBLE_ARTICLES = 5;
+const ACHIEVEMENTS_DRAWER_PARAM = "drawer";
+const ACHIEVEMENTS_DRAWER_VALUE = "achievements";
+const ARTICLE_DRAWER_PARAM = "article";
 
 export default function Discover() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
@@ -82,6 +92,40 @@ export default function Discover() {
     };
   }, [boxSlug]);
 
+  useEffect(() => {
+    const shouldOpenAchievements = matchesDrawerSearch(
+      location,
+      ACHIEVEMENTS_DRAWER_PARAM,
+      ACHIEVEMENTS_DRAWER_VALUE
+    );
+
+    setOpenAchievements((prev) => (prev === shouldOpenAchievements ? prev : shouldOpenAchievements));
+  }, [location]);
+
+  useEffect(() => {
+    const articleIdFromSearch = getDrawerParamValue(location, ARTICLE_DRAWER_PARAM);
+
+    if (!articleIdFromSearch) {
+      setSelectedArticle((prev) => (prev ? null : prev));
+      return;
+    }
+
+    const nextArticle = articles.find(
+      (article) => String(article?.id || "") === String(articleIdFromSearch)
+    );
+
+    if (!nextArticle) {
+      return;
+    }
+
+    setSelectedArticle((prev) => {
+      if (String(prev?.id || "") === String(nextArticle.id || "")) {
+        return prev;
+      }
+      return nextArticle;
+    });
+  }, [articles, location]);
+
   const myDeposit = boxContent?.myDeposit || null;
   const mySong = myDeposit?.song || null;
   const myDepositAccentColor = myDeposit?.accent_color || undefined;
@@ -97,10 +141,57 @@ export default function Discover() {
     successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
     0;
 
-  const handleOpenAchievements = () => setOpenAchievements(true);
-  const handleCloseAchievements = () => setOpenAchievements(false);
-  const handleOpenArticleDrawer = (article) => setSelectedArticle(article || null);
-  const handleCloseArticleDrawer = () => setSelectedArticle(null);
+  const handleOpenAchievements = useCallback(() => {
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: ACHIEVEMENTS_DRAWER_PARAM,
+      value: ACHIEVEMENTS_DRAWER_VALUE,
+    });
+  }, [location, navigate]);
+
+  const handleCloseAchievements = useCallback(() => {
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: ACHIEVEMENTS_DRAWER_PARAM,
+        value: ACHIEVEMENTS_DRAWER_VALUE,
+      })
+    ) {
+      setOpenAchievements(false);
+    }
+  }, [location, navigate]);
+
+  const handleOpenArticleDrawer = useCallback(
+    (article) => {
+      if (!article?.id) return;
+      setSelectedArticle(article);
+      openDrawerWithHistory({
+        navigate,
+        location,
+        param: ARTICLE_DRAWER_PARAM,
+        value: article.id,
+      });
+    },
+    [location, navigate]
+  );
+
+  const handleCloseArticleDrawer = useCallback(() => {
+    const articleId =
+      selectedArticle?.id || getDrawerParamValue(location, ARTICLE_DRAWER_PARAM) || "";
+
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: ARTICLE_DRAWER_PARAM,
+        value: articleId,
+      })
+    ) {
+      setSelectedArticle(null);
+    }
+  }, [location, navigate, selectedArticle?.id]);
 
   const handleScrollToOlderDeposits = () => {
     const target = document.getElementById("older_deposit");
@@ -117,10 +208,7 @@ export default function Discover() {
       <Drawer
         anchor="right"
         open={openAchievements}
-        onClose={() => {
-          /* ignore backdrop click */
-        }}
-        ModalProps={{ disableEscapeKeyDown: true }}
+        onClose={handleCloseAchievements}
         PaperProps={{
           sx: {
             width: "100vw",
@@ -249,7 +337,7 @@ export default function Discover() {
               variant="light"
               startIcon={<KeyboardArrowDownIcon />}
               onClick={handleScrollToOlderDeposits}
-              sx={{ mt: "26px", width: "100%"}}
+              sx={{ mt: "26px", width: "100%" }}
             >
               Découvrir plus de chansons
             </Button>

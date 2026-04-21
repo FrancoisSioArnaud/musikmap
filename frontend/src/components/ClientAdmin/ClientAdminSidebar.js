@@ -39,7 +39,7 @@ function NavItem({ to, label, icon, onClick, isActive }) {
     <ListItemButton
       component={NavLink}
       to={to}
-      onClick={onClick}
+      onClick={() => onClick?.({ replace: true })}
       selected={isActive}
       sx={{
         borderRadius: 2,
@@ -160,7 +160,7 @@ export default function ClientAdminSidebar({
     return (
       <Drawer
         open={mobileOpen}
-        onClose={onClose}
+        onClose={() => onClose?.()}
         variant="temporary"
         ModalProps={{ keepMounted: true }}
         sx={{

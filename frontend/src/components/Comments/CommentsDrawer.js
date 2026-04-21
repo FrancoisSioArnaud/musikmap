@@ -24,7 +24,6 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 
 import { getCookie } from "../Security/TokensUtils";
 import AuthModal from "../Auth/AuthModal";
-import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
 
 const REPORT_REASONS = [
@@ -54,7 +53,6 @@ export default function CommentsDrawer({
   const [reportReason, setReportReason] = useState("harassment");
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   const items = Array.isArray(comments?.items) ? comments.items : [];
@@ -141,7 +139,6 @@ export default function CommentsDrawer({
         throw new Error(payload?.detail || "Impossible de supprimer le commentaire.");
       }
       onCommentsChange?.(payload?.comments || { items: [], viewer_state: {} });
-      setDeleteConfirmOpen(false);
       closeMenu();
     } catch (err) {
       setError(err?.message || "Impossible de supprimer le commentaire.");
@@ -179,13 +176,12 @@ export default function CommentsDrawer({
     }
   };
 
-
   return (
     <>
       <Drawer
         anchor="bottom"
         open={open}
-        onClose={onClose}
+        onClose={() => onClose?.()}
         className="comments_drawer_modal reaction_summary_modal"
         PaperProps={{
           sx: {
@@ -233,14 +229,14 @@ export default function CommentsDrawer({
                         tabIndex={canNavigate ? 0 : -1}
                         onClick={() => {
                           if (!canNavigate) return;
-                          onClose?.();
+                          onClose?.({ replace: true });
                           navigate("/profile/" + commentUser.username);
                         }}
                         onKeyDown={(event) => {
                           if (!canNavigate) return;
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            onClose?.();
+                            onClose?.({ replace: true });
                             navigate("/profile/" + commentUser.username);
                           }
                         }}
@@ -351,14 +347,7 @@ export default function CommentsDrawer({
 
       <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => closeMenu()}>
         {activeComment?.is_mine ? (
-          <MenuItem
-            onClick={() => {
-              setDeleteConfirmOpen(true);
-              closeMenu(false);
-            }}
-          >
-            Supprimer mon commentaire
-          </MenuItem>
+          <MenuItem onClick={handleDelete}>Supprimer mon commentaire</MenuItem>
         ) : (
           <MenuItem
             onClick={() => {
@@ -370,20 +359,6 @@ export default function CommentsDrawer({
           </MenuItem>
         )}
       </Menu>
-
-      <ConfirmActionDialog
-        open={deleteConfirmOpen}
-        onClose={() => {
-          setDeleteConfirmOpen(false);
-          setActiveComment(null);
-        }}
-        onConfirm={handleDelete}
-        title="Supprimer ton commentaire ?"
-        description="Cette action est définitive."
-        confirmLabel={deleting ? "Suppression…" : "Supprimer"}
-        confirmColor="error"
-        loading={deleting}
-      />
 
       <Dialog
         open={reportOpen}

@@ -116,7 +116,7 @@ export default function ReactionSummary({
 
       if (!canNavigate) return;
 
-      onClose?.();
+      onClose?.({ replace: true });
       navigate("/profile/" + normalized.username);
     };
 
@@ -173,7 +173,7 @@ export default function ReactionSummary({
     <Drawer
       anchor="bottom"
       open={open}
-      onClose={onClose}
+      onClose={() => onClose?.()}
       className="reaction_summary_modal"
       PaperProps={{
         sx: {

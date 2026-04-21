@@ -13,7 +13,7 @@ import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MusicNote from "@mui/icons-material/MusicNote";
-import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinIcon from "@mui/icons-material/PushPin";
 
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
@@ -22,6 +22,11 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { getValid, setWithTTL } from "../Utils/mmStorage";
 import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
+import {
+  closeDrawerWithHistory,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);
@@ -69,9 +74,10 @@ function buildPinnedDateLabel(dep) {
   return "Épinglée à l’instant";
 }
 
-
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 120;
+const PINNED_SONG_DRAWER_PARAM = "flowboxDrawer";
+const PINNED_SONG_DRAWER_VALUE = "pinned-song";
 
 export default function PinnedSongSection({ boxSlug }) {
   const navigate = useNavigate();
@@ -90,9 +96,13 @@ export default function PinnedSongSection({ boxSlug }) {
   const [errorDialog, setErrorDialog] = useState({ open: false, message: "" });
   const searchInputRef = useRef(null);
 
-
   const isGuestUser = Boolean(user?.is_guest);
   const hasActivePinned = Boolean(activePinnedDeposit?.public_key);
+
+  const resetDrawerState = useCallback(() => {
+    setDrawerStep("search");
+    setSelectedSong(null);
+  }, []);
 
   const updateBoxContentStorage = useCallback((nextActivePinnedDeposit) => {
     try {
@@ -173,6 +183,25 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [hydratePinnedFromStorage, refreshPinnedSection]);
 
   useEffect(() => {
+    const shouldOpenDrawer = matchesDrawerSearch(
+      location,
+      PINNED_SONG_DRAWER_PARAM,
+      PINNED_SONG_DRAWER_VALUE
+    );
+
+    if (shouldOpenDrawer) {
+      setDrawerOpen((prev) => (prev ? prev : true));
+      return;
+    }
+
+    setDrawerOpen((prev) => {
+      if (!prev) return prev;
+      resetDrawerState();
+      return false;
+    });
+  }, [location, resetDrawerState]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setNowTs(Date.now());
     }, 1000);
@@ -210,10 +239,14 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [priceSteps, selectedStepIndex]);
 
   const openSearchDrawer = useCallback(() => {
-    setDrawerStep("search");
-    setSelectedSong(null);
-    setDrawerOpen(true);
-  }, []);
+    resetDrawerState();
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: PINNED_SONG_DRAWER_PARAM,
+      value: PINNED_SONG_DRAWER_VALUE,
+    });
+  }, [location, navigate, resetDrawerState]);
 
   useEffect(() => {
     if (!user?.id || user?.is_guest) return;
@@ -226,12 +259,28 @@ export default function PinnedSongSection({ boxSlug }) {
     }
   }, [location, openSearchDrawer, user?.id, user?.is_guest]);
 
-  const closeDrawer = useCallback((force = false) => {
-    if (posting && !force) return;
-    setDrawerOpen(false);
-    setDrawerStep("search");
-    setSelectedSong(null);
-  }, [posting]);
+  const closeDrawer = useCallback(
+    (force = false, options = {}) => {
+      if (posting && !force) return;
+
+      const shouldReplaceHistory = Boolean(options?.replace);
+      if (
+        closeDrawerWithHistory({
+          navigate,
+          location,
+          param: PINNED_SONG_DRAWER_PARAM,
+          value: PINNED_SONG_DRAWER_VALUE,
+          replace: shouldReplaceHistory,
+        })
+      ) {
+        return;
+      }
+
+      setDrawerOpen(false);
+      resetDrawerState();
+    },
+    [location, navigate, posting, resetDrawerState]
+  );
 
   const handleSongSelected = useCallback((option) => {
     setSelectedSong(option || null);
@@ -388,17 +437,17 @@ export default function PinnedSongSection({ boxSlug }) {
         </Button>
       </>
     );
-  }, [hasActivePinned, isGuestUser, loading, navigate, openSearchDrawer, user?.username]);
+  }, [hasActivePinned, isGuestUser, loading, location, navigate, openSearchDrawer, user?.username]);
 
   return (
     <Box className="pinned_song_section">
       <Box className="icon_container info_box">
-        <PushPinIcon sx={{transform: "rotate(45deg)",}}/>
+        <PushPinIcon sx={{ transform: "rotate(45deg)" }} />
       </Box>
       <Box className="pinned_song_container">
         <Box
           sx={{
-            display:"grid",
+            display: "grid",
             gap: 2,
             px: 2.5,
             pb: 1,
@@ -409,8 +458,7 @@ export default function PinnedSongSection({ boxSlug }) {
             La chanson épinglée reste visible pour tous les passants ouvrant cette boîte pendant un temps donné.
           </Typography>
         </Box>
-       
-            
+
         {hasActivePinned ? (
           <Deposit
             dep={activePinnedDeposit}
@@ -422,16 +470,16 @@ export default function PinnedSongSection({ boxSlug }) {
             dateLabel={buildPinnedDateLabel(activePinnedDeposit)}
             userPrefix="par"
             footerSlot={progressFooter}
-            sx={{ pt : "12px"}}
+            sx={{ pt: "12px" }}
           />
         ) : (
           <Box className="slot">{slotContent}</Box>
         )}
-  
+
         <Drawer
           anchor="right"
           open={drawerOpen}
-          onClose={closeDrawer}
+          onClose={() => closeDrawer()}
           PaperProps={{
             sx: {
               width: "100vw",
@@ -463,15 +511,16 @@ export default function PinnedSongSection({ boxSlug }) {
               </>
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                <Box sx={{ 
-                          p: 5,
-                          pb: "100px",
-                          /* flex-direction: column; */
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-start",
-                          height: "100%",
-                        }}>
+                <Box
+                  sx={{
+                    p: 5,
+                    pb: "100px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    height: "100%",
+                  }}
+                >
                   <Button
                     variant="text"
                     startIcon={<ArrowBackIcon />}
@@ -480,16 +529,15 @@ export default function PinnedSongSection({ boxSlug }) {
                   >
                     Retour
                   </Button>
-  
+
                   <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
                     Choisis une durée
                   </Typography>
                   <Typography component="p" variant="body1" sx={{ mb: 3 }}>
                     Choisis pendant combien de temps ta chanson sera épinglée à la boîte.
                   </Typography>
-                      
-  
-                  <Box className="my_deposit deposit_card deposit_song" sx={{ width:"100%", boxSizing:"border-box" }}>
+
+                  <Box className="my_deposit deposit_card deposit_song" sx={{ width: "100%", boxSizing: "border-box" }}>
                     <Box className="img_container">
                       {selectedSong?.image_url_small || selectedSong?.image_url ? (
                         <Box
@@ -509,17 +557,19 @@ export default function PinnedSongSection({ boxSlug }) {
                       </Typography>
                     </Box>
                   </Box>
-  
-                  <Box sx={{ 
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0,
-                            flex: "1",
-                            minHeight: "0",
-                            width: "100%",
-                            flexDirection: "column",
-                            justifyContent: "center",
-                          }}>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0,
+                      flex: "1",
+                      minHeight: "0",
+                      width: "100%",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Typography variant="h1">{formatDuration(selectedDurationMinutes)}</Typography>
                     <Box
                       key={`${selectedStepIndex}-${selectedPrice}`}
@@ -542,7 +592,7 @@ export default function PinnedSongSection({ boxSlug }) {
                       </Typography>
                     ) : null}
                   </Box>
-  
+
                   <Slider
                     value={selectedStepIndex}
                     min={0}
@@ -564,10 +614,10 @@ export default function PinnedSongSection({ boxSlug }) {
                 </Box>
               </Box>
             )}
-  
+
             <Button
               variant="contained"
-              onClick={drawerStep === "duration" ? handleSubmitPinned : closeDrawer}
+              onClick={drawerStep === "duration" ? handleSubmitPinned : () => closeDrawer()}
               className="bottom_fixed"
               disabled={posting || (drawerStep === "duration" && !selectedPriceStep)}
             >

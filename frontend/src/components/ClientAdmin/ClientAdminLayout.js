@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -13,6 +13,14 @@ import { UserContext } from "../UserContext";
 import ClientAdminSidebar, {
   CLIENT_ADMIN_DRAWER_WIDTH,
 } from "./ClientAdminSidebar";
+import {
+  closeDrawerWithHistory,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
+
+const CLIENT_MENU_DRAWER_PARAM = "clientDrawer";
+const CLIENT_MENU_DRAWER_VALUE = "menu";
 
 function getPageTitle(pathname) {
   if (pathname === "/client") return "Dashboard";
@@ -39,11 +47,22 @@ function getClientName(user) {
 export default function ClientAdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, currentClient, setCurrentClient } = useContext(UserContext);
 
   const pageTitle = useMemo(() => getPageTitle(location.pathname), [location.pathname]);
   const clientSlug = useMemo(() => getClientSlug(user), [user]);
   const clientName = useMemo(() => getClientName(user), [user]);
+
+  useEffect(() => {
+    const shouldOpenMenu = matchesDrawerSearch(
+      location,
+      CLIENT_MENU_DRAWER_PARAM,
+      CLIENT_MENU_DRAWER_VALUE
+    );
+
+    setMobileOpen((prev) => (prev === shouldOpenMenu ? prev : shouldOpenMenu));
+  }, [location]);
 
   useEffect(() => {
     if (!clientSlug || !setCurrentClient) return;
@@ -52,12 +71,35 @@ export default function ClientAdminLayout() {
     }
   }, [clientSlug, currentClient, setCurrentClient]);
 
+  const handleOpenMobileSidebar = useCallback(() => {
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: CLIENT_MENU_DRAWER_PARAM,
+      value: CLIENT_MENU_DRAWER_VALUE,
+    });
+  }, [location, navigate]);
+
+  const handleCloseMobileSidebar = useCallback((options = {}) => {
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: CLIENT_MENU_DRAWER_PARAM,
+        value: CLIENT_MENU_DRAWER_VALUE,
+        replace: Boolean(options?.replace),
+      })
+    ) {
+      setMobileOpen(false);
+    }
+  }, [location, navigate]);
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
       <ClientAdminSidebar
         variant="temporary"
         mobileOpen={mobileOpen}
-        onClose={() => setMobileOpen(false)}
+        onClose={handleCloseMobileSidebar}
       />
       <ClientAdminSidebar variant="permanent" />
 
@@ -83,7 +125,7 @@ export default function ClientAdminLayout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={() => setMobileOpen(true)}
+              onClick={handleOpenMobileSidebar}
               sx={{ display: { md: "none" } }}
             >
               <MenuRoundedIcon />

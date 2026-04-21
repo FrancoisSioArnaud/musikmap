@@ -39,6 +39,11 @@ import { getValid, setWithTTL } from "../Utils/mmStorage";
 import PlayModal from "./PlayModal";
 import { getCookie } from "../Security/TokensUtils";
 import { formatRelativeTime } from "../Utils/time";
+import {
+  closeDrawerWithHistory,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
 
 
 function SlideDownTransition(props) {
@@ -288,6 +293,8 @@ export default function Deposit({
   const [addReactionOpen, setAddReactionOpen] = useState(false);
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const commentsDrawerParamValue = localDep?.public_key || "";
+  const reactionsDrawerParamValue = localDep?.public_key || "";
   const [snackOpen, setSnackOpen] = useState(false);
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
   const [isSharing, setIsSharing] = useState(false);
@@ -654,6 +661,78 @@ export default function Deposit({
   };
 
   useEffect(() => {
+    if (!commentsDrawerParamValue) {
+      setCommentsOpen(false);
+      return;
+    }
+
+    const shouldOpenComments = matchesDrawerSearch(location, "comments", commentsDrawerParamValue);
+    setCommentsOpen((prev) => (prev === shouldOpenComments ? prev : shouldOpenComments));
+  }, [commentsDrawerParamValue, location]);
+
+  useEffect(() => {
+    if (!reactionsDrawerParamValue) {
+      setReactionSummaryOpen(false);
+      return;
+    }
+
+    const shouldOpenReactions = matchesDrawerSearch(location, "reactions", reactionsDrawerParamValue);
+    setReactionSummaryOpen((prev) => (prev === shouldOpenReactions ? prev : shouldOpenReactions));
+  }, [location, reactionsDrawerParamValue]);
+
+  const openCommentsDrawer = useCallback((event) => {
+    event?.stopPropagation?.();
+    if (!commentsDrawerParamValue) return;
+
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: "comments",
+      value: commentsDrawerParamValue,
+    });
+  }, [commentsDrawerParamValue, location, navigate]);
+
+  const closeCommentsDrawer = useCallback((options = {}) => {
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: "comments",
+        value: commentsDrawerParamValue,
+        replace: Boolean(options?.replace),
+      })
+    ) {
+      setCommentsOpen(false);
+    }
+  }, [commentsDrawerParamValue, location, navigate]);
+
+  const openReactionSummaryDrawer = useCallback((event) => {
+    event?.stopPropagation?.();
+    if (!reactionsDrawerParamValue) return;
+
+    openDrawerWithHistory({
+      navigate,
+      location,
+      param: "reactions",
+      value: reactionsDrawerParamValue,
+    });
+  }, [location, navigate, reactionsDrawerParamValue]);
+
+  const closeReactionSummaryDrawer = useCallback((options = {}) => {
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: "reactions",
+        value: reactionsDrawerParamValue,
+        replace: Boolean(options?.replace),
+      })
+    ) {
+      setReactionSummaryOpen(false);
+    }
+  }, [location, navigate, reactionsDrawerParamValue]);
+
+  useEffect(() => {
     if (!viewer?.id || viewer?.is_guest || !localDep?.public_key) return;
 
     const currentPath = buildRelativeLocation(location);
@@ -664,7 +743,7 @@ export default function Deposit({
     });
 
     if (commentAction) {
-      setCommentsOpen(true);
+      openCommentsDrawer();
       return;
     }
 
@@ -677,7 +756,7 @@ export default function Deposit({
     if (reactionAction) {
       setAddReactionOpen(true);
     }
-  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location]);
+  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, openCommentsDrawer]);
 
   const showShareFeedback = useCallback((message) => {
     setShareSnack({ open: true, message });
@@ -863,10 +942,7 @@ export default function Deposit({
             <Button
               variant="depositInteract"
               className="deposit_action_button reactionsummary_button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setReactionSummaryOpen(true);
-              }}
+              onClick={openReactionSummaryDrawer}
             >
               {`x${reactionCount}`}
             </Button>
@@ -876,10 +952,7 @@ export default function Deposit({
         <Button
           variant="depositInteract"
           className="deposit_action_button comments_button"
-          onClick={(event) => {
-            event.stopPropagation();
-            setCommentsOpen(true);
-          }}
+          onClick={openCommentsDrawer}
           startIcon={<ModeCommentOutlinedIcon />}
         >
           {commentsCount > 0 ? `x${commentsCount}` : ""}
@@ -921,15 +994,11 @@ export default function Deposit({
               zIndex: item.zIndex,
               opacity: item.opacity,
             }}
-            onClick={(event) => {
-              event.stopPropagation();
-              setReactionSummaryOpen(true);
-            }}
+            onClick={openReactionSummaryDrawer}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                event.stopPropagation();
-                setReactionSummaryOpen(true);
+                openReactionSummaryDrawer(event);
               }
             }}
             role="button"
@@ -1154,7 +1223,7 @@ export default function Deposit({
 
       <ReactionSummary
         open={reactionSummaryOpen}
-        onClose={() => setReactionSummaryOpen(false)}
+        onClose={closeReactionSummaryDrawer}
         depPublicKey={localDep?.public_key}
         reactions={reactionsDetail}
         viewer={viewer}
@@ -1163,7 +1232,7 @@ export default function Deposit({
 
       <CommentsDrawer
         open={commentsOpen}
-        onClose={() => setCommentsOpen(false)}
+        onClose={closeCommentsDrawer}
         depPublicKey={localDep?.public_key}
         comments={comments}
         viewer={viewer}
