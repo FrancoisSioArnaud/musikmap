@@ -193,15 +193,6 @@ export default function Discover() {
     }
   }, [location, navigate, selectedArticle?.id]);
 
-  const handleScrollToOlderDeposits = () => {
-    const target = document.getElementById("older_deposit");
-    if (!target) return;
-
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
 
   return (
     <Box>
@@ -333,14 +324,25 @@ export default function Discover() {
           />
 
           {olderDeposits.length > 0 ? (
-            <Button
-              variant="light"
-              startIcon={<KeyboardArrowDownIcon />}
-              onClick={handleScrollToOlderDeposits}
-              sx={{ mt: "26px", width: "100%" }}
+            <Box
+              sx={{
+                mt: "26px",
+                width: "100%",
+                minHeight: 48,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                color: "text.primary",
+                opacity: 0.72,
+              }}
             >
-              Découvrir plus de chansons
-            </Button>
+              <KeyboardArrowDownIcon aria-hidden="true" />
+              <Typography component="span" variant="body1">
+                Découvrir plus de chansons
+              </Typography>
+              <KeyboardArrowDownIcon aria-hidden="true" />
+            </Box>
           ) : null}
         </Box>
       ) : null}
