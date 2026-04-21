@@ -15,6 +15,8 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+
 import { getCookie } from "../Security/TokensUtils";
 import { checkUserStatus, logoutUser } from "../UsersUtils";
 import {
@@ -43,6 +45,8 @@ export default function UserSettings() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const [providerErrors, setProviderErrors] = useState({});
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [disconnectSpotifyDialogOpen, setDisconnectSpotifyDialogOpen] = useState(false);
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   useEffect(() => {
@@ -231,7 +235,7 @@ export default function UserSettings() {
                 <Grid item xs>
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                     {isSpotifyAuthenticated ? (
-                      <Button variant="outlined" onClick={handleButtonClickDisconnectSpotify}>Se déconnecter</Button>
+                      <Button variant="outlined" onClick={() => setDisconnectSpotifyDialogOpen(true)}>Se déconnecter</Button>
                     ) : (
                       <Button variant="contained" onClick={handleButtonClickConnectSpotify}>Se connecter</Button>
                     )}
@@ -249,12 +253,36 @@ export default function UserSettings() {
           <CardHeader titleTypographyProps={{ variant: "h6" }} title="Session" />
           <Divider />
           <CardContent>
-            <Button variant="outlined" color="error" onClick={() => logoutUser(setUser, setIsAuthenticated, navigate)}>
+            <Button variant="outlined" color="error" onClick={() => setLogoutDialogOpen(true)}>
               Se déconnecter
             </Button>
           </CardContent>
         </Card>
       </Stack>
+      <ConfirmActionDialog
+        open={disconnectSpotifyDialogOpen}
+        onClose={() => setDisconnectSpotifyDialogOpen(false)}
+        onConfirm={async () => {
+          setDisconnectSpotifyDialogOpen(false);
+          await handleButtonClickDisconnectSpotify();
+        }}
+        title="Déconnecter Spotify ?"
+        description="Tu ne verras plus tes résultats personnalisés ni tes dernières écoutes Spotify dans la recherche."
+        confirmLabel="Déconnecter"
+      />
+
+      <ConfirmActionDialog
+        open={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        onConfirm={async () => {
+          setLogoutDialogOpen(false);
+          await logoutUser(setUser, setIsAuthenticated, navigate);
+        }}
+        title="Se déconnecter ?"
+        description="Tu vas être déconnecté de ton compte sur cet appareil."
+        confirmLabel="Se déconnecter"
+        confirmColor="error"
+      />
     </Container>
   );
 }

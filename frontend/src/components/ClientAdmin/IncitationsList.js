@@ -29,6 +29,7 @@ import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import { getCookie } from "../Security/TokensUtils";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const EMPTY_FORM = { text: "", start_date: "", end_date: "" };
@@ -1056,32 +1057,23 @@ export default function IncitationsList() {
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <ConfirmActionDialog
         open={!!itemToDelete}
-        onClose={deleteLoading ? undefined : () => setItemToDelete(null)}
-        maxWidth="xs"
-        fullWidth
+        onClose={() => setItemToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Supprimer cette phrase ?"
+        description="Cette action supprimera définitivement la phrase d’incitation."
+        confirmLabel={deleteLoading ? "Suppression…" : "Supprimer"}
+        confirmColor="error"
+        loading={deleteLoading}
+        submitOnEnter
       >
-        <DialogTitle>Supprimer cette phrase ?</DialogTitle>
-        <DialogContent dividers>
-          <DialogContentText>
-            Cette action supprimera définitivement la phrase d’incitation.
-          </DialogContentText>
-          {itemToDelete?.text ? (
-            <Typography variant="body2" sx={{ mt: 2, fontWeight: 700 }}>
-              {itemToDelete.text}
-            </Typography>
-          ) : null}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setItemToDelete(null)} disabled={deleteLoading}>
-            Annuler
-          </Button>
-          <Button color="error" onClick={handleDeleteConfirm} disabled={deleteLoading}>
-            {deleteLoading ? "Suppression…" : "Supprimer"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {itemToDelete?.text ? (
+          <Typography variant="body2" sx={{ mt: 2, fontWeight: 700 }}>
+            {itemToDelete.text}
+          </Typography>
+        ) : null}
+      </ConfirmActionDialog>
     </Stack>
   );
 }

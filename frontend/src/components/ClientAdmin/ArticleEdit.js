@@ -26,6 +26,7 @@ import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
 import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
 
 import { getCookie } from "../Security/TokensUtils";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 
 function toInputDate(value) {
   if (!value) return "";
@@ -104,6 +105,7 @@ export default function ArticleEdit() {
 
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishedArticleId, setPublishedArticleId] = useState(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -837,7 +839,7 @@ export default function ArticleEdit() {
                 variant="outlined"
                 color="warning"
                 startIcon={<ArchiveRoundedIcon />}
-                onClick={() => handleSave("archived")}
+                onClick={() => setArchiveDialogOpen(true)}
                 disabled={saving || importing}
               >
                 Archiver
@@ -864,6 +866,21 @@ export default function ArticleEdit() {
           </Stack>
         </Stack>
       </Paper>
+
+      <ConfirmActionDialog
+        open={archiveDialogOpen}
+        onClose={() => setArchiveDialogOpen(false)}
+        onConfirm={async () => {
+          setArchiveDialogOpen(false);
+          await handleSave("archived");
+        }}
+        title="Archiver l’article ?"
+        description="L’article ne sera plus visible côté client, mais restera conservé dans l’admin."
+        confirmLabel={saving ? "Archivage…" : "Archiver"}
+        confirmColor="warning"
+        loading={saving}
+        submitOnEnter
+      />
 
       <Dialog
         open={publishDialogOpen}

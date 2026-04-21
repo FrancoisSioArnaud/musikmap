@@ -16,11 +16,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableHead from "@mui/material/TableHead";
@@ -33,6 +28,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import { getCookie } from "../Security/TokensUtils";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 
 const STATUS_OPTIONS = ["all", "draft", "published", "archived"];
 
@@ -429,37 +425,21 @@ export default function ArticlesList() {
         )}
       </Paper>
 
-      <Dialog
+      <ConfirmActionDialog
         open={Boolean(articleToArchive)}
-        onClose={() => (archiveLoading ? null : setArticleToArchive(null))}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Supprimer l’article</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Cette action archivera l’article
-            {articleToArchive?.title ? ` “${articleToArchive.title}”` : ""}.
-            Il ne sera pas supprimé définitivement.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setArticleToArchive(null)}
-            disabled={archiveLoading}
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={handleArchiveConfirm}
-            color="error"
-            variant="contained"
-            disabled={archiveLoading}
-          >
-            {archiveLoading ? "Suppression..." : "Supprimer"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onClose={() => setArticleToArchive(null)}
+        onConfirm={handleArchiveConfirm}
+        title="Supprimer l’article"
+        description={
+          articleToArchive?.title
+            ? `Cette action archivera l’article “${articleToArchive.title}”. Il ne sera pas supprimé définitivement.`
+            : "Cette action archivera l’article. Il ne sera pas supprimé définitivement."
+        }
+        confirmLabel={archiveLoading ? "Suppression..." : "Supprimer"}
+        confirmColor="error"
+        loading={archiveLoading}
+        submitOnEnter
+      />
     </Stack>
   );
 }

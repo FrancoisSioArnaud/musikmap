@@ -16,6 +16,7 @@ import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOut
 
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
@@ -40,6 +41,7 @@ export default function FavoriteSongSection({
   });
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
   const [removingFavorite, setRemovingFavorite] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -274,7 +276,7 @@ export default function FavoriteSongSection({
                 </Button>
                 <Button
                   variant="light"
-                  onClick={handleRemoveFavorite}
+                  onClick={() => setRemoveDialogOpen(true)}
                   startIcon={<RemoveCircleOutlineOutlinedIcon />}
                   sx={{ color: "var(--mm-color-error)" }}
                   disabled={removingFavorite}
@@ -342,6 +344,20 @@ export default function FavoriteSongSection({
           </Drawer>
         </Box>
       </Box>
+
+      <ConfirmActionDialog
+        open={removeDialogOpen}
+        onClose={() => setRemoveDialogOpen(false)}
+        onConfirm={async () => {
+          setRemoveDialogOpen(false);
+          await handleRemoveFavorite();
+        }}
+        title="Retirer ta chanson de cœur ?"
+        description="Elle ne sera plus affichée sur ton profil."
+        confirmLabel={removingFavorite ? "Retrait…" : "Retirer"}
+        confirmColor="error"
+        loading={removingFavorite}
+      />
 
       <Dialog open={errorDialog.open} onClose={() => setErrorDialog({ open: false, title: "Erreur", message: "" })}>
         <DialogTitle>{errorDialog.title}</DialogTitle>

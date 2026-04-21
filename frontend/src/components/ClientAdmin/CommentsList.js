@@ -20,6 +20,7 @@ import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import { getCookie } from "../Security/TokensUtils";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 
 const TAB_OPTIONS = [
   { value: "quarantined", label: "Quarantaine" },
@@ -62,6 +63,7 @@ export default function CommentsList() {
   const [restrictionReasonCode, setRestrictionReasonCode] = useState("manual_restriction");
   const [restrictionInternalNote, setRestrictionInternalNote] = useState("");
   const [restrictionLoading, setRestrictionLoading] = useState(false);
+  const [commentToRemove, setCommentToRemove] = useState(null);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -267,7 +269,7 @@ export default function CommentsList() {
                   Publier
                 </Button>
                 <Button
-                  onClick={() => handleModeration(item.id, "remove", "manual_remove")}
+                  onClick={() => setCommentToRemove(item)}
                   disabled={moderatingId === item.id}
                 >
                   Retirer
@@ -310,7 +312,42 @@ export default function CommentsList() {
       {pageError ? <Alert severity="error">{pageError}</Alert> : null}
       {content}
 
-      <Dialog open={restrictionDialogOpen} onClose={() => setRestrictionDialogOpen(false)} fullWidth maxWidth="sm">
+
+      <ConfirmActionDialog
+        open={Boolean(commentToRemove)}
+        onClose={() => setCommentToRemove(null)}
+        onConfirm={async () => {
+          if (!commentToRemove?.id) return;
+          await handleModeration(commentToRemove.id, "remove", "manual_remove");
+          setCommentToRemove(null);
+        }}
+        title="Retirer ce commentaire ?"
+        description="Le commentaire sera masqué pour les utilisateurs."
+        confirmLabel={moderatingId === commentToRemove?.id ? "Retrait…" : "Retirer"}
+        confirmColor="error"
+        loading={moderatingId === commentToRemove?.id}
+        submitOnEnter
+      >
+        {commentToRemove?.text ? (
+          <Typography variant="body2" sx={{ mt: 2, fontWeight: 700 }}>
+            {commentToRemove.text}
+          </Typography>
+        ) : null}
+      </ConfirmActionDialog>
+
+      <Dialog
+        open={restrictionDialogOpen}
+        onClose={() => setRestrictionDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          component: "form",
+          onSubmit: (event) => {
+            event.preventDefault();
+            handleCreateRestriction();
+          },
+        }}
+      >
         <DialogTitle>Sanctionner l’utilisateur</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
@@ -351,7 +388,7 @@ export default function CommentsList() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRestrictionDialogOpen(false)}>Annuler</Button>
-          <Button onClick={handleCreateRestriction} disabled={restrictionLoading}>Valider</Button>
+          <Button type="submit" disabled={restrictionLoading}>Valider</Button>
         </DialogActions>
       </Dialog>
     </Stack>

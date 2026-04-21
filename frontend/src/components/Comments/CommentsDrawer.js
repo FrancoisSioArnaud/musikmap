@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -24,6 +24,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 
 import { getCookie } from "../Security/TokensUtils";
 import AuthModal from "../Auth/AuthModal";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
 
 const REPORT_REASONS = [
@@ -42,6 +43,7 @@ export default function CommentsDrawer({
   onCommentsChange,
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +54,7 @@ export default function CommentsDrawer({
   const [reportReason, setReportReason] = useState("harassment");
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   const items = Array.isArray(comments?.items) ? comments.items : [];
@@ -138,6 +141,7 @@ export default function CommentsDrawer({
         throw new Error(payload?.detail || "Impossible de supprimer le commentaire.");
       }
       onCommentsChange?.(payload?.comments || { items: [], viewer_state: {} });
+      setDeleteConfirmOpen(false);
       closeMenu();
     } catch (err) {
       setError(err?.message || "Impossible de supprimer le commentaire.");
@@ -347,7 +351,14 @@ export default function CommentsDrawer({
 
       <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => closeMenu()}>
         {activeComment?.is_mine ? (
-          <MenuItem onClick={handleDelete}>Supprimer mon commentaire</MenuItem>
+          <MenuItem
+            onClick={() => {
+              setDeleteConfirmOpen(true);
+              closeMenu(false);
+            }}
+          >
+            Supprimer mon commentaire
+          </MenuItem>
         ) : (
           <MenuItem
             onClick={() => {
@@ -359,6 +370,20 @@ export default function CommentsDrawer({
           </MenuItem>
         )}
       </Menu>
+
+      <ConfirmActionDialog
+        open={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setActiveComment(null);
+        }}
+        onConfirm={handleDelete}
+        title="Supprimer ton commentaire ?"
+        description="Cette action est définitive."
+        confirmLabel={deleting ? "Suppression…" : "Supprimer"}
+        confirmColor="error"
+        loading={deleting}
+      />
 
       <Dialog
         open={reportOpen}

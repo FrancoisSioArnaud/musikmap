@@ -28,6 +28,7 @@ import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import { getCookie } from "../Security/TokensUtils";
+import ConfirmActionDialog from "../Common/ConfirmActionDialog";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tous" },
@@ -86,6 +87,7 @@ export default function StickersList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState([]);
   const [actionLoading, setActionLoading] = useState("");
+  const [stickerToUnassign, setStickerToUnassign] = useState(null);
 
   const fetchStickers = useCallback(async () => {
     setLoading(true);
@@ -515,7 +517,7 @@ export default function StickersList() {
                           <Button
                             size="small"
                             variant="text"
-                            onClick={() => handleUnassign(sticker.id)}
+                            onClick={() => setStickerToUnassign(sticker)}
                             disabled={Boolean(actionLoading)}
                           >
                             {actionLoading === `unassign-${sticker.id}` ? "…" : "Désassigner"}
@@ -539,6 +541,28 @@ export default function StickersList() {
           </TableContainer>
         )}
       </Paper>
+
+      <ConfirmActionDialog
+        open={Boolean(stickerToUnassign)}
+        onClose={() => setStickerToUnassign(null)}
+        onConfirm={async () => {
+          if (!stickerToUnassign?.id) return;
+          await handleUnassign(stickerToUnassign.id);
+          setStickerToUnassign(null);
+        }}
+        title="Désassigner ce sticker ?"
+        description="Il ne redirigera plus vers la boîte actuellement liée."
+        confirmLabel={actionLoading === `unassign-${stickerToUnassign?.id}` ? "Désassignation…" : "Désassigner"}
+        confirmColor="error"
+        loading={actionLoading === `unassign-${stickerToUnassign?.id}`}
+        submitOnEnter
+      >
+        {stickerToUnassign?.box ? (
+          <Typography variant="body2" sx={{ mt: 2, fontWeight: 700 }}>
+            {stickerToUnassign.box.name || stickerToUnassign.box.slug}
+          </Typography>
+        ) : null}
+      </ConfirmActionDialog>
     </Stack>
   );
 }
