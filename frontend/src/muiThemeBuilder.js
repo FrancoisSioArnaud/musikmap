@@ -196,7 +196,10 @@ export function buildMuiTheme(clientTheme) {
           paper: {
             backgroundColor: clientTheme.colors.surface,
             color: clientTheme.colors.text,
-            borderRadius: parseInt(clientTheme.radius.md),
+            borderRadius:
+              parseInt(clientTheme.radius.md, 10) ||
+              parseInt(clientTheme.radius.button, 10) ||
+              16,
             margin: 16,
             overflow: "hidden",
           },
@@ -205,20 +208,20 @@ export function buildMuiTheme(clientTheme) {
       
       MuiDialogTitle: {
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             padding: "20px 20px 8px",
             ...theme.typography.h3,
             color: clientTheme.colors.text,
-          },
+          }),
         },
       },
       
       MuiDialogContent: {
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             padding: "0 20px 20px",
             ...theme.typography.body1,
-          },
+          }),
         },
       },
       
