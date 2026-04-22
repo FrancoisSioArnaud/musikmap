@@ -16,9 +16,23 @@ Additional context lives in:
 - Do not add dependencies unless explicitly authorized.
 - Do not add migrations unless the task clearly requires a schema change.
 - Do not rename files, public APIs, routes, CSS classes, or storage keys unless explicitly required.
-- Prefer existing utilities, helpers, and wrappers over new abstractions.
+- Prefer existing abstractions and project conventions over inventing parallel patterns.
+- Do not reuse an existing utility or helper if doing so would hide business logic in the wrong layer.
 - Preserve current business behavior unless the task explicitly asks to change it.
 - When a change has meaningful risk, state the risk clearly.
+
+## Architecture preservation
+- When a directory already defines a local architecture (for example services/selectors/builders/integrations), extend that architecture instead of adding new logic to catch-all files.
+- Do not introduce new `helpers.py`, `misc.py`, or broad `utils.py` patterns when a clearer module name fits the change.
+- New code should be placed where its responsibility is explicit from the file name.
+
+## Naming
+- Prefer file and function names that state the responsibility directly.
+- Avoid vague names such as `helpers`, `misc`, `common`, `manager`, `process_data`, or `handle_*` unless the responsibility is genuinely broad and well-defined.
+
+## Separation of concerns
+- Keep request/response handling separate from business rules and data access whenever the local directory architecture supports it.
+- Avoid mixing transport concerns, business decisions, database querying, and response shaping in the same function when a local structure exists to separate them.
 
 ## SCSS policy
 - Do not modify SCSS, CSS, theme styles, or class names unless the user explicitly authorizes it.
