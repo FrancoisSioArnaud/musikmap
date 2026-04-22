@@ -9,11 +9,18 @@ import { FlowboxSessionContext } from "./FlowboxSessionContext";
 export default function FlowboxBoxShell() {
   const { boxSlug } = useParams();
   const { setCurrentClient } = useContext(UserContext) || {};
-  const { saveBoxBootstrap, markFlowboxVisited, clearCurrentFlowboxSlug, ensureBoxSession } =
-    useContext(FlowboxSessionContext);
+  const {
+    saveBoxBootstrap,
+    markFlowboxVisited,
+    clearCurrentFlowboxSlug,
+    ensureBoxSession,
+    sessionLoadStateBySlug,
+  } = useContext(FlowboxSessionContext);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const sessionLoadState = sessionLoadStateBySlug?.[boxSlug] || "idle";
 
   useEffect(() => {
     markFlowboxVisited(boxSlug);
@@ -52,8 +59,6 @@ export default function FlowboxBoxShell() {
         if (setCurrentClient) {
           setCurrentClient((prev) => (prev === (data?.client_slug || "default") ? prev : (data?.client_slug || "default")));
         }
-
-        await ensureBoxSession(boxSlug);
       } catch (fetchError) {
         if (!cancelled) {
           setError(fetchError?.message || "Impossible de récupérer la boîte.");
@@ -68,7 +73,14 @@ export default function FlowboxBoxShell() {
     return () => {
       cancelled = true;
     };
-  }, [boxSlug, ensureBoxSession, saveBoxBootstrap, setCurrentClient]);
+  }, [boxSlug, saveBoxBootstrap, setCurrentClient]);
+
+  useEffect(() => {
+    if (!boxSlug) return;
+    if (loading || error) return;
+    if (sessionLoadState !== "idle") return;
+    ensureBoxSession(boxSlug);
+  }, [boxSlug, ensureBoxSession, error, loading, sessionLoadState]);
 
   if (loading && !error) {
     return (

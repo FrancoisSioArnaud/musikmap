@@ -16,7 +16,8 @@ export default function InBoxSessionGate() {
   const loadState = sessionLoadStateBySlug?.[boxSlug] || "idle";
 
   useEffect(() => {
-    if (!activeSession && loadState !== "loading") {
+    if (!boxSlug) return;
+    if (!activeSession && loadState === "idle") {
       ensureBoxSession(boxSlug);
     }
   }, [activeSession, boxSlug, ensureBoxSession, loadState]);

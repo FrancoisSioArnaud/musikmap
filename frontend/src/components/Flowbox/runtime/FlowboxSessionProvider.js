@@ -3,6 +3,7 @@ import { FlowboxSessionContext } from "./FlowboxSessionContext";
 import {
   getAllStoredFlowboxBoxes,
   getFlowboxIndex,
+  getStoredFlowboxBox,
   patchStoredFlowboxBox,
   saveFlowboxIndex,
 } from "./flowboxSessionStorage";
@@ -202,10 +203,21 @@ export default function FlowboxSessionProvider({ children }) {
   const ensureBoxSession = useCallback(async (boxSlug) => {
     if (!boxSlug) return { active: false };
 
-    setSessionLoadStateBySlug((prev) => ({
-      ...prev,
-      [boxSlug]: prev[boxSlug] === "loaded" ? "loaded" : "loading",
-    }));
+    let shouldFetch = true;
+    setSessionLoadStateBySlug((prev) => {
+      if (prev[boxSlug] === "loading") {
+        shouldFetch = false;
+        return prev;
+      }
+      return {
+        ...prev,
+        [boxSlug]: prev[boxSlug] === "loaded" ? "loaded" : "loading",
+      };
+    });
+
+    if (!shouldFetch) {
+      return { active: false, skipped: true };
+    }
 
     try {
       const response = await fetch(
@@ -225,7 +237,7 @@ export default function FlowboxSessionProvider({ children }) {
       if (data?.active && data?.session) {
         saveVerifiedSession(data, { triggerEnterHint: false });
       } else {
-        const currentRuntime = boxesBySlug?.[boxSlug] || null;
+        const currentRuntime = getStoredFlowboxBox(boxSlug) || null;
         clearBoxSession(boxSlug, {
           markExpired: Boolean(currentRuntime?.session || currentRuntime?.lastSessionExpiredAt),
         });
@@ -237,7 +249,7 @@ export default function FlowboxSessionProvider({ children }) {
       setSessionLoadStateBySlug((prev) => ({ ...prev, [boxSlug]: "loaded" }));
       return { active: false, error: error?.message || "SESSION_LOAD_FAILED" };
     }
-  }, [boxesBySlug, clearBoxSession, saveVerifiedSession]);
+  }, [clearBoxSession, saveVerifiedSession]);
 
   useEffect(() => {
     let cancelled = false;
