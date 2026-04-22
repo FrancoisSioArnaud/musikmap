@@ -1,26 +1,27 @@
-import React, { useContext, useMemo } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
+import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
-import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
-import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
-import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import React, { useContext, useMemo } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+
 import { UserContext } from "../UserContext";
 
 export const CLIENT_ADMIN_DRAWER_WIDTH = 280;
 
 function getClientDisplayName(user) {
-  if (!user) return "Client";
+  if (!user) {return "Client";}
   return (
     user.client_name ||
     user.client?.name ||

@@ -1,8 +1,9 @@
-import React, { useContext, useEffect } from "react";
-import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import React, { useContext, useEffect } from "react";
+import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
+
 import { FlowboxSessionContext } from "./FlowboxSessionContext";
 
 export default function InBoxSessionGate() {
@@ -16,7 +17,7 @@ export default function InBoxSessionGate() {
   const loadState = sessionLoadStateBySlug?.[boxSlug] || "idle";
 
   useEffect(() => {
-    if (!boxSlug) return;
+    if (!boxSlug) {return;}
     if (!activeSession && loadState === "idle") {
       ensureBoxSession(boxSlug);
     }

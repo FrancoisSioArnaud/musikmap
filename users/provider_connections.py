@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable, Optional
 
 from django.utils import timezone
 
 from .models import CustomUser, UserProviderConnection
-
 
 SUPPORTED_PROVIDER_CODES = {"spotify", "deezer"}
 PERSONALIZED_SEARCH_PROVIDER_CODES = ("spotify",)
@@ -18,9 +17,9 @@ def normalize_provider_code(value) -> str:
 
 
 def get_provider_connection(
-    user: Optional[CustomUser],
+    user: CustomUser | None,
     provider_code: str,
-) -> Optional[UserProviderConnection]:
+) -> UserProviderConnection | None:
     normalized = normalize_provider_code(provider_code)
     if not user or not getattr(user, "pk", None) or not normalized:
         return None
@@ -36,9 +35,9 @@ def upsert_provider_connection(
     provider_code: str,
     access_token: str,
     refresh_token: str = "",
-    expires_in: Optional[int] = None,
+    expires_in: int | None = None,
     provider_user_id: str = "",
-    scopes: Optional[Iterable[str]] = None,
+    scopes: Iterable[str] | None = None,
     is_active: bool = True,
 ):
     normalized = normalize_provider_code(provider_code)
@@ -68,7 +67,7 @@ def upsert_provider_connection(
 
 
 def disconnect_provider_connection(
-    user: Optional[CustomUser],
+    user: CustomUser | None,
     provider_code: str,
 ) -> bool:
     normalized = normalize_provider_code(provider_code)
@@ -83,7 +82,7 @@ def disconnect_provider_connection(
 
 
 def is_provider_authenticated(
-    user: Optional[CustomUser],
+    user: CustomUser | None,
     provider_code: str,
 ) -> bool:
     connection = get_provider_connection(user, provider_code)
@@ -91,8 +90,8 @@ def is_provider_authenticated(
 
 
 def serialize_provider_connection(
-    connection: Optional[UserProviderConnection],
-    provider_code: Optional[str] = None,
+    connection: UserProviderConnection | None,
+    provider_code: str | None = None,
 ):
     if not connection:
         return {
@@ -121,11 +120,8 @@ def serialize_provider_connection(
     }
 
 
-def serialize_provider_connections_for_user(user: Optional[CustomUser]):
-    mapping = {
-        provider: serialize_provider_connection(None, provider)
-        for provider in SUPPORTED_PROVIDER_CODES
-    }
+def serialize_provider_connections_for_user(user: CustomUser | None):
+    mapping = {provider: serialize_provider_connection(None, provider) for provider in SUPPORTED_PROVIDER_CODES}
     if not user or not getattr(user, "pk", None):
         return mapping
 

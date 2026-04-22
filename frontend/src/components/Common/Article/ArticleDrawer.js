@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
 
 import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import Drawer from "@mui/material/Drawer";
+import Typography from "@mui/material/Typography";
+import React, { useEffect, useState } from "react";
 
 import MarkdownContent from "../../Utils/MarkdownContent";
 
@@ -43,7 +43,7 @@ export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
           throw new Error(data?.detail || "Impossible de charger l’article.");
         }
 
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         setFullText(typeof data?.short_text === "string" ? data.short_text : previewText);
       } catch {

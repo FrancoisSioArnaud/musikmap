@@ -92,7 +92,9 @@ class PublicContractViewTests(FlowboxAPITestCase):
         owner = self.make_user(username="owner-link")
         box = self.make_box(url="box-link", name="Box link")
         deposit = self.make_deposit(user=owner, song=self.make_song(public_key="link-song"), box=box)
-        link = Link.objects.create(slug="abcdefghjkmnpqr", deposit=deposit, created_by=owner, expires_at=timezone.now() - timedelta(minutes=1))
+        link = Link.objects.create(
+            slug="abcdefghjkmnpqr", deposit=deposit, created_by=owner, expires_at=timezone.now() - timedelta(minutes=1)
+        )
 
         response = self.client.get(reverse("share-link-public-detail", kwargs={"link_slug": link.slug}))
         self.assert_api_error(response, 410, "LINK_EXPIRED")

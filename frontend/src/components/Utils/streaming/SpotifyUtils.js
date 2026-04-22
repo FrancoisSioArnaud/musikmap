@@ -1,4 +1,5 @@
 import { getCookie } from "../../Security/TokensUtils";
+
 import { authenticateProviderUser } from "./providerClient";
 
 function getSpotifyConnection(user) {

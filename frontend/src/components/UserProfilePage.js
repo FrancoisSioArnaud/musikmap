@@ -1,31 +1,30 @@
+import EditIcon from "@mui/icons-material/Edit";
+import SettingsIcon from "@mui/icons-material/Settings";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+
+import { startAuthPageFlow } from "./Auth/AuthFlow";
 import { UserContext } from "./UserContext";
-
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import SettingsIcon from "@mui/icons-material/Settings";
-import EditIcon from "@mui/icons-material/Edit";
-import Avatar from "@mui/material/Avatar";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import CircularProgress from "@mui/material/CircularProgress";
-import TextField from "@mui/material/TextField";
-
+import FavoriteSongSection from "./UserProfile/FavoriteSongSection";
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
-import FavoriteSongSection from "./UserProfile/FavoriteSongSection";
 import {
   getProfilePageStateKey,
   readPageState,
   saveProfileTabState,
 } from "./Utils/pageStateStorage";
-import { startAuthPageFlow } from "./Auth/AuthFlow";
 
 function TabPanel({ index, value, children }) {
-  if (value !== index) return null;
+  if (value !== index) {return null;}
   return (
     <div role="tabpanel" style={{ width: "100%" }}>
       <Box>{children}</Box>
@@ -34,7 +33,7 @@ function TabPanel({ index, value, children }) {
 }
 
 async function fetchUserInfo(username, signal) {
-  if (!username) return { ok: false, status: 400, data: null };
+  if (!username) {return { ok: false, status: 400, data: null };}
 
   const url = `/users/get-user-info?username=${encodeURIComponent(username)}`;
   const res = await fetch(url, {
@@ -99,7 +98,7 @@ export default function UserProfilePage() {
   }, [pageStateKey, tab]);
 
   useEffect(() => {
-    if (headerAbortRef.current) headerAbortRef.current.abort();
+    if (headerAbortRef.current) {headerAbortRef.current.abort();}
     const controller = new AbortController();
     headerAbortRef.current = controller;
 
@@ -132,7 +131,7 @@ export default function UserProfilePage() {
         routeUsername,
         controller.signal
       );
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {return;}
 
       if (!ok) {
         setHeader({
@@ -175,7 +174,7 @@ export default function UserProfilePage() {
 
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();
-    if (!nextUsername) return;
+    if (!nextUsername) {return;}
     startAuthPageFlow({
       navigate,
       location,

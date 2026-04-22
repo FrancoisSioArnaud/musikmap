@@ -6,7 +6,7 @@ export const PERSONALIZED_SEARCH_PROVIDER_CODES = ["spotify"];
 export const SERVER_SEARCH_PROVIDER_CODE = "spotify";
 
 export const getProviderConnection = (user, providerCode) => {
-  if (!user || !providerCode) return null;
+  if (!user || !providerCode) {return null;}
   return user?.provider_connections?.[providerCode] || null;
 };
 
@@ -136,7 +136,7 @@ export const fetchRecentPlaysViaProviderClient = async (providerCode, accessToke
       ? json.items
           .map((item) => normalizeSpotifyTrack(item?.track || {}))
           .filter((track) => {
-            if (!track?.provider_track_id || seen.has(track.provider_track_id)) return false;
+            if (!track?.provider_track_id || seen.has(track.provider_track_id)) {return false;}
             seen.add(track.provider_track_id);
             return true;
           })

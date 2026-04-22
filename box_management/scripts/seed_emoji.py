@@ -1,6 +1,7 @@
 # box_management/scripts/seed_emoji.py
 
 from django.db import transaction
+
 from box_management.models import Emoji
 
 
@@ -13,10 +14,7 @@ def run():
     """
 
     base_emojis = ["🔥", "🤯", "👽"]
-    extra_emojis = [
-        "✨", "😎", "🎉", "💥", "😱", "😍",
-        "🤘", "🎶", "😄", "🙌", "🤩", "😈"
-    ]
+    extra_emojis = ["✨", "😎", "🎉", "💥", "😱", "😍", "🤘", "🎶", "😄", "🙌", "🤩", "😈"]
     # 12 emojis → coûts 300, 350, ... 850
     extra_costs = [300 + i * 50 for i in range(len(extra_emojis))]
 

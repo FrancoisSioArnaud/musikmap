@@ -15,7 +15,7 @@ export function setWithTTL(key, value, ttlMinutes = DEFAULT_TTL_MINUTES) {
 export function getValid(key) {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return null;
+    if (!raw) {return null;}
     const obj = JSON.parse(raw);
     if (!obj || typeof obj.expiresAt !== "number") {
       localStorage.removeItem(key);

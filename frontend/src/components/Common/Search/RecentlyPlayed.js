@@ -1,15 +1,16 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { UserContext } from "../../UserContext";
-import { ensureValidSpotifyAccessToken } from "../../Utils/streaming/SpotifyUtils";
 import { fetchRecentPlaysViaProviderClient, getProviderConnection } from "../../Utils/streaming/providerClient";
-import SongList from "./SongList";
+import { ensureValidSpotifyAccessToken } from "../../Utils/streaming/SpotifyUtils";
+
 import { NO_PERSONALIZED_RESULTS_PROVIDER } from "./SearchProviderSelector";
+import SongList from "./SongList";
 
 const PROVIDER_LABELS = {
   spotify: "Spotify",

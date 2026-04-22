@@ -1,0 +1,7 @@
+HTTP/1.1 400 Bad Request
+Server: nginx/1.24.0 (Ubuntu)
+Date: Sun, 22 Feb 2026 18:24:26 GMT
+Content-Type: text/html
+Content-Length: 166
+Connection: close
+

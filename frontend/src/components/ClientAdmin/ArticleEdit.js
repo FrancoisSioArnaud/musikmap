@@ -1,40 +1,39 @@
+import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+import PublicIcon from "@mui/icons-material/Public";
+import SaveIcon from "@mui/icons-material/Save";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import Paper from "@mui/material/Paper";
+import Snackbar from "@mui/material/Snackbar";
+import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Switch from "@mui/material/Switch";
-import Divider from "@mui/material/Divider";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Snackbar from "@mui/material/Snackbar";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
-import Chip from "@mui/material/Chip";
 
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import SaveIcon from "@mui/icons-material/Save";
-import PublicIcon from "@mui/icons-material/Public";
-import ArchiveRoundedIcon from "@mui/icons-material/ArchiveRounded";
-import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
-
-import { getCookie } from "../Security/TokensUtils";
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+import { getCookie } from "../Security/TokensUtils";
 
 function toInputDate(value) {
-  if (!value) return "";
+  if (!value) {return "";}
   return String(value).slice(0, 10);
 }
 
 function toInputTime(value) {
-  if (!value) return "";
+  if (!value) {return "";}
   return String(value).slice(0, 5);
 }
 
@@ -42,7 +41,7 @@ function buildWindowSummary(form) {
   const hasDate = !!form.display_start_date || !!form.display_end_date;
   const hasTime = !!form.display_start_time || !!form.display_end_time;
 
-  if (!hasDate && !hasTime) return "Aucune restriction d’affichage";
+  if (!hasDate && !hasTime) {return "Aucune restriction d’affichage";}
 
   const parts = [];
 
@@ -62,13 +61,13 @@ function buildWindowSummary(form) {
 }
 
 function getStatusLabel(status) {
-  if (status === "published") return "Publié";
-  if (status === "archived") return "Archivé";
+  if (status === "published") {return "Publié";}
+  if (status === "archived") {return "Archivé";}
   return "Brouillon";
 }
 
 function extractErrorMessage(data, fallback) {
-  if (!data || typeof data !== "object") return fallback;
+  if (!data || typeof data !== "object") {return fallback;}
 
   if (typeof data.detail === "string" && data.detail.trim()) {
     return data.detail.trim();
@@ -136,7 +135,7 @@ export default function ArticleEdit() {
   }
 
   useEffect(() => {
-    if (isCreate) return;
+    if (isCreate) {return;}
 
     let cancelled = false;
 
@@ -164,7 +163,7 @@ export default function ArticleEdit() {
           );
         }
 
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         const nextForm = {
           title: data?.title || "",
@@ -221,7 +220,7 @@ export default function ArticleEdit() {
       const confirmed = window.confirm(
         "L’import va remplacer le titre, le texte court, le favicon et l’image de couverture actuels. Continuer ?"
       );
-      if (!confirmed) return;
+      if (!confirmed) {return;}
     }
 
     setImporting(true);

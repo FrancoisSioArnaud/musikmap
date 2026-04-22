@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import timedelta
-from typing import Optional
 
 import requests
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from requests import get, post, put
+from requests import post
 
 from users.models import CustomUser
 from users.provider_connections import (
@@ -30,7 +28,9 @@ def get_user_tokens(user):
     return get_provider_connection(user, "spotify")
 
 
-def update_or_create_user_tokens(user, access_token, token_type, expires_in, refresh_token, provider_user_id="", scopes=None):
+def update_or_create_user_tokens(
+    user, access_token, token_type, expires_in, refresh_token, provider_user_id="", scopes=None
+):
     if not getattr(user, "is_authenticated", False):
         return None
     return upsert_provider_connection(
@@ -153,10 +153,7 @@ def hydrate_user_from_spotify_profile(user: CustomUser, profile: dict) -> Custom
     display_name = (profile.get("display_name") or "").strip()
     email = (profile.get("email") or "").strip()
 
-    if not user.username:
-        user.username = generate_unique_username(display_name, email.split("@")[0] if email else "")
-        update_fields.append("username")
-    elif getattr(user, "is_guest", False) and user.username.startswith("guest_") and display_name:
+    if not user.username or getattr(user, "is_guest", False) and user.username.startswith("guest_") and display_name:
         user.username = generate_unique_username(display_name, email.split("@")[0] if email else "")
         update_fields.append("username")
 
@@ -185,7 +182,7 @@ def store_pending_spotify_auth(request, payload: dict):
     request.session.modified = True
 
 
-def get_pending_spotify_auth(request) -> Optional[dict]:
+def get_pending_spotify_auth(request) -> dict | None:
     payload = request.session.get(PENDING_SPOTIFY_AUTH_SESSION_KEY)
     return payload if isinstance(payload, dict) else None
 
@@ -203,7 +200,7 @@ def link_spotify_to_user(
     refresh_token: str = "",
     expires_in: int = 3600,
     provider_user_id: str = "",
-    profile: Optional[dict] = None,
+    profile: dict | None = None,
     scopes=None,
 ):
     update_or_create_user_tokens(

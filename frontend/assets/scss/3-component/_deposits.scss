@@ -75,10 +75,9 @@
 .deposit_card {
   display: flex;
   flex-direction: column;
-  box-shadow: none;
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
-  box-shadow: 0px 4px 8px -4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px -4px rgb(0 0 0 / 20%);
 }
 
 .favorite_song_section .deposit_card, .pinned_song_section .deposit_card{
@@ -176,8 +175,10 @@
   display: flex;
   overflow: hidden;
   background-color: var(--mm-color-primary-light);
+
   --deposit-reveal-settle-delay: 600ms;
   --deposit-reveal-settle-duration: 340ms;
+
   transition: 
     height 1s;
 }
@@ -193,7 +194,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: rgb(0 0 0 / 30%);
   transform-origin: left center;
   transform: scaleX(var(--deposit-reveal-progress, 0));
 }
@@ -205,6 +206,7 @@
 .deposit_main .deposit_song {
   flex-direction: column;
   gap: 16px;
+
   //  background : var(--mm-color-primary-dark);
   padding: 36px;
   padding-bottom: 32px;
@@ -224,6 +226,7 @@
 .my_deposit.deposit_song {
   border-radius: var(--mm-radius-md);
 }
+
 .my_deposit {
   background-color: var(--mm-color-surface);
 }
@@ -235,6 +238,7 @@
   flex-shrink: 0;
   transition: margin 1s;
 }
+
 .deposit_list .deposit_song:not(.is_hidden) .cover_media{
   margin:16px;
 }
@@ -246,9 +250,8 @@
   max-width: 100%;
   overflow: hidden;
   border-radius: var(--mm-radius-sm);
-  box-shadow: 0 0.4rem 0.6rem rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0.4rem 0.6rem rgb(0 0 0 / 15%);
   aspect-ratio: 1 / 1;
-  -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
 
@@ -258,9 +261,7 @@
   width: 100%;
   max-width: 100%;
   aspect-ratio: 1 / 1;
-  -o-object-fit: cover;
   object-fit: cover;
-  -webkit-transform: translateZ(0);
   transform: translateZ(0);
   transition: filter var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay);
   will-change: filter;
@@ -284,6 +285,7 @@
   flex-direction: column;
   padding: 6px 0;
   flex:1;
+
   //  color : var(--mm-color-black);
 }
 
@@ -305,6 +307,7 @@
   flex: 1;
   min-width: 0;
 }
+
 .deposit_main .interact {
   align-items: center;
   gap: 12px;
@@ -389,7 +392,6 @@
   will-change: left, top;
   cursor: pointer;
   pointer-events: auto;
-  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -417,7 +419,7 @@
 
 @keyframes emojiFloat {
   0% {
-    transform: translate(0px, 0px) rotate(calc(var(--rot-max, 5deg) * -0.45))
+    transform: translate(0, 0) rotate(calc(var(--rot-max, 5deg) * -0.45))
       scale(var(--scale-min, 0.95));
   }
 
@@ -442,7 +444,7 @@
   }
 
   100% {
-    transform: translate(0px, 0px) rotate(calc(var(--rot-max, 5deg) * -0.45))
+    transform: translate(0, 0) rotate(calc(var(--rot-max, 5deg) * -0.45))
       scale(var(--scale-min, 0.95));
   }
 }
@@ -485,9 +487,8 @@
 
 .favorite_song_actions {
   display: flex;
-  flex-direction: row;
+  flex-flow: row wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
 }

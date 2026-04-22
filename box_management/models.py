@@ -1,14 +1,16 @@
-from datetime import timedelta
-from django.db import models
 import re
-from django.utils import timezone
-from django.dispatch import receiver
+import secrets
+from datetime import timedelta
+from typing import Union
+
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from typing import Union, Optional
+from django.db import models
+from django.dispatch import receiver
+from django.utils import timezone
+
 from users.models import CustomUser
 from utils import generate_unique_filename
-import secrets
 
 
 class Client(models.Model):
@@ -133,7 +135,7 @@ class BoxSession(models.Model):
 
 
 class IncitationPhraseQuerySet(models.QuerySet):
-    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+    def _coerce_id(self, obj_or_id: int | models.Model) -> int:
         return getattr(obj_or_id, "pk", obj_or_id)
 
     def for_client(self, client_or_id: Union[int, "Client"]):
@@ -161,9 +163,7 @@ class IncitationPhrase(models.Model):
     text = models.CharField(
         max_length=100,
         blank=False,
-        help_text=(
-            "Phrase affichée sous la barre de recherche pendant la période choisie."
-        ),
+        help_text=("Phrase affichée sous la barre de recherche pendant la période choisie."),
     )
 
     start_date = models.DateField(db_index=True)
@@ -193,9 +193,7 @@ class IncitationPhrase(models.Model):
             errors["text"] = "La phrase d’incitation ne peut pas dépasser 100 caractères."
 
         if self.start_date and self.end_date and self.end_date < self.start_date:
-            errors["end_date"] = (
-                "La date de fin doit être postérieure ou égale à la date de début."
-            )
+            errors["end_date"] = "La date de fin doit être postérieure ou égale à la date de début."
 
         if errors:
             raise ValidationError(errors)
@@ -243,12 +241,11 @@ class IncitationPhrase(models.Model):
         return self.text
 
 
-
 class ArticleQuerySet(models.QuerySet):
     def with_related(self):
         return self.select_related("client", "author")
 
-    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+    def _coerce_id(self, obj_or_id: int | models.Model) -> int:
         return getattr(obj_or_id, "pk", obj_or_id)
 
     def for_client(self, client_or_id: Union[int, "Client"]):
@@ -260,16 +257,14 @@ class ArticleQuerySet(models.QuerySet):
             return self.none()
         return self.for_client(user.client_id)
 
-    def search(self, term: Optional[str]):
+    def search(self, term: str | None):
         if not term:
             return self
         return self.filter(
-            models.Q(title__icontains=term)
-            | models.Q(short_text__icontains=term)
-            | models.Q(link__icontains=term)
+            models.Q(title__icontains=term) | models.Q(short_text__icontains=term) | models.Q(link__icontains=term)
         )
 
-    def with_status(self, status_value: Optional[str]):
+    def with_status(self, status_value: str | None):
         if not status_value or status_value == "all":
             return self
         return self.filter(status=status_value)
@@ -282,9 +277,8 @@ class ArticleQuerySet(models.QuerySet):
         current_date = local_now.date()
         current_time = local_now.time().replace(second=0, microsecond=0, tzinfo=None)
 
-        date_filter = (
-            (models.Q(display_start_date__isnull=True) | models.Q(display_start_date__lte=current_date))
-            & (models.Q(display_end_date__isnull=True) | models.Q(display_end_date__gte=current_date))
+        date_filter = (models.Q(display_start_date__isnull=True) | models.Q(display_start_date__lte=current_date)) & (
+            models.Q(display_end_date__isnull=True) | models.Q(display_end_date__gte=current_date)
         )
 
         time_filter = (
@@ -314,10 +308,7 @@ class ArticleQuerySet(models.QuerySet):
                     display_end_time__isnull=False,
                     display_start_time__gt=models.F("display_end_time"),
                 )
-                & (
-                    models.Q(display_start_time__lte=current_time)
-                    | models.Q(display_end_time__gte=current_time)
-                )
+                & (models.Q(display_start_time__lte=current_time) | models.Q(display_end_time__gte=current_time))
             )
         )
 
@@ -419,9 +410,7 @@ class Article(models.Model):
 
     def clean(self):
         if self.author_id and self.client_id and self.author.client_id != self.client_id:
-            raise ValidationError(
-                {"author": "L'auteur doit appartenir au même client que l'article."}
-            )
+            raise ValidationError({"author": "L'auteur doit appartenir au même client que l'article."})
 
         self.title = (self.title or "").strip()
         self.link = (self.link or "").strip()
@@ -430,20 +419,12 @@ class Article(models.Model):
         self.cover_image = (self.cover_image or "").strip()
 
         if self.short_text and len(self.short_text) > 10000:
-            raise ValidationError(
-                {"short_text": "Le texte de l’article ne peut pas dépasser 10000 caractères."}
-            )
+            raise ValidationError({"short_text": "Le texte de l’article ne peut pas dépasser 10000 caractères."})
 
         errors = {}
 
-        if (
-            self.display_start_date
-            and self.display_end_date
-            and self.display_end_date < self.display_start_date
-        ):
-            errors["display_end_date"] = (
-                "La date de fin d’affichage doit être postérieure ou égale à la date de début."
-            )
+        if self.display_start_date and self.display_end_date and self.display_end_date < self.display_start_date:
+            errors["display_end_date"] = "La date de fin d’affichage doit être postérieure ou égale à la date de début."
 
         if self.status == "published":
             if not self.title:
@@ -539,7 +520,7 @@ class Article(models.Model):
         def format_time(value):
             if not value:
                 return None
-            return value.strftime('%H:%M')
+            return value.strftime("%H:%M")
 
         start_label = format_time(self.display_start_time)
         end_label = format_time(self.display_end_time)
@@ -664,11 +645,11 @@ class DepositQuerySet(models.QuerySet):
         """Précharge les FK pour éviter le N+1 dans les vues/serializers."""
         return self.select_related("song", "box", "user")
 
-    def _coerce_id(self, obj_or_id: Union[int, models.Model]) -> int:
+    def _coerce_id(self, obj_or_id: int | models.Model) -> int:
         """Retourne l'id si on passe un objet, sinon la valeur telle quelle."""
         return getattr(obj_or_id, "pk", obj_or_id)
 
-    def latest_for_box(self, box_or_id: Union[int, "Box"], limit: Optional[int] = None):
+    def latest_for_box(self, box_or_id: Union[int, "Box"], limit: int | None = None):
         """
         Derniers dépôts d'une box, triés du plus récent au plus ancien.
         Utilisation :
@@ -676,14 +657,10 @@ class DepositQuerySet(models.QuerySet):
             Deposit.objects.latest_for_box(box_id, limit=10)
         """
         bid = self._coerce_id(box_or_id)
-        qs = (
-            self.filter(box_id=bid, deposit_type="box")
-            .with_related()
-            .order_by("-deposited_at")
-        )
-        return qs[:int(limit)] if limit else qs
+        qs = self.filter(box_id=bid, deposit_type="box").with_related().order_by("-deposited_at")
+        return qs[: int(limit)] if limit else qs
 
-    def latest_for_user(self, user_or_id: Union[int, "CustomUser"], limit: Optional[int] = None):
+    def latest_for_user(self, user_or_id: Union[int, "CustomUser"], limit: int | None = None):
         """
         Derniers dépôts d'un utilisateur, triés du plus récent au plus ancien.
         Utilisation :
@@ -691,12 +668,8 @@ class DepositQuerySet(models.QuerySet):
             Deposit.objects.latest_for_user(user_id, limit=10)
         """
         uid = self._coerce_id(user_or_id)
-        qs = (
-            self.filter(user_id=uid).exclude(deposit_type="favorite")
-            .with_related()
-            .order_by("-deposited_at")
-        )
-        return qs[:int(limit)] if limit else qs
+        qs = self.filter(user_id=uid).exclude(deposit_type="favorite").with_related().order_by("-deposited_at")
+        return qs[: int(limit)] if limit else qs
 
 
 class Deposit(models.Model):
@@ -734,12 +707,7 @@ class Deposit(models.Model):
         db_index=True,
     )
 
-    public_key = models.CharField(
-        max_length=16,
-        unique=True,
-        db_index=True,
-        editable=False
-    )
+    public_key = models.CharField(max_length=16, unique=True, db_index=True, editable=False)
     pin_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     pin_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
     pin_points_spent = models.PositiveIntegerField(default=0)
@@ -758,10 +726,7 @@ class Deposit(models.Model):
         ]
 
     def __str__(self):
-        return (
-            f"Deposit {self.public_key} (song={self.song.public_key}, "
-            f"box={self.box_id}, type={self.deposit_type})"
-        )
+        return f"Deposit {self.public_key} (song={self.song.public_key}, box={self.box_id}, type={self.deposit_type})"
 
     def clean(self):
         if self.deposit_type in (self.DEPOSIT_TYPE_BOX, self.DEPOSIT_TYPE_PINNED) and not self.box_id:
@@ -781,7 +746,9 @@ class Deposit(models.Model):
             if not self.pin_duration_minutes:
                 raise ValidationError({"pin_duration_minutes": "La durée est obligatoire pour un dépôt épinglé."})
             if int(self.pin_points_spent or 0) <= 0:
-                raise ValidationError({"pin_points_spent": "Le coût doit être strictement positif pour un dépôt épinglé."})
+                raise ValidationError(
+                    {"pin_points_spent": "Le coût doit être strictement positif pour un dépôt épinglé."}
+                )
 
     def save(self, *args, **kwargs):
         if not self.public_key:
@@ -882,6 +849,7 @@ class DiscoveredSong(models.Model):
 
 class Emoji(models.Model):
     """Catalogue des emojis (Unicode)"""
+
     char = models.CharField(max_length=8, unique=True, db_index=True)
     active = models.BooleanField(default=True)
     cost = models.PositiveIntegerField(default=0)
@@ -899,6 +867,7 @@ class Emoji(models.Model):
 
 class EmojiRight(models.Model):
     """Droit global d'utiliser un emoji (achat par user)"""
+
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="emoji_rights")
     emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE, related_name="rights")
 
@@ -917,6 +886,7 @@ class Reaction(models.Model):
     L'emoji est modifiable (upsert côté API) : un user ne peut avoir qu'une seule
     réaction active par dépôt.
     """
+
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="reactions")
     deposit = models.ForeignKey(Deposit, on_delete=models.CASCADE, related_name="reactions")
     emoji = models.ForeignKey(Emoji, on_delete=models.CASCADE, related_name="reactions")
@@ -1163,8 +1133,6 @@ class CommentAttemptLog(models.Model):
         ]
 
 
-
-
 class Sticker(models.Model):
     STATUS_CREATED = "created"
     STATUS_GENERATED = "generated"
@@ -1312,6 +1280,7 @@ class Sticker(models.Model):
         self.sync_status()
         self.full_clean()
         return super().save(*args, **kwargs)
+
 
 class Link(models.Model):
     ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"

@@ -129,10 +129,10 @@ function mergeClientTheme(baseTheme, clientTheme) {
 
 export function getClientTheme(clientSlug) {
   const baseTheme = CLIENT_THEMES.default;
-  if (!clientSlug || clientSlug === "default") return baseTheme;
+  if (!clientSlug || clientSlug === "default") {return baseTheme;}
 
   const clientTheme = CLIENT_THEMES[clientSlug];
-  if (!clientTheme) return baseTheme;
+  if (!clientTheme) {return baseTheme;}
 
   return mergeClientTheme(baseTheme, clientTheme);
 }

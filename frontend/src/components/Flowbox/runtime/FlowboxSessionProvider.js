@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import { FlowboxSessionContext } from "./FlowboxSessionContext";
 import {
   getAllStoredFlowboxBoxes,
@@ -13,13 +14,13 @@ function nowMs() {
 }
 
 function isActiveSession(session) {
-  if (!session?.expiresAt) return false;
+  if (!session?.expiresAt) {return false;}
   const expiresAtMs = new Date(session.expiresAt).getTime();
   return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs();
 }
 
 function sanitizeSession(session) {
-  if (!session?.expiresAt && !session?.expires_at) return null;
+  if (!session?.expiresAt && !session?.expires_at) {return null;}
   return {
     startedAt: session.startedAt || session.started_at || null,
     expiresAt: session.expiresAt || session.expires_at,
@@ -27,7 +28,7 @@ function sanitizeSession(session) {
 }
 
 function sanitizeBox(box, fallbackSlug = null) {
-  if (!box && !fallbackSlug) return null;
+  if (!box && !fallbackSlug) {return null;}
   return {
     slug: box?.slug || fallbackSlug || null,
     name: box?.name || "",
@@ -53,7 +54,7 @@ export default function FlowboxSessionProvider({ children }) {
   const [uiHintsBySlug, setUiHintsBySlug] = useState({});
 
   const persistBoxState = useCallback((boxSlug, updater) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     let nextState = null;
     setBoxesBySlug((prev) => {
       const current = prev[boxSlug] || {};
@@ -69,7 +70,7 @@ export default function FlowboxSessionProvider({ children }) {
 
   const saveBoxBootstrap = useCallback((payload) => {
     const slug = payload?.slug;
-    if (!slug) return null;
+    if (!slug) {return null;}
 
     return persistBoxState(slug, (current) => ({
       ...current,
@@ -81,7 +82,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, [persistBoxState]);
 
   const markFlowboxVisited = useCallback((slug) => {
-    if (!slug) return;
+    if (!slug) {return;}
     setCurrentFlowboxSlug(slug);
     setLastVisitedFlowboxSlug(slug);
     const currentIndex = getFlowboxIndex();
@@ -106,7 +107,7 @@ export default function FlowboxSessionProvider({ children }) {
     const box = sanitizeBox(payload?.box, payload?.box?.slug || payload?.boxSlug || payload?.slug);
     const slug = box?.slug;
     const session = sanitizeSession(payload?.session || payload);
-    if (!slug || !session) return null;
+    if (!slug || !session) {return null;}
 
     const next = persistBoxState(slug, (current) => ({
       ...current,
@@ -131,7 +132,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, [persistBoxState]);
 
   const saveDiscoverSnapshot = useCallback((boxSlug, snapshot) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     return persistBoxState(boxSlug, (current) => ({
       ...current,
       discoverSnapshot: {
@@ -142,7 +143,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, [persistBoxState]);
 
   const clearDiscoverSnapshot = useCallback((boxSlug) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     return persistBoxState(boxSlug, (current) => ({
       ...current,
       discoverSnapshot: null,
@@ -150,7 +151,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, [persistBoxState]);
 
   const clearBoxSession = useCallback((boxSlug, { markExpired = false } = {}) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     return persistBoxState(boxSlug, (current) => ({
       ...current,
       session: null,
@@ -160,12 +161,12 @@ export default function FlowboxSessionProvider({ children }) {
   }, [persistBoxState]);
 
   const expireBoxSession = useCallback((boxSlug) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     return clearBoxSession(boxSlug, { markExpired: true });
   }, [clearBoxSession]);
 
   const getBoxRuntime = useCallback((boxSlug) => {
-    if (!boxSlug) return null;
+    if (!boxSlug) {return null;}
     return boxesBySlug[boxSlug] || null;
   }, [boxesBySlug]);
 
@@ -179,7 +180,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, [boxesBySlug]);
 
   const consumeEnterHint = useCallback((boxSlug) => {
-    if (!boxSlug) return;
+    if (!boxSlug) {return;}
     setUiHintsBySlug((prev) => ({
       ...prev,
       [boxSlug]: {
@@ -190,7 +191,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, []);
 
   const markThreeMinWarningShown = useCallback((boxSlug) => {
-    if (!boxSlug) return;
+    if (!boxSlug) {return;}
     setUiHintsBySlug((prev) => ({
       ...prev,
       [boxSlug]: {
@@ -201,7 +202,7 @@ export default function FlowboxSessionProvider({ children }) {
   }, []);
 
   const ensureBoxSession = useCallback(async (boxSlug) => {
-    if (!boxSlug) return { active: false };
+    if (!boxSlug) {return { active: false };}
 
     let shouldFetch = true;
     setSessionLoadStateBySlug((prev) => {
@@ -261,7 +262,7 @@ export default function FlowboxSessionProvider({ children }) {
           headers: { Accept: "application/json" },
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || cancelled) return;
+        if (!response.ok || cancelled) {return;}
 
         const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
         sessions.forEach((item) => {

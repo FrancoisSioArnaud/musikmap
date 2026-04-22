@@ -135,7 +135,8 @@ def api_exception_handler(exc, context):
             detail = _first_field_error(data.get("field_errors")) or default_error_detail_for_status(status_code)
             payload = api_error_payload(
                 status_code,
-                data.get("code") or ("VALIDATION_ERROR" if status_code < 500 else default_error_code_for_status(status_code)),
+                data.get("code")
+                or ("VALIDATION_ERROR" if status_code < 500 else default_error_code_for_status(status_code)),
                 data.get("detail") or detail,
                 field_errors=data.get("field_errors"),
             )
@@ -153,7 +154,12 @@ def api_exception_handler(exc, context):
                 status=status_code,
             )
 
-        detail = data.get("detail") or data.get("message") or data.get("error") or default_error_detail_for_status(status_code)
+        detail = (
+            data.get("detail")
+            or data.get("message")
+            or data.get("error")
+            or default_error_detail_for_status(status_code)
+        )
         payload = api_error_payload(
             status_code,
             data.get("code") or default_error_code_for_status(status_code),

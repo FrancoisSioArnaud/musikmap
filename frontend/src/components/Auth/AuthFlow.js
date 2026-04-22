@@ -54,13 +54,13 @@ export function buildRelativeLocation(locationLike) {
   if (!locationLike && typeof window !== "undefined") {
     return window.location.pathname + window.location.search + window.location.hash;
   }
-  if (!locationLike) return "/profile";
-  if (typeof locationLike === "string") return locationLike;
+  if (!locationLike) {return "/profile";}
+  if (typeof locationLike === "string") {return locationLike;}
   return `${locationLike.pathname || ""}${locationLike.search || ""}${locationLike.hash || ""}` || "/profile";
 }
 
 export function saveAuthReturnContext(payload) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {return;}
   try {
     window.sessionStorage.setItem(
       AUTH_RETURN_STORAGE_KEY,
@@ -73,10 +73,10 @@ export function saveAuthReturnContext(payload) {
 }
 
 export function getAuthReturnContext() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {return null;}
   try {
     const raw = window.sessionStorage.getItem(AUTH_RETURN_STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {return null;}
     return JSON.parse(raw);
   } catch (error) {
     return null;
@@ -84,7 +84,7 @@ export function getAuthReturnContext() {
 }
 
 export function clearAuthReturnContext() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {return;}
   try {
     window.sessionStorage.removeItem(AUTH_RETURN_STORAGE_KEY);
   } catch (error) {}
@@ -97,10 +97,10 @@ export function buildAuthPath({
   prefillUsername = "",
 } = {}) {
   const params = new URLSearchParams();
-  if (tab) params.set("tab", tab);
-  if (authContext) params.set("context", authContext);
-  if (mergeGuest) params.set("merge_guest", "1");
-  if (prefillUsername) params.set("prefill_username", prefillUsername);
+  if (tab) {params.set("tab", tab);}
+  if (authContext) {params.set("context", authContext);}
+  if (mergeGuest) {params.set("merge_guest", "1");}
+  if (prefillUsername) {params.set("prefill_username", prefillUsername);}
   const query = params.toString();
   return query ? `/auth?${query}` : "/auth";
 }
@@ -133,7 +133,7 @@ export function startAuthPageFlow({
 
 export function getAuthSuccessTarget({ fallback = "/profile", locationState = null } = {}) {
   const stored = getAuthReturnContext();
-  if (stored?.returnTo) return stored.returnTo;
+  if (stored?.returnTo) {return stored.returnTo;}
   const from = locationState?.from;
   if (from?.pathname) {
     return `${from.pathname || ""}${from.search || ""}${from.hash || ""}`;
@@ -147,10 +147,10 @@ export function consumeAuthAction({
   matcher,
 } = {}) {
   const stored = getAuthReturnContext();
-  if (!stored || !stored.action) return null;
-  if (stored.returnTo && currentPath && stored.returnTo !== currentPath) return null;
-  if (actionType && stored.action.type !== actionType) return null;
-  if (typeof matcher === "function" && !matcher(stored.action.payload || {})) return null;
+  if (!stored || !stored.action) {return null;}
+  if (stored.returnTo && currentPath && stored.returnTo !== currentPath) {return null;}
+  if (actionType && stored.action.type !== actionType) {return null;}
+  if (typeof matcher === "function" && !matcher(stored.action.payload || {})) {return null;}
   clearAuthReturnContext();
   return stored.action;
 }

@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from la_boite_a_son.api_errors import api_error
-
 from users.models import CustomUser, UserProviderConnection
+from users.provider_connections import upsert_provider_connection
 from users.utils import (
     build_current_user_payload,
     clear_guest_cookie,
@@ -24,7 +24,6 @@ from .credentials import CLIENT_ID, CLIENT_SECRET
 from .spotipy_client import sp
 from .util import (
     DEFAULT_SPOTIFY_SCOPES,
-    apply_pending_spotify_auth_to_user,
     clear_pending_spotify_auth,
     disconnect_user,
     fetch_spotify_profile,
@@ -37,9 +36,7 @@ from .util import (
     refresh_spotify_token,
     resolve_pending_spotify_auth,
     store_pending_spotify_auth,
-    update_or_create_user_tokens,
 )
-from users.provider_connections import upsert_provider_connection
 
 SPOTIFY_SCOPES = " ".join(DEFAULT_SPOTIFY_SCOPES)
 
@@ -165,7 +162,11 @@ class RefreshAccessToken(APIView):
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
 
         if not refresh_spotify_token(request.user):
-            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "SPOTIFY_TOKEN_REFRESH_FAILED", "Impossible de rafraîchir la connexion Spotify.")
+            return api_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "SPOTIFY_TOKEN_REFRESH_FAILED",
+                "Impossible de rafraîchir la connexion Spotify.",
+            )
 
         connection = get_user_tokens(request.user)
         connection_payload = build_current_user_payload(request.user)
@@ -233,7 +234,9 @@ class Search(APIView):
         try:
             results = sp.search(q=search_query, type="track", limit=15)
         except Exception:
-            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "SPOTIFY_SEARCH_UNAVAILABLE", "Recherche Spotify indisponible.")
+            return api_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "SPOTIFY_SEARCH_UNAVAILABLE", "Recherche Spotify indisponible."
+            )
 
         tracks = []
         for item in results.get("tracks", {}).get("items", []):
@@ -269,7 +272,7 @@ def spotify_callback(request, format=None):
     if error or not code:
         return _frontend_result_redirect("error", {"reason": "spotify_oauth_error"})
 
-    encoded_credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
+    encoded_credentials = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode("utf-8")
     headers = {
         "Authorization": "Basic " + encoded_credentials,
         "Content-Type": "application/x-www-form-urlencoded",
@@ -308,7 +311,11 @@ def spotify_callback(request, format=None):
     )
     provider_owner = provider_owner_connection.user if provider_owner_connection else None
 
-    if current_user and getattr(current_user, "is_authenticated", False) and not getattr(current_user, "is_guest", False):
+    if (
+        current_user
+        and getattr(current_user, "is_authenticated", False)
+        and not getattr(current_user, "is_guest", False)
+    ):
         if provider_owner and provider_owner.pk != current_user.pk:
             store_pending_spotify_auth(
                 request,

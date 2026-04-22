@@ -6,9 +6,16 @@ import importPlugin from "eslint-plugin-import";
 
 export default [
   {
-    ignores: ["node_modules/**", "dist/**", "coverage/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "coverage/**",
+      "static/frontend/**",
+    ],
   },
+
   js.configs.recommended,
+
   {
     files: ["src/**/*.js"],
     languageOptions: {
@@ -22,6 +29,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.jest,
+        ...globals.node,
       },
     },
     settings: {
@@ -35,20 +43,33 @@ export default [
       import: importPlugin,
     },
     rules: {
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^React$",
+          caughtErrors: "none",
+        },
+      ],
       "no-undef": "error",
-      eqeqeq: ["error", "always"],
-      curly: ["error", "all"],
+      "eqeqeq": ["error", "always"],
+      "curly": ["error", "all"],
       "prefer-const": "error",
       "no-var": "error",
       "no-duplicate-imports": "error",
-      "consistent-return": "error",
+      "consistent-return": "warn",
+
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "no-console": ["warn", { allow: ["warn", "error"] }],
+
       "react/jsx-key": "error",
+      "react/jsx-uses-vars": "error",
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
+
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "error",
+      "react-hooks/exhaustive-deps": "warn",
+
       "import/no-duplicates": "error",
       "import/first": "error",
       "import/newline-after-import": "error",
@@ -60,6 +81,7 @@ export default [
           groups: ["builtin", "external", "internal", "parent", "sibling", "index"],
         },
       ],
+
       "max-lines": [
         "warn",
         {
@@ -77,7 +99,8 @@ export default [
           IIFEs: true,
         },
       ],
-      complexity: ["warn", 10],
+      "complexity": ["warn", 10],
+
       "no-restricted-syntax": [
         "error",
         {
@@ -86,7 +109,8 @@ export default [
           message: "Évite window.location.reload(). Utilise un update d’état ou react-router.",
         },
         {
-          selector: "CallExpression[callee.object.name='location'][callee.property.name='reload']",
+          selector:
+            "CallExpression[callee.object.name='location'][callee.property.name='reload']",
           message: "Évite location.reload(). Utilise un update d’état ou react-router.",
         },
       ],

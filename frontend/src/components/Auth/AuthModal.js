@@ -1,7 +1,8 @@
-import React from "react";
 import Dialog from "@mui/material/Dialog";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import React from "react";
+
 import AuthPanel from "./AuthPanel";
 
 export default function AuthModal(props) {

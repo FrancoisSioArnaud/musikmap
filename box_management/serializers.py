@@ -1,16 +1,17 @@
 from rest_framework import serializers
+
 from .models import (
     Article,
     Box,
     Client,
-    Song,
     Deposit,
-    LocationPoint,
     DiscoveredSong,
     Emoji,
     EmojiRight,
-    Reaction,
     IncitationPhrase,
+    LocationPoint,
+    Reaction,
+    Song,
 )
 
 
@@ -314,9 +315,7 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
     def validate_short_text(self, value):
         value = (value or "").strip()
         if len(value) > 10000:
-            raise serializers.ValidationError(
-                "Le texte de l’article ne peut pas dépasser 10000 caractères."
-            )
+            raise serializers.ValidationError("Le texte de l’article ne peut pas dépasser 10000 caractères.")
         return value
 
     def validate_favicon(self, value):
@@ -378,9 +377,7 @@ class ClientAdminArticleSerializer(serializers.ModelSerializer):
         errors = {}
 
         if display_start_date and display_end_date and display_end_date < display_start_date:
-            errors["display_end_date"] = (
-                "La date de fin d’affichage doit être postérieure ou égale à la date de début."
-            )
+            errors["display_end_date"] = "La date de fin d’affichage doit être postérieure ou égale à la date de début."
 
         if status_value == "published":
             if not title:
@@ -492,8 +489,8 @@ class ClientAdminIncitationSerializer(serializers.ModelSerializer):
         end_date = attrs.get("end_date", getattr(instance, "end_date", None))
 
         if start_date and end_date and end_date < start_date:
-            raise serializers.ValidationError({
-                "end_date": "La date de fin doit être postérieure ou égale à la date de début."
-            })
+            raise serializers.ValidationError(
+                {"end_date": "La date de fin doit être postérieure ou égale à la date de début."}
+            )
 
         return attrs

@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 
@@ -114,7 +113,7 @@ export default function ReactionSummary({
         return;
       }
 
-      if (!canNavigate) return;
+      if (!canNavigate) {return;}
 
       onClose?.({ replace: true });
       navigate("/profile/" + normalized.username);

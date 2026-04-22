@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,17 +9,16 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
-import SearchIcon from "@mui/icons-material/Search";
-import FavoriteIcon from "@mui/icons-material/Favorite";
 import Typography from "@mui/material/Typography";
-import RemoveCircleOutlineOutlinedIcon from "@mui/icons-material/RemoveCircleOutlineOutlined";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
 import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 import {
   closeDrawerWithHistory,
   matchesDrawerSearch,
@@ -75,17 +74,17 @@ export default function FavoriteSongSection({
     }
 
     setDrawerOpen((prev) => {
-      if (!prev) return prev;
+      if (!prev) {return prev;}
       resetDrawerState();
       return false;
     });
   }, [location, resetDrawerState]);
 
   useEffect(() => {
-    if (!drawerOpen) return undefined;
+    if (!drawerOpen) {return undefined;}
 
     const initialSelectedProvider = resolveInitialSelectedProvider(user);
-    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) {return undefined;}
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
@@ -103,7 +102,7 @@ export default function FavoriteSongSection({
   }, [location, navigate]);
 
   useEffect(() => {
-    if (!user?.id || user?.is_guest) return;
+    if (!user?.id || user?.is_guest) {return;}
     const pendingAction = consumeAuthAction({
       currentPath: buildRelativeLocation(location),
       actionType: "favorite_song",
@@ -115,7 +114,7 @@ export default function FavoriteSongSection({
 
   const closeDrawer = useCallback(
     (force = false, options = {}) => {
-      if (depositFlowState.status === "pending" && !force) return;
+      if (depositFlowState.status === "pending" && !force) {return;}
 
       const shouldReplaceHistory = Boolean(options?.replace);
       if (
@@ -137,7 +136,7 @@ export default function FavoriteSongSection({
   );
 
   const syncCurrentUser = useCallback((payload) => {
-    if (!payload || !setUser) return;
+    if (!payload || !setUser) {return;}
     setUser(payload);
   }, [setUser]);
 
@@ -146,7 +145,7 @@ export default function FavoriteSongSection({
   }, []);
 
   const handleSetFavorite = useCallback(async (option, requestKey) => {
-    if (depositFlowState.status === "pending") return;
+    if (depositFlowState.status === "pending") {return;}
 
     setDepositFlowState({
       requestKey,
@@ -206,7 +205,7 @@ export default function FavoriteSongSection({
   }, [closeDrawer, depositFlowState.requestKey, depositFlowState.status]);
 
   const handleRemoveFavorite = useCallback(async () => {
-    if (removingFavorite) return;
+    if (removingFavorite) {return;}
 
     setRemovingFavorite(true);
     try {

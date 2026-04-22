@@ -5,8 +5,8 @@ from importlib import import_module
 from django.db import transaction
 from django.utils import timezone
 
-from box_management.models import Box, Deposit, Song, Emoji, EmojiRight, Reaction, Comment
-from box_management.utils import _normalize_comment_text, _get_profile_picture_url
+from box_management.models import Box, Comment, Deposit, Emoji, EmojiRight, Reaction, Song
+from box_management.utils import _get_profile_picture_url, _normalize_comment_text
 
 seed_siohome = import_module("box_management.scripts.seed_siohome")
 
@@ -50,10 +50,7 @@ COMMENT_TEXTS = [
 def _get_box():
     box = Box.objects.filter(url=BOX_SLUG).select_related("client").first()
     if not box:
-        print(
-            f"[ERR] La box avec url='{BOX_SLUG}' est introuvable. "
-            "Crée-la d'abord puis relance le script."
-        )
+        print(f"[ERR] La box avec url='{BOX_SLUG}' est introuvable. Crée-la d'abord puis relance le script.")
         return None
     return box
 
@@ -151,9 +148,7 @@ def _ensure_emoji_rights(users_by_name, emojis):
 
 
 def _pick_reaction_targets(box, user):
-    reacted_deposit_ids = set(
-        Reaction.objects.filter(user=user, deposit__box=box).values_list("deposit_id", flat=True)
-    )
+    reacted_deposit_ids = set(Reaction.objects.filter(user=user, deposit__box=box).values_list("deposit_id", flat=True))
 
     candidates = list(
         Deposit.objects.select_related("user", "song")
@@ -368,7 +363,6 @@ def seed_chantier():
     print(f"Reactions : {total_reactions}")
     print(f"Commentaires : {total_comments}")
     print("Done ✅")
-
 
 
 def run():

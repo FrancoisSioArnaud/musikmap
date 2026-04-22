@@ -1,17 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import timedelta
 from difflib import SequenceMatcher
-from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import urlencode
+from typing import Any
 
 import requests
 from django.db import transaction
 from django.utils import timezone
 
-from deezer.credentials import APP_ID as DEEZER_APP_ID
-from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID
-from spotify.credentials import REDIRECT_URI as SPOTIFY_REDIRECT_URI
 from spotify.spotipy_client import sp
 
 from .models import Song, SongProviderLink
@@ -31,11 +28,11 @@ def normalize_provider_code(value: Any) -> str:
     return ""
 
 
-def build_provider_code_from_option(option: Dict[str, Any]) -> str:
+def build_provider_code_from_option(option: dict[str, Any]) -> str:
     return normalize_provider_code(option.get("provider_code") or option.get("platform_id"))
 
 
-def normalize_artists(value: Any) -> List[str]:
+def normalize_artists(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
     if isinstance(value, tuple):
@@ -78,7 +75,7 @@ def provider_uri_from_track_id(provider_code: str, provider_track_id: str) -> st
     return ""
 
 
-def serialize_provider_link(link: Optional[SongProviderLink]) -> Optional[Dict[str, Any]]:
+def serialize_provider_link(link: SongProviderLink | None) -> dict[str, Any] | None:
     if not link:
         return None
     return {
@@ -91,8 +88,8 @@ def serialize_provider_link(link: Optional[SongProviderLink]) -> Optional[Dict[s
     }
 
 
-def get_song_provider_links_map(song: Song) -> Dict[str, Dict[str, Any]]:
-    links: Dict[str, Dict[str, Any]] = {}
+def get_song_provider_links_map(song: Song) -> dict[str, dict[str, Any]]:
+    links: dict[str, dict[str, Any]] = {}
     prefetched = getattr(song, "prefetched_provider_links", None)
     iterable = prefetched if prefetched is not None else song.provider_links.all()
     for link in iterable:
@@ -104,7 +101,7 @@ def _safe_text(value: Any) -> str:
     return str(value or "").strip()
 
 
-def normalize_track_payload(raw_track: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_track_payload(raw_track: dict[str, Any]) -> dict[str, Any]:
     provider_code = build_provider_code_from_option(raw_track)
     artists = normalize_artists(raw_track.get("artists") or raw_track.get("artist"))
     provider_track_id = _safe_text(raw_track.get("provider_track_id") or raw_track.get("id"))
@@ -136,7 +133,7 @@ def normalize_track_payload(raw_track: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_spotify_track(item: Dict[str, Any], *, include_isrc: bool = False) -> Dict[str, Any]:
+def normalize_spotify_track(item: dict[str, Any], *, include_isrc: bool = False) -> dict[str, Any]:
     album = item.get("album") or {}
     images = album.get("images") or []
     image_url = images[0]["url"] if images else ""
@@ -148,7 +145,8 @@ def normalize_spotify_track(item: Dict[str, Any], *, include_isrc: bool = False)
         {
             "provider_code": "spotify",
             "provider_track_id": item.get("id"),
-            "provider_url": ((item.get("external_urls") or {}).get("spotify")) or provider_url_from_track_id("spotify", item.get("id") or ""),
+            "provider_url": ((item.get("external_urls") or {}).get("spotify"))
+            or provider_url_from_track_id("spotify", item.get("id") or ""),
             "provider_uri": item.get("uri") or provider_uri_from_track_id("spotify", item.get("id") or ""),
             "title": item.get("name"),
             "artists": artists,
@@ -160,7 +158,7 @@ def normalize_spotify_track(item: Dict[str, Any], *, include_isrc: bool = False)
     )
 
 
-def normalize_deezer_track(item: Dict[str, Any], *, include_isrc: bool = True) -> Dict[str, Any]:
+def normalize_deezer_track(item: dict[str, Any], *, include_isrc: bool = True) -> dict[str, Any]:
     album = item.get("album") or {}
     contributors = item.get("contributors") or []
     artists = [artist.get("name") for artist in contributors if artist.get("name")]
@@ -184,7 +182,7 @@ def normalize_deezer_track(item: Dict[str, Any], *, include_isrc: bool = True) -
     )
 
 
-def backend_search_tracks(provider_code: str, search_query: str) -> List[Dict[str, Any]]:
+def backend_search_tracks(provider_code: str, search_query: str) -> list[dict[str, Any]]:
     provider = normalize_provider_code(provider_code)
     query = _safe_text(search_query)
     if not provider or not query:
@@ -204,7 +202,7 @@ def backend_search_tracks(provider_code: str, search_query: str) -> List[Dict[st
         return []
 
 
-def fetch_provider_track(provider_code: str, provider_track_id: str) -> Optional[Dict[str, Any]]:
+def fetch_provider_track(provider_code: str, provider_track_id: str) -> dict[str, Any] | None:
     provider = normalize_provider_code(provider_code)
     track_id = _safe_text(provider_track_id)
     if not provider or not track_id:
@@ -223,14 +221,20 @@ def fetch_provider_track(provider_code: str, provider_track_id: str) -> Optional
 
 
 def _normalized_compare_text(value: str) -> str:
-    return " ".join(repr(value).strip("'\"").lower().replace("&", " ").replace("feat.", " ").replace("feat", " ").split())
+    return " ".join(
+        repr(value).strip("'\"").lower().replace("&", " ").replace("feat.", " ").replace("feat", " ").split()
+    )
 
 
-def _score_candidate(song: Song, candidate: Dict[str, Any]) -> float:
-    title_ratio = SequenceMatcher(None, _normalized_compare_text(song.title), _normalized_compare_text(candidate.get("title") or "")).ratio()
+def _score_candidate(song: Song, candidate: dict[str, Any]) -> float:
+    title_ratio = SequenceMatcher(
+        None, _normalized_compare_text(song.title), _normalized_compare_text(candidate.get("title") or "")
+    ).ratio()
     source_artist = _normalized_compare_text(build_artist_display(song.artists_json or []))
     target_artist = _normalized_compare_text(build_artist_display(candidate.get("artists") or []))
-    artist_ratio = SequenceMatcher(None, source_artist, target_artist).ratio() if source_artist and target_artist else 0.0
+    artist_ratio = (
+        SequenceMatcher(None, source_artist, target_artist).ratio() if source_artist and target_artist else 0.0
+    )
     source_duration = int(song.duration or 0)
     target_duration = int(candidate.get("duration") or 0)
     duration_ratio = 1.0
@@ -240,7 +244,7 @@ def _score_candidate(song: Song, candidate: Dict[str, Any]) -> float:
     return (title_ratio * 0.5) + (artist_ratio * 0.35) + (duration_ratio * 0.15)
 
 
-def search_provider_track_by_isrc(provider_code: str, isrc: str) -> Optional[Dict[str, Any]]:
+def search_provider_track_by_isrc(provider_code: str, isrc: str) -> dict[str, Any] | None:
     provider = normalize_provider_code(provider_code)
     code = _safe_text(isrc)
     if not provider or not code:
@@ -248,7 +252,7 @@ def search_provider_track_by_isrc(provider_code: str, isrc: str) -> Optional[Dic
     try:
         if provider == "spotify":
             results = sp.search(q=f"isrc:{code}", type="track", limit=5)
-            items = ((results.get("tracks") or {}).get("items") or [])
+            items = (results.get("tracks") or {}).get("items") or []
             for item in items:
                 normalized = normalize_spotify_track(item, include_isrc=True)
                 if _safe_text(normalized.get("isrc")).upper() == code.upper():
@@ -270,7 +274,7 @@ def search_provider_track_by_isrc(provider_code: str, isrc: str) -> Optional[Dic
         return None
 
 
-def search_provider_track_by_metadata(provider_code: str, song: Song) -> Optional[Dict[str, Any]]:
+def search_provider_track_by_metadata(provider_code: str, song: Song) -> dict[str, Any] | None:
     query = " ".join(filter(None, [song.title, build_artist_display(song.artists_json or [])]))
     candidates = backend_search_tracks(provider_code, query)
     if not candidates:
@@ -288,7 +292,7 @@ def search_provider_track_by_metadata(provider_code: str, song: Song) -> Optiona
     return best
 
 
-def get_or_create_song_from_track(track_payload: Dict[str, Any]) -> Song:
+def get_or_create_song_from_track(track_payload: dict[str, Any]) -> Song:
     track = normalize_track_payload(track_payload)
     if not track["title"]:
         raise ValueError("Informations de chanson incomplètes.")
@@ -298,7 +302,11 @@ def get_or_create_song_from_track(track_payload: Dict[str, Any]) -> Song:
     if provider_code and provider_track_id:
         existing_link = (
             SongProviderLink.objects.select_related("song")
-            .filter(provider_code=provider_code, provider_track_id=provider_track_id, status=SongProviderLink.STATUS_RESOLVED)
+            .filter(
+                provider_code=provider_code,
+                provider_track_id=provider_track_id,
+                status=SongProviderLink.STATUS_RESOLVED,
+            )
             .first()
         )
         if existing_link:
@@ -314,7 +322,9 @@ def get_or_create_song_from_track(track_payload: Dict[str, Any]) -> Song:
         title__iexact=track["title"],
         duration=track["duration"],
     ).first()
-    if existing_song and [str(a).strip().lower() for a in (existing_song.artists_json or [])] == [str(a).strip().lower() for a in artists_json]:
+    if existing_song and [str(a).strip().lower() for a in (existing_song.artists_json or [])] == [
+        str(a).strip().lower() for a in artists_json
+    ]:
         return existing_song
 
     import secrets
@@ -334,7 +344,9 @@ def get_or_create_song_from_track(track_payload: Dict[str, Any]) -> Song:
     )
 
 
-def upsert_song_provider_link(song: Song, track_payload: Dict[str, Any], *, status: str = SongProviderLink.STATUS_RESOLVED) -> Optional[SongProviderLink]:
+def upsert_song_provider_link(
+    song: Song, track_payload: dict[str, Any], *, status: str = SongProviderLink.STATUS_RESOLVED
+) -> SongProviderLink | None:
     track = normalize_track_payload(track_payload)
     provider_code = track["provider_code"]
     if not provider_code:
@@ -354,8 +366,8 @@ def upsert_song_provider_link(song: Song, track_payload: Dict[str, Any], *, stat
     return link
 
 
-def _maybe_refresh_song_core(song: Song, track: Dict[str, Any]) -> None:
-    update_fields: List[str] = []
+def _maybe_refresh_song_core(song: Song, track: dict[str, Any]) -> None:
+    update_fields: list[str] = []
     if not (song.artists_json or []) and track.get("artists"):
         song.artists_json = track["artists"]
         update_fields.append("artists_json")
@@ -393,7 +405,7 @@ def _resolve_source_track_isrc(song: Song) -> None:
     upsert_song_provider_link(song, details)
 
 
-def resolve_provider_link_for_song(song: Song, target_provider_code: str) -> Dict[str, Any]:
+def resolve_provider_link_for_song(song: Song, target_provider_code: str) -> dict[str, Any]:
     provider_code = normalize_provider_code(target_provider_code)
     if not provider_code:
         return {"ok": False, "code": "INVALID_PROVIDER", "message": "Plateforme invalide."}
@@ -453,5 +465,3 @@ def resolve_provider_link_for_song(song: Song, target_provider_code: str) -> Dic
             "code": "PROVIDER_RESOLUTION_ERROR",
             "message": "La plateforme est indisponible pour le moment. Réessaie plus tard.",
         }
-
-

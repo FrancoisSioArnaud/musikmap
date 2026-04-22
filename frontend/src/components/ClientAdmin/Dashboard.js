@@ -1,13 +1,14 @@
-import React, { useContext, useMemo } from "react";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
-import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
-import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
-import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import React, { useContext, useMemo } from "react";
+
 import { UserContext } from "../UserContext";
 
 function getClientName(user) {

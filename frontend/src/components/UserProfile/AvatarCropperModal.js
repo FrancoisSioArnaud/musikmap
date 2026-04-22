@@ -1,16 +1,16 @@
 // frontend/src/components/AvatarCropperModal.jsx
-import React, { useEffect, useState } from "react";
-import Cropper from "react-easy-crop";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
-import Button from "@mui/material/Button";
+import DialogTitle from "@mui/material/DialogTitle";
 import Slider from "@mui/material/Slider";
 import Typography from "@mui/material/Typography";
 import * as exifr from "exifr";
 import heic2any from "heic2any";
+import React, { useEffect, useState } from "react";
+import Cropper from "react-easy-crop";
 
 // --- Utils canvas ---
 async function fileToImage(file) {
@@ -171,7 +171,7 @@ export default function AvatarCropperModal({ open, file, onCancel, onConfirm }) 
     let revoke;
     async function load() {
       setError("");
-      if (!file) return;
+      if (!file) {return;}
       try {
         const { img, url, blob } = await fileToImage(file);
         revoke = url;
@@ -185,7 +185,7 @@ export default function AvatarCropperModal({ open, file, onCancel, onConfirm }) 
     }
     load();
     return () => {
-      if (revoke) URL.revokeObjectURL(revoke);
+      if (revoke) {URL.revokeObjectURL(revoke);}
       setImage(null);
       setSourceCanvas(null);
     };
@@ -196,7 +196,7 @@ export default function AvatarCropperModal({ open, file, onCancel, onConfirm }) 
   };
 
   const handleConfirm = async () => {
-    if (!sourceCanvas || !croppedAreaPixels) return;
+    if (!sourceCanvas || !croppedAreaPixels) {return;}
     const out512 = cropAndResize(sourceCanvas, croppedAreaPixels, 512);
     const blob = await canvasToJpegBlob(out512, 0.8);
     if (!blob) {

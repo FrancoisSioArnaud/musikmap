@@ -6,8 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Comment, Deposit
-from box_management.utils import _normalize_comment_text, _get_profile_picture_url
-
+from box_management.utils import _get_profile_picture_url, _normalize_comment_text
 
 SEED_REASON_CODE = "seed_fake_comment"
 COMMENTS_PER_USER = 5
@@ -71,9 +70,7 @@ def _pick_candidate_deposits_for_user(user):
     - owner différent du user courant
     - dépôt pas déjà commenté par ce user
     """
-    already_commented_deposit_ids = set(
-        Comment.objects.filter(user=user).values_list("deposit_id", flat=True)
-    )
+    already_commented_deposit_ids = set(Comment.objects.filter(user=user).values_list("deposit_id", flat=True))
 
     deposits = list(
         Deposit.objects.select_related("box__client", "user", "song")

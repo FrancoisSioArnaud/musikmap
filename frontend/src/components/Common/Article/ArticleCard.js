@@ -1,12 +1,11 @@
-import React, { useMemo } from "react";
-
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import React, { useMemo } from "react";
 
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 function getDomainLabel(url) {
-  if (!url) return "";
+  if (!url) {return "";}
 
   try {
     const parsed = new URL(url);
@@ -33,8 +32,8 @@ function stripMarkdown(text) {
 
 function truncateText(text, maxLength = 220) {
   const value = stripMarkdown(text);
-  if (!value) return "";
-  if (value.length <= maxLength) return value;
+  if (!value) {return "";}
+  if (value.length <= maxLength) {return value;}
   return `${value.slice(0, maxLength).trimEnd()}...`;
 }
 
@@ -43,7 +42,7 @@ export default function ArticleCard({ article, onOpenDrawer }) {
   const previewText = useMemo(() => truncateText(article?.short_text, 220), [article?.short_text]);
 
   const linkLabel = useMemo(() => {
-    if (domainLabel) return domainLabel;
+    if (domainLabel) {return domainLabel;}
 
     const clientSlug = String(article?.client_slug || "").trim();
     return clientSlug ? `À lire, par ${clientSlug}` : "À lire";

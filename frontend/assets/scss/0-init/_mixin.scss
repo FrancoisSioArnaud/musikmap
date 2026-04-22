@@ -4,12 +4,12 @@
  */
 
 @mixin clearfix {
-  &:before {
+  &::before {
     content: '';
     display: table;
   }
 
-  &:after {
+  &::after {
     content: '';
     display: table;
     clear: both;

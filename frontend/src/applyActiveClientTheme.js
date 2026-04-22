@@ -3,7 +3,7 @@
 import { getClientTheme } from "./clientThemes";
 
 export function applyActiveClientTheme(clientSlug) {
-  if (typeof document === "undefined") return getClientTheme(clientSlug);
+  if (typeof document === "undefined") {return getClientTheme(clientSlug);}
 
   const theme = getClientTheme(clientSlug);
   const root = document.documentElement;

@@ -1,6 +1,11 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
+import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
+import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
+import MusicNote from "@mui/icons-material/MusicNote";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SendIcon from "@mui/icons-material/Send";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -15,35 +20,31 @@ import Slide from "@mui/material/Slide";
 import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Typography from "@mui/material/Typography";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
-import MusicNote from "@mui/icons-material/MusicNote";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import SendIcon from "@mui/icons-material/Send";
-
-import AuthModal from "../Auth/AuthModal";
 import {
   buildRelativeLocation,
   clearAuthReturnContext,
   consumeAuthAction,
   saveAuthReturnContext,
 } from "../Auth/AuthFlow";
+import AuthModal from "../Auth/AuthModal";
 import CommentsDrawer from "../Comments/CommentsDrawer";
 import AddReactionModal from "../Reactions/AddReactionModal";
 import ReactionSummary from "../Reactions/ReactionSummary";
-import { UserContext } from "../UserContext";
-import { getValid, setWithTTL } from "../Utils/mmStorage";
-import PlayModal from "./PlayModal";
 import { getCookie } from "../Security/TokensUtils";
-import { formatRelativeTime } from "../Utils/time";
+import { UserContext } from "../UserContext";
 import {
   closeDrawerWithHistory,
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
+import { formatRelativeTime } from "../Utils/time";
+
+import PlayModal from "./PlayModal";
+
 
 
 function SlideDownTransition(props) {
@@ -185,7 +186,7 @@ function getFloatingEmojiItems(reactions) {
 
   const count = emojiItems.length;
 
-  if (!count) return [];
+  if (!count) {return [];}
 
   const cols = Math.max(3, Math.ceil(Math.sqrt(count * 1.1)));
   const rows = Math.max(2, Math.ceil(count / cols));
@@ -259,9 +260,9 @@ export default function Deposit({
 
   const revealCost = (() => {
     const parsed = Number(cost);
-    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    if (Number.isFinite(parsed) && parsed > 0) {return parsed;}
     const ecoCost = Number(economy?.reveal_cost);
-    if (Number.isFinite(ecoCost) && ecoCost > 0) return ecoCost;
+    if (Number.isFinite(ecoCost) && ecoCost > 0) {return ecoCost;}
     return 100;
   })();
 
@@ -326,18 +327,18 @@ export default function Deposit({
   const canShare = Boolean(viewer?.id && isRevealed);
   const resolvedShareBoxName = useMemo(() => {
     const propName = String(boxName || "").trim();
-    if (propName) return propName;
+    if (propName) {return propName;}
 
     const localBoxName = String(localDep?.box?.name || localDep?.box_name || "").trim();
-    if (localBoxName) return localBoxName;
+    if (localBoxName) {return localBoxName;}
 
     try {
       const raw = localStorage.getItem("mm_current_box");
-      if (!raw) return "";
+      if (!raw) {return "";}
 
       const storedBox = JSON.parse(raw);
       const storedBoxName = String(storedBox?.box_name || "").trim();
-      if (!storedBoxName) return "";
+      if (!storedBoxName) {return "";}
 
       const routeMatch = location?.pathname?.match(/^\/flowbox\/([^/]+)/);
       const currentRouteBoxSlug = routeMatch?.[1] || "";
@@ -355,7 +356,7 @@ export default function Deposit({
     setDispDeposits?.((prev) => {
       const arr = Array.isArray(prev) ? [...prev] : [];
       return arr.map((item) => {
-        if (!item || item.public_key !== localDep?.public_key) return item;
+        if (!item || item.public_key !== localDep?.public_key) {return item;}
         return transform(item);
       });
     });
@@ -364,11 +365,11 @@ export default function Deposit({
   const updateStorageSnapshot = useCallback((transform) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap) return;
+      if (!snap) {return;}
 
       let changed = false;
       const applyToDeposit = (item) => {
-        if (!item || item.public_key !== localDep?.public_key) return item;
+        if (!item || item.public_key !== localDep?.public_key) {return item;}
         changed = true;
         return transform(item);
       };
@@ -395,7 +396,7 @@ export default function Deposit({
         next.olderDeposits = next.olderDeposits.map(applyToDeposit);
       }
 
-      if (!changed) return;
+      if (!changed) {return;}
 
       next.timestamp = Date.now();
       setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
@@ -403,7 +404,7 @@ export default function Deposit({
   }, [localDep?.public_key]);
 
   const getPlaySongKey = (currentSong) => {
-    if (!currentSong) return "";
+    if (!currentSong) {return "";}
 
     return [
       currentSong?.public_key,
@@ -419,7 +420,7 @@ export default function Deposit({
   };
 
   const handleSongResolved = useCallback((resolvedSong) => {
-    if (!resolvedSong) return;
+    if (!resolvedSong) {return;}
 
     setPlaySong(resolvedSong);
     setLocalDep((prev) => ({ ...(prev || {}), song: { ...(prev?.song || {}), ...resolvedSong } }));
@@ -682,7 +683,7 @@ export default function Deposit({
 
   const openCommentsDrawer = useCallback((event) => {
     event?.stopPropagation?.();
-    if (!commentsDrawerParamValue) return;
+    if (!commentsDrawerParamValue) {return;}
 
     openDrawerWithHistory({
       navigate,
@@ -708,7 +709,7 @@ export default function Deposit({
 
   const openReactionSummaryDrawer = useCallback((event) => {
     event?.stopPropagation?.();
-    if (!reactionsDrawerParamValue) return;
+    if (!reactionsDrawerParamValue) {return;}
 
     openDrawerWithHistory({
       navigate,
@@ -733,7 +734,7 @@ export default function Deposit({
   }, [location, navigate, reactionsDrawerParamValue]);
 
   useEffect(() => {
-    if (!viewer?.id || viewer?.is_guest || !localDep?.public_key) return;
+    if (!viewer?.id || viewer?.is_guest || !localDep?.public_key) {return;}
 
     const currentPath = buildRelativeLocation(location);
     const commentAction = consumeAuthAction({
@@ -861,7 +862,7 @@ export default function Deposit({
     return (
       <Box
         onClick={() => {
-          if (canNavigate) navigate("/profile/" + currentUser.username);
+          if (canNavigate) {navigate("/profile/" + currentUser.username);}
         }}
         className={canNavigate ? "hasUsername deposit_user" : "deposit_user"}
       >
@@ -976,7 +977,7 @@ export default function Deposit({
   );
 
   const renderFloatingReactions = () => {
-    if (!floatingEmojiItems.length) return null;
+    if (!floatingEmojiItems.length) {return null;}
 
     return (
       <Box className={`emojis${isRevealed ? " is_revealed" : ""}`}>

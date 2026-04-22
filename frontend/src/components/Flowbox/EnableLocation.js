@@ -1,4 +1,5 @@
-import React from "react";
+import KeyIcon from "@mui/icons-material/Key";
+import LockIcon from "@mui/icons-material/Lock";
 import {
   Box,
   Button,
@@ -6,8 +7,7 @@ import {
   CircularProgress,
   Drawer,
 } from "@mui/material";
-import KeyIcon from "@mui/icons-material/Key";
-import LockIcon from "@mui/icons-material/Lock";
+import React from "react";
 
 export default function EnableLocation({
   open,

@@ -1,8 +1,8 @@
-import React, { Fragment, useMemo } from "react";
 
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import React, { Fragment, useMemo } from "react";
 
 function renderInline(text, keyPrefix = "inline") {
   const source = String(text || "");
@@ -85,31 +85,31 @@ function buildBlocks(markdown) {
   let inCodeFence = false;
 
   const flushParagraph = () => {
-    if (!paragraphLines.length) return;
+    if (!paragraphLines.length) {return;}
     blocks.push({ type: "paragraph", text: paragraphLines.join(" ").trim() });
     paragraphLines = [];
   };
 
   const flushBullets = () => {
-    if (!bulletItems.length) return;
+    if (!bulletItems.length) {return;}
     blocks.push({ type: "ul", items: [...bulletItems] });
     bulletItems = [];
   };
 
   const flushOrdered = () => {
-    if (!orderedItems.length) return;
+    if (!orderedItems.length) {return;}
     blocks.push({ type: "ol", items: [...orderedItems] });
     orderedItems = [];
   };
 
   const flushQuote = () => {
-    if (!quoteLines.length) return;
+    if (!quoteLines.length) {return;}
     blocks.push({ type: "blockquote", text: quoteLines.join("\n").trim() });
     quoteLines = [];
   };
 
   const flushCode = () => {
-    if (!codeLines.length) return;
+    if (!codeLines.length) {return;}
     blocks.push({ type: "code", text: codeLines.join("\n") });
     codeLines = [];
   };

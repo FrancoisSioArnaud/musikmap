@@ -1,26 +1,27 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import Chip from "@mui/material/Chip";
-import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import { getCookie } from "../Security/TokensUtils";
+import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+import { getCookie } from "../Security/TokensUtils";
 
 const TAB_OPTIONS = [
   { value: "quarantined", label: "Quarantaine" },
@@ -30,24 +31,24 @@ const TAB_OPTIONS = [
 ];
 
 function getStatusLabel(status) {
-  if (status === "published") return "Publié";
-  if (status === "quarantined") return "En quarantaine";
-  if (status === "removed_moderation") return "Retiré";
-  if (status === "deleted_by_author") return "Supprimé par l’auteur";
+  if (status === "published") {return "Publié";}
+  if (status === "quarantined") {return "En quarantaine";}
+  if (status === "removed_moderation") {return "Retiré";}
+  if (status === "deleted_by_author") {return "Supprimé par l’auteur";}
   return status || "—";
 }
 
 function getRestrictionLabel(value) {
-  if (value === "comment_mute_24h") return "Mute 24h";
-  if (value === "comment_mute_7d") return "Mute 7 jours";
-  if (value === "comment_ban") return "Ban commentaires";
+  if (value === "comment_mute_24h") {return "Mute 24h";}
+  if (value === "comment_mute_7d") {return "Mute 7 jours";}
+  if (value === "comment_ban") {return "Ban commentaires";}
   return value || "—";
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) {return "—";}
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) {return "—";}
   return date.toLocaleString("fr-FR");
 }
 
@@ -135,7 +136,7 @@ export default function CommentsList() {
   };
 
   const handleCreateRestriction = async () => {
-    if (!restrictionTarget?.author?.id || restrictionLoading) return;
+    if (!restrictionTarget?.author?.id || restrictionLoading) {return;}
 
     setRestrictionLoading(true);
     setPageError("");
@@ -317,7 +318,7 @@ export default function CommentsList() {
         open={Boolean(commentToRemove)}
         onClose={() => setCommentToRemove(null)}
         onConfirm={async () => {
-          if (!commentToRemove?.id) return;
+          if (!commentToRemove?.id) {return;}
           await handleModeration(commentToRemove.id, "remove", "manual_remove");
           setCommentToRemove(null);
         }}

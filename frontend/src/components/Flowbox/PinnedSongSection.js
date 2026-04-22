@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import MusicNote from "@mui/icons-material/MusicNote";
+import PushPinIcon from "@mui/icons-material/PushPin";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,38 +9,37 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
-import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MusicNote from "@mui/icons-material/MusicNote";
-import PushPinIcon from "@mui/icons-material/PushPin";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 import Deposit from "../Common/Deposit";
 import SearchPanel from "../Common/Search/SearchPanel";
 import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { getValid, setWithTTL } from "../Utils/mmStorage";
-import { buildRelativeLocation, consumeAuthAction, startAuthPageFlow } from "../Auth/AuthFlow";
 import {
   closeDrawerWithHistory,
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
+import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
 
-  if (hours <= 0) return `${mins} min`;
-  if (mins <= 0) return `${hours} h`;
+  if (hours <= 0) {return `${mins} min`;}
+  if (mins <= 0) {return `${hours} h`;}
   return `${hours} h ${mins}`;
 }
 
 function getRemainingMs(dep, nowTs) {
   const expiresAt = dep?.pin_expires_at ? new Date(dep.pin_expires_at).getTime() : 0;
-  if (!expiresAt) return 0;
+  if (!expiresAt) {return 0;}
   return Math.max(0, expiresAt - nowTs);
 }
 
@@ -51,26 +50,26 @@ function formatRemainingTime(remainingMs) {
   const seconds = totalSeconds % 60;
 
   if (hours > 0) {
-    if (minutes > 0) return `${hours} h ${minutes} min restantes`;
+    if (minutes > 0) {return `${hours} h ${minutes} min restantes`;}
     return `${hours} h restantes`;
   }
-  if (minutes > 0) return `${minutes} min restantes`;
+  if (minutes > 0) {return `${minutes} min restantes`;}
   return `${seconds} s restantes`;
 }
 
 function buildPinnedDateLabel(dep) {
-  if (!dep?.deposited_at) return "Épinglée";
+  if (!dep?.deposited_at) {return "Épinglée";}
   const depositedAt = new Date(dep.deposited_at).getTime();
-  if (!depositedAt) return "Épinglée";
+  if (!depositedAt) {return "Épinglée";}
 
   const diffMs = Math.max(0, Date.now() - depositedAt);
   const totalMinutes = Math.floor(diffMs / 60000);
   const totalHours = Math.floor(totalMinutes / 60);
   const days = Math.floor(totalHours / 24);
 
-  if (days > 0) return `Épinglée il y a ${days} j`;
-  if (totalHours > 0) return `Épinglée il y a ${totalHours} h`;
-  if (totalMinutes > 0) return `Épinglée il y a ${totalMinutes} min`;
+  if (days > 0) {return `Épinglée il y a ${days} j`;}
+  if (totalHours > 0) {return `Épinglée il y a ${totalHours} h`;}
+  if (totalMinutes > 0) {return `Épinglée il y a ${totalMinutes} min`;}
   return "Épinglée à l’instant";
 }
 
@@ -107,7 +106,7 @@ export default function PinnedSongSection({ boxSlug }) {
   const updateBoxContentStorage = useCallback((nextActivePinnedDeposit) => {
     try {
       const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap || snap.boxSlug !== boxSlug) return;
+      if (!snap || snap.boxSlug !== boxSlug) {return;}
 
       setWithTTL(
         KEY_BOX_CONTENT,
@@ -195,7 +194,7 @@ export default function PinnedSongSection({ boxSlug }) {
     }
 
     setDrawerOpen((prev) => {
-      if (!prev) return prev;
+      if (!prev) {return prev;}
       resetDrawerState();
       return false;
     });
@@ -209,18 +208,18 @@ export default function PinnedSongSection({ boxSlug }) {
   }, []);
 
   useEffect(() => {
-    if (!activePinnedDeposit?.pin_expires_at) return;
-    if (getRemainingMs(activePinnedDeposit, nowTs) > 0) return;
+    if (!activePinnedDeposit?.pin_expires_at) {return;}
+    if (getRemainingMs(activePinnedDeposit, nowTs) > 0) {return;}
     setActivePinnedDeposit(null);
     updateBoxContentStorage(null);
   }, [activePinnedDeposit, nowTs, updateBoxContentStorage]);
 
   useEffect(() => {
-    if (!drawerOpen) return undefined;
-    if (drawerStep !== "search") return undefined;
+    if (!drawerOpen) {return undefined;}
+    if (drawerStep !== "search") {return undefined;}
 
     const initialSelectedProvider = resolveInitialSelectedProvider(user);
-    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) {return undefined;}
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
@@ -249,7 +248,7 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [location, navigate, resetDrawerState]);
 
   useEffect(() => {
-    if (!user?.id || user?.is_guest) return;
+    if (!user?.id || user?.is_guest) {return;}
     const pendingAction = consumeAuthAction({
       currentPath: buildRelativeLocation(location),
       actionType: "pinned_song",
@@ -261,7 +260,7 @@ export default function PinnedSongSection({ boxSlug }) {
 
   const closeDrawer = useCallback(
     (force = false, options = {}) => {
-      if (posting && !force) return;
+      if (posting && !force) {return;}
 
       const shouldReplaceHistory = Boolean(options?.replace);
       if (
@@ -295,7 +294,7 @@ export default function PinnedSongSection({ boxSlug }) {
   );
 
   const handleSubmitPinned = useCallback(async () => {
-    if (posting || !selectedPriceStep || !selectedSong) return;
+    if (posting || !selectedPriceStep || !selectedSong) {return;}
 
     try {
       setPosting(true);

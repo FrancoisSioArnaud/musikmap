@@ -1,15 +1,16 @@
-import React, { useContext } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import React, { useContext } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+
 import { UserContext } from "../UserContext";
 
 function hasClientPortalAccess(user) {
-  if (!user) return false;
+  if (!user) {return false;}
 
   const portalStatus = user.portal_status || user.portalStatus || "";
   const hasClient =

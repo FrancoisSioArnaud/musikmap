@@ -1,43 +1,44 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Chip from "@mui/material/Chip";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableHead from "@mui/material/TableHead";
-import TableContainer from "@mui/material/TableContainer";
-import TableRow from "@mui/material/TableRow";
-import TableCell from "@mui/material/TableCell";
-import IconButton from "@mui/material/IconButton";
-import TextField from "@mui/material/TextField";
-import Divider from "@mui/material/Divider";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import { getCookie } from "../Security/TokensUtils";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+import { getCookie } from "../Security/TokensUtils";
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const EMPTY_FORM = { text: "", start_date: "", end_date: "" };
 
 function parseDate(dateString) {
-  if (!dateString) return null;
+  if (!dateString) {return null;}
   const [year, month, day] = String(dateString).split("-").map(Number);
-  if (!year || !month || !day) return null;
+  if (!year || !month || !day) {return null;}
   return new Date(year, month - 1, day);
 }
 
@@ -49,9 +50,9 @@ function formatDateKey(date) {
 }
 
 function formatDateLabel(value) {
-  if (!value) return "—";
+  if (!value) {return "—";}
   const date = parseDate(value);
-  if (!date) return value;
+  if (!date) {return value;}
   return date.toLocaleDateString("fr-FR");
 }
 
@@ -77,7 +78,7 @@ function buildCalendarDays(monthDate) {
 }
 
 function isWithinRange(date, start, end) {
-  if (!start || !end) return false;
+  if (!start || !end) {return false;}
   return date >= start && date <= end;
 }
 
@@ -93,7 +94,7 @@ function buildDayItemsMap(items) {
   items.forEach((item) => {
     const start = parseDate(item?.start_date);
     const end = parseDate(item?.end_date);
-    if (!start || !end) return;
+    if (!start || !end) {return;}
 
     const cursor = new Date(start);
     while (cursor <= end) {
@@ -115,8 +116,8 @@ function getCountLabel(items) {
 
 function truncatePhrase(text, maxLength = 26) {
   const value = String(text || "").trim();
-  if (!value) return "";
-  if (value.length <= maxLength) return value;
+  if (!value) {return "";}
+  if (value.length <= maxLength) {return value;}
   return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
@@ -408,7 +409,7 @@ export default function IncitationsList() {
       hoverDateKey
     );
 
-    if (!previewStartKey) return "";
+    if (!previewStartKey) {return "";}
     if (!previewEndKey) {
       return `Début sélectionné : ${formatDateLabel(previewStartKey)}. Clique sur un second jour libre pour fermer la période.`;
     }
@@ -417,7 +418,7 @@ export default function IncitationsList() {
   }, [hoverDateKey, rangeEndKey, rangeStartKey]);
 
   const editorDayItemsMap = useMemo(() => {
-    if (editorMode !== "edit" || !editingId) return dayItemsMap;
+    if (editorMode !== "edit" || !editingId) {return dayItemsMap;}
     return buildDayItemsMap(items.filter((item) => item.id !== editingId));
   }, [dayItemsMap, editorMode, editingId, items]);
 
@@ -452,7 +453,7 @@ export default function IncitationsList() {
   const openEditModal = useCallback(
     async (itemOrId) => {
       const nextId = typeof itemOrId === "number" ? itemOrId : itemOrId?.id;
-      if (!nextId) return;
+      if (!nextId) {return;}
 
       setEditorOpen(true);
       setEditorMode("edit");
@@ -640,7 +641,7 @@ export default function IncitationsList() {
   );
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete) {return;}
 
     setDeleteLoading(true);
     setPageError("");

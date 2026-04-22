@@ -13,7 +13,7 @@ dayjs.locale("fr");
  * ex: "il y a 2 heures", "il y a 3 jours"
  */
 export function formatRelativeTime(dateString) {
-  if (!dateString) return "";
+  if (!dateString) {return "";}
   // dayjs va convertir en timezone du navigateur
   return dayjs(dateString).fromNow();
 }

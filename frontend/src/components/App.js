@@ -1,6 +1,6 @@
+import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import {
   BrowserRouter as Router,
   Routes,
@@ -9,43 +9,40 @@ import {
   Outlet,
 } from "react-router-dom";
 
-import { buildMuiTheme } from "../muiThemeBuilder";
+import { applyActiveClientTheme } from "../applyActiveClientTheme";
 import {
   getStoredCurrentClient,
   getClientTheme,
   CURRENT_CLIENT_STORAGE_KEY,
 } from "../clientThemes";
-import { applyActiveClientTheme } from "../applyActiveClientTheme";
+import { buildMuiTheme } from "../muiThemeBuilder";
 
-import HomePage from "./HomePage";
 import AuthPage from "./Auth/AuthPage";
 import AuthReturnPage from "./Auth/AuthReturnPage";
-import UserProfilePage from "./UserProfilePage";
-import UserSettings from "./UserProfile/UserSettings";
-import UserProfileEdit from "./UserProfile/UserProfileEdit";
-import MenuAppBar from "./Common/Menu";
-
-import Onboarding from "./Flowbox/Onboarding";
-import LiveSearch from "./Flowbox/LiveSearch";
-import Discover from "./Flowbox/Discover";
-import ClosedBoxPage from "./Flowbox/ClosedBoxPage";
-import LinkDepositPage from "./LinkDepositPage";
-
+import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
+import ClientArticlesList from "./ClientAdmin/ArticlesList";
 import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
 import ClientAdminLayout from "./ClientAdmin/ClientAdminLayout";
-import ClientDashboard from "./ClientAdmin/Dashboard";
-import ClientArticlesList from "./ClientAdmin/ArticlesList";
-import ClientArticleEdit from "./ClientAdmin/ArticleEdit";
-import ClientIncitationsList from "./ClientAdmin/IncitationsList";
 import ClientCommentsList from "./ClientAdmin/CommentsList";
-import ClientStickersList from "./ClientAdmin/StickersList";
+import ClientDashboard from "./ClientAdmin/Dashboard";
+import ClientIncitationsList from "./ClientAdmin/IncitationsList";
 import ClientStickersInstall from "./ClientAdmin/StickersInstall";
-
-import { UserContext } from "./UserContext";
-import { checkUserStatus } from "./UsersUtils";
-import FlowboxSessionProvider from "./Flowbox/runtime/FlowboxSessionProvider";
+import ClientStickersList from "./ClientAdmin/StickersList";
+import MenuAppBar from "./Common/Menu";
+import ClosedBoxPage from "./Flowbox/ClosedBoxPage";
+import Discover from "./Flowbox/Discover";
+import LiveSearch from "./Flowbox/LiveSearch";
+import Onboarding from "./Flowbox/Onboarding";
 import FlowboxBoxShell from "./Flowbox/runtime/FlowboxBoxShell";
+import FlowboxSessionProvider from "./Flowbox/runtime/FlowboxSessionProvider";
 import InBoxSessionGate from "./Flowbox/runtime/InBoxSessionGate";
+import HomePage from "./HomePage";
+import LinkDepositPage from "./LinkDepositPage";
+import { UserContext } from "./UserContext";
+import UserProfileEdit from "./UserProfile/UserProfileEdit";
+import UserSettings from "./UserProfile/UserSettings";
+import UserProfilePage from "./UserProfilePage";
+import { checkUserStatus } from "./UsersUtils";
 
 function LayoutWithHeader() {
   return (

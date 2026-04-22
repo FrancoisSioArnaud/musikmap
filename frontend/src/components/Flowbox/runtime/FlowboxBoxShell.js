@@ -1,9 +1,11 @@
-import React, { useContext, useEffect, useState } from "react";
-import { Outlet, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import React, { useContext, useEffect, useState } from "react";
+import { Outlet, useParams } from "react-router-dom";
+
 import { UserContext } from "../../UserContext";
+
 import { FlowboxSessionContext } from "./FlowboxSessionContext";
 
 export default function FlowboxBoxShell() {
@@ -45,7 +47,7 @@ export default function FlowboxBoxShell() {
         if (!res.ok) {
           throw new Error(data?.detail || "Impossible de récupérer la boîte.");
         }
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         saveBoxBootstrap({
           slug: data?.slug || boxSlug,
@@ -76,9 +78,9 @@ export default function FlowboxBoxShell() {
   }, [boxSlug, saveBoxBootstrap, setCurrentClient]);
 
   useEffect(() => {
-    if (!boxSlug) return;
-    if (loading || error) return;
-    if (sessionLoadState !== "idle") return;
+    if (!boxSlug) {return;}
+    if (loading || error) {return;}
+    if (sessionLoadState !== "idle") {return;}
     ensureBoxSession(boxSlug);
   }, [boxSlug, ensureBoxSession, error, loading, sessionLoadState]);
 

@@ -1,3 +1,6 @@
+import io
+import os
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
@@ -8,6 +11,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from PIL import Image
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -23,17 +27,13 @@ from .models import CustomUser
 from .utils import (
     build_current_user_payload,
     build_favorite_deposit_payload,
-    get_user_status,
     clear_guest_cookie,
     get_current_app_user,
     get_guest_user_from_request,
+    get_user_status,
     merge_guest_into_user,
     touch_last_seen,
 )
-
-from PIL import Image
-import io
-import os
 
 MAX_SIZE_BYTES = 2 * 1024 * 1024  # 2 Mo
 OUT_SIZE = 512
@@ -110,7 +110,9 @@ class LoginUser(APIView):
                 "merge_attempted": merge_attempted,
                 "merge_error": merge_error,
                 "auth_result": pending_spotify_result.get("type") if pending_spotify_result else None,
-                "auth_redirect_to": f"/auth/return?result={pending_spotify_result.get('type')}" if pending_spotify_result else None,
+                "auth_redirect_to": f"/auth/return?result={pending_spotify_result.get('type')}"
+                if pending_spotify_result
+                else None,
             },
             status=status.HTTP_200_OK,
         )
@@ -233,7 +235,9 @@ class ChangeProfilePicture(APIView):
 
         rl_key = f"avatar:rate:{user.id}"
         if cache.get(rl_key):
-            return api_error(status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED", "Trop d'essais. Réessaie dans quelques secondes.")
+            return api_error(
+                status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED", "Trop d'essais. Réessaie dans quelques secondes."
+            )
         cache.set(rl_key, 1, RATE_LIMIT_SECONDS)
 
         if "profile_picture" not in request.FILES:
@@ -321,7 +325,9 @@ class ChangeProfilePicture(APIView):
                 status=status.HTTP_200_OK,
             )
         except Exception:
-            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "PROFILE_PICTURE_UPLOAD_FAILED", "Échec de l’envoi de l’image.")
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR, "PROFILE_PICTURE_UPLOAD_FAILED", "Échec de l’envoi de l’image."
+            )
 
 
 class CheckAuthentication(APIView):
@@ -351,7 +357,11 @@ class GetUserInfo(APIView):
 
         if not username:
             if user_id:
-                return api_error(status.HTTP_403_FORBIDDEN, "USER_ID_LOOKUP_FORBIDDEN", "La consultation publique par userID n’est pas autorisée.")
+                return api_error(
+                    status.HTTP_403_FORBIDDEN,
+                    "USER_ID_LOOKUP_FORBIDDEN",
+                    "La consultation publique par userID n’est pas autorisée.",
+                )
             return api_error(status.HTTP_400_BAD_REQUEST, "USERNAME_REQUIRED", "username query param is required")
 
         lookup = {"is_guest": False, "username": username}
@@ -403,10 +413,16 @@ class SetFavoriteSong(APIView):
                 )
                 user.favorite_deposit = deposit
                 user.save(update_fields=["favorite_deposit"])
-        except ValueError as exc:
-            return api_error(status.HTTP_400_BAD_REQUEST, "FAVORITE_SONG_INVALID", "Impossible d’enregistrer cette chanson de cœur.")
+        except ValueError:
+            return api_error(
+                status.HTTP_400_BAD_REQUEST, "FAVORITE_SONG_INVALID", "Impossible d’enregistrer cette chanson de cœur."
+            )
         except Exception:
-            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "FAVORITE_SONG_SAVE_FAILED", "Impossible d’enregistrer cette chanson de cœur.")
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "FAVORITE_SONG_SAVE_FAILED",
+                "Impossible d’enregistrer cette chanson de cœur.",
+            )
 
         refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
         return Response(
@@ -499,6 +515,12 @@ class ChangeUsername(APIView):
                 field_errors={"username": ["Conflit d’unicité sur le nom d’utilisateur."]},
             )
         except Exception:
-            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "USERNAME_UPDATE_FAILED", "Impossible de modifier le nom d’utilisateur.")
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "USERNAME_UPDATE_FAILED",
+                "Impossible de modifier le nom d’utilisateur.",
+            )
 
-        return Response({"status": "Nom d’utilisateur modifié avec succès.", "username": new_username}, status=status.HTTP_200_OK)
+        return Response(
+            {"status": "Nom d’utilisateur modifié avec succès.", "username": new_username}, status=status.HTTP_200_OK
+        )

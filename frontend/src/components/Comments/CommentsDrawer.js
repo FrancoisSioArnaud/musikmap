@@ -1,30 +1,29 @@
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import Stack from "@mui/material/Stack";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import Avatar from "@mui/material/Avatar";
-import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Drawer from "@mui/material/Drawer";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import RadioGroup from "@mui/material/RadioGroup";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import { getCookie } from "../Security/TokensUtils";
-import AuthModal from "../Auth/AuthModal";
 import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
+import AuthModal from "../Auth/AuthModal";
+import { getCookie } from "../Security/TokensUtils";
 
 const REPORT_REASONS = [
   { value: "harassment", label: "Insulte / harcèlement" },
@@ -65,7 +64,7 @@ export default function CommentsDrawer({
 
   const closeMenu = (clearActive = true) => {
     setMenuAnchorEl(null);
-    if (clearActive) setActiveComment(null);
+    if (clearActive) {setActiveComment(null);}
   };
 
   const openAuthPrompt = () => {
@@ -81,7 +80,7 @@ export default function CommentsDrawer({
   };
 
   const handleSubmit = async () => {
-    if (!canPost || submitting) return;
+    if (!canPost || submitting) {return;}
 
     const nextText = draft.trim();
     if (!nextText) {
@@ -121,7 +120,7 @@ export default function CommentsDrawer({
   };
 
   const handleDelete = async () => {
-    if (!activeComment?.id || deleting) return;
+    if (!activeComment?.id || deleting) {return;}
 
     setDeleting(true);
     setError("");
@@ -148,7 +147,7 @@ export default function CommentsDrawer({
   };
 
   const handleReport = async () => {
-    if (!activeComment?.id || reporting) return;
+    if (!activeComment?.id || reporting) {return;}
 
     setReporting(true);
     setError("");
@@ -228,12 +227,12 @@ export default function CommentsDrawer({
                         role={canNavigate ? "button" : undefined}
                         tabIndex={canNavigate ? 0 : -1}
                         onClick={() => {
-                          if (!canNavigate) return;
+                          if (!canNavigate) {return;}
                           onClose?.({ replace: true });
                           navigate("/profile/" + commentUser.username);
                         }}
                         onKeyDown={(event) => {
-                          if (!canNavigate) return;
+                          if (!canNavigate) {return;}
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
                             onClose?.({ replace: true });

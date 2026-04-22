@@ -3,51 +3,51 @@
 import html
 import json
 import re
-from io import BytesIO
-from pathlib import Path
-from datetime import timedelta, timezone as dt_timezone
+from collections.abc import Iterable, Sequence
+from datetime import UTC, timedelta
 from html.parser import HTMLParser
-from math import radians, sin, cos, sqrt, atan2, log2
-from typing import Any, Dict, List, Optional, Union, Iterable, Sequence, Tuple
+from io import BytesIO
+from math import atan2, cos, log2, radians, sin, sqrt
+from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import requests
-from PIL import Image
 from django.conf import settings
 from django.db.models import Prefetch, Q
 from django.utils import timezone
-from django.utils.timezone import localtime, localdate
+from django.utils.timezone import localdate, localtime
+from PIL import Image
 from rest_framework import status
-from rest_framework.response import Response
+
 from la_boite_a_son.api_errors import api_error
 
+# Barèmes & coûts
+from la_boite_a_son.economy import (
+    NB_POINTS_ADD_SONG,
+    NB_POINTS_CONSECUTIVE_DAYS_BOX,
+    NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
+)
 from users.models import CustomUser
+
+from .models import (
+    Client,
+    Comment,
+    CommentAttemptLog,
+    CommentUserRestriction,
+    Deposit,
+    DiscoveredSong,
+    IncitationPhrase,
+    Reaction,
+    Song,
+)
 from .provider_services import (
     get_or_create_song_from_track,
     get_song_provider_links_map,
     normalize_track_payload,
     upsert_song_provider_link,
-)
-from .models import (
-    Client,
-    Deposit,
-    Reaction,
-    DiscoveredSong,
-    Song,
-    IncitationPhrase,
-    Comment,
-    CommentReport,
-    CommentUserRestriction,
-    CommentAttemptLog,
-)
-
-# Barèmes & coûts
-from la_boite_a_son.economy import (
-    NB_POINTS_ADD_SONG,
-    NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
-    NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
-    NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
-    NB_POINTS_CONSECUTIVE_DAYS_BOX,
 )
 
 COMMENT_MAX_LENGTH = 100
@@ -96,13 +96,13 @@ ACCENT_COLOR_REQUEST_TIMEOUT = 8
 PINNED_PRICE_STEPS_PATH = Path(__file__).resolve().parent / "data" / "pinned_price_steps.json"
 
 
-def load_pinned_price_steps() -> List[Dict[str, int]]:
+def load_pinned_price_steps() -> list[dict[str, int]]:
     try:
         raw = json.loads(PINNED_PRICE_STEPS_PATH.read_text(encoding="utf-8"))
     except Exception:
         raw = []
 
-    steps: List[Dict[str, int]] = []
+    steps: list[dict[str, int]] = []
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
@@ -119,12 +119,12 @@ def load_pinned_price_steps() -> List[Dict[str, int]]:
     return steps
 
 
-def get_pinned_price_steps_raw() -> List[Dict[str, int]]:
+def get_pinned_price_steps_raw() -> list[dict[str, int]]:
     """Raw pinned price steps (minutes/points), without affordability flags."""
     return load_pinned_price_steps()
 
 
-def get_pinned_price_step(duration_minutes: int) -> Optional[Dict[str, int]]:
+def get_pinned_price_step(duration_minutes: int) -> dict[str, int] | None:
     try:
         duration_minutes = int(duration_minutes)
     except (TypeError, ValueError):
@@ -136,7 +136,7 @@ def get_pinned_price_step(duration_minutes: int) -> Optional[Dict[str, int]]:
     return None
 
 
-def build_pinned_price_steps_payload(*, user_points: Optional[int] = None) -> List[Dict[str, Any]]:
+def build_pinned_price_steps_payload(*, user_points: int | None = None) -> list[dict[str, Any]]:
     points_value = None
     try:
         if user_points is not None:
@@ -144,21 +144,22 @@ def build_pinned_price_steps_payload(*, user_points: Optional[int] = None) -> Li
     except (TypeError, ValueError):
         points_value = None
 
-    payload: List[Dict[str, Any]] = []
+    payload: list[dict[str, Any]] = []
     for step in load_pinned_price_steps():
         price = int(step["points"])
-        payload.append({
-            "minutes": int(step["minutes"]),
-            "points": price,
-            "is_affordable": (points_value is None) or (points_value >= price),
-        })
+        payload.append(
+            {
+                "minutes": int(step["minutes"]),
+                "points": price,
+                "is_affordable": (points_value is None) or (points_value >= price),
+            }
+        )
     return payload
 
 
 def get_active_pinned_deposit_for_box(box, *, for_update: bool = False):
     qs = (
-        Deposit.objects
-        .filter(
+        Deposit.objects.filter(
             box=box,
             deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
             pin_expires_at__gt=timezone.now(),
@@ -167,9 +168,7 @@ def get_active_pinned_deposit_for_box(box, *, for_update: bool = False):
         .prefetch_related(
             Prefetch(
                 "reactions",
-                queryset=Reaction.objects
-                .select_related("emoji", "user")
-                .order_by("created_at", "id"),
+                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
                 to_attr="prefetched_reactions",
             )
         )
@@ -192,7 +191,7 @@ def _accent_rgb_to_hex(r: float, g: float, b: float) -> str:
     return f"#{_accent_clamp_byte(r):02X}{_accent_clamp_byte(g):02X}{_accent_clamp_byte(b):02X}"
 
 
-def _accent_rgb_to_hsl(r: float, g: float, b: float) -> Tuple[float, float, float]:
+def _accent_rgb_to_hsl(r: float, g: float, b: float) -> tuple[float, float, float]:
     rn = _accent_clamp_byte(r) / 255.0
     gn = _accent_clamp_byte(g) / 255.0
     bn = _accent_clamp_byte(b) / 255.0
@@ -205,11 +204,7 @@ def _accent_rgb_to_hsl(r: float, g: float, b: float) -> Tuple[float, float, floa
         return 0.0, 0.0, lightness
 
     delta = max_value - min_value
-    saturation = (
-        delta / (2.0 - max_value - min_value)
-        if lightness > 0.5
-        else delta / (max_value + min_value)
-    )
+    saturation = delta / (2.0 - max_value - min_value) if lightness > 0.5 else delta / (max_value + min_value)
 
     if max_value == rn:
         hue = (gn - bn) / delta + (6 if gn < bn else 0)
@@ -270,7 +265,7 @@ def _accent_quantize_channel(value: int) -> int:
     return _accent_clamp_byte(centered)
 
 
-def _accent_bucket_key(r: int, g: int, b: int) -> Tuple[int, int, int]:
+def _accent_bucket_key(r: int, g: int, b: int) -> tuple[int, int, int]:
     return (
         _accent_quantize_channel(r),
         _accent_quantize_channel(g),
@@ -278,7 +273,7 @@ def _accent_bucket_key(r: int, g: int, b: int) -> Tuple[int, int, int]:
     )
 
 
-def _accent_score_bucket(bucket: Dict[str, float]) -> float:
+def _accent_score_bucket(bucket: dict[str, float]) -> float:
     avg_r = bucket["r_sum"] / bucket["count"]
     avg_g = bucket["g_sum"] / bucket["count"]
     avg_b = bucket["b_sum"] / bucket["count"]
@@ -286,15 +281,13 @@ def _accent_score_bucket(bucket: Dict[str, float]) -> float:
 
     saturation_score = saturation * ACCENT_COLOR_SATURATION_SCORE_WEIGHT
     count_score = log2(bucket["count"] + 1) * ACCENT_COLOR_COUNT_SCORE_WEIGHT
-    lightness_score = (
-        1 - abs(lightness - ACCENT_COLOR_IDEAL_LIGHTNESS) * 2
-    ) * ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT
+    lightness_score = (1 - abs(lightness - ACCENT_COLOR_IDEAL_LIGHTNESS) * 2) * ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT
     brown_penalty = _accent_get_brown_penalty(hue, saturation, lightness)
 
     return saturation_score + count_score + lightness_score - brown_penalty
 
 
-def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> Optional[str]:
+def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> str | None:
     width, height = image.size
     edge_x = int(width * ACCENT_COLOR_EDGE_RATIO)
     edge_y = int(height * ACCENT_COLOR_EDGE_RATIO)
@@ -304,7 +297,7 @@ def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> Opti
         edge_y = 0
 
     pixels = image.load()
-    buckets: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+    buckets: dict[tuple[int, int, int], dict[str, float]] = {}
 
     for y in range(edge_y, height - edge_y):
         for x in range(edge_x, width - edge_x):
@@ -343,7 +336,7 @@ def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> Opti
     )
 
 
-def _fetch_remote_image_for_accent(image_url: str) -> Optional[Image.Image]:
+def _fetch_remote_image_for_accent(image_url: str) -> Image.Image | None:
     if not image_url:
         return None
 
@@ -369,9 +362,9 @@ def _fetch_remote_image_for_accent(image_url: str) -> Optional[Image.Image]:
 
 
 def extract_accent_color_from_urls(
-    image_url_small: Optional[str] = None,
-    image_url: Optional[str] = None,
-) -> Optional[str]:
+    image_url_small: str | None = None,
+    image_url: str | None = None,
+) -> str | None:
     source_url = (image_url_small or image_url or "").strip()
     if not source_url:
         return None
@@ -387,7 +380,7 @@ def extract_accent_color_from_urls(
     )
 
 
-def refresh_song_accent_color(song: Song, force: bool = False) -> Optional[str]:
+def refresh_song_accent_color(song: Song, force: bool = False) -> str | None:
     if not force and (getattr(song, "accent_color", "") or "").strip():
         return song.accent_color
 
@@ -442,11 +435,11 @@ _COMMENT_DOXX_PATTERNS = [
 ]
 
 
-def _is_full_comment_user(user: Optional[CustomUser]) -> bool:
+def _is_full_comment_user(user: CustomUser | None) -> bool:
     return bool(user and getattr(user, "id", None) and not getattr(user, "is_guest", False))
 
 
-def _get_profile_picture_url(user: Optional[CustomUser]) -> Optional[str]:
+def _get_profile_picture_url(user: CustomUser | None) -> str | None:
     if not user or not getattr(user, "profile_picture", None):
         return None
     try:
@@ -455,7 +448,7 @@ def _get_profile_picture_url(user: Optional[CustomUser]) -> Optional[str]:
         return None
 
 
-def _normalize_comment_text(value: Optional[str]) -> str:
+def _normalize_comment_text(value: str | None) -> str:
     value = str(value or "")
     value = value.replace("​", "").replace("‌", "").replace("‍", "")
     value = re.sub(r"\s+", " ", value).strip()
@@ -463,11 +456,11 @@ def _normalize_comment_text(value: Optional[str]) -> str:
     return value
 
 
-def _extract_digits_count(value: Optional[str]) -> int:
+def _extract_digits_count(value: str | None) -> int:
     return len(re.sub(r"\D", "", str(value or "")))
 
 
-def _contains_forbidden_phone(value: Optional[str]) -> bool:
+def _contains_forbidden_phone(value: str | None) -> bool:
     text = str(value or "")
     if not _COMMENT_PHONE_RE.search(text):
         return False
@@ -519,7 +512,7 @@ def _score_comment_risk(*, text: str, normalized_text: str):
     return min(score, 100), list(dict.fromkeys(flags))
 
 
-def _get_comment_snapshot_user_payload(comment: Comment) -> Dict[str, Any]:
+def _get_comment_snapshot_user_payload(comment: Comment) -> dict[str, Any]:
     user = getattr(comment, "user", None)
     if user and not getattr(user, "is_guest", False):
         return _build_user_from_instance(user)
@@ -532,18 +525,18 @@ def _get_comment_snapshot_user_payload(comment: Comment) -> Dict[str, Any]:
     }
 
 
-def _build_comment_item_from_instance(comment: Comment, *, viewer_id: Optional[int] = None) -> Dict[str, Any]:
+def _build_comment_item_from_instance(comment: Comment, *, viewer_id: int | None = None) -> dict[str, Any]:
     payload = {
         "id": comment.id,
         "text": comment.text,
-        "created_at": comment.created_at.astimezone(dt_timezone.utc).isoformat(),
+        "created_at": comment.created_at.astimezone(UTC).isoformat(),
         "user": _get_comment_snapshot_user_payload(comment),
         "is_mine": bool(viewer_id and comment.user_id == viewer_id),
     }
     return payload
 
 
-def _get_active_comment_restrictions_for_clients(user: Optional[CustomUser], client_ids: Iterable[int]):
+def _get_active_comment_restrictions_for_clients(user: CustomUser | None, client_ids: Iterable[int]):
     if not _is_full_comment_user(user):
         return {}
 
@@ -553,8 +546,7 @@ def _get_active_comment_restrictions_for_clients(user: Optional[CustomUser], cli
 
     now_dt = timezone.now()
     restrictions = (
-        CommentUserRestriction.objects
-        .filter(user_id=user.id, client_id__in=clean_client_ids, starts_at__lte=now_dt)
+        CommentUserRestriction.objects.filter(user_id=user.id, client_id__in=clean_client_ids, starts_at__lte=now_dt)
         .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now_dt))
         .order_by("client_id", "-created_at", "-id")
     )
@@ -565,7 +557,13 @@ def _get_active_comment_restrictions_for_clients(user: Optional[CustomUser], cli
     return by_client
 
 
-def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, existing_comment: Optional[Comment], restriction: Optional[CommentUserRestriction]):
+def _build_comment_viewer_state(
+    *,
+    viewer: CustomUser | None,
+    dep: Deposit,
+    existing_comment: Comment | None,
+    restriction: CommentUserRestriction | None,
+):
     if not _is_full_comment_user(viewer):
         return {
             "can_post": False,
@@ -581,7 +579,7 @@ def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, e
         restriction_payload = {
             "restriction_type": restriction.restriction_type,
             "reason_code": restriction.reason_code or "",
-            "ends_at": restriction.ends_at.astimezone(dt_timezone.utc).isoformat() if restriction.ends_at else None,
+            "ends_at": restriction.ends_at.astimezone(UTC).isoformat() if restriction.ends_at else None,
         }
 
     if existing_comment:
@@ -617,7 +615,7 @@ def _build_comment_viewer_state(*, viewer: Optional[CustomUser], dep: Deposit, e
     }
 
 
-def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: Optional[CustomUser] = None):
+def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: CustomUser | None = None):
     deps = list(deposits or [])
     if not deps:
         return {}
@@ -654,10 +652,14 @@ def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer:
             missing_dep_ids.append(dep.id)
 
     if missing_dep_ids:
-        client_id_by_dep_id.update({
-            deposit_id: client_id
-            for deposit_id, client_id in Deposit.objects.filter(id__in=missing_dep_ids).values_list("id", "box__client_id")
-        })
+        client_id_by_dep_id.update(
+            {
+                deposit_id: client_id
+                for deposit_id, client_id in Deposit.objects.filter(id__in=missing_dep_ids).values_list(
+                    "id", "box__client_id"
+                )
+            }
+        )
 
     restriction_by_client = _get_active_comment_restrictions_for_clients(
         viewer,
@@ -680,7 +682,18 @@ def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer:
     return payload
 
 
-def _log_blocked_comment_attempt(*, client: Optional[Client], deposit: Optional[Deposit], user: Optional[CustomUser], text: str, normalized_text: str, reason_code: str, author_ip: Optional[str] = None, author_user_agent: str = "", meta: Optional[Dict[str, Any]] = None):
+def _log_blocked_comment_attempt(
+    *,
+    client: Client | None,
+    deposit: Deposit | None,
+    user: CustomUser | None,
+    text: str,
+    normalized_text: str,
+    reason_code: str,
+    author_ip: str | None = None,
+    author_user_agent: str = "",
+    meta: dict[str, Any] | None = None,
+):
     target_owner = getattr(deposit, "user", None) if deposit else None
     CommentAttemptLog.objects.create(
         client=client,
@@ -697,12 +710,13 @@ def _log_blocked_comment_attempt(*, client: Optional[Client], deposit: Optional[
         author_user_agent=(author_user_agent or "")[:255],
     )
 
+
 def _coerce_bool(value):
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
         return bool(value)
-    value = (str(value or "").strip().lower())
+    value = str(value or "").strip().lower()
     return value in {"1", "true", "yes", "y", "on", "oui"}
 
 
@@ -713,8 +727,7 @@ def _get_current_incitation_for_box(box, at_date=None):
 
     current_date = at_date or localdate()
     return (
-        IncitationPhrase.objects
-        .for_client(client_id)
+        IncitationPhrase.objects.for_client(client_id)
         .active_on_date(current_date)
         .order_by("-created_at", "-id")
         .first()
@@ -740,6 +753,7 @@ def _build_incitation_overlap_counts(phrases):
     for phrase in phrases:
         counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
     return counts
+
 
 def _get_active_client_user_or_response(request):
     user = request.user
@@ -864,11 +878,10 @@ class _ArticleImportHTMLParser(HTMLParser):
 
         if tag == "meta":
             meta_key = (
-                attrs_dict.get("property")
-                or attrs_dict.get("name")
-                or attrs_dict.get("itemprop")
-                or ""
-            ).strip().lower()
+                (attrs_dict.get("property") or attrs_dict.get("name") or attrs_dict.get("itemprop") or "")
+                .strip()
+                .lower()
+            )
             content = (attrs_dict.get("content") or "").strip()
             if meta_key and content and meta_key not in self.meta:
                 self.meta[meta_key] = content
@@ -906,9 +919,7 @@ class _ArticleImportHTMLParser(HTMLParser):
             return
 
         if self._skip_depth > 0:
-            if tag in self.SKIP_TAGS or tag in {
-                "nav", "header", "footer", "aside"
-            }:
+            if tag in self.SKIP_TAGS or tag in {"nav", "header", "footer", "aside"}:
                 self._skip_depth -= 1
             return
 
@@ -1000,10 +1011,7 @@ def _dedupe_keep_order(values, limit=None):
 
 
 def _pick_best_favicon_url(final_url, parser):
-    favicon_candidates = [
-        _absolute_remote_url(final_url, href)
-        for href in getattr(parser, "favicon_sources", [])
-    ]
+    favicon_candidates = [_absolute_remote_url(final_url, href) for href in getattr(parser, "favicon_sources", [])]
 
     parsed = urlparse(final_url)
     if parsed.scheme and parsed.netloc:
@@ -1060,9 +1068,7 @@ def _looks_like_noise_text(text):
 
 def _pick_best_short_text(meta, parser):
     description = _collapse_article_text(
-        meta.get("description")
-        or meta.get("og:description")
-        or meta.get("twitter:description")
+        meta.get("description") or meta.get("og:description") or meta.get("twitter:description")
     )
 
     if description and not _looks_like_noise_text(description):
@@ -1109,10 +1115,7 @@ def _extract_import_preview_from_url(link):
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/123.0.0.0 Safari/537.36"
         ),
-        "Accept": (
-            "text/html,application/xhtml+xml,application/xml;"
-            "q=0.9,image/avif,image/webp,*/*;q=0.8"
-        ),
+        "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
         "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
@@ -1139,11 +1142,7 @@ def _extract_import_preview_from_url(link):
 
     meta = parser.meta
 
-    raw_title = (
-        meta.get("og:title")
-        or meta.get("twitter:title")
-        or parser.title_text
-    )
+    raw_title = meta.get("og:title") or meta.get("twitter:title") or parser.title_text
     title = _clean_import_title(raw_title)
 
     short_text = _pick_best_short_text(meta, parser)
@@ -1161,10 +1160,7 @@ def _extract_import_preview_from_url(link):
     for img_src in parser.image_sources:
         image_candidates.append(_absolute_remote_url(final_url, img_src))
 
-    image_candidates = [
-        img for img in image_candidates
-        if img and not img.lower().endswith(".svg")
-    ]
+    image_candidates = [img for img in image_candidates if img and not img.lower().endswith(".svg")]
     image_candidates = _dedupe_keep_order(image_candidates, limit=3)
     favicon = _pick_best_favicon_url(final_url, parser)
 
@@ -1177,9 +1173,11 @@ def _extract_import_preview_from_url(link):
         "resolved_link": final_url,
     }
 
+
 # ---------- petits builders "from instance only" ----------
 
-def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
+
+def _build_user_from_instance(user: CustomUser | None) -> dict[str, Any]:
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
     if not user:
         return {
@@ -1205,7 +1203,7 @@ def _build_user_from_instance(user: Optional[CustomUser]) -> Dict[str, Any]:
     }
 
 
-def _build_song_from_instance(song, hidden: bool) -> Dict[str, Any]:
+def _build_song_from_instance(song, hidden: bool) -> dict[str, Any]:
     """Construit le payload chanson depuis le modèle final Song + SongProviderLink."""
     if hidden:
         return {"image_url": song.image_url, "image_url_small": song.image_url_small or None}
@@ -1240,12 +1238,12 @@ def _iter_reactions_from_instance(dep: Deposit):
     return dep.reactions.select_related("emoji", "user").order_by("created_at", "id").all()
 
 
-def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUser] = None) -> Dict[str, Any]:
+def _build_reactions_from_instance(dep: Deposit, current_user: CustomUser | None = None) -> dict[str, Any]:
     """Ne refait pas de get par ID : exploite uniquement dep + relations."""
     current_user_id = getattr(current_user, "id", None) if current_user else None
 
-    detail: List[Dict[str, Any]] = []
-    mine: Optional[Dict[str, Any]] = None
+    detail: list[dict[str, Any]] = []
+    mine: dict[str, Any] | None = None
 
     for r in _iter_reactions_from_instance(dep):
         if not getattr(r.emoji, "active", True):
@@ -1260,18 +1258,19 @@ def _build_reactions_from_instance(dep: Deposit, current_user: Optional[CustomUs
 
     return {"detail": detail, "mine": mine}
 
+
 def _build_deposit_from_instance(
     dep: Deposit,
     *,
     include_user: bool,
     include_deposit_time: bool,
     hidden: bool,
-    current_user: Optional[CustomUser] = None,
-    comments_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    current_user: CustomUser | None = None,
+    comments_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "public_key": dep.public_key,
         "deposit_type": getattr(dep, "deposit_type", Deposit.DEPOSIT_TYPE_BOX),
         "song": _build_song_from_instance(dep.song, hidden),
@@ -1283,9 +1282,7 @@ def _build_deposit_from_instance(
 
     if include_deposit_time:
         # Date brute en UTC, au format ISO 8601
-        payload["deposited_at"] = (
-            dep.deposited_at.astimezone(dt_timezone.utc).isoformat()
-        )
+        payload["deposited_at"] = dep.deposited_at.astimezone(UTC).isoformat()
 
     if include_user:
         payload["user"] = _build_user_from_instance(dep.user)
@@ -1298,18 +1295,17 @@ def _build_deposit_from_instance(
     return payload
 
 
-
-
 # box_management/utils.py
 
+
 def _build_deposits_payload(
-    deposits: Union[Deposit, Iterable[Deposit], Sequence[Deposit]],
+    deposits: Deposit | Iterable[Deposit] | Sequence[Deposit],
     *,
-    viewer: Optional[CustomUser] = None,
+    viewer: CustomUser | None = None,
     include_user: bool = True,
     include_deposit_time: bool = True,
-    force_song_infos_for: Optional[Iterable[int]] = None,
-) -> List[Dict[str, Any]]:
+    force_song_infos_for: Iterable[int] | None = None,
+) -> list[dict[str, Any]]:
     """
     Construit une liste de payloads de dépôts à partir d'instances déjà chargées.
 
@@ -1321,7 +1317,7 @@ def _build_deposits_payload(
     """
     # Normalisation en liste tout en respectant l’ordre fourni
     if isinstance(deposits, Deposit):
-        deps: List[Deposit] = [deposits]
+        deps: list[Deposit] = [deposits]
     else:
         deps = list(deposits or [])
 
@@ -1334,7 +1330,8 @@ def _build_deposits_payload(
     public_visible_ids = {
         d.pk
         for d in deps
-        if getattr(d, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (
+        if getattr(d, "deposit_type", Deposit.DEPOSIT_TYPE_BOX)
+        in (
             Deposit.DEPOSIT_TYPE_FAVORITE,
             Deposit.DEPOSIT_TYPE_PINNED,
         )
@@ -1348,11 +1345,7 @@ def _build_deposits_payload(
 
         # 1) Révélé implicitement si le viewer est le propriétaire du dépôt
         #    ou si le dépôt est publiquement visible (favorite / pinned).
-        own_dep_ids = {
-            d.pk
-            for d in deps
-            if getattr(d, "user_id", None) == viewer_id
-        } | public_visible_ids
+        own_dep_ids = {d.pk for d in deps if getattr(d, "user_id", None) == viewer_id} | public_visible_ids
 
         # 2) Pour le reste seulement, on consulte DiscoveredSong (1 requête max)
         remaining_ids = [i for i in dep_ids if i not in own_dep_ids]
@@ -1360,9 +1353,9 @@ def _build_deposits_payload(
         discovered_ids = set()
         if remaining_ids:
             discovered_ids = set(
-                DiscoveredSong.objects
-                .filter(user_id=viewer_id, deposit_id__in=remaining_ids)
-                .values_list("deposit_id", flat=True)
+                DiscoveredSong.objects.filter(user_id=viewer_id, deposit_id__in=remaining_ids).values_list(
+                    "deposit_id", flat=True
+                )
             )
 
         revealed_ids = own_dep_ids | discovered_ids
@@ -1370,7 +1363,7 @@ def _build_deposits_payload(
     comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer)
 
     # ------- Construction des payloads à partir des instances -------
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for dep in deps:
         # hidden si pas révélé, sauf override ciblé
         hidden = (dep.pk not in revealed_ids) and (dep.pk not in force_ids)
@@ -1388,8 +1381,7 @@ def _build_deposits_payload(
     return out
 
 
-
-def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: Optional[List[int]] = None):
+def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: list[int] | None = None):
     """
     Snapshot AVANT création:
     - récupère d'un coup les (limit+1) derniers dépôts
@@ -1400,15 +1392,12 @@ def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: Optional
     veut rejouer le résultat logique d'une requête idempotente.
     """
     qs = (
-        Deposit.objects
-        .filter(box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX)
+        Deposit.objects.filter(box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX)
         .select_related("song", "user")
         .prefetch_related(
             Prefetch(
                 "reactions",
-                queryset=Reaction.objects
-                .select_related("emoji", "user")
-                .order_by("created_at", "id"),
+                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
                 to_attr="prefetched_reactions",
             )
         )
@@ -1427,18 +1416,19 @@ def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: Optional
     older_deposits_qs = deposits[1:]
     return prev_head, older_deposits_qs
 
+
 # ---------- Normalisation & distance ----------
 
 
-
-def _find_recent_duplicate_deposit(*, user: CustomUser, song: Song, deposit_type: str, box=None, window_seconds: int = 0):
+def _find_recent_duplicate_deposit(
+    *, user: CustomUser, song: Song, deposit_type: str, box=None, window_seconds: int = 0
+):
     if int(window_seconds or 0) <= 0:
         return None
 
     threshold = timezone.now() - timedelta(seconds=int(window_seconds))
     qs = (
-        Deposit.objects
-        .filter(
+        Deposit.objects.filter(
             user=user,
             song=song,
             deposit_type=deposit_type,
@@ -1456,14 +1446,25 @@ def _find_recent_duplicate_deposit(*, user: CustomUser, song: Song, deposit_type
     return qs.first()
 
 
-def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], deposit_type: str = "box", box=None, pin_duration_minutes: Optional[int] = None, pin_points_spent: int = 0, pin_expires_at=None, reuse_recent_window_seconds: int = 0):
+def create_song_deposit(
+    *,
+    request,
+    user: CustomUser,
+    option: dict[str, Any],
+    deposit_type: str = "box",
+    box=None,
+    pin_duration_minutes: int | None = None,
+    pin_points_spent: int = 0,
+    pin_expires_at=None,
+    reuse_recent_window_seconds: int = 0,
+):
     track = normalize_track_payload(option or {})
     if not track.get("title") or not (track.get("artists") or []):
         raise ValueError("Titre ou artiste manquant")
 
     song = get_or_create_song_from_track(track)
 
-    update_fields: List[str] = []
+    update_fields: list[str] = []
     if track.get("image_url") and not (song.image_url or "").strip():
         song.image_url = track["image_url"]
         update_fields.append("image_url")
@@ -1501,6 +1502,7 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
     if provider_code:
         try:
             from users.provider_connections import set_last_platform_for_user
+
             set_last_platform_for_user(user, provider_code)
         except Exception:
             pass
@@ -1533,6 +1535,7 @@ def create_song_deposit(*, request, user: CustomUser, option: Dict[str, Any], de
     )
     return deposit, song, True
 
+
 def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
     """
     Calcule la distance entre deux points géographiques (Haversine).
@@ -1551,8 +1554,7 @@ def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
 # ============ Achievements centralisés ============
 
 
-
-def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
+def _get_consecutive_deposit_days(user: CustomUser | None, box) -> int:
     """
     Nombre de JOURS consécutifs (terminant hier) où 'user' a déposé dans 'box'.
     Ex: si l'user a déposé hier et avant-hier → 2.
@@ -1565,14 +1567,9 @@ def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
     streak = 0
 
     # Liste des dates (locales) distinctes de dépôts, récentes → anciennes
-    dates = (
-        Deposit.objects
-        .filter(user=user, box=box)
-        .order_by("-deposited_at")
-        .values_list("deposited_at", flat=True)
-    )
+    dates = Deposit.objects.filter(user=user, box=box).order_by("-deposited_at").values_list("deposited_at", flat=True)
 
-    seen_days: List = []
+    seen_days: list = []
     for dt in dates:
         try:
             d = localtime(dt).date()
@@ -1591,7 +1588,9 @@ def _get_consecutive_deposit_days(user: Optional[CustomUser], box) -> int:
     return streak
 
 
-def _build_successes(*, box, user: Optional[CustomUser], song: Song, current_deposit: Optional[Deposit] = None) -> Tuple[List[Dict[str, Any]], int]:
+def _build_successes(
+    *, box, user: CustomUser | None, song: Song, current_deposit: Deposit | None = None
+) -> tuple[list[dict[str, Any]], int]:
     """
     Calcule la liste des 'successes' (achievements) + le total de points.
 
@@ -1604,16 +1603,16 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song, current_dep
       - 1 requête pour tous les dépôts user+box (streak + "premier dépôt ici").
       - 1 requête pour tous les dépôts de cette song (global + dans cette box).
     """
-    from django.utils.timezone import localtime, localdate  # déjà importés plus haut, mais pour clarté locale
+    from django.utils.timezone import localdate, localtime  # déjà importés plus haut, mais pour clarté locale
 
     title = (getattr(song, "title", "") or "").strip()
     artist = (getattr(song, "artist", "") or "").strip()
 
-    successes: Dict[str, Dict[str, Any]] = {}
+    successes: dict[str, dict[str, Any]] = {}
     points_to_add = int(NB_POINTS_ADD_SONG)
 
     # ---------- Helper interne : calcul de streak à partir d'une liste de datetimes ----------
-    def _compute_streak_from_dates(dates: List) -> int:
+    def _compute_streak_from_dates(dates: list) -> int:
         """
         Reprend la logique de _get_consecutive_deposit_days, mais en pur Python
         à partir d'une liste de datetimes déjà récupérés.
@@ -1626,7 +1625,7 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song, current_dep
         streak = 0
 
         # Liste des dates (locales) distinctes des dépôts, récentes → anciennes
-        seen_days: List = []
+        seen_days: list = []
         for dt in dates:
             try:
                 d = localtime(dt).date()
@@ -1646,38 +1645,31 @@ def _build_successes(*, box, user: Optional[CustomUser], song: Song, current_dep
 
     # ===================== 1) Requêtes mutualisées =====================
 
-    exclude_current_filter: Dict[str, Any] = {}
+    exclude_current_filter: dict[str, Any] = {}
     if current_deposit is not None and getattr(current_deposit, "pk", None):
         exclude_current_filter["pk"] = current_deposit.pk
 
     # --- 1.a) Tous les dépôts de cet user dans cette box (streak + "premier dépôt ici")
-    user_box_dates: List = []
+    user_box_dates: list = []
     has_user_deposit_in_box = False
     if user:
         user_box_qs = Deposit.objects.filter(user=user, box=box)
         if exclude_current_filter:
             user_box_qs = user_box_qs.exclude(**exclude_current_filter)
 
-        user_box_dates = list(
-            user_box_qs
-            .order_by("-deposited_at")
-            .values_list("deposited_at", flat=True)
-        )
+        user_box_dates = list(user_box_qs.order_by("-deposited_at").values_list("deposited_at", flat=True))
         has_user_deposit_in_box = len(user_box_dates) > 0
 
     # --- 1.b) Tous les dépôts de cette chanson (song) (global + dans cette box)
     # On s'appuie sur le fait que Song est upsertée par (title, artist),
     # donc il n'existe qu'une seule instance logique pour ce couple.
-    song_box_ids: List[int] = []
+    song_box_ids: list[int] = []
     if title and artist:
         song_deposits_qs = Deposit.objects.filter(song=song)
         if exclude_current_filter:
             song_deposits_qs = song_deposits_qs.exclude(**exclude_current_filter)
 
-        song_box_ids = list(
-            song_deposits_qs
-            .values_list("box_id", flat=True)
-        )
+        song_box_ids = list(song_deposits_qs.values_list("box_id", flat=True))
 
     # ===================== 2) Construction des achievements =====================
 

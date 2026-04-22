@@ -1,30 +1,28 @@
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useState, useContext, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { UserContext } from "../UserContext";
 
-import Container from "@mui/material/Container";
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Grid from "@mui/material/Grid";
-import Card from "@mui/material/Card";
-import CardHeader from "@mui/material/CardHeader";
-import CardContent from "@mui/material/CardContent";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Alert from "@mui/material/Alert";
-
+import { startAuthPageFlow } from "../Auth/AuthFlow";
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
-
 import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
 import { checkUserStatus, logoutUser } from "../UsersUtils";
 import {
   checkSpotifyAuthentication,
   authenticateSpotifyUser,
   disconnectSpotifyUser,
 } from "../Utils/streaming/SpotifyUtils";
-import { startAuthPageFlow } from "../Auth/AuthFlow";
 
 function normalizeFieldErrors(payload, fallbackMessage) {
   if (payload?.field_errors && typeof payload.field_errors === "object") {

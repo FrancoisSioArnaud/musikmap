@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SLOW_PROGRESS_TARGET = 78;
 const SLOW_PROGRESS_DURATION_MS = 2800;
@@ -93,7 +93,7 @@ export default function SongList({
   }, [activeRequestKey, frozenItems, items]);
 
   const handleSelectSong = useCallback((option) => {
-    if (!onSelectSong) return;
+    if (!onSelectSong) {return;}
 
     if (!hasVisualFlow) {
       onSelectSong(option);
@@ -147,12 +147,12 @@ export default function SongList({
         if (remainingMinVisual > 0) {
           await sleep(remainingMinVisual);
         }
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         setTransitionMs(FAST_PROGRESS_DURATION_MS);
         setProgress(100);
         await sleep(FAST_PROGRESS_DURATION_MS + SUCCESS_HOLD_MS);
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         onDepositVisualComplete?.(activeRequestKey);
       };
@@ -173,10 +173,10 @@ export default function SongList({
         if (remainingMinVisual > 0) {
           await sleep(remainingMinVisual);
         }
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         await sleep(ERROR_HOLD_MS);
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         resetVisualFlow();
       };

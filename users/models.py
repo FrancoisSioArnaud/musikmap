@@ -1,11 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.dispatch import receiver
+
 from utils import generate_unique_filename
 
 
 class CustomUser(AbstractUser):
-
     # Overriding of the save() method in order to delete older profile pic when it is changed.
     def save(self, *args, **kwargs):
         if self.pk:  # if the user already exists in the db (not a new user registering)

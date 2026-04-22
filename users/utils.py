@@ -1,12 +1,12 @@
 import json
 import secrets
 from pathlib import Path
-from typing import Optional, Tuple
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
+
 from la_boite_a_son.api_errors import api_error_payload
 from users.provider_connections import merge_provider_connections, serialize_provider_connections_for_user
 
@@ -20,7 +20,7 @@ GUEST_USERNAME_PREFIX = "guest_"
 USER_STATUSES_PATH = Path(__file__).resolve().parent / "data" / "user_statuses.json"
 
 
-def _get_user_total_deposits(user: Optional[CustomUser]) -> int:
+def _get_user_total_deposits(user: CustomUser | None) -> int:
     if not user or not getattr(user, "pk", None):
         return 0
 
@@ -49,16 +49,18 @@ def _load_user_statuses() -> list[dict]:
         if not name or min_deposits < 0:
             continue
 
-        valid_statuses.append({
-            "name": name,
-            "min_deposits": min_deposits,
-        })
+        valid_statuses.append(
+            {
+                "name": name,
+                "min_deposits": min_deposits,
+            }
+        )
 
     valid_statuses.sort(key=lambda status: status["min_deposits"])
     return valid_statuses
 
 
-def get_user_status(user: Optional[CustomUser]) -> Optional[dict]:
+def get_user_status(user: CustomUser | None) -> dict | None:
     total_deposits = _get_user_total_deposits(user)
     current_status = None
 
@@ -71,8 +73,7 @@ def get_user_status(user: Optional[CustomUser]) -> Optional[dict]:
     return current_status
 
 
-
-def build_favorite_deposit_payload(profile_user: Optional[CustomUser], viewer: Optional[CustomUser] = None):
+def build_favorite_deposit_payload(profile_user: CustomUser | None, viewer: CustomUser | None = None):
     favorite_deposit_id = getattr(profile_user, "favorite_deposit_id", None)
     if not favorite_deposit_id:
         return None
@@ -81,10 +82,7 @@ def build_favorite_deposit_payload(profile_user: Optional[CustomUser], viewer: O
     from box_management.utils import _build_deposits_payload
 
     deposit = (
-        Deposit.objects
-        .select_related("song", "user")
-        .filter(pk=favorite_deposit_id, deposit_type="favorite")
-        .first()
+        Deposit.objects.select_related("song", "user").filter(pk=favorite_deposit_id, deposit_type="favorite").first()
     )
     if not deposit:
         return None
@@ -114,7 +112,7 @@ def generate_guest_username() -> str:
             return candidate
 
 
-def get_guest_user_from_request(request) -> Optional[CustomUser]:
+def get_guest_user_from_request(request) -> CustomUser | None:
     token = (request.COOKIES.get(GUEST_COOKIE_NAME) or "").strip()
     if not token:
         return None
@@ -126,18 +124,14 @@ def get_guest_user_from_request(request) -> Optional[CustomUser]:
     )
 
 
-def get_current_app_user(request) -> Optional[CustomUser]:
+def get_current_app_user(request) -> CustomUser | None:
     if getattr(request, "user", None) is not None and getattr(request.user, "is_authenticated", False):
-        return (
-            CustomUser.objects.select_related("client")
-            .filter(pk=request.user.pk)
-            .first()
-        ) or request.user
+        return (CustomUser.objects.select_related("client").filter(pk=request.user.pk).first()) or request.user
 
     return get_guest_user_from_request(request)
 
 
-def touch_last_seen(user: Optional[CustomUser]) -> Optional[CustomUser]:
+def touch_last_seen(user: CustomUser | None) -> CustomUser | None:
     if not user:
         return user
 
@@ -196,14 +190,12 @@ def build_current_user_payload(user: CustomUser):
         "favorite_deposit": favorite_deposit,
         "provider_connections": provider_connections,
         "connected_providers": [
-            provider_code
-            for provider_code, payload in provider_connections.items()
-            if payload.get("connected")
+            provider_code for provider_code, payload in provider_connections.items() if payload.get("connected")
         ],
     }
 
 
-def create_guest_user() -> Tuple[CustomUser, str]:
+def create_guest_user() -> tuple[CustomUser, str]:
     token = generate_guest_device_token()
     user = CustomUser(
         username=generate_guest_username(),
@@ -217,7 +209,7 @@ def create_guest_user() -> Tuple[CustomUser, str]:
     return user, token
 
 
-def ensure_guest_user_for_request(request) -> Tuple[CustomUser, bool]:
+def ensure_guest_user_for_request(request) -> tuple[CustomUser, bool]:
     current = get_current_app_user(request)
     if current:
         return current, False
@@ -334,7 +326,11 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
             target.email = source.email
             target_update_fields.append("email")
 
-        if (not target.username or target.username.startswith("guest_")) and source.username and not source.username.startswith("guest_"):
+        if (
+            (not target.username or target.username.startswith("guest_"))
+            and source.username
+            and not source.username.startswith("guest_")
+        ):
             target.username = source.username
             target_update_fields.append("username")
 
@@ -366,9 +362,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         # -----------------------------
         # 2) Dépôts
         # -----------------------------
-        source_deposit_ids = list(
-            Deposit.objects.filter(user=source).values_list("id", flat=True)
-        )
+        source_deposit_ids = list(Deposit.objects.filter(user=source).values_list("id", flat=True))
         moved_deposits = Deposit.objects.filter(user=source).update(user=target)
 
         if not target.favorite_deposit_id and source.favorite_deposit_id:
@@ -398,9 +392,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         discoveries_merged = 0
 
         source_discoveries = list(
-            DiscoveredSong.objects.filter(user=source)
-            .select_related("deposit")
-            .order_by("discovered_at", "id")
+            DiscoveredSong.objects.filter(user=source).select_related("deposit").order_by("discovered_at", "id")
         )
         for discovery in source_discoveries:
             existing = (
@@ -418,11 +410,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
             if discovery.discovered_type == "main" and existing.discovered_type != "main":
                 existing.discovered_type = "main"
                 update_fields.append("discovered_type")
-            if (
-                discovery.discovered_at
-                and existing.discovered_at
-                and discovery.discovered_at < existing.discovered_at
-            ):
+            if discovery.discovered_at and existing.discovered_at and discovery.discovered_at < existing.discovered_at:
                 existing.discovered_at = discovery.discovered_at
                 update_fields.append("discovered_at")
             if update_fields:
@@ -452,8 +440,9 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
 
         for deposit_id, source_reaction in latest_source_reaction_by_deposit.items():
             target_reactions = list(
-                Reaction.objects.filter(user=target, deposit_id=deposit_id)
-                .order_by("-updated_at", "-created_at", "-id")
+                Reaction.objects.filter(user=target, deposit_id=deposit_id).order_by(
+                    "-updated_at", "-created_at", "-id"
+                )
             )
             target_reaction = target_reactions[0] if target_reactions else None
 
@@ -496,9 +485,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         comments_detached = 0
 
         source_comments = list(
-            Comment.objects.filter(user=source)
-            .select_related("deposit")
-            .order_by("created_at", "id")
+            Comment.objects.filter(user=source).select_related("deposit").order_by("created_at", "id")
         )
 
         for source_comment in source_comments:
@@ -563,9 +550,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         touched_report_comment_ids = set()
 
         source_reports = list(
-            CommentReport.objects.filter(reporter=source)
-            .select_related("comment")
-            .order_by("created_at", "id")
+            CommentReport.objects.filter(reporter=source).select_related("comment").order_by("created_at", "id")
         )
 
         for report in source_reports:
@@ -613,27 +598,21 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         # -----------------------------
         # 8) Comment moderation decisions
         # -----------------------------
-        moderation_actions_moved = CommentModerationDecision.objects.filter(
-            acted_by=source
-        ).update(acted_by=target)
+        moderation_actions_moved = CommentModerationDecision.objects.filter(acted_by=source).update(acted_by=target)
 
         # -----------------------------
         # 9) Comment restrictions
         # -----------------------------
-        restrictions_moved = CommentUserRestriction.objects.filter(
-            user=source
-        ).update(user=target)
+        restrictions_moved = CommentUserRestriction.objects.filter(user=source).update(user=target)
 
-        restrictions_created_by_moved = CommentUserRestriction.objects.filter(
-            created_by=source
-        ).update(created_by=target)
+        restrictions_created_by_moved = CommentUserRestriction.objects.filter(created_by=source).update(
+            created_by=target
+        )
 
         # -----------------------------
         # 10) Comment attempt logs
         # -----------------------------
-        attempt_logs_moved = CommentAttemptLog.objects.filter(
-            user=source
-        ).update(user=target)
+        attempt_logs_moved = CommentAttemptLog.objects.filter(user=source).update(user=target)
 
         # -----------------------------
         # 11) Articles
@@ -691,8 +670,6 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         "comment_owner_snapshots_updated": comment_owner_snapshots_updated,
         "attempt_owner_snapshots_updated": attempt_owner_snapshots_updated,
     }
-
-
 
 
 def merge_guest_into_user(guest_user: CustomUser, target_user: CustomUser):

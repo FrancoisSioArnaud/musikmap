@@ -1,14 +1,15 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+
 
 import { UserContext } from "../../UserContext";
 import { authenticateProviderUser } from "../../Utils/streaming/providerClient";
-import SearchBar from "./SearchBar";
-import Search from "./Search";
+
 import RecentlyPlayed from "./RecentlyPlayed";
+import Search from "./Search";
+import SearchBar from "./SearchBar";
 import {
   getConnectedPersonalizedProviderCodes,
   getLastPlatformStorageKey,
@@ -48,7 +49,7 @@ export default function SearchPanel({
 
   useEffect(() => {
     const storageKey = getLastPlatformStorageKey(user);
-    if (!storageKey) return;
+    if (!storageKey) {return;}
     writeStoredSelectedProvider(user, selectedProvider);
   }, [selectedProvider, user]);
 
@@ -58,7 +59,7 @@ export default function SearchPanel({
 
   const handleConnectProvider = useCallback(
     async (providerCode) => {
-      if (providerCode !== "spotify") return;
+      if (providerCode !== "spotify") {return;}
       await authenticateProviderUser("spotify");
     },
     []

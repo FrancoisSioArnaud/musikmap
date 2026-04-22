@@ -1,10 +1,10 @@
 // frontend/src/components/Flowbox/AchievementsPanel.js
-import React from "react";
+import MusicNote from "@mui/icons-material/MusicNote";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import Typography from "@mui/material/Typography";
-import MusicNote from "@mui/icons-material/MusicNote";
+import React from "react";
 
 /**
  * Composant partagé — utilisé par Main et Discover.

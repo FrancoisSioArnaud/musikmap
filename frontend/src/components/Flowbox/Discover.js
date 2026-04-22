@@ -1,28 +1,28 @@
 // frontend/src/components/Flowbox/Discover.js
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import MusicNote from "@mui/icons-material/MusicNote";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Drawer from "@mui/material/Drawer";
+import Typography from "@mui/material/Typography";
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Drawer from "@mui/material/Drawer";
-import Button from "@mui/material/Button";
 
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import MusicNote from "@mui/icons-material/MusicNote";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-
-import Deposit from "../Common/Deposit";
-import AchievementsPanel from "./AchievementsPanel";
-import { UserContext } from "../UserContext";
 import ArticleCard from "../Common/Article/ArticleCard";
 import ArticleDrawer from "../Common/Article/ArticleDrawer";
-import PinnedSongSection from "./PinnedSongSection";
+import Deposit from "../Common/Deposit";
+import { UserContext } from "../UserContext";
 import {
   closeDrawerWithHistory,
   getDrawerParamValue,
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
+
+import AchievementsPanel from "./AchievementsPanel";
+import PinnedSongSection from "./PinnedSongSection";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 const MAX_VISIBLE_ARTICLES = 5;
@@ -70,7 +70,7 @@ export default function Discover() {
         if (!res.ok) {
           throw new Error(data?.detail || "Impossible de charger les articles.");
         }
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         setArticles(Array.isArray(data) ? data : []);
       } catch {
@@ -162,7 +162,7 @@ export default function Discover() {
 
   const handleOpenArticleDrawer = useCallback(
     (article) => {
-      if (!article?.id) return;
+      if (!article?.id) {return;}
       setSelectedArticle(article);
       openDrawerWithHistory({
         navigate,
@@ -290,7 +290,7 @@ export default function Discover() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleOpenAchievements();
+                if (e.key === "Enter" || e.key === " ") {handleOpenAchievements();}
               }}
             >
               <MusicNote />

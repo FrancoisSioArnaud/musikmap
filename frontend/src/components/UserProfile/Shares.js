@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import Deposit from "../Common/Deposit";
 
@@ -10,9 +10,9 @@ async function fetchUserShares({ username, me, limit, offset }, signal) {
   const params = new URLSearchParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
-  if (me) params.set("me", "1");
-  else if (username) params.set("username", username);
-  else return { ok: false, status: 400, items: [], has_more: false, next_offset: 0 };
+  if (me) {params.set("me", "1");}
+  else if (username) {params.set("username", username);}
+  else {return { ok: false, status: 400, items: [], has_more: false, next_offset: 0 };}
 
   const url = `/box-management/user-deposits?${params.toString()}`;
   const res = await fetch(url, {
@@ -51,7 +51,7 @@ export default function Shares({ username, me = false, user, autoLoad }) {
   const loadingRef = useRef(false);
 
   useEffect(() => {
-    if (abortRef.current) abortRef.current.abort();
+    if (abortRef.current) {abortRef.current.abort();}
     setItems([]);
     setError(null);
     setLoading(false);
@@ -62,11 +62,11 @@ export default function Shares({ username, me = false, user, autoLoad }) {
   }, [username, me, user?.id]);
 
   const loadMore = useCallback(async () => {
-    if (!autoLoad) return;
-    if (loadingRef.current || !hasMore) return;
-    if (!me && !username) return;
+    if (!autoLoad) {return;}
+    if (loadingRef.current || !hasMore) {return;}
+    if (!me && !username) {return;}
 
-    if (abortRef.current) abortRef.current.abort();
+    if (abortRef.current) {abortRef.current.abort();}
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -80,7 +80,7 @@ export default function Shares({ username, me = false, user, autoLoad }) {
         controller.signal
       );
 
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {return;}
 
       if (!ok) {
         setError("error");
@@ -95,7 +95,7 @@ export default function Shares({ username, me = false, user, autoLoad }) {
       setNextOffset(typeof next_offset === "number" ? next_offset : nextOffset + newItems.length);
       setLoadedOnce(true);
     } catch (e) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {return;}
       console.error(e);
       setError("error");
       setLoadedOnce(true);
@@ -106,18 +106,18 @@ export default function Shares({ username, me = false, user, autoLoad }) {
   }, [autoLoad, hasMore, me, username, nextOffset]);
 
   useEffect(() => {
-    if (!autoLoad) return;
-    if (loadedOnce) return;
+    if (!autoLoad) {return;}
+    if (loadedOnce) {return;}
     loadMore();
   }, [autoLoad, loadedOnce, loadMore]);
 
   useEffect(() => {
-    if (!autoLoad) return;
+    if (!autoLoad) {return;}
 
     function onScroll() {
-      if (loadingRef.current || !hasMore) return;
+      if (loadingRef.current || !hasMore) {return;}
       const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
-      if (nearBottom) loadMore();
+      if (nearBottom) {loadMore();}
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });

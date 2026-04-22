@@ -1,10 +1,10 @@
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import Deposit from "./Common/Deposit";
 import { UserContext } from "./UserContext";
@@ -58,7 +58,7 @@ export default function LinkDepositPage() {
         );
 
         const data = await response.json().catch(() => ({}));
-        if (cancelled) return;
+        if (cancelled) {return;}
 
         if (!response.ok) {
           setPageCode(data?.code || "LINK_ERROR");
@@ -77,7 +77,7 @@ export default function LinkDepositPage() {
         setDeposit(data?.deposit || null);
         setBoxData(data?.box || null);
       } catch {
-        if (cancelled) return;
+        if (cancelled) {return;}
         setPageCode("NETWORK_ERROR");
         setPageMessage("Impossible d’ouvrir ce lien pour le moment.");
       } finally {
@@ -144,11 +144,11 @@ export default function LinkDepositPage() {
               role={canOpenSenderProfile ? "button" : undefined}
               tabIndex={canOpenSenderProfile ? 0 : undefined}
               onClick={() => {
-                if (!canOpenSenderProfile) return;
+                if (!canOpenSenderProfile) {return;}
                 navigate(`/profile/${sender.username}`);
               }}
               onKeyDown={(event) => {
-                if (!canOpenSenderProfile) return;
+                if (!canOpenSenderProfile) {return;}
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   navigate(`/profile/${sender.username}`);

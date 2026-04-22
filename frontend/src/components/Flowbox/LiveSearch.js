@@ -1,20 +1,21 @@
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import React, { useContext, useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 
-import { getCookie } from "../Security/TokensUtils";
-import { UserContext } from "../UserContext";
 import SearchPanel from "../Common/Search/SearchPanel";
 import {
   resolveInitialSelectedProvider,
   NO_PERSONALIZED_RESULTS_PROVIDER,
 } from "../Common/Search/SearchProviderSelector";
+import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
+
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 function normalizeOptionToSong(option) {
-  if (!option) return null;
+  if (!option) {return null;}
   return {
     title: option.name || null,
     artist: option.artist || null,
@@ -48,7 +49,7 @@ export default function LiveSearch() {
 
   useEffect(() => {
     const initialSelectedProvider = resolveInitialSelectedProvider(user);
-    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) return undefined;
+    if (initialSelectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER) {return undefined;}
 
     const timer = setTimeout(() => {
       searchInputRef.current?.focus?.();
@@ -68,7 +69,7 @@ export default function LiveSearch() {
 
   const handleDeposit = useCallback(
     async (option, requestKey) => {
-      if (depositFlowState.status === "pending") return;
+      if (depositFlowState.status === "pending") {return;}
 
       setDepositFlowState({
         requestKey,
@@ -137,7 +138,7 @@ export default function LiveSearch() {
 
         saveDiscoverSnapshot(boxSlug, payload);
 
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current) {return;}
 
         setDepositFlowState({
           requestKey,

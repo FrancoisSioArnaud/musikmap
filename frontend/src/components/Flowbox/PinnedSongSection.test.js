@@ -1,9 +1,10 @@
-import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import PinnedSongSection from './PinnedSongSection';
 import { UserContext } from '../UserContext';
+
+import PinnedSongSection from './PinnedSongSection';
 
 jest.mock('../Common/Deposit', () => ({
   __esModule: true,

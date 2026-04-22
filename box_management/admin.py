@@ -2,16 +2,17 @@ import csv
 
 from django import forms
 from django.contrib import admin, messages
+from django.db.models import Count
+from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
-from django.db.models import Count
-from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
 from import_export.admin import ImportExportModelAdmin
 
 from users.models import CustomUser
+
 from .models import (
     Article,
     Box,
@@ -25,11 +26,11 @@ from .models import (
     DiscoveredSong,
     Emoji,
     EmojiRight,
+    Link,
     LocationPoint,
     Reaction,
     Song,
     Sticker,
-    Link,
 )
 
 
@@ -328,7 +329,16 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
 @admin.register(Song)
 class SongAdmin(admin.ModelAdmin):
-    list_display = ("title", "artist", "public_key", "isrc", "accent_color", "image_url_small", "n_deposits", "duration")
+    list_display = (
+        "title",
+        "artist",
+        "public_key",
+        "isrc",
+        "accent_color",
+        "image_url_small",
+        "n_deposits",
+        "duration",
+    )
     search_fields = ("title", "public_key", "isrc")
     ordering = ("title", "public_key")
 
@@ -340,7 +350,7 @@ class DiscoveredSongAdmin(admin.ModelAdmin):
     search_fields = (
         "user__username",
         "deposit__song__title",
-                "deposit__box__name",
+        "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit")
 
@@ -370,7 +380,7 @@ class ReactionAdmin(admin.ModelAdmin):
         "user__email",
         "deposit__public_key",
         "deposit__song__title",
-                "deposit__box__name",
+        "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit", "emoji")
 
@@ -553,8 +563,6 @@ class CommentAttemptLogAdmin(admin.ModelAdmin):
     )
 
 
-
-
 @admin.register(Link)
 class LinkAdmin(admin.ModelAdmin):
     list_display = (
@@ -570,6 +578,7 @@ class LinkAdmin(admin.ModelAdmin):
     search_fields = ("slug", "deposit__public_key", "created_by__username")
     autocomplete_fields = ("deposit", "created_by", "opened_by_users")
     readonly_fields = ("created_at", "updated_at")
+
 
 class StickerBatchCreateForm(forms.Form):
     client = forms.ModelChoiceField(

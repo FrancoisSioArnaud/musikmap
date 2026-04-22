@@ -1,15 +1,18 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
-import Container from "@mui/material/Container";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
-import AuthResultRouter from "./AuthResultRouter";
-import { clearAuthReturnContext, getAuthSuccessTarget } from "./AuthFlow";
+import React, { useContext, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
+
+import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { checkUserStatus } from "../UsersUtils";
-import { getCookie } from "../Security/TokensUtils";
+
+import { clearAuthReturnContext, getAuthSuccessTarget } from "./AuthFlow";
+import AuthResultRouter from "./AuthResultRouter";
 
 export default function AuthReturnPage() {
   const navigate = useNavigate();
@@ -24,16 +27,16 @@ export default function AuthReturnPage() {
   useEffect(() => {
     let cancelled = false;
     const syncPendingState = async () => {
-      if (result !== "merge_required" && result !== "login_existing_required") return;
+      if (result !== "merge_required" && result !== "login_existing_required") {return;}
       try {
         const response = await fetch("/spotify/pending-auth-status", {
           credentials: "same-origin",
           headers: { Accept: "application/json" },
         });
         const data = await response.json().catch(() => ({}));
-        if (cancelled || !response.ok || !data?.pending) return;
-        if (data.type) setResult(data.type);
-        if (data.email) setEmail(data.email);
+        if (cancelled || !response.ok || !data?.pending) {return;}
+        if (data.type) {setResult(data.type);}
+        if (data.email) {setEmail(data.email);}
       } catch (_error) {}
     };
     syncPendingState();

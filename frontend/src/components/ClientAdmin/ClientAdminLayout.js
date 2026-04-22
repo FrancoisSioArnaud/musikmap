@@ -1,38 +1,40 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import AppBar from "@mui/material/AppBar";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Avatar from "@mui/material/Avatar";
-import Stack from "@mui/material/Stack";
-import Chip from "@mui/material/Chip";
-import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+
 import { UserContext } from "../UserContext";
-import ClientAdminSidebar, {
-  CLIENT_ADMIN_DRAWER_WIDTH,
-} from "./ClientAdminSidebar";
 import {
   closeDrawerWithHistory,
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
 
+import ClientAdminSidebar, {
+  CLIENT_ADMIN_DRAWER_WIDTH,
+} from "./ClientAdminSidebar";
+
 const CLIENT_MENU_DRAWER_PARAM = "clientDrawer";
 const CLIENT_MENU_DRAWER_VALUE = "menu";
 
 function getPageTitle(pathname) {
-  if (pathname === "/client") return "Dashboard";
-  if (pathname === "/client/articles") return "Mes articles";
-  if (pathname === "/client/articles/new") return "Nouvel article";
-  if (pathname.startsWith("/client/articles/")) return "Modifier l’article";
-  if (pathname === "/client/incitation") return "Mes phrases d’incitation";
-  if (pathname === "/client/commentaires") return "Commentaires";
-  if (pathname === "/client/stickers") return "Stickers";
-  if (pathname === "/client/stickers/install") return "Installer des stickers";
-  if (pathname === "/client/incitation/new") return "Nouvelle phrase d’incitation";
-  if (pathname.startsWith("/client/incitation/")) return "Modifier la phrase d’incitation";
+  if (pathname === "/client") {return "Dashboard";}
+  if (pathname === "/client/articles") {return "Mes articles";}
+  if (pathname === "/client/articles/new") {return "Nouvel article";}
+  if (pathname.startsWith("/client/articles/")) {return "Modifier l’article";}
+  if (pathname === "/client/incitation") {return "Mes phrases d’incitation";}
+  if (pathname === "/client/commentaires") {return "Commentaires";}
+  if (pathname === "/client/stickers") {return "Stickers";}
+  if (pathname === "/client/stickers/install") {return "Installer des stickers";}
+  if (pathname === "/client/incitation/new") {return "Nouvelle phrase d’incitation";}
+  if (pathname.startsWith("/client/incitation/")) {return "Modifier la phrase d’incitation";}
   return "Espace client";
 }
 
@@ -65,7 +67,7 @@ export default function ClientAdminLayout() {
   }, [location]);
 
   useEffect(() => {
-    if (!clientSlug || !setCurrentClient) return;
+    if (!clientSlug || !setCurrentClient) {return;}
     if (currentClient !== clientSlug) {
       setCurrentClient(clientSlug);
     }

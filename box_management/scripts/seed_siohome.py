@@ -1,18 +1,18 @@
-import sys
-import time
 import random
 import secrets
+import sys
+import time
 from datetime import timedelta
 from urllib.parse import urlencode
 
 import requests
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 
-from box_management.models import Box, Song, SongProviderLink, Deposit
-from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID, CLIENT_SECRET as SPOTIFY_CLIENT_SECRET
-
+from box_management.models import Box, Deposit, Song, SongProviderLink
+from spotify.credentials import CLIENT_ID as SPOTIFY_CLIENT_ID
+from spotify.credentials import CLIENT_SECRET as SPOTIFY_CLIENT_SECRET
 
 # =========================================================
 # Personas (servent aussi à créer les users manquants)
@@ -111,6 +111,7 @@ SONGS_BY_USER = {
 # Spotify (Client Credentials)
 # =========================================================
 
+
 def _get_spotify_token():
     if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
         print("[ERR] Spotify CLIENT_ID/CLIENT_SECRET non configurés (spotify.credentials).")
@@ -186,6 +187,7 @@ def spotify_search_track(title: str, artist: str):
 # =========================================================
 # Helpers (compatibles avec tes modèles)
 # =========================================================
+
 
 def gen_public_key(max_len: int = 25) -> str:
     return secrets.token_urlsafe(18)[:max_len]
@@ -284,6 +286,7 @@ def upsert_song(title: str, artist: str):
 # =========================================================
 # Seed principal
 # =========================================================
+
 
 def seed_siohome():
     # 0) Récupération de la box 'siohome' (par name, puis par url)

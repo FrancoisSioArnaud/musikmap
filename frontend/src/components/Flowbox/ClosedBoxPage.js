@@ -1,11 +1,12 @@
+import LockIcon from "@mui/icons-material/Lock";
+import PersonIcon from "@mui/icons-material/Person";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 import React, { useContext } from "react";
 import { Link, useParams } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import LockIcon from "@mui/icons-material/Lock";
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import PersonIcon from "@mui/icons-material/Person";
+
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 export default function ClosedBoxPage() {

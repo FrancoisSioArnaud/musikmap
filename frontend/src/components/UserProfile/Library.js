@@ -1,4 +1,8 @@
 // frontend/src/components/UserProfile/Library.js
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 import React, {
   useState,
   useEffect,
@@ -7,13 +11,9 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserContext } from "../UserContext";
-import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import Deposit from "../Common/Deposit";
+import { UserContext } from "../UserContext";
 import { formatRelativeTime } from "../Utils/time";
 
 export default function Library() {
@@ -29,7 +29,7 @@ export default function Library() {
   const loadingRef = useRef(false);
 
   const fetchSessions = useCallback(async () => {
-    if (loadingRef.current || !hasMore) return;
+    if (loadingRef.current || !hasMore) {return;}
     loadingRef.current = true;
     setLoading(true);
     try {
@@ -76,7 +76,7 @@ export default function Library() {
 
   useEffect(() => {
     function onScroll() {
-      if (loadingRef.current || !hasMore) return;
+      if (loadingRef.current || !hasMore) {return;}
       const nearBottom =
         window.innerHeight + window.scrollY >=
         document.body.offsetHeight - 200;
@@ -152,11 +152,11 @@ export default function Library() {
                     role={canOpenProfile ? "button" : undefined}
                     tabIndex={canOpenProfile ? 0 : undefined}
                     onClick={() => {
-                      if (!canOpenProfile) return;
+                      if (!canOpenProfile) {return;}
                       navigate(`/profile/${profileUser.username}`);
                     }}
                     onKeyDown={(event) => {
-                      if (!canOpenProfile) return;
+                      if (!canOpenProfile) {return;}
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         navigate(`/profile/${profileUser.username}`);
@@ -186,11 +186,11 @@ export default function Library() {
                     role={canOpenLinkSender ? "button" : undefined}
                     tabIndex={canOpenLinkSender ? 0 : undefined}
                     onClick={() => {
-                      if (!canOpenLinkSender) return;
+                      if (!canOpenLinkSender) {return;}
                       navigate(`/profile/${linkSender.username}`);
                     }}
                     onKeyDown={(event) => {
-                      if (!canOpenLinkSender) return;
+                      if (!canOpenLinkSender) {return;}
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         navigate(`/profile/${linkSender.username}`);

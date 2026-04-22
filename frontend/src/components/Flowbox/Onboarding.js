@@ -1,18 +1,20 @@
+import LockIcon from "@mui/icons-material/Lock";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Paper from "@mui/material/Paper";
-import Alert from "@mui/material/Alert";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import CircularProgress from "@mui/material/CircularProgress";
-import LockIcon from "@mui/icons-material/Lock";
-import EnableLocation from "./EnableLocation";
+
 import { UserContext } from "../UserContext";
+
+import EnableLocation from "./EnableLocation";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 function isPermissionDeniedError(error) {
@@ -20,7 +22,7 @@ function isPermissionDeniedError(error) {
 }
 
 async function getLocationPermissionState() {
-  if (!navigator?.permissions?.query) return "prompt";
+  if (!navigator?.permissions?.query) {return "prompt";}
   try {
     const result = await navigator.permissions.query({ name: "geolocation" });
     return result?.state || "prompt";
@@ -75,7 +77,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     const err = location.state?.error;
-    if (err) setPageError(String(err));
+    if (err) {setPageError(String(err));}
   }, [location.state]);
 
   useEffect(() => {

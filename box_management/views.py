@@ -1,7 +1,6 @@
 # ===== Standard library =====
 import base64
 import io
-
 import re
 import xml.etree.ElementTree as ET
 import zipfile
@@ -15,19 +14,23 @@ import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from django.db import transaction, IntegrityError
-from django.db.models import Count, Max, Prefetch, Q, F
+from django.db import IntegrityError, transaction
+from django.db.models import Count, Max, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseGone
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.utils import timezone
-from django.utils.timezone import localtime, localdate
+from django.utils.timezone import localdate, localtime
 
 # ===== Django REST Framework =====
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from la_boite_a_son.api_errors import api_error, api_error_payload
+
+from la_boite_a_son.api_errors import api_error
+
+# Barèmes & coûts
+from la_boite_a_son.economy import COST_REVEAL_BOX, build_economy_payload
 
 # ===== Project =====
 from users.models import CustomUser
@@ -39,92 +42,80 @@ from users.utils import (
     get_current_app_user,
     touch_last_seen,
 )
-from .provider_services import resolve_provider_link_for_song
+
 from .models import (
     Article,
-    IncitationPhrase,
     Box,
     BoxSession,
+    Comment,
+    CommentAttemptLog,
+    CommentModerationDecision,
+    CommentReport,
+    CommentUserRestriction,
     Deposit,
     DiscoveredSong,
     Emoji,
     EmojiRight,
+    IncitationPhrase,
+    Link,
     LocationPoint,
     Reaction,
     Song,
     SongProviderLink,
     Sticker,
-    Link,
-    Comment,
-    CommentReport,
-    CommentModerationDecision,
-    CommentUserRestriction,
-    CommentAttemptLog,
 )
+from .provider_services import resolve_provider_link_for_song
 from .serializers import (
     BoxSerializer,
-    SongSerializer,
-    EmojiSerializer,
     ClientAdminArticleSerializer,
-    PublicVisibleArticleSerializer,
-    PublicVisibleArticleDetailSerializer,
     ClientAdminIncitationSerializer,
+    EmojiSerializer,
+    PublicVisibleArticleDetailSerializer,
+    PublicVisibleArticleSerializer,
 )
 from .utils import (
-    _calculate_distance,
-    _build_successes,
-    _build_deposits_payload,
-    _build_song_from_instance,
-    _get_prev_head_and_older,
-    _build_reactions_from_instance,
-    _build_user_from_instance,
-    _get_active_client_user_or_response,
-    _ArticleImportHTMLParser,
-    _collapse_article_text,
-    _truncate_article_text,
-    _absolute_remote_url,
-    _dedupe_keep_order,
-    _pick_best_favicon_url,
-    _clean_import_title,
-    _looks_like_noise_text,
-    _pick_best_short_text,
-    _extract_import_preview_from_url,
-    _get_current_incitation_for_box,
-    _build_incitation_overlap_counts,
-    _get_incitation_overlap_queryset,
-    _coerce_bool,
     COMMENT_COOLDOWN_SECONDS,
-    COMMENT_TARGET_USER_DAILY_LIMIT,
     COMMENT_REASON_ALREADY_COMMENTED,
-    COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED,
-    COMMENT_REASON_RATE_LIMIT,
-    COMMENT_REASON_LINK_FORBIDDEN,
-    COMMENT_REASON_EMAIL_FORBIDDEN,
-    COMMENT_REASON_PHONE_FORBIDDEN,
-    COMMENT_REASON_EMPTY,
-    COMMENT_REASON_TOO_LONG,
-    COMMENT_REASON_RESTRICTED,
-    COMMENT_REASON_REPORT_THRESHOLD,
-    COMMENT_REASON_RISK_QUARANTINE,
     COMMENT_REASON_DELETE_BY_AUTHOR,
+    COMMENT_REASON_EMAIL_FORBIDDEN,
+    COMMENT_REASON_EMPTY,
+    COMMENT_REASON_LINK_FORBIDDEN,
+    COMMENT_REASON_PHONE_FORBIDDEN,
+    COMMENT_REASON_RATE_LIMIT,
     COMMENT_REASON_REMOVE_BY_MODERATION,
+    COMMENT_REASON_REPORT_THRESHOLD,
+    COMMENT_REASON_RESTRICTED,
+    COMMENT_REASON_RISK_QUARANTINE,
+    COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED,
+    COMMENT_REASON_TOO_LONG,
     COMMENT_REPORT_REASON_CHOICES,
-    _normalize_comment_text,
-    _detect_comment_pre_creation_error,
-    _score_comment_risk,
+    COMMENT_TARGET_USER_DAILY_LIMIT,
     _build_comments_context_for_deposits,
-    _get_profile_picture_url,
+    _build_deposits_payload,
+    _build_incitation_overlap_counts,
+    _build_reactions_from_instance,
+    _build_song_from_instance,
+    _build_successes,
+    _build_user_from_instance,
+    _calculate_distance,
+    _coerce_bool,
+    _detect_comment_pre_creation_error,
+    _extract_import_preview_from_url,
+    _get_active_client_user_or_response,
     _get_active_comment_restrictions_for_clients,
+    _get_current_incitation_for_box,
+    _get_incitation_overlap_queryset,
+    _get_prev_head_and_older,
+    _get_profile_picture_url,
     _log_blocked_comment_attempt,
-    create_song_deposit,
+    _normalize_comment_text,
+    _score_comment_risk,
     build_pinned_price_steps_payload,
-    get_pinned_price_steps_raw,
-    get_pinned_price_step,
+    create_song_deposit,
     get_active_pinned_deposit_for_box,
+    get_pinned_price_step,
+    get_pinned_price_steps_raw,
 )
-
-# Barèmes & coûts
-from la_boite_a_son.economy import COST_REVEAL_BOX, build_economy_payload
 
 User = get_user_model()
 
@@ -146,12 +137,7 @@ def _get_active_box_session(user, box):
     if not user or not box:
         return None
     now = timezone.now()
-    return (
-        BoxSession.objects
-        .filter(user=user, box=box, expires_at__gt=now)
-        .order_by("-expires_at", "-id")
-        .first()
-    )
+    return BoxSession.objects.filter(user=user, box=box, expires_at__gt=now).order_by("-expires_at", "-id").first()
 
 
 def _serialize_box_identity(box):
@@ -275,11 +261,7 @@ def sticker_redirect_view(request, sticker_slug):
     if not re.fullmatch(r"\d{11}", sticker_slug):
         return redirect("/")
 
-    sticker = (
-        Sticker.objects.select_related("box", "client")
-        .filter(slug=sticker_slug)
-        .first()
-    )
+    sticker = Sticker.objects.select_related("box", "client").filter(slug=sticker_slug).first()
 
     if not sticker:
         return redirect("/")
@@ -296,6 +278,7 @@ def sticker_redirect_view(request, sticker_slug):
 
 def sticker_root_not_found_view(request):
     raise Http404("Le slug du sticker est obligatoire.")
+
 
 def _normalize_link_slug(raw_slug):
     return (raw_slug or "").strip().lower()
@@ -351,9 +334,10 @@ def _build_public_link_payload(link, viewer):
             "id": getattr(box, "id", None),
             "name": getattr(box, "name", None),
             "url": getattr(box, "url", None),
-        } if box else None,
+        }
+        if box
+        else None,
     }
-
 
 
 def _get_comment_error_message(reason_code):
@@ -426,14 +410,28 @@ def _serialize_client_admin_comment(comment):
         "updated_at": comment.updated_at.isoformat() if getattr(comment, "updated_at", None) else None,
         "deposit_deleted": bool(comment.deposit_deleted or not comment.deposit_id),
         "deposit": {
-            "public_key": comment.deposit_public_key or (comment.deposit.public_key if getattr(comment, "deposit", None) else ""),
-            "box_name": comment.deposit_box_name or (comment.deposit.box.name if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None) else ""),
-            "box_url": comment.deposit_box_url or (comment.deposit.box.url if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None) else ""),
+            "public_key": comment.deposit_public_key
+            or (comment.deposit.public_key if getattr(comment, "deposit", None) else ""),
+            "box_name": comment.deposit_box_name
+            or (
+                comment.deposit.box.name
+                if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None)
+                else ""
+            ),
+            "box_url": comment.deposit_box_url
+            or (
+                comment.deposit.box.url
+                if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None)
+                else ""
+            ),
         },
         "author": {
             "id": comment.user_id,
             "username": getattr(user, "username", None) or comment.author_username or None,
-            "display_name": getattr(user, "username", None) or comment.author_display_name or comment.author_username or "anonyme",
+            "display_name": getattr(user, "username", None)
+            or comment.author_display_name
+            or comment.author_username
+            or "anonyme",
             "email": getattr(user, "email", None) or comment.author_email or None,
             "profile_picture_url": profile_picture_url,
         },
@@ -487,8 +485,7 @@ class ShareLinkCreateView(APIView):
             return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_PUBLIC_KEY_REQUIRED", "dep_public_key manquant")
 
         deposit = (
-            Deposit.objects
-            .select_related("song", "box", "box__client", "user")
+            Deposit.objects.select_related("song", "box", "box__client", "user")
             .filter(public_key=dep_public_key)
             .first()
         )
@@ -496,12 +493,15 @@ class ShareLinkCreateView(APIView):
             return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
 
         if not _is_deposit_revealed_for_user(current_user, deposit):
-            return api_error(status.HTTP_403_FORBIDDEN, "DEPOSIT_NOT_REVEALED", "Ce dépôt doit déjà être révélé pour pouvoir être partagé.")
+            return api_error(
+                status.HTTP_403_FORBIDDEN,
+                "DEPOSIT_NOT_REVEALED",
+                "Ce dépôt doit déjà être révélé pour pouvoir être partagé.",
+            )
 
         with transaction.atomic():
             link = (
-                Link.objects
-                .select_for_update()
+                Link.objects.select_for_update()
                 .select_related("deposit", "created_by")
                 .filter(deposit=deposit, created_by=current_user)
                 .first()
@@ -528,14 +528,13 @@ class ShareLinkPublicDetailView(APIView):
             return api_error(status.HTTP_404_NOT_FOUND, "LINK_NOT_FOUND", "Lien introuvable.")
 
         link = (
-            Link.objects
-            .select_related("deposit", "deposit__song", "deposit__box", "deposit__box__client", "deposit__user", "created_by")
+            Link.objects.select_related(
+                "deposit", "deposit__song", "deposit__box", "deposit__box__client", "deposit__user", "created_by"
+            )
             .prefetch_related(
                 Prefetch(
                     "deposit__reactions",
-                    queryset=Reaction.objects
-                        .select_related("emoji", "user")
-                        .order_by("created_at", "id"),
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
                     to_attr="prefetched_reactions",
                 )
             )
@@ -609,17 +608,11 @@ class GetMain(APIView):
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
-        qs = (
-            Deposit.objects
-            .latest_for_box(box, limit=1)
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects
-                        .select_related("emoji", "user")
-                        .order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
+        qs = Deposit.objects.latest_for_box(box, limit=1).prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
             )
         )
         deposits = list(qs)
@@ -683,11 +676,14 @@ class GetBox(APIView):
         slug = request.GET.get("name")
 
         if not slug:
-            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_NAME_REQUIRED", "Merci de spécifier le nom d'une boîte (paramètre ?name=)")
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "BOX_NAME_REQUIRED",
+                "Merci de spécifier le nom d'une boîte (paramètre ?name=)",
+            )
 
         box = (
-            Box.objects
-            .select_related("client")
+            Box.objects.select_related("client")
             .filter(url=slug)
             .annotate(
                 deposit_count=Count(
@@ -707,8 +703,7 @@ class GetBox(APIView):
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Désolé. Cette boîte n'existe pas.")
 
         last_deposit = (
-            box.deposits
-            .filter(deposit_type=Deposit.DEPOSIT_TYPE_BOX)
+            box.deposits.filter(deposit_type=Deposit.DEPOSIT_TYPE_BOX)
             .select_related("song")
             .order_by("-deposited_at")
             .first()
@@ -760,7 +755,9 @@ class GetBox(APIView):
                     reuse_recent_window_seconds=10,
                 )
             except ValueError:
-                return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide.")
+                return api_error(
+                    status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide."
+                )
 
             if not created_new_deposit:
                 prev_head, older_list = _get_prev_head_and_older(box, limit=15, exclude_deposit_ids=[_deposit.pk])
@@ -828,7 +825,9 @@ class Location(APIView):
 
         points = LocationPoint.objects.filter(box=box)
         if not points.exists():
-            return api_error(status.HTTP_404_NOT_FOUND, "BOX_LOCATION_NOT_CONFIGURED", "No location points for this box")
+            return api_error(
+                status.HTTP_404_NOT_FOUND, "BOX_LOCATION_NOT_CONFIGURED", "No location points for this box"
+            )
 
         is_in_range = False
         for point in points:
@@ -838,7 +837,9 @@ class Location(APIView):
                 break
 
         if not is_in_range:
-            return api_error(status.HTTP_403_FORBIDDEN, "OUTSIDE_ALLOWED_BOX_RANGE", "Rapproche-toi de la boîte pour l’ouvrir.")
+            return api_error(
+                status.HTTP_403_FORBIDDEN, "OUTSIDE_ALLOWED_BOX_RANGE", "Rapproche-toi de la boîte pour l’ouvrir."
+            )
 
         current_user = get_current_app_user(request)
         guest_created = False
@@ -847,12 +848,15 @@ class Location(APIView):
         touch_last_seen(current_user)
 
         session = _open_box_session_for_user(current_user, box)
-        response = Response({
-            "active": True,
-            "box": _serialize_box_identity(box),
-            "session": _serialize_box_session(session),
-            "current_user": build_current_user_payload(current_user),
-        }, status=status.HTTP_200_OK)
+        response = Response(
+            {
+                "active": True,
+                "box": _serialize_box_identity(box),
+                "session": _serialize_box_session(session),
+                "current_user": build_current_user_payload(current_user),
+            },
+            status=status.HTTP_200_OK,
+        )
         if guest_created and getattr(current_user, "guest_device_token", None):
             attach_guest_cookie(response, current_user.guest_device_token)
         return response
@@ -876,7 +880,9 @@ class BoxSessionView(APIView):
 
         session = _get_active_box_session(current_user, box) if current_user else None
         if not session:
-            return Response({"active": False, "box": _serialize_box_identity(box), "session": None}, status=status.HTTP_200_OK)
+            return Response(
+                {"active": False, "box": _serialize_box_identity(box), "session": None}, status=status.HTTP_200_OK
+            )
 
         return Response(_session_payload_for_box(session, box), status=status.HTTP_200_OK)
 
@@ -892,8 +898,7 @@ class ActiveBoxSessionsView(APIView):
 
         now = timezone.now()
         sessions = (
-            BoxSession.objects
-            .select_related("box__client")
+            BoxSession.objects.select_related("box__client")
             .filter(user=current_user, expires_at__gt=now)
             .order_by("-expires_at", "-id")
         )
@@ -904,16 +909,14 @@ class ActiveBoxSessionsView(APIView):
             if session.box_id in seen_box_ids:
                 continue
             seen_box_ids.add(session.box_id)
-            items.append({
-                "box": _serialize_box_identity(session.box),
-                "session": _serialize_box_session(session),
-            })
+            items.append(
+                {
+                    "box": _serialize_box_identity(session.box),
+                    "session": _serialize_box_session(session),
+                }
+            )
 
         return Response({"sessions": items}, status=status.HTTP_200_OK)
-
-
-
-
 
 
 class ResolveProviderLinkView(APIView):
@@ -925,8 +928,13 @@ class ResolveProviderLinkView(APIView):
             return api_error(status.HTTP_400_BAD_REQUEST, "PROVIDER_LINK_PARAMS_REQUIRED", "Paramètres manquants.")
 
         song = (
-            Song.objects
-            .prefetch_related(Prefetch("provider_links", queryset=SongProviderLink.objects.order_by("id"), to_attr="prefetched_provider_links"))
+            Song.objects.prefetch_related(
+                Prefetch(
+                    "provider_links",
+                    queryset=SongProviderLink.objects.order_by("id"),
+                    to_attr="prefetched_provider_links",
+                )
+            )
             .filter(public_key=song_public_key)
             .first()
         )
@@ -935,8 +943,13 @@ class ResolveProviderLinkView(APIView):
 
         result = resolve_provider_link_for_song(song, provider_code)
         refreshed_song = (
-            Song.objects
-            .prefetch_related(Prefetch("provider_links", queryset=SongProviderLink.objects.order_by("id"), to_attr="prefetched_provider_links"))
+            Song.objects.prefetch_related(
+                Prefetch(
+                    "provider_links",
+                    queryset=SongProviderLink.objects.order_by("id"),
+                    to_attr="prefetched_provider_links",
+                )
+            )
             .filter(pk=song.pk)
             .first()
         ) or song
@@ -999,13 +1012,17 @@ class RevealSong(APIView):
 
             song = deposit.song
             if not song:
-                return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_SONG_NOT_FOUND", "Chanson introuvable pour ce dépôt")
+                return api_error(
+                    status.HTTP_404_NOT_FOUND, "DEPOSIT_SONG_NOT_FOUND", "Chanson introuvable pour ce dépôt"
+                )
 
             discovery = DiscoveredSong.objects.filter(user=user, deposit=deposit).first()
             points_balance = int(getattr(user, "points", 0) or 0)
 
             if discovery is None:
-                ok_points, points_payload, points_status = apply_points_delta(user, -int(COST_REVEAL_BOX), lock_user=False)
+                ok_points, points_payload, points_status = apply_points_delta(
+                    user, -int(COST_REVEAL_BOX), lock_user=False
+                )
                 if not ok_points:
                     return Response(points_payload, status=points_status)
 
@@ -1040,7 +1057,9 @@ class ManageDiscoveredSongs(APIView):
     def post(self, request, format=None):
         user = get_current_app_user(request)
         if not user:
-            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action.")
+            return api_error(
+                status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action."
+            )
         touch_last_seen(user)
         return api_error(
             status.HTTP_403_FORBIDDEN,
@@ -1051,7 +1070,9 @@ class ManageDiscoveredSongs(APIView):
     def get(self, request):
         user = get_current_app_user(request)
         if not user:
-            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action.")
+            return api_error(
+                status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Vous devez être connecté pour effectuer cette action."
+            )
         touch_last_seen(user)
 
         try:
@@ -1066,8 +1087,7 @@ class ManageDiscoveredSongs(APIView):
         offset = 0 if offset < 0 else offset
 
         events = list(
-            DiscoveredSong.objects
-            .filter(user_id=user.id)
+            DiscoveredSong.objects.filter(user_id=user.id)
             .select_related("deposit", "deposit__song", "deposit__user", "deposit__box", "link_sender")
             .prefetch_related(
                 Prefetch(
@@ -1080,7 +1100,10 @@ class ManageDiscoveredSongs(APIView):
         )
 
         if not events:
-            return Response({"sessions": [], "limit": limit, "offset": offset, "has_more": False, "next_offset": offset}, status=status.HTTP_200_OK)
+            return Response(
+                {"sessions": [], "limit": limit, "offset": offset, "has_more": False, "next_offset": offset},
+                status=status.HTTP_200_OK,
+            )
 
         deposits = [ds.deposit for ds in events]
         unique_deposits = []
@@ -1090,17 +1113,27 @@ class ManageDiscoveredSongs(APIView):
                 seen_ids.add(d.pk)
                 unique_deposits.append(d)
 
-        deposits_payload_list = _build_deposits_payload(unique_deposits, viewer=user, include_user=True, include_deposit_time=False)
+        deposits_payload_list = _build_deposits_payload(
+            unique_deposits, viewer=user, include_user=True, include_deposit_time=False
+        )
         deposit_payload_by_id = {dep.pk: payload for dep, payload in zip(unique_deposits, deposits_payload_list)}
 
         def deposit_payload(ds_obj):
             dep = ds_obj.deposit
             base = deposit_payload_by_id.get(dep.pk, {})
-            return {**base, "type": ds_obj.discovered_type, "context": ds_obj.context or "box", "discovered_at": ds_obj.discovered_at.isoformat(), "deposit_id": dep.pk}
+            return {
+                **base,
+                "type": ds_obj.discovered_type,
+                "context": ds_obj.context or "box",
+                "discovered_at": ds_obj.discovered_at.isoformat(),
+                "deposit_id": dep.pk,
+            }
 
         sessions_all = []
         consumed = [False] * len(events)
-        box_main_indices = [i for i, event in enumerate(events) if (event.context or "box") == "box" and event.discovered_type == "main"]
+        box_main_indices = [
+            i for i, event in enumerate(events) if (event.context or "box") == "box" and event.discovered_type == "main"
+        ]
 
         for idx, main_index in enumerate(box_main_indices):
             main_ds = events[main_index]
@@ -1113,11 +1146,24 @@ class ManageDiscoveredSongs(APIView):
             consumed[main_index] = True
             for event_index in range(main_index + 1, next_main_index):
                 ds = events[event_index]
-                if consumed[event_index] or (ds.context or "box") != "box" or ds.discovered_type != "revealed" or ds.deposit.box_id != box.id:
+                if (
+                    consumed[event_index]
+                    or (ds.context or "box") != "box"
+                    or ds.discovered_type != "revealed"
+                    or ds.deposit.box_id != box.id
+                ):
                     continue
                 deposits_list.append(deposit_payload(ds))
                 consumed[event_index] = True
-            sessions_all.append({"session_id": f"box-{main_ds.id}", "session_type": "box", "box": {"id": box.id, "name": box.name, "url": box.url}, "started_at": main_ds.discovered_at.isoformat(), "deposits": deposits_list})
+            sessions_all.append(
+                {
+                    "session_id": f"box-{main_ds.id}",
+                    "session_type": "box",
+                    "box": {"id": box.id, "name": box.name, "url": box.url},
+                    "started_at": main_ds.discovered_at.isoformat(),
+                    "deposits": deposits_list,
+                }
+            )
 
         next_box_main_pos_from = [None] * len(events)
         next_box_main_idx = None
@@ -1153,19 +1199,40 @@ class ManageDiscoveredSongs(APIView):
                     cursor += 1
                 for consumed_index in session_indices:
                     consumed[consumed_index] = True
-                deposits_list.sort(key=lambda deposit: (deposit.get("discovered_at") or "", deposit.get("deposit_id") or 0), reverse=True)
-                sessions_all.append({"session_id": f"profile-{event.id}", "session_type": "profile", "profile_user": _build_user_from_instance(owner), "started_at": start.isoformat(), "deposits": deposits_list})
+                deposits_list.sort(
+                    key=lambda deposit: (deposit.get("discovered_at") or "", deposit.get("deposit_id") or 0),
+                    reverse=True,
+                )
+                sessions_all.append(
+                    {
+                        "session_id": f"profile-{event.id}",
+                        "session_type": "profile",
+                        "profile_user": _build_user_from_instance(owner),
+                        "started_at": start.isoformat(),
+                        "deposits": deposits_list,
+                    }
+                )
                 index = cursor
                 continue
             if event_context == "link":
                 consumed[index] = True
-                sessions_all.append({"session_id": f"link-{event.id}", "session_type": "link", "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)), "started_at": event.discovered_at.isoformat(), "deposits": [deposit_payload(event)]})
+                sessions_all.append(
+                    {
+                        "session_id": f"link-{event.id}",
+                        "session_type": "link",
+                        "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)),
+                        "started_at": event.discovered_at.isoformat(),
+                        "deposits": [deposit_payload(event)],
+                    }
+                )
                 index += 1
                 continue
             if event.discovered_type == "revealed":
                 box = event.deposit.box
                 if box:
-                    stop_at = next_box_main_pos_from[index] if next_box_main_pos_from[index] is not None else len(events)
+                    stop_at = (
+                        next_box_main_pos_from[index] if next_box_main_pos_from[index] is not None else len(events)
+                    )
                     deposits_list = [deposit_payload(event)]
                     consumed[index] = True
                     cursor = index + 1
@@ -1185,7 +1252,15 @@ class ManageDiscoveredSongs(APIView):
                         deposits_list.append(deposit_payload(current))
                         consumed[cursor] = True
                         cursor += 1
-                    sessions_all.append({"session_id": f"orph-{orphan_counter}", "session_type": "box", "box": {"id": box.id, "name": box.name, "url": box.url}, "started_at": event.discovered_at.isoformat(), "deposits": deposits_list})
+                    sessions_all.append(
+                        {
+                            "session_id": f"orph-{orphan_counter}",
+                            "session_type": "box",
+                            "box": {"id": box.id, "name": box.name, "url": box.url},
+                            "started_at": event.discovered_at.isoformat(),
+                            "deposits": deposits_list,
+                        }
+                    )
                     orphan_counter += 1
             index += 1
 
@@ -1196,7 +1271,16 @@ class ManageDiscoveredSongs(APIView):
         sessions_page = sessions_all[slice_start:slice_end]
         has_more = slice_end < total_sessions
         next_offset = slice_end if has_more else slice_end
-        return Response({"sessions": sessions_page, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "sessions": sessions_page,
+                "limit": limit,
+                "offset": offset,
+                "has_more": has_more,
+                "next_offset": next_offset,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserDepositsView(APIView):
@@ -1235,19 +1319,29 @@ class UserDepositsView(APIView):
                 return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur inexistant")
 
         base_qs = (
-            Deposit.objects.filter(user=target_user).exclude(deposit_type="favorite")
+            Deposit.objects.filter(user=target_user)
+            .exclude(deposit_type="favorite")
             .select_related("song", "box", "user")
-            .prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"), to_attr="prefetched_reactions"))
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
             .order_by("-deposited_at", "-id")
         )
 
-        page_qs = list(base_qs[offset: offset + limit + 1])
+        page_qs = list(base_qs[offset : offset + limit + 1])
         has_more = len(page_qs) > limit
         deposits = page_qs[:limit]
         viewer = get_current_app_user(request)
         items = _build_deposits_payload(deposits, viewer=viewer, include_user=False)
         next_offset = offset + len(deposits)
-        return Response({"items": items, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset}, status=status.HTTP_200_OK)
+        return Response(
+            {"items": items, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PinnedSongView(APIView):
@@ -1281,17 +1375,26 @@ class PinnedSongView(APIView):
             touch_last_seen(viewer)
 
         active_pinned = get_active_pinned_deposit_for_box(box)
-        return Response({
-            "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
-            "price_steps": build_pinned_price_steps_payload(user_points=getattr(viewer, "points", None) if viewer else None),
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
+                "price_steps": build_pinned_price_steps_payload(
+                    user_points=getattr(viewer, "points", None) if viewer else None
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         current_user = get_current_app_user(request)
         if not current_user:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         if getattr(current_user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte pour épingler une chanson.")
+            return api_error(
+                status.HTTP_403_FORBIDDEN,
+                "ACCOUNT_COMPLETION_REQUIRED",
+                "Finalise d’abord ton compte pour épingler une chanson.",
+            )
         touch_last_seen(current_user)
 
         box, error_response = self._get_box(request)
@@ -1355,24 +1458,41 @@ class PinnedSongView(APIView):
                 action = "created"
 
         except ValueError:
-            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_CREATION_INVALID", "Impossible d’épingler cette chanson avec les paramètres fournis.")
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "PIN_CREATION_INVALID",
+                "Impossible d’épingler cette chanson avec les paramètres fournis.",
+            )
         except Exception:
-            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "PIN_CREATION_FAILED", "Impossible d’épingler cette chanson pour le moment.")
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "PIN_CREATION_FAILED",
+                "Impossible d’épingler cette chanson pour le moment.",
+            )
 
         refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
         pinned_deposit = (
             Deposit.objects.select_related("song", "user", "box")
-            .prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions"))
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
             .filter(pk=pinned_deposit.pk)
             .first()
         )
 
-        return Response({
-            "action": action,
-            "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
-            "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
-            "points_balance": int(getattr(refreshed_user, "points", 0) or 0),
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "action": action,
+                "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
+                "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
+                "points_balance": int(getattr(refreshed_user, "points", 0) or 0),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PublicVisibleArticlesView(APIView):
@@ -1406,8 +1526,7 @@ class PublicVisibleArticlesView(APIView):
         limit = max(1, min(limit, 20))
 
         articles_qs = (
-            Article.objects
-            .with_related()
+            Article.objects.with_related()
             .for_client(box.client_id)
             .currently_visible()
             .order_by("-published_at", "-created_at")[:limit]
@@ -1430,12 +1549,7 @@ class PublicVisibleArticleDetailView(APIView):
             return session_error
 
         article = (
-            Article.objects
-            .with_related()
-            .for_client(box.client_id)
-            .currently_visible()
-            .filter(id=article_id)
-            .first()
+            Article.objects.with_related().for_client(box.client_id).currently_visible().filter(id=article_id).first()
         )
 
         if not article:
@@ -1486,17 +1600,17 @@ class ClientAdminArticleImportPageView(APIView):
 
             detail = f"La page n'est pas accessible (HTTP {status_code})."
             if status_code in {401, 402, 403}:
-                detail = (
-                    f"Le site refuse l'import automatique de cette page (HTTP {status_code})."
-                )
+                detail = f"Le site refuse l'import automatique de cette page (HTTP {status_code})."
 
             return api_error(
                 status.HTTP_502_BAD_GATEWAY,
-                "ARTICLE_IMPORT_REMOTE_FORBIDDEN" if status_code in {401, 402, 403} else "ARTICLE_IMPORT_REMOTE_UNAVAILABLE",
+                "ARTICLE_IMPORT_REMOTE_FORBIDDEN"
+                if status_code in {401, 402, 403}
+                else "ARTICLE_IMPORT_REMOTE_UNAVAILABLE",
                 detail,
                 remote_status=status_code,
             )
-        except ValueError as exc:
+        except ValueError:
             return api_error(
                 status.HTTP_400_BAD_REQUEST,
                 "ARTICLE_IMPORT_INVALID_CONTENT",
@@ -1517,6 +1631,7 @@ class ClientAdminArticleImportPageView(APIView):
 
         return Response(preview, status=status.HTTP_200_OK)
 
+
 class ClientAdminArticleListCreateView(APIView):
     permission_classes = []
 
@@ -1529,8 +1644,7 @@ class ClientAdminArticleListCreateView(APIView):
         status_filter = (request.GET.get("status") or "").strip()
 
         articles_qs = (
-            Article.objects
-            .visible_for_client_user(user)
+            Article.objects.visible_for_client_user(user)
             .with_related()
             .search(search)
             .with_status(status_filter)
@@ -1571,13 +1685,7 @@ class ClientAdminArticleDetailView(APIView):
         if error_response:
             return None, error_response
 
-        article = (
-            Article.objects
-            .visible_for_client_user(user)
-            .with_related()
-            .filter(id=article_id)
-            .first()
-        )
+        article = Article.objects.visible_for_client_user(user).with_related().filter(id=article_id).first()
 
         if not article:
             return None, api_error(
@@ -1641,13 +1749,12 @@ class EmojiCatalogView(APIView):
     GET /box-management/emojis/catalog
     ?dep_public_key=<str> (optionnel) pour retourner aussi la réaction courante
     """
+
     permission_classes = []
 
     def get(self, request):
         dep_public_key = request.GET.get("dep_public_key")
-        actives_paid = list(
-            Emoji.objects.filter(active=True).order_by("cost", "char")
-        )
+        actives_paid = list(Emoji.objects.filter(active=True).order_by("cost", "char"))
 
         owned_ids = []
         current_reaction = None
@@ -1656,8 +1763,7 @@ class EmojiCatalogView(APIView):
         if current_user:
             touch_last_seen(current_user)
             owned_ids = list(
-                EmojiRight.objects.filter(user=current_user, emoji__active=True)
-                .values_list("emoji_id", flat=True)
+                EmojiRight.objects.filter(user=current_user, emoji__active=True).values_list("emoji_id", flat=True)
             )
 
             if dep_public_key:
@@ -1685,6 +1791,7 @@ class PurchaseEmojiView(APIView):
     POST /box-management/emojis/purchase
     Body: { "emoji_id": <int> }
     """
+
     permission_classes = []
 
     def post(self, request):
@@ -1710,10 +1817,15 @@ class PurchaseEmojiView(APIView):
 
             if cost == 0:
                 _, created = EmojiRight.objects.get_or_create(user=current_user, emoji=emoji)
-                return Response({"ok": True, "owned": True, "created": bool(created), "points_balance": current_user.points}, status=status.HTTP_200_OK)
+                return Response(
+                    {"ok": True, "owned": True, "created": bool(created), "points_balance": current_user.points},
+                    status=status.HTTP_200_OK,
+                )
 
             if EmojiRight.objects.filter(user=current_user, emoji=emoji).exists():
-                return Response({"ok": True, "owned": True, "points_balance": current_user.points}, status=status.HTTP_200_OK)
+                return Response(
+                    {"ok": True, "owned": True, "points_balance": current_user.points}, status=status.HTTP_200_OK
+                )
 
             ok_points, payload_points, code_points = apply_points_delta(current_user, -cost, lock_user=False)
             if not ok_points:
@@ -1725,7 +1837,10 @@ class PurchaseEmojiView(APIView):
                 return Response(payload_points, status=code_points)
 
             EmojiRight.objects.create(user=current_user, emoji=emoji)
-            return Response({"ok": True, "owned": True, "points_balance": payload_points.get("points_balance")}, status=status.HTTP_200_OK)
+            return Response(
+                {"ok": True, "owned": True, "points_balance": payload_points.get("points_balance")},
+                status=status.HTTP_200_OK,
+            )
 
 
 class ReactionView(APIView):
@@ -1733,6 +1848,7 @@ class ReactionView(APIView):
     POST /box-management/reactions
     Body: { "dep_public_key": "<str>", "emoji_id": <int|null|"none"> }
     """
+
     permission_classes = []
 
     def post(self, request):
@@ -1751,13 +1867,17 @@ class ReactionView(APIView):
         if not deposit:
             return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
 
-        if getattr(deposit, "box", None) and getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+        if getattr(deposit, "box", None) and getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (
+            Deposit.DEPOSIT_TYPE_BOX,
+            Deposit.DEPOSIT_TYPE_PINNED,
+        ):
             if not _get_active_box_session(current_user, deposit.box):
                 return api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
 
         is_revealed_for_user = bool(
             getattr(deposit, "user_id", None) == getattr(current_user, "id", None)
-            or getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (Deposit.DEPOSIT_TYPE_FAVORITE, Deposit.DEPOSIT_TYPE_PINNED)
+            or getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX)
+            in (Deposit.DEPOSIT_TYPE_FAVORITE, Deposit.DEPOSIT_TYPE_PINNED)
             or DiscoveredSong.objects.filter(user=current_user, deposit=deposit).exists()
         )
         if not is_revealed_for_user:
@@ -1800,7 +1920,17 @@ class ReactionView(APIView):
             Reaction.objects.filter(user=locked_user, deposit=deposit).delete()
             Reaction.objects.create(user=locked_user, deposit=deposit, emoji=emoji)
 
-        deposit = (Deposit.objects.filter(pk=deposit.pk).prefetch_related(Prefetch("reactions", queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"), to_attr="prefetched_reactions")).first())
+        deposit = (
+            Deposit.objects.filter(pk=deposit.pk)
+            .prefetch_related(
+                Prefetch(
+                    "reactions",
+                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                    to_attr="prefetched_reactions",
+                )
+            )
+            .first()
+        )
         rx = _build_reactions_from_instance(deposit, current_user=current_user)
         return Response({"my_reaction": rx["mine"], "reactions": rx["detail"]}, status=status.HTTP_200_OK)
 
@@ -1821,12 +1951,7 @@ class CommentCreateView(APIView):
         text_value = raw_text.strip()
         normalized_text = _normalize_comment_text(text_value)
 
-        deposit = (
-            Deposit.objects
-            .select_related("user", "box__client")
-            .filter(public_key=dep_public_key)
-            .first()
-        )
+        deposit = Deposit.objects.select_related("user", "box__client").filter(public_key=dep_public_key).first()
         if not deposit:
             return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
 
@@ -1836,7 +1961,9 @@ class CommentCreateView(APIView):
 
         client = getattr(getattr(deposit, "box", None), "client", None)
         if not client and getattr(deposit, "deposit_type", "box") != "favorite":
-            return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_CLIENT_NOT_FOUND", "Client introuvable pour ce dépôt.")
+            return api_error(
+                status.HTTP_400_BAD_REQUEST, "DEPOSIT_CLIENT_NOT_FOUND", "Client introuvable pour ce dépôt."
+            )
 
         if Comment.objects.filter(deposit=deposit, user=current_user).exists():
             return _comment_error(status.HTTP_400_BAD_REQUEST, COMMENT_REASON_ALREADY_COMMENTED)
@@ -1955,13 +2082,17 @@ class CommentCreateView(APIView):
             deposit.id,
             {"items": [], "viewer_state": {}},
         )
-        response_status = status.HTTP_202_ACCEPTED if comment_status == Comment.STATUS_QUARANTINED else status.HTTP_201_CREATED
+        response_status = (
+            status.HTTP_202_ACCEPTED if comment_status == Comment.STATUS_QUARANTINED else status.HTTP_201_CREATED
+        )
         return Response(
             {
                 "status": comment.status,
                 "comment_id": comment.id,
                 "comments": comments_context,
-                "message": "Votre commentaire est en cours de vérification." if comment_status == Comment.STATUS_QUARANTINED else None,
+                "message": "Votre commentaire est en cours de vérification."
+                if comment_status == Comment.STATUS_QUARANTINED
+                else None,
             },
             status=response_status,
         )
@@ -1976,12 +2107,7 @@ class CommentDetailView(APIView):
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
-        comment = (
-            Comment.objects
-            .select_related("deposit", "deposit__box", "client")
-            .filter(pk=comment_id)
-            .first()
-        )
+        comment = Comment.objects.select_related("deposit", "deposit__box", "client").filter(pk=comment_id).first()
         if not comment:
             return api_error(status.HTTP_404_NOT_FOUND, "COMMENT_NOT_FOUND", "Commentaire introuvable.")
         if comment.user_id != current_user.id:
@@ -2025,18 +2151,19 @@ class CommentReportView(APIView):
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
         touch_last_seen(current_user)
 
-        comment = (
-            Comment.objects
-            .select_related("user", "deposit", "client")
-            .filter(pk=comment_id)
-            .first()
-        )
+        comment = Comment.objects.select_related("user", "deposit", "client").filter(pk=comment_id).first()
         if not comment:
             return api_error(status.HTTP_404_NOT_FOUND, "COMMENT_NOT_FOUND", "Commentaire introuvable.")
         if comment.user_id == current_user.id:
-            return api_error(status.HTTP_400_BAD_REQUEST, "COMMENT_SELF_REPORT_FORBIDDEN", "Vous ne pouvez pas signaler votre propre commentaire.")
+            return api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "COMMENT_SELF_REPORT_FORBIDDEN",
+                "Vous ne pouvez pas signaler votre propre commentaire.",
+            )
         if comment.status != Comment.STATUS_PUBLISHED:
-            return api_error(status.HTTP_400_BAD_REQUEST, "COMMENT_REPORT_NOT_ALLOWED", "Ce commentaire ne peut plus être signalé.")
+            return api_error(
+                status.HTTP_400_BAD_REQUEST, "COMMENT_REPORT_NOT_ALLOWED", "Ce commentaire ne peut plus être signalé."
+            )
 
         reason_code = (request.data.get("reason") or "other").strip()
         if reason_code not in COMMENT_REPORT_REASON_CHOICES:
@@ -2095,17 +2222,25 @@ class ClientAdminCommentListView(APIView):
         comments = list(
             qs.select_related("user", "deposit", "deposit__box")
             .prefetch_related(
-                Prefetch("reports", queryset=CommentReport.objects.order_by("-created_at", "-id"), to_attr="prefetched_reports"),
+                Prefetch(
+                    "reports",
+                    queryset=CommentReport.objects.order_by("-created_at", "-id"),
+                    to_attr="prefetched_reports",
+                ),
                 Prefetch(
                     "moderation_decisions",
-                    queryset=CommentModerationDecision.objects.select_related("acted_by").order_by("-created_at", "-id"),
+                    queryset=CommentModerationDecision.objects.select_related("acted_by").order_by(
+                        "-created_at", "-id"
+                    ),
                     to_attr="prefetched_decisions",
                 ),
             )
             .order_by("-created_at", "-id")[:100]
         )
 
-        return Response({"items": [_serialize_client_admin_comment(comment) for comment in comments]}, status=status.HTTP_200_OK)
+        return Response(
+            {"items": [_serialize_client_admin_comment(comment) for comment in comments]}, status=status.HTTP_200_OK
+        )
 
 
 class ClientAdminCommentModerateView(APIView):
@@ -2117,8 +2252,7 @@ class ClientAdminCommentModerateView(APIView):
             return error_response
 
         comment = (
-            Comment.objects
-            .select_related("user", "deposit", "deposit__box")
+            Comment.objects.select_related("user", "deposit", "deposit__box")
             .filter(client_id=user.client_id, pk=comment_id)
             .first()
         )
@@ -2154,13 +2288,18 @@ class ClientAdminCommentModerateView(APIView):
         )
 
         comment = (
-            Comment.objects
-            .select_related("user", "deposit", "deposit__box")
+            Comment.objects.select_related("user", "deposit", "deposit__box")
             .prefetch_related(
-                Prefetch("reports", queryset=CommentReport.objects.order_by("-created_at", "-id"), to_attr="prefetched_reports"),
+                Prefetch(
+                    "reports",
+                    queryset=CommentReport.objects.order_by("-created_at", "-id"),
+                    to_attr="prefetched_reports",
+                ),
                 Prefetch(
                     "moderation_decisions",
-                    queryset=CommentModerationDecision.objects.select_related("acted_by").order_by("-created_at", "-id"),
+                    queryset=CommentModerationDecision.objects.select_related("acted_by").order_by(
+                        "-created_at", "-id"
+                    ),
                     to_attr="prefetched_decisions",
                 ),
             )
@@ -2184,7 +2323,9 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
             qs = qs.filter(starts_at__lte=now_dt).filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now_dt))
 
         restrictions = list(qs.order_by("-created_at", "-id")[:100])
-        return Response({"items": [_serialize_comment_restriction(item) for item in restrictions]}, status=status.HTTP_200_OK)
+        return Response(
+            {"items": [_serialize_comment_restriction(item) for item in restrictions]}, status=status.HTTP_200_OK
+        )
 
     def post(self, request):
         user, error_response = _get_active_client_user_or_response(request)
@@ -2209,7 +2350,9 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
             )
 
         has_client_comment_activity = Comment.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
-        has_client_attempt_activity = CommentAttemptLog.objects.filter(client_id=user.client_id, user_id=target_user.id).exists()
+        has_client_attempt_activity = CommentAttemptLog.objects.filter(
+            client_id=user.client_id, user_id=target_user.id
+        ).exists()
         if not (has_client_comment_activity or has_client_attempt_activity):
             return api_error(
                 status.HTTP_403_FORBIDDEN,
@@ -2262,11 +2405,7 @@ class ClientAdminIncitationListCreateView(APIView):
             return error_response
 
         today = localtime().date()
-        phrases = list(
-            IncitationPhrase.objects
-            .visible_for_client_user(user)
-            .select_related("client")
-        )
+        phrases = list(IncitationPhrase.objects.visible_for_client_user(user).select_related("client"))
 
         overlap_counts = _build_incitation_overlap_counts(phrases)
 
@@ -2343,8 +2482,7 @@ class ClientAdminIncitationDetailView(APIView):
             return None, error_response
 
         phrase = (
-            IncitationPhrase.objects
-            .visible_for_client_user(user)
+            IncitationPhrase.objects.visible_for_client_user(user)
             .select_related("client")
             .filter(id=incitation_id)
             .first()
@@ -2438,7 +2576,9 @@ class ClientAdminIncitationDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-STICKER_TEMPLATE_DIR = Path(settings.BASE_DIR) / "box_management" / "static" / "box_management" / "stickers" / "templates"
+STICKER_TEMPLATE_DIR = (
+    Path(settings.BASE_DIR) / "box_management" / "static" / "box_management" / "stickers" / "templates"
+)
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 ET.register_namespace("", SVG_NS)
@@ -2454,13 +2594,11 @@ def _get_sticker_template_path_for_client(client):
     return STICKER_TEMPLATE_DIR / "default.svg"
 
 
-
 def _find_svg_element_by_id(root, element_id):
     for element in root.iter():
         if str(element.attrib.get("id") or "").strip() == element_id:
             return element
     return None
-
 
 
 def _parse_svg_dimension(value, fallback=None):
@@ -2472,7 +2610,6 @@ def _parse_svg_dimension(value, fallback=None):
         return float(raw)
     except (TypeError, ValueError):
         return fallback
-
 
 
 def _get_svg_viewbox_size(root):
@@ -2487,7 +2624,6 @@ def _get_svg_viewbox_size(root):
     width = _parse_svg_dimension(root.attrib.get("width"), 1000.0)
     height = _parse_svg_dimension(root.attrib.get("height"), 1000.0)
     return width or 1000.0, height or 1000.0
-
 
 
 def _load_sticker_template_with_zone(client):
@@ -2512,7 +2648,6 @@ def _load_sticker_template_with_zone(client):
     return root, {"x": x, "y": y, "width": width, "height": height}, (svg_width, svg_height)
 
 
-
 def _generate_qr_png_bytes(content, *, size=1400):
     qrcode_module = _get_qrcode_module()
 
@@ -2535,7 +2670,6 @@ def _generate_qr_png_bytes(content, *, size=1400):
     return buffer.getvalue()
 
 
-
 def _build_sticker_svg_bytes(sticker, absolute_sticker_url):
     root, qr_zone, (svg_width, svg_height) = _load_sticker_template_with_zone(sticker.client)
     qr_png_bytes = _generate_qr_png_bytes(absolute_sticker_url)
@@ -2556,17 +2690,14 @@ def _build_sticker_svg_bytes(sticker, absolute_sticker_url):
     return svg_bytes, svg_width, svg_height
 
 
-
 def _render_sticker_png_bytes(sticker, absolute_sticker_url, *, output_size=2200):
     cairosvg_module = _get_cairosvg_module()
     svg_bytes, _svg_width, _svg_height = _build_sticker_svg_bytes(sticker, absolute_sticker_url)
     return cairosvg_module.svg2png(bytestring=svg_bytes, output_width=output_size, output_height=output_size)
 
 
-
 def _sticker_asset_basename(sticker):
     return f"sticker-{sticker.slug}"
-
 
 
 def _serialize_client_admin_sticker(sticker):
@@ -2604,7 +2735,6 @@ def _serialize_client_admin_sticker(sticker):
     }
 
 
-
 def _serialize_client_box_assignment(box, assigned_sticker_count=0):
     return {
         "id": box.id,
@@ -2613,7 +2743,6 @@ def _serialize_client_box_assignment(box, assigned_sticker_count=0):
         "assigned_sticker_count": int(assigned_sticker_count or 0),
         "has_assigned_sticker": bool(assigned_sticker_count),
     }
-
 
 
 def _get_sticker_ids_from_request(request):
@@ -2633,7 +2762,6 @@ def _get_sticker_ids_from_request(request):
     return ids
 
 
-
 def _get_client_stickers_by_ids(user, sticker_ids):
     if not sticker_ids:
         return []
@@ -2644,7 +2772,6 @@ def _get_client_stickers_by_ids(user, sticker_ids):
     )
     stickers_by_id = {sticker.id: sticker for sticker in stickers}
     return [stickers_by_id[sticker_id] for sticker_id in sticker_ids if sticker_id in stickers_by_id]
-
 
 
 def _mark_stickers_generated(stickers, now=None):
@@ -2662,14 +2789,12 @@ def _mark_stickers_generated(stickers, now=None):
     return updated
 
 
-
 def _mark_stickers_downloaded(stickers, now=None):
     now = now or timezone.now()
     for sticker in stickers:
         sticker.mark_downloaded(at=now)
         sticker.save(update_fields=["qr_generated_at", "downloaded_at", "status", "updated_at", "assigned_at"])
     return stickers
-
 
 
 def _build_stickers_zip_response(request, stickers):
@@ -2685,7 +2810,6 @@ def _build_stickers_zip_response(request, stickers):
     return response
 
 
-
 def _build_stickers_pdf_response(request, stickers):
     reportlab_a3, reportlab_image_reader, reportlab_canvas = _get_reportlab_helpers()
 
@@ -2697,7 +2821,7 @@ def _build_stickers_pdf_response(request, stickers):
         absolute_url = request.build_absolute_uri(f"/s/{sticker.slug}")
         png_bytes = _render_sticker_png_bytes(sticker, absolute_url, output_size=2600)
         image_reader = reportlab_image_reader(io.BytesIO(png_bytes))
-        pdf.drawImage(image_reader, 0, 0, width=page_width, height=page_height, preserveAspectRatio=True, anchor='c')
+        pdf.drawImage(image_reader, 0, 0, width=page_width, height=page_height, preserveAspectRatio=True, anchor="c")
         pdf.showPage()
 
     pdf.save()
@@ -2720,9 +2844,7 @@ class ClientAdminStickerListView(APIView):
         stickers_qs = Sticker.objects.select_related("client", "box").filter(client_id=user.client_id)
         if search:
             stickers_qs = stickers_qs.filter(
-                Q(slug__icontains=search)
-                | Q(box__name__icontains=search)
-                | Q(box__url__icontains=search)
+                Q(slug__icontains=search) | Q(box__name__icontains=search) | Q(box__url__icontains=search)
             )
 
         if status_filter and status_filter != "all":
@@ -2930,10 +3052,7 @@ class ClientAdminStickerInstallView(APIView):
         else:
             counts_by_box_id = {}
 
-        serialized_boxes = [
-            _serialize_client_box_assignment(box, counts_by_box_id.get(box.id, 0))
-            for box in boxes
-        ]
+        serialized_boxes = [_serialize_client_box_assignment(box, counts_by_box_id.get(box.id, 0)) for box in boxes]
         serialized_boxes.sort(
             key=lambda item: (0 if not item["has_assigned_sticker"] else 1, (item["name"] or "").lower())
         )
@@ -2962,9 +3081,7 @@ class ClientAdminStickerAssignView(APIView):
             return error_response
 
         sticker = (
-            Sticker.objects.select_related("client", "box")
-            .filter(client_id=user.client_id, id=sticker_id)
-            .first()
+            Sticker.objects.select_related("client", "box").filter(client_id=user.client_id, id=sticker_id).first()
         )
         if not sticker:
             return api_error(
@@ -3018,9 +3135,7 @@ class ClientAdminStickerUnassignView(APIView):
             return error_response
 
         sticker = (
-            Sticker.objects.select_related("client", "box")
-            .filter(client_id=user.client_id, id=sticker_id)
-            .first()
+            Sticker.objects.select_related("client", "box").filter(client_id=user.client_id, id=sticker_id).first()
         )
         if not sticker:
             return api_error(

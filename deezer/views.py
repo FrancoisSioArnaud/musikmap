@@ -1,6 +1,6 @@
-import requests
 from urllib.parse import urlencode
 
+import requests
 from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.response import Response
@@ -82,7 +82,11 @@ class GetRecentlyPlayedTracks(APIView):
 
         response = execute_deezer_api_request(self.request.user, "/user/me/history", recent=True)
         if response is None or not response.ok:
-            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "DEEZER_RECENT_TRACKS_UNAVAILABLE", "Impossible de charger les dernières écoutes Deezer.")
+            return api_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "DEEZER_RECENT_TRACKS_UNAVAILABLE",
+                "Impossible de charger les dernières écoutes Deezer.",
+            )
 
         results = response.json() if response.content else {}
         tracks = []
@@ -114,7 +118,9 @@ class Search(APIView):
 
         response = execute_deezer_api_request(self.request.user, f"search/track?q={search_query}&output=json")
         if response is None or not response.ok:
-            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, "DEEZER_SEARCH_UNAVAILABLE", "Recherche Deezer indisponible.")
+            return api_error(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "DEEZER_SEARCH_UNAVAILABLE", "Recherche Deezer indisponible."
+            )
 
         results = response.json() if response.content else {}
         tracks = []

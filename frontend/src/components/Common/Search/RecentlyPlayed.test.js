@@ -1,8 +1,9 @@
-import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+
+import { UserContext } from '../../UserContext';
 
 import RecentlyPlayed from './RecentlyPlayed';
-import { UserContext } from '../../UserContext';
 
 jest.mock('./SongList', () => ({
   __esModule: true,

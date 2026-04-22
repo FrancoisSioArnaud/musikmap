@@ -31,8 +31,8 @@ function buildNextState(locationState, stateKey, value, removeKey = false) {
 export function openDrawerWithHistory({ navigate, location, param, value }) {
   const safeValue = String(value || "");
 
-  if (!safeValue) return false;
-  if (matchesDrawerSearch(location, param, safeValue)) return false;
+  if (!safeValue) {return false;}
+  if (matchesDrawerSearch(location, param, safeValue)) {return false;}
 
   const nextSearchParams = new URLSearchParams(location?.search || "");
   nextSearchParams.set(param, safeValue);

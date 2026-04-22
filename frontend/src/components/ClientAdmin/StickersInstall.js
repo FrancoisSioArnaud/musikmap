@@ -1,40 +1,41 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import InputAdornment from "@mui/material/InputAdornment";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Chip from "@mui/material/Chip";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
+
 import { getCookie } from "../Security/TokensUtils";
 
 function extractStickerSlug(rawValue) {
   const raw = String(rawValue || "").trim();
-  if (!raw) return "";
-  if (/^\d{11}$/.test(raw)) return raw;
+  if (!raw) {return "";}
+  if (/^\d{11}$/.test(raw)) {return raw;}
 
   const directMatch = raw.match(/(?:^|\/s\/)(\d{11})(?:$|[/?#])/);
-  if (directMatch) return directMatch[1];
+  if (directMatch) {return directMatch[1];}
 
   try {
     const parsed = new URL(raw);
     const match = parsed.pathname.match(/\/s\/(\d{11})(?:\/)?$/);
-    if (match) return match[1];
+    if (match) {return match[1];}
   } catch (error) {}
 
   return "";
@@ -79,7 +80,7 @@ export default function StickersInstall() {
       try {
         const params = new URLSearchParams();
         params.set("sticker", normalizedSlug);
-        if (currentBoxSearch.trim()) params.set("search", currentBoxSearch.trim());
+        if (currentBoxSearch.trim()) {params.set("search", currentBoxSearch.trim());}
 
         const response = await fetch(
           `/box-management/client-admin/stickers/install/?${params.toString()}`,
@@ -116,7 +117,7 @@ export default function StickersInstall() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!sticker || sticker.box || !inputValue) return undefined;
+    if (!sticker || sticker.box || !inputValue) {return undefined;}
 
     const timer = window.setTimeout(() => {
       fetchInstallState(inputValue, boxSearch);
@@ -131,7 +132,7 @@ export default function StickersInstall() {
   };
 
   const handleAssign = async (boxId) => {
-    if (!sticker?.id || !boxId) return;
+    if (!sticker?.id || !boxId) {return;}
 
     setAssigningBoxId(boxId);
     setPageError("");

@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import Snackbar from "@mui/material/Snackbar";
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import Typography from "@mui/material/Typography";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { getCookie } from "../Security/TokensUtils";
 
@@ -29,8 +29,8 @@ export default function PlayModal({ open, song, onClose, onSongResolved, childre
   }, [open]);
 
   const artistText = useMemo(() => {
-    if (song?.artist) return song.artist;
-    if (Array.isArray(song?.artists)) return song.artists.join(", ");
+    if (song?.artist) {return song.artist;}
+    if (Array.isArray(song?.artists)) {return song.artists.join(", ");}
     return "";
   }, [song]);
 
@@ -38,14 +38,14 @@ export default function PlayModal({ open, song, onClose, onSongResolved, childre
 
   const getProviderUrl = (providerCode) => {
     const directUrl = song?.provider_links?.[providerCode]?.provider_url;
-    if (directUrl) return directUrl;
-    if (providerCode === "spotify") return song?.spotify_url || "";
-    if (providerCode === "deezer") return song?.deezer_url || "";
+    if (directUrl) {return directUrl;}
+    if (providerCode === "spotify") {return song?.spotify_url || "";}
+    if (providerCode === "deezer") {return song?.deezer_url || "";}
     return "";
   };
 
   const openWindow = (url) => {
-    if (!url) return false;
+    if (!url) {return false;}
     window.open(url, "_blank", "noopener,noreferrer");
     return true;
   };

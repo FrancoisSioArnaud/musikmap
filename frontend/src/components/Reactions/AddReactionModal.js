@@ -1,6 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
-
+import MusicNote from "@mui/icons-material/MusicNote";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,12 +10,13 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
-import MusicNote from "@mui/icons-material/MusicNote";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 
+import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
+import AuthModal from "../Auth/AuthModal";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import AuthModal from "../Auth/AuthModal";
-import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../Auth/AuthFlow";
 
 const EMOJI_POINTS_MESSAGE = "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.";
 
@@ -49,7 +48,7 @@ export default function AddReactionModal({
   const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {return;}
 
     let cancelled = false;
 
@@ -81,7 +80,7 @@ export default function AddReactionModal({
           });
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {setLoading(false);}
       }
     };
 
@@ -110,7 +109,7 @@ export default function AddReactionModal({
 
   const hasChanged = selected !== initialEmoji;
 
-  if (!open) return null;
+  if (!open) {return null;}
 
   const isOwned = (emoji) =>
     emoji?.cost === 0 || (emoji?.id && catalog.owned_ids.includes(emoji.id));
@@ -129,7 +128,7 @@ export default function AddReactionModal({
   };
 
   const onClickEmoji = (emoji) => {
-    if (submittingReaction || submittingPurchase) return;
+    if (submittingReaction || submittingPurchase) {return;}
 
     setInlineAlert({ severity: "error", message: "", retryAction: "" });
     const alreadyOwned = isOwned(emoji);
@@ -164,7 +163,7 @@ export default function AddReactionModal({
   };
 
   const unlockEmoji = async (emoji) => {
-    if (!emoji?.id || submittingPurchase) return;
+    if (!emoji?.id || submittingPurchase) {return;}
 
     if (!effectiveViewer?.id || effectiveViewer?.is_guest) {
       openPurchasePrompt();
@@ -215,8 +214,8 @@ export default function AddReactionModal({
   };
 
   const validate = async () => {
-    if (submittingReaction) return;
-    if (!hasChanged) return onClose();
+    if (submittingReaction) {return;}
+    if (!hasChanged) {return onClose();}
     if (!depPublicKey) {
       setInlineAlert({
         severity: "error",
@@ -311,7 +310,7 @@ export default function AddReactionModal({
             sx={{ borderRadius: 4 }}
             className="modal"
             onClick={() => {
-              if (unlockTargetId) setUnlockTargetId(null);
+              if (unlockTargetId) {setUnlockTargetId(null);}
             }}
           >
             <CardContent>

@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.urls import reverse
 from django.utils import timezone
 
-from box_management.models import Comment, Deposit, DiscoveredSong, EmojiRight, Reaction
+from box_management.models import Deposit, DiscoveredSong, EmojiRight, Reaction
 from box_management.tests.base import FlowboxAPITestCase
 from la_boite_a_son.economy import (
     COST_REVEAL_BOX,
@@ -16,7 +16,6 @@ from la_boite_a_son.economy import (
     NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
     NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
 )
-from users.models import CustomUser
 
 
 class RevealFlowTests(FlowboxAPITestCase):
@@ -26,7 +25,9 @@ class RevealFlowTests(FlowboxAPITestCase):
         song = self.make_song(public_key="song_reveal_1")
         deposit = self.make_deposit(user=self.make_user(username="owner"), song=song, box=box)
 
-        response = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json")
+        response = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json"
+        )
         self.assertEqual(response.status_code, 200)
         user.refresh_from_db()
         self.assertEqual(user.points, 0)
@@ -39,7 +40,9 @@ class RevealFlowTests(FlowboxAPITestCase):
         song = self.make_song(public_key="song_reveal_2")
         deposit = self.make_deposit(user=self.make_user(username="owner2"), song=song, box=box)
 
-        response = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json")
+        response = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json"
+        )
         self.assert_api_error(response, 403, "INSUFFICIENT_POINTS")
         user.refresh_from_db()
         self.assertEqual(user.points, COST_REVEAL_BOX - 1)
@@ -51,8 +54,12 @@ class RevealFlowTests(FlowboxAPITestCase):
         song = self.make_song(public_key="song_reveal_3")
         deposit = self.make_deposit(user=self.make_user(username="owner3"), song=song, box=box)
 
-        first = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json")
-        second = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json")
+        first = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json"
+        )
+        second = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json"
+        )
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -65,12 +72,16 @@ class RevealFlowTests(FlowboxAPITestCase):
         song = self.make_song(public_key="song_reveal_4")
         deposit = self.make_deposit(user=self.make_user(username="owner4"), song=song, box=box)
 
-        response = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json")
+        response = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "box"}, format="json"
+        )
         self.assert_api_error(response, 401, "AUTH_REQUIRED")
 
     def test_reveal_on_missing_deposit_is_rejected(self):
         user = self.auth(self.make_user(username="dan", points=COST_REVEAL_BOX))
-        response = self.client.post(reverse("reveal-song"), {"dep_public_key": "missing", "context": "box"}, format="json")
+        response = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": "missing", "context": "box"}, format="json"
+        )
         self.assert_api_error(response, 404, "DEPOSIT_NOT_FOUND")
         user.refresh_from_db()
         self.assertEqual(user.points, COST_REVEAL_BOX)
@@ -81,7 +92,9 @@ class RevealFlowTests(FlowboxAPITestCase):
         song = self.make_song(public_key="song_reveal_5")
         deposit = self.make_deposit(user=self.make_user(username="owner5"), song=song, box=box)
 
-        response = self.client.post(reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "weird"}, format="json")
+        response = self.client.post(
+            reverse("reveal-song"), {"dep_public_key": deposit.public_key, "context": "weird"}, format="json"
+        )
         self.assert_api_error(response, 400, "INVALID_DISCOVERY_CONTEXT")
 
 
@@ -92,11 +105,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-pin", name="Box pin", client=client)
         option = self.track_option(track_id="pin-track-1", title="Pin track 1")
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": 10,
-            "option": option,
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": 10,
+                "option": option,
+            },
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.data["active_pinned_deposit"])
@@ -120,11 +137,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
             pin_expires_at=timezone.now() + timedelta(minutes=10),
         )
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": 10,
-            "option": self.track_option(track_id="pin-track-2", title="Pin track 2"),
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": 10,
+                "option": self.track_option(track_id="pin-track-2", title="Pin track 2"),
+            },
+            format="json",
+        )
 
         self.assert_api_error(response, 409, "PIN_SLOT_OCCUPIED")
         self.assertEqual(Deposit.objects.filter(box=box, deposit_type="pinned").count(), 1)
@@ -134,11 +155,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         client = self.make_client(name="Client pin 3", slug="client-pin-3")
         box = self.make_box(url="box-pin-3", name="Box pin 3", client=client)
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": 10,
-            "option": self.track_option(track_id="pin-track-3", title="Pin track 3"),
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": 10,
+                "option": self.track_option(track_id="pin-track-3", title="Pin track 3"),
+            },
+            format="json",
+        )
 
         self.assert_api_error(response, 403, "INSUFFICIENT_POINTS")
         user.refresh_from_db()
@@ -150,11 +175,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         client = self.make_client(name="Client pin 4", slug="client-pin-4")
         box = self.make_box(url="box-pin-4", name="Box pin 4", client=client)
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": 10,
-            "option": self.track_option(track_id="pin-track-4", title="Pin track 4"),
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": 10,
+                "option": self.track_option(track_id="pin-track-4", title="Pin track 4"),
+            },
+            format="json",
+        )
         self.assert_api_error(response, 403, "ACCOUNT_COMPLETION_REQUIRED")
         guest.refresh_from_db()
         self.assertEqual(guest.points, 1000)
@@ -164,11 +193,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         client = self.make_client(name="Client pin 5", slug="client-pin-5")
         box = self.make_box(url="box-pin-5", name="Box pin 5", client=client)
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": "invalid",
-            "option": self.track_option(track_id="pin-track-5", title="Pin track 5"),
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": "invalid",
+                "option": self.track_option(track_id="pin-track-5", title="Pin track 5"),
+            },
+            format="json",
+        )
         self.assert_api_error(response, 400, "PIN_DURATION_INVALID")
 
     def test_pin_unavailable_duration_is_rejected(self):
@@ -176,11 +209,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         client = self.make_client(name="Client pin 6", slug="client-pin-6")
         box = self.make_box(url="box-pin-6", name="Box pin 6", client=client)
 
-        response = self.client.post(reverse("pinned-song"), {
-            "boxSlug": box.url,
-            "duration_minutes": 11,
-            "option": self.track_option(track_id="pin-track-6", title="Pin track 6"),
-        }, format="json")
+        response = self.client.post(
+            reverse("pinned-song"),
+            {
+                "boxSlug": box.url,
+                "duration_minutes": 11,
+                "option": self.track_option(track_id="pin-track-6", title="Pin track 6"),
+            },
+            format="json",
+        )
         self.assert_api_error(response, 400, "PIN_DURATION_UNAVAILABLE")
 
     def test_pin_creation_is_atomic_when_creation_fails(self):
@@ -189,11 +226,15 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-pin-7", name="Box pin 7", client=client)
 
         with patch("box_management.views.create_song_deposit", side_effect=Exception("boom")):
-            response = self.client.post(reverse("pinned-song"), {
-                "boxSlug": box.url,
-                "duration_minutes": 10,
-                "option": self.track_option(track_id="pin-track-7", title="Pin track 7"),
-            }, format="json")
+            response = self.client.post(
+                reverse("pinned-song"),
+                {
+                    "boxSlug": box.url,
+                    "duration_minutes": 10,
+                    "option": self.track_option(track_id="pin-track-7", title="Pin track 7"),
+                },
+                format="json",
+            )
 
         self.assert_api_error(response, 500, "PIN_CREATION_FAILED")
         user.refresh_from_db()
@@ -262,7 +303,9 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-react-1", name="Box react 1")
         deposit = self.make_deposit(user=user, song=self.make_song(public_key="react_song_1"), box=box)
 
-        response = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json")
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json"
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Reaction.objects.filter(user=user, deposit=deposit).count(), 1)
         self.assertEqual(Reaction.objects.get(user=user, deposit=deposit).emoji_id, emoji.id)
@@ -274,8 +317,12 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-react-2", name="Box react 2")
         deposit = self.make_deposit(user=user, song=self.make_song(public_key="react_song_2"), box=box)
 
-        self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji_a.id}, format="json")
-        response = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji_b.id}, format="json")
+        self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji_a.id}, format="json"
+        )
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji_b.id}, format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Reaction.objects.filter(user=user, deposit=deposit).count(), 1)
@@ -288,8 +335,12 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         deposit = self.make_deposit(user=user, song=self.make_song(public_key="react_song_3"), box=box)
         Reaction.objects.create(user=user, deposit=deposit, emoji=emoji)
 
-        first = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": None}, format="json")
-        second = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": None}, format="json")
+        first = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": None}, format="json"
+        )
+        second = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": None}, format="json"
+        )
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -302,7 +353,9 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-react-4", name="Box react 4")
         deposit = self.make_deposit(user=owner, song=self.make_song(public_key="react_song_4"), box=box)
 
-        response = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json")
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json"
+        )
         self.assert_api_error(response, 403, "DEPOSIT_NOT_REVEALED")
         self.assertEqual(Reaction.objects.filter(user=viewer, deposit=deposit).count(), 0)
 
@@ -312,7 +365,9 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         box = self.make_box(url="box-react-5", name="Box react 5")
         deposit = self.make_deposit(user=user, song=self.make_song(public_key="react_song_5"), box=box)
 
-        response = self.client.post(reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json")
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json"
+        )
         self.assert_api_error(response, 403, "EMOJI_NOT_UNLOCKED")
         self.assertEqual(Reaction.objects.filter(user=user, deposit=deposit).count(), 0)
 
@@ -332,10 +387,14 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
     def test_first_deposit_grants_all_first_time_bonuses(self):
         user = self.auth(self.make_user(username="dep1", points=0))
         box = self.make_box(url="box-dep-1", name="Box dep 1")
-        response = self.client.post(reverse("get-box"), {
-            "boxSlug": box.url,
-            "option": self.track_option(track_id="dep-track-1", title="Deposit Track 1"),
-        }, format="json")
+        response = self.client.post(
+            reverse("get-box"),
+            {
+                "boxSlug": box.url,
+                "option": self.track_option(track_id="dep-track-1", title="Deposit Track 1"),
+            },
+            format="json",
+        )
 
         expected = (
             NB_POINTS_ADD_SONG
@@ -355,10 +414,14 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.make_deposit(user=user, song=prior_song, box=box, deposited_at=timezone.now() - timedelta(days=1))
         self.auth(user)
 
-        response = self.client.post(reverse("get-box"), {
-            "boxSlug": box.url,
-            "option": self.track_option(track_id="dep-track-2", title="Deposit Track 2"),
-        }, format="json")
+        response = self.client.post(
+            reverse("get-box"),
+            {
+                "boxSlug": box.url,
+                "option": self.track_option(track_id="dep-track-2", title="Deposit Track 2"),
+            },
+            format="json",
+        )
 
         expected = (
             NB_POINTS_ADD_SONG
@@ -373,14 +436,22 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         user = self.make_user(username="dep3", points=0)
         other = self.make_user(username="dep3_other", points=0)
         box = self.make_box(url="box-dep-3", name="Box dep 3")
-        existing_song = self.make_song(public_key="dep3_song", title="Shared Song", artists=["Shared Artist"], duration=180)
+        existing_song = self.make_song(
+            public_key="dep3_song", title="Shared Song", artists=["Shared Artist"], duration=180
+        )
         self.make_deposit(user=other, song=existing_song, box=box, deposited_at=timezone.now() - timedelta(days=1))
         self.auth(user)
 
-        response = self.client.post(reverse("get-box"), {
-            "boxSlug": box.url,
-            "option": self.track_option(track_id="dep-track-3", title="Shared Song", artists=["Shared Artist"], duration=180),
-        }, format="json")
+        response = self.client.post(
+            reverse("get-box"),
+            {
+                "boxSlug": box.url,
+                "option": self.track_option(
+                    track_id="dep-track-3", title="Shared Song", artists=["Shared Artist"], duration=180
+                ),
+            },
+            format="json",
+        )
 
         expected = NB_POINTS_ADD_SONG + NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
         self.assertEqual(response.status_code, 200)
@@ -391,14 +462,25 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         other = self.make_user(username="dep4_other", points=0)
         box = self.make_box(url="box-dep-4", name="Box dep 4")
         existing_song = self.make_song(public_key="dep4_song", title="Seen Song", artists=["Seen Artist"], duration=180)
-        self.make_deposit(user=user, song=self.make_song(public_key="dep4_old", title="Old", artists=["Old Artist"]), box=box, deposited_at=timezone.now() - timedelta(days=2))
+        self.make_deposit(
+            user=user,
+            song=self.make_song(public_key="dep4_old", title="Old", artists=["Old Artist"]),
+            box=box,
+            deposited_at=timezone.now() - timedelta(days=2),
+        )
         self.make_deposit(user=other, song=existing_song, box=box, deposited_at=timezone.now() - timedelta(days=1))
         self.auth(user)
 
-        response = self.client.post(reverse("get-box"), {
-            "boxSlug": box.url,
-            "option": self.track_option(track_id="dep-track-4", title="Seen Song", artists=["Seen Artist"], duration=180),
-        }, format="json")
+        response = self.client.post(
+            reverse("get-box"),
+            {
+                "boxSlug": box.url,
+                "option": self.track_option(
+                    track_id="dep-track-4", title="Seen Song", artists=["Seen Artist"], duration=180
+                ),
+            },
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["points_balance"], NB_POINTS_ADD_SONG)
@@ -413,10 +495,14 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
     def test_deposit_response_points_balance_matches_database(self):
         user = self.auth(self.make_user(username="dep5", points=0))
         box = self.make_box(url="box-dep-5", name="Box dep 5")
-        response = self.client.post(reverse("get-box"), {
-            "boxSlug": box.url,
-            "option": self.track_option(track_id="dep-track-5", title="Deposit Track 5"),
-        }, format="json")
+        response = self.client.post(
+            reverse("get-box"),
+            {
+                "boxSlug": box.url,
+                "option": self.track_option(track_id="dep-track-5", title="Deposit Track 5"),
+            },
+            format="json",
+        )
         user.refresh_from_db()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["points_balance"], user.points)

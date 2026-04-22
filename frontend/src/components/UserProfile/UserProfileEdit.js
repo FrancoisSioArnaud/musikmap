@@ -1,25 +1,27 @@
-import React, { useContext, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import React, { useContext, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { getCookie } from "../Security/TokensUtils";
-import { checkUserStatus } from "../UsersUtils";
-import { UserContext } from "../UserContext";
-import AvatarCropperModal from "./AvatarCropperModal";
 import { startAuthPageFlow } from "../Auth/AuthFlow";
+import { getCookie } from "../Security/TokensUtils";
+import { UserContext } from "../UserContext";
+import { checkUserStatus } from "../UsersUtils";
+
+import AvatarCropperModal from "./AvatarCropperModal";
+
 
 function getApiErrorMessage(payload, fallbackMessage) {
   if (payload?.field_errors && typeof payload.field_errors === "object") {
     const firstField = Object.values(payload.field_errors)[0];
-    if (Array.isArray(firstField) && firstField[0]) return String(firstField[0]);
-    if (firstField) return String(firstField);
+    if (Array.isArray(firstField) && firstField[0]) {return String(firstField[0]);}
+    if (firstField) {return String(firstField);}
   }
-  if (payload?.detail) return payload.detail;
+  if (payload?.detail) {return payload.detail;}
   return fallbackMessage;
 }
 
@@ -51,7 +53,7 @@ export default function UserProfileEdit() {
 
   const onAvatarChange = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {return;}
     setErrorMessage("");
     setSelectedFile(file);
     setCropOpen(true);
@@ -161,7 +163,7 @@ export default function UserProfileEdit() {
           value={username}
           onChange={(e) => {
             setUsername(e.target.value);
-            if (errorMessage) setErrorMessage("");
+            if (errorMessage) {setErrorMessage("");}
           }}
           fullWidth
         />

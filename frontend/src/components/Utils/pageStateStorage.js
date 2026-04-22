@@ -26,11 +26,11 @@ function isFresh(payload) {
 
 function readRaw(key) {
   const storage = safeGetStorage();
-  if (!storage || !key) return null;
+  if (!storage || !key) {return null;}
 
   try {
     const raw = storage.getItem(key);
-    if (!raw) return null;
+    if (!raw) {return null;}
     const parsed = JSON.parse(raw);
     if (!isFresh(parsed)) {
       storage.removeItem(key);
@@ -47,7 +47,7 @@ function readRaw(key) {
 
 function writeRaw(key, payload) {
   const storage = safeGetStorage();
-  if (!storage || !key) return;
+  if (!storage || !key) {return;}
 
   try {
     storage.setItem(key, JSON.stringify(buildPayload(payload)));

@@ -1,34 +1,35 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
+import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Chip from "@mui/material/Chip";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import FormControl from "@mui/material/FormControl";
+import InputAdornment from "@mui/material/InputAdornment";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
-import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
-import { getCookie } from "../Security/TokensUtils";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
+
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+import { getCookie } from "../Security/TokensUtils";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tous" },
@@ -43,7 +44,7 @@ const STATUS_OPTIONS = [
 ];
 
 function normalizePayload(payload) {
-  if (Array.isArray(payload)) return { results: payload, counts: {} };
+  if (Array.isArray(payload)) {return { results: payload, counts: {} };}
   return {
     results: Array.isArray(payload?.results) ? payload.results : [],
     counts: payload?.counts || {},
@@ -51,9 +52,9 @@ function normalizePayload(payload) {
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) {return "—";}
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) {return "—";}
   return date.toLocaleString("fr-FR");
 }
 
@@ -95,8 +96,8 @@ export default function StickersList() {
 
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("search", query.trim());
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      if (query.trim()) {params.set("search", query.trim());}
+      if (statusFilter && statusFilter !== "all") {params.set("status", statusFilter);}
 
       const response = await fetch(
         `/box-management/client-admin/stickers/${params.toString() ? `?${params.toString()}` : ""}`,
@@ -130,8 +131,8 @@ export default function StickersList() {
   const handleToggleSticker = (stickerId) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(stickerId)) next.delete(stickerId);
-      else next.add(stickerId);
+      if (next.has(stickerId)) {next.delete(stickerId);}
+      else {next.add(stickerId);}
       return Array.from(next);
     });
   };
@@ -160,7 +161,7 @@ export default function StickersList() {
   };
 
   const handleGenerate = async () => {
-    if (!selectedCount) return;
+    if (!selectedCount) {return;}
     setActionLoading("generate");
     setPageError("");
     setPageSuccess("");
@@ -184,7 +185,7 @@ export default function StickersList() {
   };
 
   const handleDownload = async (format) => {
-    if (!selectedCount) return;
+    if (!selectedCount) {return;}
     setActionLoading(`download-${format}`);
     setPageError("");
     setPageSuccess("");
@@ -445,8 +446,8 @@ export default function StickersList() {
                       checked={stickers.length > 0 && selectedCount === stickers.length}
                       indeterminate={selectedCount > 0 && selectedCount < stickers.length}
                       onChange={(event) => {
-                        if (event.target.checked) handleSelectFromList(stickers);
-                        else setSelectedIds([]);
+                        if (event.target.checked) {handleSelectFromList(stickers);}
+                        else {setSelectedIds([]);}
                       }}
                     />
                   </TableCell>
@@ -546,7 +547,7 @@ export default function StickersList() {
         open={Boolean(stickerToUnassign)}
         onClose={() => setStickerToUnassign(null)}
         onConfirm={async () => {
-          if (!stickerToUnassign?.id) return;
+          if (!stickerToUnassign?.id) {return;}
           await handleUnassign(stickerToUnassign.id);
           setStickerToUnassign(null);
         }}

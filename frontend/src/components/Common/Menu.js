@@ -1,17 +1,18 @@
-import * as React from "react";
-import { Link } from "react-router-dom";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { UserContext } from "../UserContext";
-import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext";
+import MusicNote from "@mui/icons-material/MusicNote";
+import PersonIcon from "@mui/icons-material/Person";
 import AppBar from "@mui/material/AppBar";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Avatar from "@mui/material/Avatar";
-import PersonIcon from "@mui/icons-material/Person";
-import Button from "@mui/material/Button";
-import MusicNote from "@mui/icons-material/MusicNote";
+import * as React from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+
+import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext";
+import { UserContext } from "../UserContext";
 
 const COMPACT_HEADER_HEIGHT = 56;
 const EXPANDED_HEADER_HEIGHT = 86;
@@ -83,12 +84,12 @@ export default function MenuAppBar() {
   const boxName = runtime?.box?.name || "Boîte";
 
   const remainingMs = useMemo(() => {
-    if (!activeSession?.expiresAt) return 0;
+    if (!activeSession?.expiresAt) {return 0;}
     return Math.max(0, new Date(activeSession.expiresAt).getTime() - now);
   }, [activeSession?.expiresAt, now]);
 
   const totalMs = useMemo(() => {
-    if (!activeSession?.expiresAt || !activeSession?.startedAt) return 1;
+    if (!activeSession?.expiresAt || !activeSession?.startedAt) {return 1;}
     const start = new Date(activeSession.startedAt).getTime();
     const end = new Date(activeSession.expiresAt).getTime();
     return Math.max(1, end - start);
@@ -108,7 +109,7 @@ export default function MenuAppBar() {
   }, [isExpanded]);
 
   useEffect(() => {
-    if (!headerSlug || !activeSession) return;
+    if (!headerSlug || !activeSession) {return;}
     if (uiHintsBySlug?.[headerSlug]?.enterHintPending) {
       setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
       consumeEnterHint(headerSlug);
@@ -116,7 +117,7 @@ export default function MenuAppBar() {
   }, [activeSession, consumeEnterHint, headerSlug, uiHintsBySlug]);
 
   useEffect(() => {
-    if (!headerSlug || !activeSession || isLastMinute) return;
+    if (!headerSlug || !activeSession || isLastMinute) {return;}
     if (remainingMs <= WARNING_THRESHOLD_MS && !uiHintsBySlug?.[headerSlug]?.threeMinWarningShown) {
       setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
       markThreeMinWarningShown(headerSlug);
@@ -127,12 +128,12 @@ export default function MenuAppBar() {
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   const handleHeaderClick = () => {
-    if (!activeSession) return;
+    if (!activeSession) {return;}
     setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
   };
 
   const helperText = useMemo(() => {
-    if (!activeSession) return "";
+    if (!activeSession) {return "";}
     if (remainingMs <= ERROR_THRESHOLD_MS) {
       return `Cette boîte se referme dans ${formatLongRemaining(remainingMs)}.`;
     }

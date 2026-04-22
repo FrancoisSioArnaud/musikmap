@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import SearchIcon from "@mui/icons-material/Search";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";
@@ -7,8 +7,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
-import SearchIcon from "@mui/icons-material/Search";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import React, { useMemo, useState } from "react";
 
 export const PERSONALIZED_SEARCH_PROVIDER_CODES = ["spotify"];
 export const NO_PERSONALIZED_RESULTS_PROVIDER = "none";
@@ -30,20 +29,20 @@ export function getConnectedPersonalizedProviderCodes(user) {
 
 export function getLastPlatformStorageKey(user) {
   const userId = user?.id;
-  if (!userId || user?.is_guest) return null;
+  if (!userId || user?.is_guest) {return null;}
   return `mm_last_platform:user:${userId}`;
 }
 
 export function readStoredSelectedProvider(user) {
   const storageKey = getLastPlatformStorageKey(user);
-  if (!storageKey || typeof window === "undefined") return null;
+  if (!storageKey || typeof window === "undefined") {return null;}
 
   try {
     const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return null;
+    if (!raw) {return null;}
     const normalized = String(raw).trim().toLowerCase();
-    if (!normalized) return null;
-    if (normalized === NO_PERSONALIZED_RESULTS_PROVIDER) return NO_PERSONALIZED_RESULTS_PROVIDER;
+    if (!normalized) {return null;}
+    if (normalized === NO_PERSONALIZED_RESULTS_PROVIDER) {return NO_PERSONALIZED_RESULTS_PROVIDER;}
     return PERSONALIZED_SEARCH_PROVIDER_CODES.includes(normalized) ? normalized : null;
   } catch {
     return null;
@@ -52,7 +51,7 @@ export function readStoredSelectedProvider(user) {
 
 export function writeStoredSelectedProvider(user, providerCode) {
   const storageKey = getLastPlatformStorageKey(user);
-  if (!storageKey || typeof window === "undefined") return;
+  if (!storageKey || typeof window === "undefined") {return;}
 
   const normalized = normalizeSelectedProviderCode(providerCode);
   try {

@@ -1,61 +1,62 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import IconButton from "@mui/material/IconButton";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import Tooltip from "@mui/material/Tooltip";
+import CircularProgress from "@mui/material/CircularProgress";
+import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
-import TableHead from "@mui/material/TableHead";
-import TableContainer from "@mui/material/TableContainer";
-import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
-import { getCookie } from "../Security/TokensUtils";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+
 import ConfirmActionDialog from "../Common/ConfirmActionDialog";
+import { getCookie } from "../Security/TokensUtils";
 
 const STATUS_OPTIONS = ["all", "draft", "published", "archived"];
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) {return "—";}
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) {return "—";}
   return date.toLocaleString("fr-FR");
 }
 
 function getStatusChipColor(status) {
-  if (status === "published") return "success";
-  if (status === "archived") return "default";
+  if (status === "published") {return "success";}
+  if (status === "archived") {return "default";}
   return "warning";
 }
 
 function getStatusLabel(status) {
-  if (status === "published") return "Publié";
-  if (status === "archived") return "Archivé";
+  if (status === "published") {return "Publié";}
+  if (status === "archived") {return "Archivé";}
   return "Brouillon";
 }
 
 function getVisibilityStateColor(state) {
-  if (state === "visible_now") return "success";
-  if (state === "scheduled") return "info";
-  if (state === "out_of_hours") return "warning";
-  if (state === "expired") return "default";
+  if (state === "visible_now") {return "success";}
+  if (state === "scheduled") {return "info";}
+  if (state === "out_of_hours") {return "warning";}
+  if (state === "expired") {return "default";}
   return "default";
 }
 
@@ -70,9 +71,9 @@ function getDisplayWindowLabel(article) {
 }
 
 function normalizeArticles(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.results)) return payload.results;
-  if (Array.isArray(payload?.articles)) return payload.articles;
+  if (Array.isArray(payload)) {return payload;}
+  if (Array.isArray(payload?.results)) {return payload.results;}
+  if (Array.isArray(payload?.articles)) {return payload.articles;}
   return [];
 }
 
@@ -93,8 +94,8 @@ export default function ArticlesList() {
 
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("search", query.trim());
-      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (query.trim()) {params.set("search", query.trim());}
+      if (statusFilter !== "all") {params.set("status", statusFilter);}
 
       const url = `/box-management/client-admin/articles/${
         params.toString() ? `?${params.toString()}` : ""
@@ -129,7 +130,7 @@ export default function ArticlesList() {
   }, [articles]);
 
   const handleArchiveConfirm = async () => {
-    if (!articleToArchive) return;
+    if (!articleToArchive) {return;}
 
     setArchiveLoading(true);
     setPageError("");

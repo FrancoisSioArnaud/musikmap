@@ -1,23 +1,25 @@
-import React, { useContext, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import CloseIcon from "@mui/icons-material/Close";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
+import React, { useContext, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { checkUserStatus } from "../UsersUtils";
-import { getCookie } from "../Security/TokensUtils";
 import { authenticateProviderUser } from "../Utils/streaming/providerClient";
+
 import {
   AUTH_BENEFITS,
   clearAuthReturnContext,
