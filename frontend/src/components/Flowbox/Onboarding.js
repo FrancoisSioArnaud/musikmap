@@ -17,6 +17,11 @@ import { UserContext } from "../UserContext";
 import EnableLocation from "./EnableLocation";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp(`(^|;\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[2]) : "";
+}
+
 function isPermissionDeniedError(error) {
   return error?.code === 1 || /denied/i.test(String(error?.message || ""));
 }
@@ -99,6 +104,7 @@ export default function Onboarding() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
         },
         body: JSON.stringify({
           boxSlug,
