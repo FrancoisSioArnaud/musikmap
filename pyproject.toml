@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [
+  "*/migrations/*.py",
+  "frontend/assets/scss/css",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",
+  "I",
+  "B",
+  "UP",
+  "C4",
+  "SIM",
+]
+ignore = [
+  "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"box_management/scripts/*.py" = ["E402"]

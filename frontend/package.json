@@ -7,7 +7,9 @@
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +31,13 @@
     "jest-environment-jsdom": "^29.7.0",
     "whatwg-fetch": "^3.6.20",
     "@types/react": "18.0.35",
-    "@types/react-dom": "18.0.11"
+    "@types/react-dom": "18.0.11",
+    "@eslint/js": "^9.25.1",
+    "eslint": "^9.25.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.0.0"
   },
   "dependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6",
