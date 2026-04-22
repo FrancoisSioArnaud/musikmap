@@ -1,0 +1,79 @@
+rules:
+  - id: python-requests-get-timeout-required
+    message: "Ajoute timeout= à requests.get(...)"
+    severity: ERROR
+    languages: [python]
+    pattern: requests.get(...)
+    pattern-not: requests.get(..., timeout=...)
+
+  - id: python-requests-post-timeout-required
+    message: "Ajoute timeout= à requests.post(...)"
+    severity: ERROR
+    languages: [python]
+    pattern: requests.post(...)
+    pattern-not: requests.post(..., timeout=...)
+
+  - id: python-requests-put-timeout-required
+    message: "Ajoute timeout= à requests.put(...)"
+    severity: ERROR
+    languages: [python]
+    pattern: requests.put(...)
+    pattern-not: requests.put(..., timeout=...)
+
+  - id: python-requests-patch-timeout-required
+    message: "Ajoute timeout= à requests.patch(...)"
+    severity: ERROR
+    languages: [python]
+    pattern: requests.patch(...)
+    pattern-not: requests.patch(..., timeout=...)
+
+  - id: python-requests-delete-timeout-required
+    message: "Ajoute timeout= à requests.delete(...)"
+    severity: ERROR
+    languages: [python]
+    pattern: requests.delete(...)
+    pattern-not: requests.delete(..., timeout=...)
+
+  - id: python-no-broad-exception
+    message: "Évite except Exception:. Capture une erreur précise."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              try:
+                ...
+              except Exception:
+                ...
+          - pattern: |
+              try:
+                ...
+              except Exception as $ERR:
+                ...
+
+  - id: frontend-no-direct-localstorage
+    message: "Passe par les wrappers storage du projet au lieu d’utiliser localStorage en direct."
+    severity: WARNING
+    languages: [javascript]
+    paths:
+      exclude:
+        - frontend/src/components/Utils/mmStorage.js
+        - frontend/src/components/Utils/pageStateStorage.js
+        - frontend/src/**/*.test.js
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.getItem(...)
+          - pattern: localStorage.setItem(...)
+          - pattern: localStorage.removeItem(...)
+          - pattern: window.localStorage.getItem(...)
+          - pattern: window.localStorage.setItem(...)
+          - pattern: window.localStorage.removeItem(...)
+
+  - id: frontend-no-location-reload
+    message: "Évite location.reload(); garde la logique dans React/router."
+    severity: ERROR
+    languages: [javascript]
+    patterns:
+      - pattern-either:
+          - pattern: location.reload(...)
+          - pattern: window.location.reload(...)
