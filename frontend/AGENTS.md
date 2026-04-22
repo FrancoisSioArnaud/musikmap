@@ -31,6 +31,11 @@ Frontend is React in JavaScript, with MUI, React Router, and existing storage/ne
 - Do not add broad architectural refactors while fixing a local issue.
 - Keep component props and public behavior stable unless explicitly asked otherwise.
 
+## Failure handling
+- Do not add silent fallbacks that hide an API or state bug.
+- Do not swallow frontend errors by default.
+- Do not change loading behavior, retries, or caching semantics unless requested.
+
 ## SCSS policy
 - Do not modify SCSS, CSS, MUI theme styling, style files, or class names unless explicitly authorized by the user.
 - If a frontend task cannot be completed safely without style changes, say so and ask for authorization first.
@@ -43,6 +48,13 @@ Be especially careful in these files. Prefer small, surgical edits.
 - `frontend/src/components/ClientAdmin/ArticleEdit.js`
 
 ## Validation
+Do not commit frontend changes until the relevant frontend checks pass.
+
+### Minimum required when editing JS under `frontend/src/`
 ```bash
 cd frontend && npm run lint -- --quiet
+cd frontend && npm run build
 ```
+
+If relevant frontend tests already exist for the touched area, run the smallest relevant subset before commit.
+If none exist, say so explicitly.
