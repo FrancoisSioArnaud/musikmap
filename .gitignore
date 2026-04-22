@@ -197,3 +197,4 @@ frontend/static/frontend/main.js
 frontend/static/frontend/main.js.LICENSE.txt
 
 media
+.seed_*
