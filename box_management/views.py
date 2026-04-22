@@ -19,6 +19,8 @@ from django.db.models import Count, Max, Prefetch, Q
 from django.http import Http404, HttpResponse, HttpResponseGone
 from django.shortcuts import redirect
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.timezone import localdate, localtime
 
 # ===== Django REST Framework =====
@@ -668,6 +670,7 @@ def _serialize_active_pinned_deposit_for_box(box, viewer):
     return payloads[0] if payloads else None
 
 
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class GetBox(APIView):
     lookup_url_kwarg = "name"
     serializer_class = BoxSerializer
