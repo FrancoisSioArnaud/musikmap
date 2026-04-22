@@ -28,6 +28,7 @@ import MenuAppBar from "./Common/Menu";
 import Onboarding from "./Flowbox/Onboarding";
 import LiveSearch from "./Flowbox/LiveSearch";
 import Discover from "./Flowbox/Discover";
+import ClosedBoxPage from "./Flowbox/ClosedBoxPage";
 import LinkDepositPage from "./LinkDepositPage";
 
 import ClientAdminGuard from "./ClientAdmin/ClientAdminGuard";
@@ -42,6 +43,9 @@ import ClientStickersInstall from "./ClientAdmin/StickersInstall";
 
 import { UserContext } from "./UserContext";
 import { checkUserStatus } from "./UsersUtils";
+import FlowboxSessionProvider from "./Flowbox/runtime/FlowboxSessionProvider";
+import FlowboxBoxShell from "./Flowbox/runtime/FlowboxBoxShell";
+import InBoxSessionGate from "./Flowbox/runtime/InBoxSessionGate";
 
 function LayoutWithHeader() {
   return (
@@ -50,9 +54,9 @@ function LayoutWithHeader() {
       <main
         style={{
           flex: 1,
-          minHeight: "calc(100vh - 64px)",
+          minHeight: "calc(100vh - var(--mm-app-header-height, 56px))",
           width: "100vw",
-          padding: "58px 0 0 0",
+          padding: "var(--mm-app-header-height, 56px) 0 0 0",
         }}
       >
         <Outlet />
@@ -115,6 +119,10 @@ export default function App() {
   }, [currentClient]);
 
   useEffect(() => {
+    document.documentElement.style.setProperty("--mm-app-header-height", "56px");
+  }, []);
+
+  useEffect(() => {
     checkUserStatus(
       setUser,
       setIsAuthenticated,
@@ -134,9 +142,7 @@ export default function App() {
         if (response.ok) {
           setEconomy(data);
         }
-      } catch (error) {
-        // Economy config is optional; the UI will fall back to safe defaults.
-      }
+      } catch (error) {}
     };
 
     loadEconomy();
@@ -164,41 +170,49 @@ export default function App() {
       <ThemeProvider theme={muiTheme}>
         <Router>
           <UserContext.Provider value={providerValue}>
-            <Routes>
-              <Route element={<LayoutWithHeader />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/profile/settings" element={<UserSettings />} />
-                <Route path="/profile/edit" element={<UserProfileEdit />} />
-                <Route path="/profile" element={<UserProfilePage />} />
-                <Route path="/profile/:username" element={<UserProfilePage />} />
+            <FlowboxSessionProvider>
+              <Routes>
+                <Route element={<LayoutWithHeader />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/profile/settings" element={<UserSettings />} />
+                  <Route path="/profile/edit" element={<UserProfileEdit />} />
+                  <Route path="/profile" element={<UserProfilePage />} />
+                  <Route path="/profile/:username" element={<UserProfilePage />} />
 
-                <Route path="/flowbox/:boxSlug" element={<Onboarding />} />
-                <Route path="/flowbox/:boxSlug/search" element={<LiveSearch />} />
-                <Route path="/flowbox/:boxSlug/discover" element={<Discover />} />
-                <Route path="/l/:linkSlug" element={<LinkDepositPage />} />
-              </Route>
+                  <Route path="/flowbox/:boxSlug" element={<FlowboxBoxShell />}>
+                    <Route index element={<Onboarding />} />
+                    <Route path="closed" element={<ClosedBoxPage />} />
+                    <Route element={<InBoxSessionGate />}>
+                      <Route path="search" element={<LiveSearch />} />
+                      <Route path="discover" element={<Discover />} />
+                    </Route>
+                  </Route>
 
-              <Route path="/client" element={<ClientAdminRouteWrapper />}>
-                <Route index element={<ClientDashboard />} />
-                <Route path="articles" element={<ClientArticlesList />} />
-                <Route path="articles/new" element={<ClientArticleEdit />} />
-                <Route path="articles/:articleId" element={<ClientArticleEdit />} />
-                <Route path="incitation" element={<ClientIncitationsList />} />
-                <Route path="commentaires" element={<ClientCommentsList />} />
-                <Route path="stickers" element={<ClientStickersList />} />
-                <Route path="stickers/install" element={<ClientStickersInstall />} />
-              </Route>
+                  <Route path="/l/:linkSlug" element={<LinkDepositPage />} />
+                </Route>
 
-              <Route
-                path="/auth"
-                element={
-                  authChecked
-                    ? (isAuthenticated ? <Navigate to="/profile" replace /> : <AuthPage />)
-                    : null
-                }
-              />
-              <Route path="/auth/return" element={<AuthReturnPage />} />
-            </Routes>
+                <Route path="/client" element={<ClientAdminRouteWrapper />}>
+                  <Route index element={<ClientDashboard />} />
+                  <Route path="articles" element={<ClientArticlesList />} />
+                  <Route path="articles/new" element={<ClientArticleEdit />} />
+                  <Route path="articles/:articleId" element={<ClientArticleEdit />} />
+                  <Route path="incitation" element={<ClientIncitationsList />} />
+                  <Route path="commentaires" element={<ClientCommentsList />} />
+                  <Route path="stickers" element={<ClientStickersList />} />
+                  <Route path="stickers/install" element={<ClientStickersInstall />} />
+                </Route>
+
+                <Route
+                  path="/auth"
+                  element={
+                    authChecked
+                      ? (isAuthenticated ? <Navigate to="/profile" replace /> : <AuthPage />)
+                      : null
+                  }
+                />
+                <Route path="/auth/return" element={<AuthReturnPage />} />
+              </Routes>
+            </FlowboxSessionProvider>
           </UserContext.Provider>
         </Router>
       </ThemeProvider>

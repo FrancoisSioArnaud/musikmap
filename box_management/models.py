@@ -86,8 +86,50 @@ class Box(models.Model):
             models.Index(fields=["name"]),
         ]
 
+    @property
+    def slug(self):
+        return self.url
+
+    @slug.setter
+    def slug(self, value):
+        self.url = value
+
     def __str__(self):
         return self.name
+
+
+class BoxSession(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="box_sessions",
+    )
+    box = models.ForeignKey(
+        "Box",
+        on_delete=models.CASCADE,
+        related_name="sessions",
+    )
+    started_at = models.DateTimeField(db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-expires_at", "-id"]
+        indexes = [
+            models.Index(fields=["user", "box"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    @property
+    def is_active(self):
+        return bool(self.expires_at and self.expires_at > timezone.now())
+
+    @property
+    def remaining_seconds(self):
+        if not self.expires_at:
+            return 0
+        return max(0, int((self.expires_at - timezone.now()).total_seconds()))
 
 
 class IncitationPhraseQuerySet(models.QuerySet):

@@ -6,13 +6,12 @@ import Typography from "@mui/material/Typography";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
-import { setWithTTL } from "../Utils/mmStorage";
 import SearchPanel from "../Common/Search/SearchPanel";
-import { resolveInitialSelectedProvider, NO_PERSONALIZED_RESULTS_PROVIDER } from "../Common/Search/SearchProviderSelector";
-
-const KEY_BOX_CONTENT = "mm_box_content";
-const TTL_MINUTES = 120;
-
+import {
+  resolveInitialSelectedProvider,
+  NO_PERSONALIZED_RESULTS_PROVIDER,
+} from "../Common/Search/SearchProviderSelector";
+import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 function normalizeOptionToSong(option) {
   if (!option) return null;
@@ -27,8 +26,10 @@ export default function LiveSearch() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user, setUser } = useContext(UserContext) || {};
+  const { getBoxRuntime, saveDiscoverSnapshot } = useContext(FlowboxSessionContext);
 
-  const [incitationText, setIncitationText] = useState("");
+  const runtime = getBoxRuntime(boxSlug);
+  const incitationText = (runtime?.box?.searchIncitationText || "").trim();
 
   const [depositFlowState, setDepositFlowState] = useState({
     requestKey: null,
@@ -38,7 +39,6 @@ export default function LiveSearch() {
 
   const searchInputRef = useRef(null);
   const isMountedRef = useRef(true);
-
 
   useEffect(() => {
     return () => {
@@ -55,21 +55,6 @@ export default function LiveSearch() {
     }, 50);
     return () => clearTimeout(timer);
   }, [user?.id, user?.provider_connections]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("mm_current_box");
-      const storedBox = raw ? JSON.parse(raw) : null;
-
-      if (storedBox?.box_slug === boxSlug) {
-        setIncitationText((storedBox?.search_incitation_text || "").trim());
-      } else {
-        setIncitationText("");
-      }
-    } catch {
-      setIncitationText("");
-    }
-  }, [boxSlug]);
 
   const goOnboardingWithError = useCallback(
     (msg) => {
@@ -113,11 +98,11 @@ export default function LiveSearch() {
           body: JSON.stringify(body),
         });
 
+        const data = (await response.json().catch(() => null)) || {};
         if (!response.ok) {
-          throw new Error("Erreur pendant le dépôt");
+          throw new Error(data?.detail || "Erreur pendant le dépôt");
         }
 
-        const data = (await response.json().catch(() => null)) || {};
         const {
           successes = [],
           points_balance = null,
@@ -150,7 +135,7 @@ export default function LiveSearch() {
           myDeposit,
         };
 
-        setWithTTL(KEY_BOX_CONTENT, payload, TTL_MINUTES);
+        saveDiscoverSnapshot(boxSlug, payload);
 
         if (!isMountedRef.current) return;
 
@@ -159,29 +144,44 @@ export default function LiveSearch() {
           status: "success",
           errorMessage: null,
         });
-      } catch {
+      } catch (error) {
         setDepositFlowState({
           requestKey,
           status: "error",
-          errorMessage: "Erreur pendant le dépôt",
+          errorMessage: error?.message || "Erreur pendant le dépôt",
         });
-        goOnboardingWithError("Erreur pendant le dépôt");
+        goOnboardingWithError(error?.message || "Erreur pendant le dépôt");
       }
     },
-    [boxSlug, depositFlowState.status, goOnboardingWithError, setUser]
+    [boxSlug, depositFlowState.status, goOnboardingWithError, saveDiscoverSnapshot, setUser]
   );
 
-  const handleDepositVisualComplete = useCallback((requestKey) => {
-    if (depositFlowState.requestKey !== requestKey || depositFlowState.status !== "success") {
-      return;
-    }
+  const handleDepositVisualComplete = useCallback(
+    (requestKey) => {
+      if (
+        depositFlowState.requestKey !== requestKey ||
+        depositFlowState.status !== "success"
+      ) {
+        return;
+      }
 
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
-      replace: true,
-    });
-  }, [boxSlug, depositFlowState.requestKey, depositFlowState.status, navigate]);
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, {
+        replace: true,
+      });
+    },
+    [boxSlug, depositFlowState.requestKey, depositFlowState.status, navigate]
+  );
+
   return (
-    <Box spacing={2} sx={{ maxWidth: "100%", height: "calc(100vh - 58px)", display: "flex", flexDirection: "column" }}>
+    <Box
+      spacing={2}
+      sx={{
+        maxWidth: "100%",
+        height: "calc(100vh - var(--mm-app-header-height, 56px))",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <Box sx={{ p: 4, pb: 2 }}>
         <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
           Choisis une chanson à partager

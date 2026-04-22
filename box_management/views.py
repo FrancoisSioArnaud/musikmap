@@ -44,6 +44,7 @@ from .models import (
     Article,
     IncitationPhrase,
     Box,
+    BoxSession,
     Deposit,
     DiscoveredSong,
     Emoji,
@@ -126,6 +127,88 @@ from .utils import (
 from la_boite_a_son.economy import COST_REVEAL_BOX, build_economy_payload
 
 User = get_user_model()
+
+BOX_SESSION_DURATION_MINUTES = int(getattr(settings, "BOX_SESSION_DURATION_MINUTES", 20) or 20)
+
+
+def _get_box_by_slug(box_slug):
+    box_slug = (box_slug or "").strip()
+    if not box_slug:
+        return None
+    return Box.objects.select_related("client").filter(url=box_slug).first()
+
+
+def _is_box_session_active(session):
+    return bool(session and getattr(session, "expires_at", None) and session.expires_at > timezone.now())
+
+
+def _get_active_box_session(user, box):
+    if not user or not box:
+        return None
+    now = timezone.now()
+    return (
+        BoxSession.objects
+        .filter(user=user, box=box, expires_at__gt=now)
+        .order_by("-expires_at", "-id")
+        .first()
+    )
+
+
+def _serialize_box_identity(box):
+    if not box:
+        return None
+    return {
+        "id": getattr(box, "id", None),
+        "slug": getattr(box, "slug", None) or getattr(box, "url", None),
+        "name": getattr(box, "name", None),
+        "client_slug": getattr(getattr(box, "client", None), "slug", None),
+    }
+
+
+def _serialize_box_session(session):
+    if not session:
+        return None
+    remaining_seconds = max(0, int((session.expires_at - timezone.now()).total_seconds()))
+    return {
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+        "remaining_seconds": remaining_seconds,
+    }
+
+
+def _open_box_session_for_user(user, box):
+    now = timezone.now()
+    expires_at = now + timedelta(minutes=BOX_SESSION_DURATION_MINUTES)
+    session, _created = BoxSession.objects.update_or_create(
+        user=user,
+        box=box,
+        defaults={
+            "started_at": now,
+            "expires_at": expires_at,
+        },
+    )
+    return session
+
+
+def _session_payload_for_box(session, box):
+    return {
+        "active": _is_box_session_active(session),
+        "box": _serialize_box_identity(box),
+        "session": _serialize_box_session(session),
+    }
+
+
+def _ensure_active_session_for_box_or_response(request, box):
+    current_user = get_current_app_user(request)
+    if not current_user:
+        return None, api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
+
+    active_session = _get_active_box_session(current_user, box)
+    if not active_session:
+        return None, api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
+
+    touch_last_seen(current_user)
+    return current_user, None
 
 
 _QRCODE_MODULE = None
@@ -616,7 +699,7 @@ class GetBox(APIView):
                     filter=Q(deposits__deposit_type=Deposit.DEPOSIT_TYPE_BOX),
                 ),
             )
-            .only("name", "client__slug")
+            .only("name", "url", "client__slug")
             .first()
         )
 
@@ -636,6 +719,7 @@ class GetBox(APIView):
         current_incitation = _get_current_incitation_for_box(box)
 
         data = {
+            "slug": box.slug,
             "name": box.name,
             "client_slug": box.client.slug if box.client else None,
             "deposit_count": box.deposit_count,
@@ -648,19 +732,17 @@ class GetBox(APIView):
 
     def post(self, request, format=None):
         option = request.data.get("option") or {}
-        box_slug = request.data.get("boxSlug")
+        box_slug = (request.data.get("boxSlug") or "").strip()
         if not box_slug:
             return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
 
-        box = Box.objects.filter(url=box_slug).first()
+        box = _get_box_by_slug(box_slug)
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable")
 
-        user = get_current_app_user(request)
-        guest_created = False
-        if not user:
-            user, guest_created = ensure_guest_user_for_request(request)
-        touch_last_seen(user)
+        user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
 
         prev_head, older_list = _get_prev_head_and_older(box, limit=15)
 
@@ -719,11 +801,9 @@ class GetBox(APIView):
             "successes": successes,
             "points_balance": points_balance,
             "active_pinned_deposit": _serialize_active_pinned_deposit_for_box(box, user),
+            "current_user": build_current_user_payload(user),
         }
-        response = Response(response_payload, status=status.HTTP_200_OK)
-        if guest_created and getattr(user, "guest_device_token", None):
-            attach_guest_cookie(response, user.guest_device_token)
-        return response
+        return Response(response_payload, status=status.HTTP_200_OK)
 
 
 class Location(APIView):
@@ -738,12 +818,11 @@ class Location(APIView):
         except (TypeError, ValueError):
             return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_COORDINATES", "Invalid latitude/longitude")
 
-        box_payload = request.data.get("box") or {}
-        box_url = box_payload.get("url")
-        if not box_url:
-            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_URL_REQUIRED", "Missing box.url")
+        box_slug = (request.data.get("boxSlug") or "").strip()
+        if not box_slug:
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
 
-        box = Box.objects.filter(url=box_url).first()
+        box = _get_box_by_slug(box_slug)
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
@@ -751,12 +830,86 @@ class Location(APIView):
         if not points.exists():
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_LOCATION_NOT_CONFIGURED", "No location points for this box")
 
+        is_in_range = False
         for point in points:
             dist = _calculate_distance(latitude, longitude, point.latitude, point.longitude)
             if dist <= point.dist_location:
-                return Response(status=status.HTTP_200_OK)
+                is_in_range = True
+                break
 
-        return api_error(status.HTTP_403_FORBIDDEN, "OUTSIDE_ALLOWED_BOX_RANGE", "Tu n'est pas à coté de la boîte")
+        if not is_in_range:
+            return api_error(status.HTTP_403_FORBIDDEN, "OUTSIDE_ALLOWED_BOX_RANGE", "Rapproche-toi de la boîte pour l’ouvrir.")
+
+        current_user = get_current_app_user(request)
+        guest_created = False
+        if not current_user:
+            current_user, guest_created = ensure_guest_user_for_request(request)
+        touch_last_seen(current_user)
+
+        session = _open_box_session_for_user(current_user, box)
+        response = Response({
+            "active": True,
+            "box": _serialize_box_identity(box),
+            "session": _serialize_box_session(session),
+            "current_user": build_current_user_payload(current_user),
+        }, status=status.HTTP_200_OK)
+        if guest_created and getattr(current_user, "guest_device_token", None):
+            attach_guest_cookie(response, current_user.guest_device_token)
+        return response
+
+
+class BoxSessionView(APIView):
+    permission_classes = []
+
+    def get(self, request):
+        box_slug = (request.query_params.get("boxSlug") or "").strip()
+        if not box_slug:
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
+
+        box = _get_box_by_slug(box_slug)
+        if not box:
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
+
+        current_user = get_current_app_user(request)
+        if current_user:
+            touch_last_seen(current_user)
+
+        session = _get_active_box_session(current_user, box) if current_user else None
+        if not session:
+            return Response({"active": False, "box": _serialize_box_identity(box), "session": None}, status=status.HTTP_200_OK)
+
+        return Response(_session_payload_for_box(session, box), status=status.HTTP_200_OK)
+
+
+class ActiveBoxSessionsView(APIView):
+    permission_classes = []
+
+    def get(self, request):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return Response({"sessions": []}, status=status.HTTP_200_OK)
+        touch_last_seen(current_user)
+
+        now = timezone.now()
+        sessions = (
+            BoxSession.objects
+            .select_related("box__client")
+            .filter(user=current_user, expires_at__gt=now)
+            .order_by("-expires_at", "-id")
+        )
+
+        items = []
+        seen_box_ids = set()
+        for session in sessions:
+            if session.box_id in seen_box_ids:
+                continue
+            seen_box_ids.add(session.box_id)
+            items.append({
+                "box": _serialize_box_identity(session.box),
+                "session": _serialize_box_session(session),
+            })
+
+        return Response({"sessions": items}, status=status.HTTP_200_OK)
 
 
 
@@ -837,9 +990,12 @@ class RevealSong(APIView):
             user = CustomUser.objects.select_for_update().get(pk=user.pk)
 
             try:
-                deposit = Deposit.objects.select_related("song").get(public_key=public_key)
+                deposit = Deposit.objects.select_related("song", "box").get(public_key=public_key)
             except Deposit.DoesNotExist:
                 return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
+
+            if context == "box" and getattr(deposit, "box", None) and not _get_active_box_session(user, deposit.box):
+                return api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
 
             song = deposit.song
             if not song:
@@ -1102,7 +1258,7 @@ class PinnedSongView(APIView):
         if not box_slug:
             return None, api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant.")
 
-        box = Box.objects.select_related("client").filter(url=box_slug).first()
+        box = _get_box_by_slug(box_slug)
         if not box:
             return None, api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
@@ -1118,7 +1274,9 @@ class PinnedSongView(APIView):
         if error_response is not None:
             return error_response
 
-        viewer = get_current_app_user(request)
+        viewer, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
         if viewer:
             touch_last_seen(viewer)
 
@@ -1139,6 +1297,10 @@ class PinnedSongView(APIView):
         box, error_response = self._get_box(request)
         if error_response is not None:
             return error_response
+
+        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
 
         option = request.data.get("option") or {}
         try:
@@ -1219,7 +1381,7 @@ class PublicVisibleArticlesView(APIView):
         if not box_slug:
             return None, api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant.")
 
-        box = Box.objects.select_related("client").filter(url=box_slug).first()
+        box = _get_box_by_slug(box_slug)
         if not box or not box.client_id:
             return None, None
 
@@ -1231,6 +1393,10 @@ class PublicVisibleArticlesView(APIView):
             return error_response
         if not box:
             return Response([], status=status.HTTP_200_OK)
+
+        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
 
         try:
             limit = int(request.query_params.get("limit", 5))
@@ -1258,6 +1424,10 @@ class PublicVisibleArticleDetailView(APIView):
             return error_response
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "ARTICLE_NOT_FOUND", "Article introuvable.")
+
+        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
 
         article = (
             Article.objects
@@ -1577,9 +1747,13 @@ class ReactionView(APIView):
         if not dep_public_key:
             return api_error(status.HTTP_400_BAD_REQUEST, "DEPOSIT_PUBLIC_KEY_REQUIRED", "dep_public_key manquant")
 
-        deposit = Deposit.objects.filter(public_key=dep_public_key).first()
+        deposit = Deposit.objects.select_related("box").filter(public_key=dep_public_key).first()
         if not deposit:
             return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable")
+
+        if getattr(deposit, "box", None) and getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX) in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+            if not _get_active_box_session(current_user, deposit.box):
+                return api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
 
         is_revealed_for_user = bool(
             getattr(deposit, "user_id", None) == getattr(current_user, "id", None)
@@ -1655,6 +1829,10 @@ class CommentCreateView(APIView):
         )
         if not deposit:
             return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
+
+        if getattr(deposit, "box", None) and getattr(deposit, "deposit_type", "box") != "favorite":
+            if not _get_active_box_session(current_user, deposit.box):
+                return api_error(status.HTTP_403_FORBIDDEN, "BOX_SESSION_REQUIRED", "Ouvre la boîte pour continuer.")
 
         client = getattr(getattr(deposit, "box", None), "client", None)
         if not client and getattr(deposit, "deposit_type", "box") != "favorite":

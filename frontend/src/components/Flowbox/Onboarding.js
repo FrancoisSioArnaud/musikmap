@@ -1,225 +1,235 @@
-import React, { useEffect, useState, useCallback, useContext } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import React, { useContext, useEffect, useState, useCallback } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import Button from "@mui/material/Button";
-import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
-import EnableLocation from "../Flowbox/EnableLocation";
+import Alert from "@mui/material/Alert";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import CircularProgress from "@mui/material/CircularProgress";
+import LockIcon from "@mui/icons-material/Lock";
+import EnableLocation from "./EnableLocation";
 import { UserContext } from "../UserContext";
-import LockIcon from '@mui/icons-material/Lock';
+import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
+
+function isPermissionDeniedError(error) {
+  return error?.code === 1 || /denied/i.test(String(error?.message || ""));
+}
+
+async function getLocationPermissionState() {
+  if (!navigator?.permissions?.query) return "prompt";
+  try {
+    const result = await navigator.permissions.query({ name: "geolocation" });
+    return result?.state || "prompt";
+  } catch {
+    return "prompt";
+  }
+}
+
+function requestLocationOnce() {
+  return new Promise((resolve, reject) => {
+    if (!("geolocation" in navigator)) {
+      reject(new Error("La géolocalisation n’est pas supportée sur cet appareil."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => reject(error),
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  });
+}
 
 export default function Onboarding() {
-  const { boxSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentClient, setCurrentClient } = useContext(UserContext) || {};
+  const { boxSlug } = useParams();
+  const { setUser } = useContext(UserContext) || {};
+  const {
+    getBoxRuntime,
+    getActiveSessionForSlug,
+    sessionLoadStateBySlug,
+    saveVerifiedSession,
+    markFlowboxVisited,
+  } = useContext(FlowboxSessionContext);
 
-  const [box, setBox] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const runtime = getBoxRuntime(boxSlug);
+  const activeSession = getActiveSessionForSlug(boxSlug);
+  const sessionLoadState = sessionLoadStateBySlug?.[boxSlug] || "idle";
+
   const [pageError, setPageError] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
-  const handleError = useCallback((msg) => {
-    setGeoLoading(false);
-    setSheetOpen(false);
-    setLoading(false);
-    setPageError(msg || "Une erreur inattendue s’est produite.");
-  }, []);
+  const boxName = runtime?.box?.name || "Boîte";
 
   useEffect(() => {
     const err = location.state?.error;
     if (err) setPageError(String(err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.key]);
+  }, [location.state]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
+    if (activeSession && sessionLoadState !== "loading") {
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, { replace: true });
+    }
+  }, [activeSession, boxSlug, navigate, sessionLoadState]);
 
-        const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
-        const res = await fetch(url, {
-          credentials: "include",
-          headers: { Accept: "application/json" },
-        });
+  const verifyAndOpenBox = useCallback(async () => {
+    setGeoLoading(true);
+    setLocationError("");
+    setPageError("");
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    try {
+      const position = await requestLocationOnce();
+      const response = await fetch(`/box-management/verify-location`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          boxSlug,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }),
+      });
 
-        const data = await res.json();
-        if (!data || !data.name) throw new Error("Payload inattendu");
-
-        const nextClient = data?.client_slug || "default";
-
-        try {
-          localStorage.setItem(
-            "mm_current_box",
-            JSON.stringify({
-              box_slug: boxSlug,
-              box_name: (data?.name || "").trim(),
-              search_incitation_text: (data?.search_incitation_text || "").trim(),
-            })
-          );
-        } catch {}
-        if (setCurrentClient && currentClient !== nextClient) {
-          setCurrentClient(nextClient);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 403) {
+          setLocationError(data?.detail || "Rapproche-toi de la boîte pour l’ouvrir.");
+          setSheetOpen(true);
+          return;
         }
-
-        setBox(data);
-      } catch {
-        handleError(pageError || "Impossible de récupérer la boîte.");
-      } finally {
-        setLoading(false);
+        throw new Error(data?.detail || "Impossible d’ouvrir la boîte.");
       }
-    })();
-  }, [boxSlug, handleError, pageError, currentClient, setCurrentClient]);
 
-  const requestLocationOnce = useCallback(() => {
-    return new Promise((resolve, reject) => {
-      if (!("geolocation" in navigator)) {
-        reject(new Error("La géolocalisation n’est pas supportée sur cet appareil."));
+      saveVerifiedSession(data, { triggerEnterHint: true });
+      markFlowboxVisited(boxSlug);
+      setSheetOpen(false);
+      if (data?.current_user && setUser) {
+        setUser(data.current_user);
+      }
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`, { replace: true });
+    } catch (error) {
+      if (isPermissionDeniedError(error)) {
+        setSheetOpen(false);
+        setSettingsDialogOpen(true);
         return;
       }
-      const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 };
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(pos),
-        (err) => {
-          try {
-            const wid = navigator.geolocation.watchPosition(
-              (pos2) => {
-                try {
-                  navigator.geolocation.clearWatch(wid);
-                } catch {}
-                resolve(pos2);
-              },
-              (err2) => {
-                try {
-                  navigator.geolocation.clearWatch(wid);
-                } catch {}
-                reject(err2);
-              },
-              { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
-            );
-            setTimeout(() => {
-              try {
-                navigator.geolocation.clearWatch(wid);
-              } catch {}
-            }, 15000);
-          } catch {
-            reject(err || new Error("Impossible d’obtenir la position."));
-          }
-        },
-        opts
-      );
-    });
-  }, []);
-
-  const openSheet = useCallback(() => {
-    setSheetOpen(true);
-  }, []);
-
-  const handleAuthorize = useCallback(async () => {
-    setGeoLoading(true);
-    try {
-      await requestLocationOnce();
+      setPageError(error?.message || "Impossible d’ouvrir la boîte.");
+    } finally {
       setGeoLoading(false);
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`);
-    } catch {
-      handleError("Tu ne peux pas ouvrir la boîte sans activer ta localisation");
     }
-  }, [requestLocationOnce, navigate, boxSlug, handleError]);
+  }, [boxSlug, markFlowboxVisited, navigate, saveVerifiedSession, setUser]);
 
-  if (loading && !pageError) {
+  const handleStart = useCallback(async () => {
+    setPageError("");
+    setLocationError("");
+    const permissionState = await getLocationPermissionState();
+
+    if (permissionState === "granted") {
+      verifyAndOpenBox();
+      return;
+    }
+
+    setSheetOpen(true);
+  }, [verifyAndOpenBox]);
+
+  const coverImage = runtime?.box?.lastDepositSongImageUrl || null;
+
+  if (!runtime?.box) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
         <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Chargement de la boîte…</Typography>
-      </Box>
-    );
-  }
-
-  if (pageError) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {pageError}
-        </Alert>
-        <Button variant="contained" onClick={() => window.location.reload()}>
-          Réessayer
-        </Button>
       </Box>
     );
   }
 
   return (
     <>
-      <Paper
-        elevation={3}
-        className="onBoarding"
-      >
+      <Paper elevation={3} className="onBoarding">
         <Box className="page_container">
-  
-          {box?.last_deposit_song_image_url ? (
+          {coverImage ? (
             <Box className="last_song">
               <Box
                 component="img"
                 src="https://naolib.fr/medias/photo/homepage_1770126469211-png"
                 className="bg"
-              />              
+                alt="fond"
+              />
               <Box className="pochette">
                 <Box className="cover">
-                  <Box
-                    component="img"
-                    src={box.last_deposit_song_image_url}
-                    alt="pochette"
-                    className="last_song_img"
-                  />
+                  <Box component="img" src={coverImage} alt="pochette" className="last_song_img" />
                   <LockIcon className="icon" />
                 </Box>
                 <Box className="vinyl" />
               </Box>
-              <Typography variant="subtitle1" component="p">
-                Chanson deposée ici {box?.last_deposit_date || 0}
-              </Typography>
+              {runtime?.box?.lastDepositDate ? (
+                <Typography variant="subtitle1" component="p">
+                  Chanson déposée ici {runtime.box.lastDepositDate}
+                </Typography>
+              ) : null}
             </Box>
           ) : null}
 
-          
           <Box className="info_box">
             <Typography className="box_name" component="h5" variant="h5">
-              {box?.name}
+              {boxName}
             </Typography>
           </Box>
 
           <Box className="container">
-
             <Typography variant="h4" component="h1" className="intro_small">
               Dépose une chanson puis découvre celle déposée par le passant précédent
             </Typography>
 
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={openSheet}
-            >
+            {pageError ? (
+              <Alert severity="error" sx={{ width: "100%", mb: 2 }}>
+                {pageError}
+              </Alert>
+            ) : null}
+
+            <Button variant="contained" size="large" fullWidth onClick={handleStart} disabled={geoLoading}>
               Commencer
             </Button>
-      
           </Box>
         </Box>
       </Paper>
 
       <EnableLocation
         open={sheetOpen}
-        boxTitle={box?.name || "Boîte"}
+        boxTitle={boxName}
         loading={geoLoading}
-        error=""
-        onAuthorize={handleAuthorize}
+        error={locationError}
+        onAuthorize={verifyAndOpenBox}
         onClose={() => setSheetOpen(false)}
       />
+
+      <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Active la localisation</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Pour ouvrir cette boîte, la localisation doit être autorisée pour ce site dans les réglages de ton téléphone ou de ton navigateur.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="light" onClick={() => setSettingsDialogOpen(false)}>
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

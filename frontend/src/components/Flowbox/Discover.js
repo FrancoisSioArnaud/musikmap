@@ -14,7 +14,6 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Deposit from "../Common/Deposit";
 import AchievementsPanel from "./AchievementsPanel";
 import { UserContext } from "../UserContext";
-import { getValid } from "../Utils/mmStorage";
 import ArticleCard from "../Common/Article/ArticleCard";
 import ArticleDrawer from "../Common/Article/ArticleDrawer";
 import PinnedSongSection from "./PinnedSongSection";
@@ -24,8 +23,8 @@ import {
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
+import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
-const KEY_BOX_CONTENT = "mm_box_content";
 const MAX_VISIBLE_ARTICLES = 5;
 const ACHIEVEMENTS_DRAWER_PARAM = "drawer";
 const ACHIEVEMENTS_DRAWER_VALUE = "achievements";
@@ -36,27 +35,21 @@ export default function Discover() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
+  const { getDiscoverSnapshot } = useContext(FlowboxSessionContext);
 
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
 
-  const redirectOnboardingExpired = useCallback(() => {
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/`, {
-      replace: true,
-      state: { error: "Erreur pendant le dépôt" },
-    });
-  }, [navigate, boxSlug]);
-
   useEffect(() => {
-    const snap = getValid(KEY_BOX_CONTENT);
+    const snap = getDiscoverSnapshot(boxSlug);
     if (!snap || snap.boxSlug !== boxSlug) {
-      redirectOnboardingExpired();
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`, { replace: true });
       return;
     }
     setBoxContent(snap);
-  }, [boxSlug, redirectOnboardingExpired]);
+  }, [boxSlug, getDiscoverSnapshot, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,11 +65,11 @@ export default function Discover() {
           headers: { Accept: "application/json" },
         });
 
-        if (!res.ok) {
-          throw new Error("Impossible de charger les articles.");
-        }
-
         const data = await res.json().catch(() => []);
+
+        if (!res.ok) {
+          throw new Error(data?.detail || "Impossible de charger les articles.");
+        }
         if (cancelled) return;
 
         setArticles(Array.isArray(data) ? data : []);
@@ -99,7 +92,9 @@ export default function Discover() {
       ACHIEVEMENTS_DRAWER_VALUE
     );
 
-    setOpenAchievements((prev) => (prev === shouldOpenAchievements ? prev : shouldOpenAchievements));
+    setOpenAchievements((prev) =>
+      prev === shouldOpenAchievements ? prev : shouldOpenAchievements
+    );
   }, [location]);
 
   useEffect(() => {
@@ -131,7 +126,9 @@ export default function Discover() {
   const myDepositAccentColor = myDeposit?.accent_color || undefined;
 
   const mainDep = boxContent?.main || null;
-  const successes = Array.isArray(boxContent?.successes) ? boxContent.successes : [];
+  const successes = Array.isArray(boxContent?.successes)
+    ? boxContent.successes
+    : [];
   const olderDeposits = Array.isArray(boxContent?.olderDeposits)
     ? boxContent.olderDeposits
     : [];
@@ -179,7 +176,9 @@ export default function Discover() {
 
   const handleCloseArticleDrawer = useCallback(() => {
     const articleId =
-      selectedArticle?.id || getDrawerParamValue(location, ARTICLE_DRAWER_PARAM) || "";
+      selectedArticle?.id ||
+      getDrawerParamValue(location, ARTICLE_DRAWER_PARAM) ||
+      "";
 
     if (
       !closeDrawerWithHistory({
@@ -192,7 +191,6 @@ export default function Discover() {
       setSelectedArticle(null);
     }
   }, [location, navigate, selectedArticle?.id]);
-
 
   return (
     <Box>
@@ -315,13 +313,7 @@ export default function Discover() {
 
       {mainDep ? (
         <Box sx={{ margin: "0 20px" }}>
-          <Deposit
-            dep={mainDep}
-            user={user}
-            variant="main"
-            showPlay={true}
-            showUser={true}
-          />
+          <Deposit dep={mainDep} user={user} variant="main" showPlay={true} showUser={true} />
 
           {olderDeposits.length > 0 ? (
             <Box
