@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Box, Comment, Deposit, Emoji, EmojiRight, Reaction, Song
-from box_management.utils import _get_profile_picture_url, _normalize_comment_text
+from box_management.services.comments.moderation_rules import _get_profile_picture_url, _normalize_comment_text
 
 seed_siohome = import_module("box_management.scripts.seed_siohome")
 

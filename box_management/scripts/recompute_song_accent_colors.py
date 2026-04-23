@@ -1,5 +1,5 @@
 from box_management.models import Song
-from box_management.utils import refresh_song_accent_color
+from box_management.services.deposits.accent_color import refresh_song_accent_color
 
 
 def run(*args):

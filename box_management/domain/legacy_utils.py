@@ -1,0 +1,1736 @@
+# ruff: noqa: UP017
+# box_management/utils.py
+
+import html
+import json
+import re
+from collections.abc import Iterable, Sequence
+from datetime import timedelta
+from datetime import timezone as dt_timezone
+from html.parser import HTMLParser
+from io import BytesIO
+from math import atan2, cos, log2, radians, sin, sqrt
+from pathlib import Path
+from typing import Any
+from urllib.parse import urljoin, urlparse
+
+import requests
+from django.conf import settings
+from django.db.models import Prefetch, Q
+from django.utils import timezone
+from django.utils.timezone import localdate, localtime
+from PIL import Image
+from rest_framework import status
+
+from box_management.models import (
+    Client,
+    Comment,
+    CommentAttemptLog,
+    CommentUserRestriction,
+    Deposit,
+    DiscoveredSong,
+    IncitationPhrase,
+    Reaction,
+    Song,
+)
+from box_management.provider_services import (
+    get_or_create_song_from_track,
+    get_song_provider_links_map,
+    normalize_track_payload,
+    upsert_song_provider_link,
+)
+from la_boite_a_son.api_errors import api_error
+
+# Barèmes & coûts
+from la_boite_a_son.economy import (
+    NB_POINTS_ADD_SONG,
+    NB_POINTS_CONSECUTIVE_DAYS_BOX,
+    NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_BOX,
+    NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL,
+)
+from users.models import CustomUser
+
+COMMENT_MAX_LENGTH = 100
+COMMENT_COOLDOWN_SECONDS = 120
+COMMENT_TARGET_USER_DAILY_LIMIT = 2
+
+COMMENT_REASON_ALREADY_COMMENTED = "already_commented"
+COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED = "target_user_daily_comment_limit_reached"
+COMMENT_REASON_RATE_LIMIT = "rate_limit"
+COMMENT_REASON_LINK_FORBIDDEN = "link_forbidden"
+COMMENT_REASON_EMAIL_FORBIDDEN = "email_forbidden"
+COMMENT_REASON_PHONE_FORBIDDEN = "phone_forbidden"
+COMMENT_REASON_EMPTY = "empty"
+COMMENT_REASON_TOO_LONG = "too_long"
+COMMENT_REASON_RESTRICTED = "restricted"
+COMMENT_REASON_REPORT_THRESHOLD = "report_threshold"
+COMMENT_REASON_RISK_QUARANTINE = "risk_quarantine"
+COMMENT_REASON_SPAM = "spam"
+COMMENT_REASON_HARASSMENT = "harassment"
+COMMENT_REASON_DOXXING = "doxxing"
+COMMENT_REASON_DELETE_BY_AUTHOR = "deleted_by_author"
+COMMENT_REASON_REMOVE_BY_MODERATION = "removed_by_moderation"
+
+
+ACCENT_COLOR_TARGET_SIZE = 64
+ACCENT_COLOR_EDGE_RATIO = 0.1
+ACCENT_COLOR_MIN_ALPHA = 128
+ACCENT_COLOR_MIN_SATURATION_STRICT = 0.18
+ACCENT_COLOR_MIN_SATURATION_FALLBACK = 0.08
+ACCENT_COLOR_MIN_LIGHTNESS_STRICT = 0.18
+ACCENT_COLOR_MAX_LIGHTNESS_STRICT = 0.92
+ACCENT_COLOR_MIN_LIGHTNESS_FALLBACK = 0.14
+ACCENT_COLOR_MAX_LIGHTNESS_FALLBACK = 0.96
+ACCENT_COLOR_QUANTIZATION_STEP = 32
+ACCENT_COLOR_IDEAL_LIGHTNESS = 0.58
+ACCENT_COLOR_BROWN_HUE_MIN = 18 / 360
+ACCENT_COLOR_BROWN_HUE_MAX = 50 / 360
+ACCENT_COLOR_BROWN_MAX_LIGHTNESS = 0.5
+ACCENT_COLOR_BROWN_MIN_SATURATION = 0.18
+ACCENT_COLOR_BROWN_PENALTY_WEIGHT = 240
+ACCENT_COLOR_SATURATION_SCORE_WEIGHT = 1000
+ACCENT_COLOR_COUNT_SCORE_WEIGHT = 14
+ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT = 8
+ACCENT_COLOR_REQUEST_TIMEOUT = 8
+
+PINNED_PRICE_STEPS_PATH = Path(__file__).resolve().parents[1] / "data" / "pinned_price_steps.json"
+
+
+def load_pinned_price_steps() -> list[dict[str, int]]:
+    try:
+        raw = json.loads(PINNED_PRICE_STEPS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        raw = []
+
+    steps: list[dict[str, int]] = []
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            minutes = int(item.get("minutes"))
+            points = int(item.get("points"))
+        except (TypeError, ValueError):
+            continue
+        if minutes <= 0 or points <= 0:
+            continue
+        steps.append({"minutes": minutes, "points": points})
+
+    steps.sort(key=lambda entry: entry["minutes"])
+    return steps
+
+
+def get_pinned_price_steps_raw() -> list[dict[str, int]]:
+    """Raw pinned price steps (minutes/points), without affordability flags."""
+    return load_pinned_price_steps()
+
+
+def get_pinned_price_step(duration_minutes: int) -> dict[str, int] | None:
+    try:
+        duration_minutes = int(duration_minutes)
+    except (TypeError, ValueError):
+        return None
+
+    for step in load_pinned_price_steps():
+        if step["minutes"] == duration_minutes:
+            return step
+    return None
+
+
+def build_pinned_price_steps_payload(*, user_points: int | None = None) -> list[dict[str, Any]]:
+    points_value = None
+    try:
+        if user_points is not None:
+            points_value = int(user_points)
+    except (TypeError, ValueError):
+        points_value = None
+
+    payload: list[dict[str, Any]] = []
+    for step in load_pinned_price_steps():
+        price = int(step["points"])
+        payload.append(
+            {
+                "minutes": int(step["minutes"]),
+                "points": price,
+                "is_affordable": (points_value is None) or (points_value >= price),
+            }
+        )
+    return payload
+
+
+def get_active_pinned_deposit_for_box(box, *, for_update: bool = False):
+    qs = (
+        Deposit.objects.filter(
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_expires_at__gt=timezone.now(),
+        )
+        .select_related("song", "user", "box")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-pin_expires_at", "-deposited_at", "-id")
+    )
+    if for_update:
+        qs = qs.select_for_update()
+    return qs.first()
+
+
+def _accent_clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
+
+
+def _accent_clamp_byte(value: float) -> int:
+    return int(_accent_clamp(round(value or 0), 0, 255))
+
+
+def _accent_rgb_to_hex(r: float, g: float, b: float) -> str:
+    return f"#{_accent_clamp_byte(r):02X}{_accent_clamp_byte(g):02X}{_accent_clamp_byte(b):02X}"
+
+
+def _accent_rgb_to_hsl(r: float, g: float, b: float) -> tuple[float, float, float]:
+    rn = _accent_clamp_byte(r) / 255.0
+    gn = _accent_clamp_byte(g) / 255.0
+    bn = _accent_clamp_byte(b) / 255.0
+
+    max_value = max(rn, gn, bn)
+    min_value = min(rn, gn, bn)
+    lightness = (max_value + min_value) / 2.0
+
+    if max_value == min_value:
+        return 0.0, 0.0, lightness
+
+    delta = max_value - min_value
+    saturation = delta / (2.0 - max_value - min_value) if lightness > 0.5 else delta / (max_value + min_value)
+
+    if max_value == rn:
+        hue = (gn - bn) / delta + (6 if gn < bn else 0)
+    elif max_value == gn:
+        hue = (bn - rn) / delta + 2
+    else:
+        hue = (rn - gn) / delta + 4
+
+    hue /= 6.0
+    return hue, saturation, lightness
+
+
+def _accent_get_brown_penalty(hue: float, saturation: float, lightness: float) -> float:
+    is_brown_hue = ACCENT_COLOR_BROWN_HUE_MIN <= hue <= ACCENT_COLOR_BROWN_HUE_MAX
+    is_brown_candidate = (
+        is_brown_hue
+        and saturation >= ACCENT_COLOR_BROWN_MIN_SATURATION
+        and lightness <= ACCENT_COLOR_BROWN_MAX_LIGHTNESS
+    )
+    if not is_brown_candidate:
+        return 0.0
+
+    hue_center = (ACCENT_COLOR_BROWN_HUE_MIN + ACCENT_COLOR_BROWN_HUE_MAX) / 2.0
+    hue_half_range = (ACCENT_COLOR_BROWN_HUE_MAX - ACCENT_COLOR_BROWN_HUE_MIN) / 2.0
+    hue_distance = abs(hue - hue_center)
+    hue_factor = 1 - _accent_clamp(hue_distance / hue_half_range, 0.0, 1.0)
+    darkness_factor = _accent_clamp(
+        (ACCENT_COLOR_BROWN_MAX_LIGHTNESS - lightness) / ACCENT_COLOR_BROWN_MAX_LIGHTNESS,
+        0.0,
+        1.0,
+    )
+    return ACCENT_COLOR_BROWN_PENALTY_WEIGHT * hue_factor * darkness_factor
+
+
+def _accent_is_pixel_eligible(r: int, g: int, b: int, a: int, mode: str) -> bool:
+    if a < ACCENT_COLOR_MIN_ALPHA:
+        return False
+
+    _h, saturation, lightness = _accent_rgb_to_hsl(r, g, b)
+
+    if mode == "strict":
+        return (
+            saturation >= ACCENT_COLOR_MIN_SATURATION_STRICT
+            and lightness >= ACCENT_COLOR_MIN_LIGHTNESS_STRICT
+            and lightness <= ACCENT_COLOR_MAX_LIGHTNESS_STRICT
+        )
+
+    return (
+        saturation >= ACCENT_COLOR_MIN_SATURATION_FALLBACK
+        and lightness >= ACCENT_COLOR_MIN_LIGHTNESS_FALLBACK
+        and lightness <= ACCENT_COLOR_MAX_LIGHTNESS_FALLBACK
+    )
+
+
+def _accent_quantize_channel(value: int) -> int:
+    quantized = int(_accent_clamp_byte(value) / ACCENT_COLOR_QUANTIZATION_STEP) * ACCENT_COLOR_QUANTIZATION_STEP
+    centered = quantized + (ACCENT_COLOR_QUANTIZATION_STEP / 2)
+    return _accent_clamp_byte(centered)
+
+
+def _accent_bucket_key(r: int, g: int, b: int) -> tuple[int, int, int]:
+    return (
+        _accent_quantize_channel(r),
+        _accent_quantize_channel(g),
+        _accent_quantize_channel(b),
+    )
+
+
+def _accent_score_bucket(bucket: dict[str, float]) -> float:
+    avg_r = bucket["r_sum"] / bucket["count"]
+    avg_g = bucket["g_sum"] / bucket["count"]
+    avg_b = bucket["b_sum"] / bucket["count"]
+    hue, saturation, lightness = _accent_rgb_to_hsl(avg_r, avg_g, avg_b)
+
+    saturation_score = saturation * ACCENT_COLOR_SATURATION_SCORE_WEIGHT
+    count_score = log2(bucket["count"] + 1) * ACCENT_COLOR_COUNT_SCORE_WEIGHT
+    lightness_score = (1 - abs(lightness - ACCENT_COLOR_IDEAL_LIGHTNESS) * 2) * ACCENT_COLOR_LIGHTNESS_SCORE_WEIGHT
+    brown_penalty = _accent_get_brown_penalty(hue, saturation, lightness)
+
+    return saturation_score + count_score + lightness_score - brown_penalty
+
+
+def _extract_accent_color_from_rgba_image(image: Image.Image, mode: str) -> str | None:
+    width, height = image.size
+    edge_x = int(width * ACCENT_COLOR_EDGE_RATIO)
+    edge_y = int(height * ACCENT_COLOR_EDGE_RATIO)
+
+    if width - (edge_x * 2) <= 0 or height - (edge_y * 2) <= 0:
+        edge_x = 0
+        edge_y = 0
+
+    pixels = image.load()
+    buckets: dict[tuple[int, int, int], dict[str, float]] = {}
+
+    for y in range(edge_y, height - edge_y):
+        for x in range(edge_x, width - edge_x):
+            r, g, b, a = pixels[x, y]
+            if not _accent_is_pixel_eligible(r, g, b, a, mode):
+                continue
+
+            key = _accent_bucket_key(r, g, b)
+            bucket = buckets.setdefault(
+                key,
+                {"count": 0, "r_sum": 0.0, "g_sum": 0.0, "b_sum": 0.0},
+            )
+            bucket["count"] += 1
+            bucket["r_sum"] += r
+            bucket["g_sum"] += g
+            bucket["b_sum"] += b
+
+    best_bucket = None
+    best_score = float("-inf")
+
+    for bucket in buckets.values():
+        if bucket["count"] <= 0:
+            continue
+        score = _accent_score_bucket(bucket)
+        if score > best_score:
+            best_bucket = bucket
+            best_score = score
+
+    if not best_bucket:
+        return None
+
+    return _accent_rgb_to_hex(
+        best_bucket["r_sum"] / best_bucket["count"],
+        best_bucket["g_sum"] / best_bucket["count"],
+        best_bucket["b_sum"] / best_bucket["count"],
+    )
+
+
+def _fetch_remote_image_for_accent(image_url: str) -> Image.Image | None:
+    if not image_url:
+        return None
+
+    try:
+        response = requests.get(
+            image_url,
+            timeout=ACCENT_COLOR_REQUEST_TIMEOUT,
+            headers={"User-Agent": "musikmap-accent-color/1.0"},
+        )
+        response.raise_for_status()
+        with Image.open(BytesIO(response.content)) as raw_image:
+            rgba_image = raw_image.convert("RGBA")
+            try:
+                resample = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample = Image.LANCZOS
+            return rgba_image.resize(
+                (ACCENT_COLOR_TARGET_SIZE, ACCENT_COLOR_TARGET_SIZE),
+                resample=resample,
+            )
+    except Exception:
+        return None
+
+
+def extract_accent_color_from_urls(
+    image_url_small: str | None = None,
+    image_url: str | None = None,
+) -> str | None:
+    source_url = (image_url_small or image_url or "").strip()
+    if not source_url:
+        return None
+
+    image = _fetch_remote_image_for_accent(source_url)
+    if image is None:
+        return None
+
+    return (
+        _extract_accent_color_from_rgba_image(image, mode="strict")
+        or _extract_accent_color_from_rgba_image(image, mode="fallback")
+        or None
+    )
+
+
+def refresh_song_accent_color(song: Song, force: bool = False) -> str | None:
+    if not force and (getattr(song, "accent_color", "") or "").strip():
+        return song.accent_color
+
+    accent_color = extract_accent_color_from_urls(
+        image_url_small=getattr(song, "image_url_small", "") or "",
+        image_url=getattr(song, "image_url", "") or "",
+    )
+
+    if accent_color:
+        song.accent_color = accent_color
+
+    return accent_color
+
+
+COMMENT_REPORT_REASON_CHOICES = {
+    "harassment",
+    "personal_info",
+    "spam",
+    "other",
+}
+
+_COMMENT_URL_RE = re.compile(
+    r"(?:https?://|www\.|\b[a-z0-9.-]+\.(?:fr|com|net|org|io|gg|be|de|es|co|app|ly)\b)",
+    re.IGNORECASE,
+)
+_COMMENT_EMAIL_RE = re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")
+_COMMENT_PHONE_RE = re.compile(r"(?:\+?\d[\d\s().-]{7,}\d)")
+_COMMENT_SPAM_REPEAT_RE = re.compile(r"(.)\1{5,}")
+_COMMENT_SYMBOL_RE = re.compile(r"[^\w\sÀ-ÿ]")
+_COMMENT_INSULT_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bconnard(?:e)?s?\b",
+        r"\bfdp\b",
+        r"\bencul[ée]s?\b",
+        r"\bta gueule\b",
+        r"\bnique ta m[èe]re\b",
+        r"\bsale con(?:ne)?\b",
+        r"\bsalope\b",
+        r"\bb[âa]tard\b",
+    ]
+]
+_COMMENT_DOXX_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in [
+        r"\bon sait o[uù] tu habites\b",
+        r"\bton adresse\b",
+        r"\bton num[ée]ro\b",
+        r"\bje vais venir chez toi\b",
+        r"\bon va venir chez toi\b",
+    ]
+]
+
+
+def _is_full_comment_user(user: CustomUser | None) -> bool:
+    return bool(user and getattr(user, "id", None) and not getattr(user, "is_guest", False))
+
+
+def _get_profile_picture_url(user: CustomUser | None) -> str | None:
+    if not user or not getattr(user, "profile_picture", None):
+        return None
+    try:
+        return user.profile_picture.url
+    except Exception:
+        return None
+
+
+def _normalize_comment_text(value: str | None) -> str:
+    value = str(value or "")
+    value = value.replace("​", "").replace("‌", "").replace("‍", "")
+    value = re.sub(r"\s+", " ", value).strip()
+    value = value.lower()
+    return value
+
+
+def _extract_digits_count(value: str | None) -> int:
+    return len(re.sub(r"\D", "", str(value or "")))
+
+
+def _contains_forbidden_phone(value: str | None) -> bool:
+    text = str(value or "")
+    if not _COMMENT_PHONE_RE.search(text):
+        return False
+    return _extract_digits_count(text) >= 8
+
+
+def _detect_comment_pre_creation_error(text: str):
+    if not text:
+        return COMMENT_REASON_EMPTY
+    if len(text) > COMMENT_MAX_LENGTH:
+        return COMMENT_REASON_TOO_LONG
+    if _COMMENT_URL_RE.search(text):
+        return COMMENT_REASON_LINK_FORBIDDEN
+    if _COMMENT_EMAIL_RE.search(text):
+        return COMMENT_REASON_EMAIL_FORBIDDEN
+    if _contains_forbidden_phone(text):
+        return COMMENT_REASON_PHONE_FORBIDDEN
+    return None
+
+
+def _score_comment_risk(*, text: str, normalized_text: str):
+    score = 0
+    flags = []
+
+    if _COMMENT_SPAM_REPEAT_RE.search(normalized_text):
+        score += 50
+        flags.append(COMMENT_REASON_SPAM)
+
+    if len(normalized_text) >= 24 and len(set(normalized_text)) <= 4:
+        score += 30
+        flags.append("low_variation")
+
+    if _COMMENT_SYMBOL_RE.findall(text) and len(_COMMENT_SYMBOL_RE.findall(text)) >= 8:
+        score += 15
+        flags.append("symbol_noise")
+
+    for pattern in _COMMENT_INSULT_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 70
+            flags.append(COMMENT_REASON_HARASSMENT)
+            break
+
+    for pattern in _COMMENT_DOXX_PATTERNS:
+        if pattern.search(normalized_text):
+            score += 95
+            flags.append(COMMENT_REASON_DOXXING)
+            break
+
+    return min(score, 100), list(dict.fromkeys(flags))
+
+
+def _get_comment_snapshot_user_payload(comment: Comment) -> dict[str, Any]:
+    user = getattr(comment, "user", None)
+    if user and not getattr(user, "is_guest", False):
+        return _build_user_from_instance(user)
+    return {
+        "id": getattr(comment, "user_id", None),
+        "username": comment.author_username or None,
+        "display_name": comment.author_display_name or comment.author_username or "anonyme",
+        "profile_picture_url": comment.author_avatar_url or None,
+        "is_guest": False,
+    }
+
+
+def _build_comment_item_from_instance(comment: Comment, *, viewer_id: int | None = None) -> dict[str, Any]:
+    payload = {
+        "id": comment.id,
+        "text": comment.text,
+        "created_at": comment.created_at.astimezone(dt_timezone.utc).isoformat(),
+        "user": _get_comment_snapshot_user_payload(comment),
+        "is_mine": bool(viewer_id and comment.user_id == viewer_id),
+    }
+    return payload
+
+
+def _get_active_comment_restrictions_for_clients(user: CustomUser | None, client_ids: Iterable[int]):
+    if not _is_full_comment_user(user):
+        return {}
+
+    clean_client_ids = [cid for cid in set(client_ids or []) if cid]
+    if not clean_client_ids:
+        return {}
+
+    now_dt = timezone.now()
+    restrictions = (
+        CommentUserRestriction.objects.filter(user_id=user.id, client_id__in=clean_client_ids, starts_at__lte=now_dt)
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now_dt))
+        .order_by("client_id", "-created_at", "-id")
+    )
+
+    by_client = {}
+    for restriction in restrictions:
+        by_client.setdefault(restriction.client_id, restriction)
+    return by_client
+
+
+def _build_comment_viewer_state(
+    *,
+    viewer: CustomUser | None,
+    dep: Deposit,
+    existing_comment: Comment | None,
+    restriction: CommentUserRestriction | None,
+):
+    if not _is_full_comment_user(viewer):
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": None,
+            "restriction": None,
+        }
+
+    restriction_payload = None
+    if restriction:
+        restriction_payload = {
+            "restriction_type": restriction.restriction_type,
+            "reason_code": restriction.reason_code or "",
+            "ends_at": restriction.ends_at.astimezone(dt_timezone.utc).isoformat() if restriction.ends_at else None,
+        }
+
+    if existing_comment:
+        notice = None
+        if existing_comment.status == Comment.STATUS_QUARANTINED:
+            notice = "Votre commentaire est en cours de vérification."
+        return {
+            "can_post": False,
+            "has_spent_right": True,
+            "status": existing_comment.status,
+            "comment_id": existing_comment.id,
+            "notice": notice,
+            "restriction": restriction_payload,
+        }
+
+    if restriction:
+        return {
+            "can_post": False,
+            "has_spent_right": False,
+            "status": None,
+            "comment_id": None,
+            "notice": "Vous ne pouvez pas commenter pour le moment.",
+            "restriction": restriction_payload,
+        }
+
+    return {
+        "can_post": True,
+        "has_spent_right": False,
+        "status": None,
+        "comment_id": None,
+        "notice": None,
+        "restriction": restriction_payload,
+    }
+
+
+def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: CustomUser | None = None):
+    deps = list(deposits or [])
+    if not deps:
+        return {}
+
+    dep_ids = [dep.id for dep in deps if getattr(dep, "id", None)]
+    if not dep_ids:
+        return {}
+
+    viewer_id = getattr(viewer, "id", None) if _is_full_comment_user(viewer) else None
+    comments_by_dep = {dep_id: [] for dep_id in dep_ids}
+    viewer_comments = {}
+
+    comments_qs = Comment.objects.filter(deposit_id__in=dep_ids).select_related("user").order_by("created_at", "id")
+    if viewer_id:
+        comments_qs = comments_qs.filter(Q(status=Comment.STATUS_PUBLISHED) | Q(user_id=viewer_id))
+    else:
+        comments_qs = comments_qs.filter(status=Comment.STATUS_PUBLISHED)
+
+    for comment in comments_qs:
+        if comment.status == Comment.STATUS_PUBLISHED:
+            comments_by_dep.setdefault(comment.deposit_id, []).append(
+                _build_comment_item_from_instance(comment, viewer_id=viewer_id)
+            )
+        if viewer_id and comment.user_id == viewer_id and comment.deposit_id not in viewer_comments:
+            viewer_comments[comment.deposit_id] = comment
+
+    client_id_by_dep_id = {}
+    missing_dep_ids = []
+    for dep in deps:
+        cached_box = getattr(getattr(dep, "_state", None), "fields_cache", {}).get("box")
+        if cached_box is not None:
+            client_id_by_dep_id[dep.id] = getattr(cached_box, "client_id", None)
+        else:
+            missing_dep_ids.append(dep.id)
+
+    if missing_dep_ids:
+        client_id_by_dep_id.update(
+            {
+                deposit_id: client_id
+                for deposit_id, client_id in Deposit.objects.filter(id__in=missing_dep_ids).values_list(
+                    "id", "box__client_id"
+                )
+            }
+        )
+
+    restriction_by_client = _get_active_comment_restrictions_for_clients(
+        viewer,
+        [client_id for client_id in client_id_by_dep_id.values() if client_id],
+    )
+
+    payload = {}
+    for dep in deps:
+        restriction = restriction_by_client.get(client_id_by_dep_id.get(dep.id))
+        existing_comment = viewer_comments.get(dep.id)
+        payload[dep.id] = {
+            "items": comments_by_dep.get(dep.id, []),
+            "viewer_state": _build_comment_viewer_state(
+                viewer=viewer,
+                dep=dep,
+                existing_comment=existing_comment,
+                restriction=restriction,
+            ),
+        }
+    return payload
+
+
+def _log_blocked_comment_attempt(
+    *,
+    client: Client | None,
+    deposit: Deposit | None,
+    user: CustomUser | None,
+    text: str,
+    normalized_text: str,
+    reason_code: str,
+    author_ip: str | None = None,
+    author_user_agent: str = "",
+    meta: dict[str, Any] | None = None,
+):
+    target_owner = getattr(deposit, "user", None) if deposit else None
+    CommentAttemptLog.objects.create(
+        client=client,
+        deposit=deposit,
+        user=user,
+        deposit_public_key=getattr(deposit, "public_key", "") or "",
+        target_owner_user_id=getattr(target_owner, "id", None),
+        target_owner_username=getattr(target_owner, "username", "") or "",
+        text=(text or "")[:COMMENT_MAX_LENGTH],
+        normalized_text=(normalized_text or "")[:160],
+        reason_code=reason_code,
+        meta=meta or {},
+        author_ip=author_ip,
+        author_user_agent=(author_user_agent or "")[:255],
+    )
+
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    value = str(value or "").strip().lower()
+    return value in {"1", "true", "yes", "y", "on", "oui"}
+
+
+def _get_current_incitation_for_box(box, at_date=None):
+    client_id = getattr(box, "client_id", None)
+    if not client_id:
+        return None
+
+    current_date = at_date or localdate()
+    return (
+        IncitationPhrase.objects.for_client(client_id)
+        .active_on_date(current_date)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+
+
+def _get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude_id=None):
+    if not client_id or not start_date or not end_date:
+        return IncitationPhrase.objects.none()
+
+    qs = IncitationPhrase.objects.for_client(client_id).filter(
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    )
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    return qs
+
+
+def _build_incitation_overlap_counts(phrases):
+    phrases = list(phrases or [])
+    counts = {}
+    for phrase in phrases:
+        counts[getattr(phrase, "id", None)] = phrase.get_overlap_count() if getattr(phrase, "id", None) else 0
+    return counts
+
+
+def _get_active_client_user_or_response(request):
+    user = request.user
+
+    if not user or not user.is_authenticated:
+        return None, api_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "AUTH_REQUIRED",
+            "Authentification requise.",
+        )
+
+    if not getattr(user, "client_id", None):
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_NOT_ATTACHED",
+            "Ce compte n'est rattaché à aucun client.",
+        )
+
+    if getattr(user, "portal_status", None) != "active":
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_PORTAL_INACTIVE",
+            "Ce compte n'a pas accès au portail client.",
+        )
+
+    if getattr(user, "client_role", "") not in {"client_owner", "client_editor"}:
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "CLIENT_ROLE_FORBIDDEN",
+            "Ce compte n'a pas les droits nécessaires.",
+        )
+
+    return user, None
+
+
+class _ArticleImportHTMLParser(HTMLParser):
+    BLOCK_TAGS = {
+        "p",
+        "article",
+        "main",
+        "section",
+        "div",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "blockquote",
+    }
+
+    SKIP_TAGS = {
+        "script",
+        "style",
+        "noscript",
+        "svg",
+        "path",
+        "iframe",
+        "canvas",
+    }
+
+    SKIP_ATTR_KEYWORDS = {
+        "nav",
+        "menu",
+        "header",
+        "footer",
+        "breadcrumb",
+        "cookie",
+        "consent",
+        "banner",
+        "sidebar",
+        "toolbar",
+        "newsletter",
+        "social",
+        "share",
+        "search",
+        "ads",
+        "advert",
+        "pagination",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.meta = {}
+        self.title_chunks = []
+
+        self.body_chunks = []
+        self.paragraph_chunks = []
+        self.image_sources = []
+        self.favicon_sources = []
+
+        self._in_title = False
+        self._skip_depth = 0
+
+        self._paragraph_stack = []
+        self._current_paragraph_parts = []
+
+    def _attrs_to_dict(self, attrs):
+        return {key.lower(): value for key, value in attrs if key}
+
+    def _should_skip_by_attrs(self, attrs_dict):
+        haystack = " ".join(
+            [
+                attrs_dict.get("id") or "",
+                attrs_dict.get("class") or "",
+                attrs_dict.get("role") or "",
+                attrs_dict.get("aria-label") or "",
+            ]
+        ).lower()
+
+        return any(keyword in haystack for keyword in self.SKIP_ATTR_KEYWORDS)
+
+    def handle_starttag(self, tag, attrs):
+        tag = (tag or "").lower()
+        attrs_dict = self._attrs_to_dict(attrs)
+
+        if tag in self.SKIP_TAGS or self._should_skip_by_attrs(attrs_dict):
+            self._skip_depth += 1
+            return
+
+        if tag == "title":
+            self._in_title = True
+            return
+
+        if tag == "meta":
+            meta_key = (
+                (attrs_dict.get("property") or attrs_dict.get("name") or attrs_dict.get("itemprop") or "")
+                .strip()
+                .lower()
+            )
+            content = (attrs_dict.get("content") or "").strip()
+            if meta_key and content and meta_key not in self.meta:
+                self.meta[meta_key] = content
+            return
+
+        if tag == "link":
+            rel_value = (attrs_dict.get("rel") or "").strip().lower()
+            href = (attrs_dict.get("href") or "").strip()
+            if href and any(marker in rel_value for marker in ("icon", "apple-touch-icon", "mask-icon")):
+                self.favicon_sources.append(href)
+            return
+
+        if tag == "img":
+            for key in ("src", "data-src", "data-original", "srcset"):
+                candidate = (attrs_dict.get(key) or "").strip()
+                if candidate:
+                    if key == "srcset":
+                        candidate = candidate.split(",")[0].strip().split(" ")[0].strip()
+                    self.image_sources.append(candidate)
+                    break
+            return
+
+        if self._skip_depth > 0:
+            return
+
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            self._paragraph_stack.append(tag)
+            self._current_paragraph_parts.append([])
+
+    def handle_endtag(self, tag):
+        tag = (tag or "").lower()
+
+        if tag == "title":
+            self._in_title = False
+            return
+
+        if self._skip_depth > 0:
+            if tag in self.SKIP_TAGS or tag in {"nav", "header", "footer", "aside"}:
+                self._skip_depth -= 1
+            return
+
+        if tag in {"p", "article", "main", "section", "blockquote"}:
+            if self._paragraph_stack and self._current_paragraph_parts:
+                self._paragraph_stack.pop()
+                parts = self._current_paragraph_parts.pop()
+                text = _collapse_article_text(" ".join(parts))
+                if text:
+                    self.paragraph_chunks.append(text)
+
+    def handle_data(self, data):
+        if not data:
+            return
+
+        if self._in_title:
+            self.title_chunks.append(data)
+            return
+
+        if self._skip_depth > 0:
+            return
+
+        cleaned = _collapse_article_text(data)
+        if not cleaned:
+            return
+
+        self.body_chunks.append(cleaned)
+
+        if self._current_paragraph_parts:
+            self._current_paragraph_parts[-1].append(cleaned)
+
+    @property
+    def title_text(self):
+        return _collapse_article_text(" ".join(self.title_chunks))
+
+    @property
+    def body_text(self):
+        return _collapse_article_text(" ".join(self.body_chunks))
+
+
+def _collapse_article_text(value):
+    value = html.unescape(value or "")
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def _truncate_article_text(value, limit=10000):
+    value = _collapse_article_text(value)
+    if len(value) <= limit:
+        return value
+
+    truncated = value[:limit].rstrip()
+    last_space = truncated.rfind(" ")
+    if last_space >= max(80, limit // 2):
+        truncated = truncated[:last_space].rstrip()
+    return truncated
+
+
+def _absolute_remote_url(base_url, candidate):
+    candidate = (candidate or "").strip()
+    if not candidate:
+        return ""
+
+    if candidate.startswith("//"):
+        candidate = f"https:{candidate}"
+
+    absolute = urljoin(base_url, candidate)
+    if not absolute.startswith(("http://", "https://")):
+        return ""
+
+    return absolute
+
+
+def _dedupe_keep_order(values, limit=None):
+    output = []
+    seen = set()
+
+    for value in values:
+        normalized = (value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        output.append(normalized)
+
+        if limit and len(output) >= limit:
+            break
+
+    return output
+
+
+def _pick_best_favicon_url(final_url, parser):
+    favicon_candidates = [_absolute_remote_url(final_url, href) for href in getattr(parser, "favicon_sources", [])]
+
+    parsed = urlparse(final_url)
+    if parsed.scheme and parsed.netloc:
+        favicon_candidates.append(f"{parsed.scheme}://{parsed.netloc}/favicon.ico")
+
+    favicon_candidates = _dedupe_keep_order(favicon_candidates, limit=5)
+    return favicon_candidates[0] if favicon_candidates else ""
+
+
+def _clean_import_title(title):
+    title = _collapse_article_text(title)
+    if not title:
+        return ""
+
+    title = re.split(r"\s[\-|–|—|•|·|:]\s", title, maxsplit=1)[0].strip()
+    title = re.split(r"\s\|\s", title, maxsplit=1)[0].strip()
+    return title
+
+
+def _looks_like_noise_text(text):
+    text = _collapse_article_text(text)
+    if not text:
+        return True
+
+    lowered = text.lower()
+
+    noise_markers = [
+        "cookie",
+        "consent",
+        "accepter",
+        "refuser",
+        "menu",
+        "newsletter",
+        "suivez-nous",
+        "se connecter",
+        "connexion",
+        "inscription",
+        "publicité",
+        "advertisement",
+    ]
+
+    if any(marker in lowered for marker in noise_markers):
+        return True
+
+    if len(text) < 40:
+        return True
+
+    word_count = len(text.split())
+    if word_count < 8:
+        return True
+
+    return False
+
+
+def _pick_best_short_text(meta, parser):
+    description = _collapse_article_text(
+        meta.get("description") or meta.get("og:description") or meta.get("twitter:description")
+    )
+
+    if description and not _looks_like_noise_text(description):
+        return _truncate_article_text(description, limit=10000)
+
+    paragraph_candidates = []
+    for chunk in parser.paragraph_chunks:
+        text = _collapse_article_text(chunk)
+        if _looks_like_noise_text(text):
+            continue
+        paragraph_candidates.append(text)
+
+    paragraph_candidates = _dedupe_keep_order(paragraph_candidates)
+
+    combined = ""
+    for text in paragraph_candidates:
+        if not combined:
+            combined = text
+        else:
+            combined = f"{combined} {text}"
+
+        if len(combined) >= 220:
+            break
+
+    combined = _truncate_article_text(combined, limit=10000)
+    if combined:
+        return combined
+
+    body_candidates = []
+    for piece in parser.body_chunks:
+        text = _collapse_article_text(piece)
+        if _looks_like_noise_text(text):
+            continue
+        body_candidates.append(text)
+
+    merged_body = _truncate_article_text(" ".join(body_candidates), limit=10000)
+    return merged_body
+
+
+def _extract_import_preview_from_url(link):
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36"
+        ),
+        "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
+        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+    response = requests.get(
+        link,
+        headers=headers,
+        timeout=10,
+        allow_redirects=True,
+    )
+    response.raise_for_status()
+
+    final_url = response.url or link
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
+        raise ValueError("Le lien ne renvoie pas une page HTML.")
+
+    parser = _ArticleImportHTMLParser()
+    parser.feed(response.text or "")
+    parser.close()
+
+    meta = parser.meta
+
+    raw_title = meta.get("og:title") or meta.get("twitter:title") or parser.title_text
+    title = _clean_import_title(raw_title)
+
+    short_text = _pick_best_short_text(meta, parser)
+
+    image_candidates = []
+    for key in (
+        "og:image",
+        "og:image:url",
+        "og:image:secure_url",
+        "twitter:image",
+        "twitter:image:src",
+    ):
+        image_candidates.append(_absolute_remote_url(final_url, meta.get(key)))
+
+    for img_src in parser.image_sources:
+        image_candidates.append(_absolute_remote_url(final_url, img_src))
+
+    image_candidates = [img for img in image_candidates if img and not img.lower().endswith(".svg")]
+    image_candidates = _dedupe_keep_order(image_candidates, limit=3)
+    favicon = _pick_best_favicon_url(final_url, parser)
+
+    return {
+        "title": title,
+        "short_text": short_text,
+        "cover_image": image_candidates[0] if image_candidates else "",
+        "cover_images": image_candidates,
+        "favicon": favicon,
+        "resolved_link": final_url,
+    }
+
+
+# ---------- petits builders "from instance only" ----------
+
+
+def _build_user_from_instance(user: CustomUser | None) -> dict[str, Any]:
+    default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
+    if not user:
+        return {
+            "id": None,
+            "username": None,
+            "display_name": "anonyme",
+            "profile_picture_url": default_pic,
+            "is_guest": False,
+        }
+
+    pic = getattr(user, "profile_picture", None)
+    profile_url = pic.url if pic else default_pic
+    is_guest = bool(getattr(user, "is_guest", False))
+    username = None if is_guest else getattr(user, "username", None)
+    display_name = "Invité" if is_guest else (getattr(user, "username", None) or "anonyme")
+
+    return {
+        "id": getattr(user, "id", None),
+        "username": username,
+        "display_name": display_name,
+        "profile_picture_url": profile_url,
+        "is_guest": is_guest,
+    }
+
+
+def _build_song_from_instance(song, hidden: bool) -> dict[str, Any]:
+    """Construit le payload chanson depuis le modèle final Song + SongProviderLink."""
+    if hidden:
+        return {"image_url": song.image_url, "image_url_small": song.image_url_small or None}
+
+    provider_links = get_song_provider_links_map(song)
+    spotify_link = provider_links.get("spotify") or {}
+    deezer_link = provider_links.get("deezer") or {}
+
+    return {
+        "public_key": song.public_key,
+        "image_url": song.image_url,
+        "image_url_small": song.image_url_small or None,
+        "title": song.title,
+        "artists": list(song.artists_json or []),
+        "artist": song.artist,
+        "duration": int(getattr(song, "duration", 0) or 0),
+        "isrc": (getattr(song, "isrc", "") or "") or None,
+        "provider_links": provider_links,
+        "spotify_url": spotify_link.get("provider_url") or None,
+        "deezer_url": deezer_link.get("provider_url") or None,
+    }
+
+
+def _iter_reactions_from_instance(dep: Deposit):
+    """
+    Utilise en priorité la prefetch list (to_attr). Sinon, une SEULE requête
+    jointe (select_related) – mais reste centrée sur l'objet (pas d'ID).
+    """
+    reacs = getattr(dep, "prefetched_reactions", None)
+    if reacs is not None:
+        return reacs
+    return dep.reactions.select_related("emoji", "user").order_by("created_at", "id").all()
+
+
+def _build_reactions_from_instance(dep: Deposit, current_user: CustomUser | None = None) -> dict[str, Any]:
+    """Ne refait pas de get par ID : exploite uniquement dep + relations."""
+    current_user_id = getattr(current_user, "id", None) if current_user else None
+
+    detail: list[dict[str, Any]] = []
+    mine: dict[str, Any] | None = None
+
+    for r in _iter_reactions_from_instance(dep):
+        if not getattr(r.emoji, "active", True):
+            continue
+        payload = {
+            "user": _build_user_from_instance(getattr(r, "user", None)),
+            "emoji": r.emoji.char,
+        }
+        if current_user_id is not None and r.user_id == current_user_id:
+            mine = {"emoji": r.emoji.char}
+        detail.append(payload)
+
+    return {"detail": detail, "mine": mine}
+
+
+def _build_deposit_from_instance(
+    dep: Deposit,
+    *,
+    include_user: bool,
+    include_deposit_time: bool,
+    hidden: bool,
+    current_user: CustomUser | None = None,
+    comments_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Construit le payload final UNIQUEMENT depuis l'instance fournie."""
+
+    payload: dict[str, Any] = {
+        "public_key": dep.public_key,
+        "deposit_type": getattr(dep, "deposit_type", Deposit.DEPOSIT_TYPE_BOX),
+        "song": _build_song_from_instance(dep.song, hidden),
+        "accent_color": (getattr(dep.song, "accent_color", "") or "") or None,
+        "pin_expires_at": dep.pin_expires_at.isoformat() if getattr(dep, "pin_expires_at", None) else None,
+        "pin_duration_minutes": int(getattr(dep, "pin_duration_minutes", 0) or 0),
+        "pin_points_spent": int(getattr(dep, "pin_points_spent", 0) or 0),
+    }
+
+    if include_deposit_time:
+        # Date brute en UTC, au format ISO 8601
+        payload["deposited_at"] = dep.deposited_at.astimezone(dt_timezone.utc).isoformat()
+
+    if include_user:
+        payload["user"] = _build_user_from_instance(dep.user)
+
+    rx = _build_reactions_from_instance(dep, current_user=current_user)
+    payload["reactions"] = rx["detail"]
+    payload["my_reaction"] = rx["mine"]
+    payload["comments"] = comments_context or {"items": [], "viewer_state": {}}
+
+    return payload
+
+
+# box_management/utils.py
+
+
+def _build_deposits_payload(
+    deposits: Deposit | Iterable[Deposit] | Sequence[Deposit],
+    *,
+    viewer: CustomUser | None = None,
+    include_user: bool = True,
+    include_deposit_time: bool = True,
+    force_song_infos_for: Iterable[int] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Construit une liste de payloads de dépôts à partir d'instances déjà chargées.
+
+    - N'effectue AUCUNE requête de "get par ID".
+    - Optionnellement annote "is_revealed" pour le viewer fourni (en 1 requête bulk).
+    - Permet un override ciblé (force_song_infos_for) pour renvoyer song en hidden=False
+      pour certains dépôts, sans créer de reveal en base.
+    - Construit le payload final via _build_deposit_from_instance(...).
+    """
+    # Normalisation en liste tout en respectant l’ordre fourni
+    if isinstance(deposits, Deposit):
+        deps: list[Deposit] = [deposits]
+    else:
+        deps = list(deposits or [])
+
+    if not deps:
+        return []
+
+    force_ids = set(force_song_infos_for or [])
+
+    # ------- Annotation "is_revealed" (BULK, 0/1 requête) -------
+    public_visible_ids = {
+        d.pk
+        for d in deps
+        if getattr(d, "deposit_type", Deposit.DEPOSIT_TYPE_BOX)
+        in (
+            Deposit.DEPOSIT_TYPE_FAVORITE,
+            Deposit.DEPOSIT_TYPE_PINNED,
+        )
+    }
+
+    if viewer is None:
+        revealed_ids = public_visible_ids
+    else:
+        viewer_id = getattr(viewer, "id", None)
+        dep_ids = [d.pk for d in deps]
+
+        # 1) Révélé implicitement si le viewer est le propriétaire du dépôt
+        #    ou si le dépôt est publiquement visible (favorite / pinned).
+        own_dep_ids = {d.pk for d in deps if getattr(d, "user_id", None) == viewer_id} | public_visible_ids
+
+        # 2) Pour le reste seulement, on consulte DiscoveredSong (1 requête max)
+        remaining_ids = [i for i in dep_ids if i not in own_dep_ids]
+
+        discovered_ids = set()
+        if remaining_ids:
+            discovered_ids = set(
+                DiscoveredSong.objects.filter(user_id=viewer_id, deposit_id__in=remaining_ids).values_list(
+                    "deposit_id", flat=True
+                )
+            )
+
+        revealed_ids = own_dep_ids | discovered_ids
+
+    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer)
+
+    # ------- Construction des payloads à partir des instances -------
+    out: list[dict[str, Any]] = []
+    for dep in deps:
+        # hidden si pas révélé, sauf override ciblé
+        hidden = (dep.pk not in revealed_ids) and (dep.pk not in force_ids)
+
+        payload = _build_deposit_from_instance(
+            dep,
+            include_user=include_user,
+            include_deposit_time=include_deposit_time,
+            hidden=hidden,
+            current_user=viewer,
+            comments_context=comments_by_deposit.get(dep.pk) or {"items": [], "viewer_state": {}},
+        )
+        out.append(payload)
+
+    return out
+
+
+def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: list[int] | None = None):
+    """
+    Snapshot AVANT création:
+    - récupère d'un coup les (limit+1) derniers dépôts
+    - prev_head = le plus récent
+    - older = les suivants (jusqu'à limit)
+
+    exclude_deposit_ids permet d'ignorer un dépôt déjà créé récemment quand on
+    veut rejouer le résultat logique d'une requête idempotente.
+    """
+    qs = (
+        Deposit.objects.filter(box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX)
+        .select_related("song", "user")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-deposited_at", "-id")
+    )
+
+    exclude_ids = [int(dep_id) for dep_id in (exclude_deposit_ids or []) if dep_id]
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
+
+    deposits = list(qs[: limit + 1])  # head + older
+    if not deposits:
+        return None, []
+
+    prev_head = deposits[0]
+    older_deposits_qs = deposits[1:]
+    return prev_head, older_deposits_qs
+
+
+# ---------- Normalisation & distance ----------
+
+
+def _find_recent_duplicate_deposit(
+    *, user: CustomUser, song: Song, deposit_type: str, box=None, window_seconds: int = 0
+):
+    if int(window_seconds or 0) <= 0:
+        return None
+
+    threshold = timezone.now() - timedelta(seconds=int(window_seconds))
+    qs = (
+        Deposit.objects.filter(
+            user=user,
+            song=song,
+            deposit_type=deposit_type,
+            deposited_at__gte=threshold,
+        )
+        .select_related("song", "box", "user")
+        .order_by("-deposited_at", "-id")
+    )
+
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+        qs = qs.filter(box=box)
+    else:
+        qs = qs.filter(box__isnull=True)
+
+    return qs.first()
+
+
+def create_song_deposit(
+    *,
+    request,
+    user: CustomUser,
+    option: dict[str, Any],
+    deposit_type: str = "box",
+    box=None,
+    pin_duration_minutes: int | None = None,
+    pin_points_spent: int = 0,
+    pin_expires_at=None,
+    reuse_recent_window_seconds: int = 0,
+):
+    track = normalize_track_payload(option or {})
+    if not track.get("title") or not (track.get("artists") or []):
+        raise ValueError("Titre ou artiste manquant")
+
+    song = get_or_create_song_from_track(track)
+
+    update_fields: list[str] = []
+    if track.get("image_url") and not (song.image_url or "").strip():
+        song.image_url = track["image_url"]
+        update_fields.append("image_url")
+    if track.get("image_url_small") and not (song.image_url_small or "").strip():
+        song.image_url_small = track["image_url_small"]
+        update_fields.append("image_url_small")
+    if track.get("isrc") and not (song.isrc or "").strip():
+        song.isrc = track["isrc"]
+        update_fields.append("isrc")
+    if track.get("artists") and not (song.artists_json or []):
+        song.artists_json = list(track["artists"])
+        update_fields.append("artists_json")
+    if track.get("duration") and not int(song.duration or 0):
+        song.duration = int(track["duration"])
+        update_fields.append("duration")
+
+    if not (song.accent_color or "").strip():
+        accent_color = (
+            extract_accent_color_from_urls(
+                image_url_small=(track.get("image_url_small") or song.image_url_small or ""),
+                image_url=(track.get("image_url") or song.image_url or ""),
+            )
+            or ""
+        )
+        if accent_color:
+            song.accent_color = accent_color
+            update_fields.append("accent_color")
+
+    if update_fields:
+        song.save(update_fields=update_fields)
+
+    upsert_song_provider_link(song, track)
+
+    provider_code = (track.get("provider_code") or "").strip().lower()
+    if provider_code:
+        try:
+            from users.provider_connections import set_last_platform_for_user
+
+            set_last_platform_for_user(user, provider_code)
+        except Exception:
+            pass
+
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) and box is None:
+        raise ValueError("Boîte introuvable")
+
+    recent_duplicate = _find_recent_duplicate_deposit(
+        user=user,
+        song=song,
+        deposit_type=deposit_type,
+        box=box,
+        window_seconds=reuse_recent_window_seconds,
+    )
+    if recent_duplicate is not None:
+        return recent_duplicate, song, False
+
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+        Song.objects.filter(pk=song.pk).update(n_deposits=int(song.n_deposits or 0) + 1)
+        song.n_deposits = int(song.n_deposits or 0) + 1
+
+    deposit = Deposit.objects.create(
+        song=song,
+        box=box if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) else None,
+        user=user,
+        deposit_type=deposit_type,
+        pin_duration_minutes=pin_duration_minutes,
+        pin_points_spent=int(pin_points_spent or 0),
+        pin_expires_at=pin_expires_at,
+    )
+    return deposit, song, True
+
+
+def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
+    """
+    Calcule la distance entre deux points géographiques (Haversine).
+    """
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    r = 6371000  # rayon de la Terre en mètres
+
+    d_lat = lat2 - lat1
+    d_lon = lon2 - lon1
+
+    a = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return r * c
+
+
+# ============ Achievements centralisés ============
+
+
+def _get_consecutive_deposit_days(user: CustomUser | None, box) -> int:
+    """
+    Nombre de JOURS consécutifs (terminant hier) où 'user' a déposé dans 'box'.
+    Ex: si l'user a déposé hier et avant-hier → 2.
+    """
+    if not user:
+        return 0
+
+    today = localdate()
+    target = today - timedelta(days=1)  # on ne compte pas aujourd'hui
+    streak = 0
+
+    # Liste des dates (locales) distinctes de dépôts, récentes → anciennes
+    dates = Deposit.objects.filter(user=user, box=box).order_by("-deposited_at").values_list("deposited_at", flat=True)
+
+    seen_days: list = []
+    for dt in dates:
+        try:
+            d = localtime(dt).date()
+        except Exception:
+            d = timezone.localtime(dt).date()  # fallback
+        if not seen_days or seen_days[-1] != d:
+            seen_days.append(d)
+
+    for d in seen_days:
+        if d == target:
+            streak += 1
+            target -= timedelta(days=1)
+        elif d < target:
+            break  # trou dans la chaîne
+
+    return streak
+
+
+def _build_successes(
+    *, box, user: CustomUser | None, song: Song, current_deposit: Deposit | None = None
+) -> tuple[list[dict[str, Any]], int]:
+    """
+    Calcule la liste des 'successes' (achievements) + le total de points.
+
+    Entrée:
+      - box: instance de Box
+      - user: CustomUser | None
+      - song: instance de Song (déjà upsertée)
+
+    Optimisations :
+      - 1 requête pour tous les dépôts user+box (streak + "premier dépôt ici").
+      - 1 requête pour tous les dépôts de cette song (global + dans cette box).
+    """
+    from django.utils.timezone import localdate, localtime  # déjà importés plus haut, mais pour clarté locale
+
+    title = (getattr(song, "title", "") or "").strip()
+    artist = (getattr(song, "artist", "") or "").strip()
+
+    successes: dict[str, dict[str, Any]] = {}
+    points_to_add = int(NB_POINTS_ADD_SONG)
+
+    # ---------- Helper interne : calcul de streak à partir d'une liste de datetimes ----------
+    def _compute_streak_from_dates(dates: list) -> int:
+        """
+        Reprend la logique de _get_consecutive_deposit_days, mais en pur Python
+        à partir d'une liste de datetimes déjà récupérés.
+        """
+        if not dates:
+            return 0
+
+        today = localdate()
+        target = today - timedelta(days=1)  # on ne compte pas aujourd'hui
+        streak = 0
+
+        # Liste des dates (locales) distinctes des dépôts, récentes → anciennes
+        seen_days: list = []
+        for dt in dates:
+            try:
+                d = localtime(dt).date()
+            except Exception:
+                d = timezone.localtime(dt).date()
+            if not seen_days or seen_days[-1] != d:
+                seen_days.append(d)
+
+        for d in seen_days:
+            if d == target:
+                streak += 1
+                target -= timedelta(days=1)
+            elif d < target:
+                break  # trou dans la chaîne
+
+        return streak
+
+    # ===================== 1) Requêtes mutualisées =====================
+
+    exclude_current_filter: dict[str, Any] = {}
+    if current_deposit is not None and getattr(current_deposit, "pk", None):
+        exclude_current_filter["pk"] = current_deposit.pk
+
+    # --- 1.a) Tous les dépôts de cet user dans cette box (streak + "premier dépôt ici")
+    user_box_dates: list = []
+    has_user_deposit_in_box = False
+    if user:
+        user_box_qs = Deposit.objects.filter(user=user, box=box)
+        if exclude_current_filter:
+            user_box_qs = user_box_qs.exclude(**exclude_current_filter)
+
+        user_box_dates = list(user_box_qs.order_by("-deposited_at").values_list("deposited_at", flat=True))
+        has_user_deposit_in_box = len(user_box_dates) > 0
+
+    # --- 1.b) Tous les dépôts de cette chanson (song) (global + dans cette box)
+    # On s'appuie sur le fait que Song est upsertée par (title, artist),
+    # donc il n'existe qu'une seule instance logique pour ce couple.
+    song_box_ids: list[int] = []
+    if title and artist:
+        song_deposits_qs = Deposit.objects.filter(song=song)
+        if exclude_current_filter:
+            song_deposits_qs = song_deposits_qs.exclude(**exclude_current_filter)
+
+        song_box_ids = list(song_deposits_qs.values_list("box_id", flat=True))
+
+    # ===================== 2) Construction des achievements =====================
+
+    # 1) Série de jours consécutifs
+    nb_consecutive_days = _compute_streak_from_dates(user_box_dates) if user else 0
+    if nb_consecutive_days > 0:
+        bonus = nb_consecutive_days * int(NB_POINTS_CONSECUTIVE_DAYS_BOX)
+        points_to_add += bonus
+        successes["consecutive_days"] = {
+            "name": "Amour fou",
+            "desc": f"{nb_consecutive_days + 1} jours consécutifs avec cette boite",
+            "points": bonus,
+            "emoji": "🔥",
+        }
+
+    # 2) Premier dépôt de cet utilisateur dans cette box
+    if user and not has_user_deposit_in_box:
+        points_to_add += int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX)
+        successes["first_user_deposit_box"] = {
+            "name": "Explorateur·ice",
+            "desc": "C’est ta première chanson dans cette boîte",
+            "points": int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX),
+            "emoji": "🔍",
+        }
+
+    # 3) Première fois (title, artist) dans la box
+    is_first_song_in_box = False
+    if title and artist:
+        is_first_song_in_box = box.id not in song_box_ids
+
+    if is_first_song_in_box:
+        points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX)
+        successes["first_song_deposit"] = {
+            "name": "Far West",
+            "desc": "Cette chanson n’a jamais été déposée dans cette boîte",
+            "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX),
+            "emoji": "🤠",
+        }
+
+    # 4) Première fois (title, artist) sur le réseau
+    is_first_song_global = False
+    if title and artist:
+        is_first_song_global = len(song_box_ids) == 0
+
+    if is_first_song_global:
+        points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL)
+        successes["first_song_deposit_global"] = {
+            "name": "Preums",
+            "desc": "Cette chanson n'a jamais été déposée sur le réseau",
+            "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL),
+            "emoji": "🥇",
+        }
+
+    # 5) Succès par défaut + total
+    successes["default_deposit"] = {
+        "name": "Pépite",
+        "desc": "Tu as partagé·e une chanson",
+        "points": int(NB_POINTS_ADD_SONG),
+        "emoji": "💎",
+    }
+    successes["points_total"] = {"name": "Total", "points": points_to_add}
+
+    return list(successes.values()), points_to_add
