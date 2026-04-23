@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 
-from box_management.views import sticker_redirect_view, sticker_root_not_found_view
+from box_management.api.views.core import sticker_redirect_view, sticker_root_not_found_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
