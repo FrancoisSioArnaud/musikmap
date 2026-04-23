@@ -215,7 +215,7 @@ def _ensure_persona_users(rng):
     return users, created
 
 
-  def _ensure_song(title, artist):
+def _ensure_song(title, artist):
     song = Song.objects.filter(title__iexact=title).first()
     if song:
         return song, False
