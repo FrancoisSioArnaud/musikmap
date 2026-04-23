@@ -87,7 +87,7 @@ class RevealFlowTests(FlowboxAPITestCase):
         self.assertEqual(user.points, COST_REVEAL_BOX)
 
     def test_reveal_invalid_context_is_rejected(self):
-        user = self.auth(self.make_user(username="eve", points=COST_REVEAL_BOX))
+        self.auth(self.make_user(username="eve", points=COST_REVEAL_BOX))
         box = self.make_box(url="box-reveal-5", name="Box reveal 5")
         song = self.make_song(public_key="song_reveal_5")
         deposit = self.make_deposit(user=self.make_user(username="owner5"), song=song, box=box)
@@ -123,7 +123,7 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         self.assertEqual(Deposit.objects.filter(box=box, deposit_type="pinned").count(), 1)
 
     def test_pin_conflict_if_active_pin_exists(self):
-        user = self.auth(self.make_user(username="pinuser2", points=1000))
+        self.auth(self.make_user(username="pinuser2", points=1000))
         client = self.make_client(name="Client pin 2", slug="client-pin-2")
         box = self.make_box(url="box-pin-2", name="Box pin 2", client=client)
         active_song = self.make_song(public_key="active_pinned_song")
@@ -225,7 +225,9 @@ class PinnedSongFlowTests(FlowboxAPITestCase):
         client = self.make_client(name="Client pin 7", slug="client-pin-7")
         box = self.make_box(url="box-pin-7", name="Box pin 7", client=client)
 
-        with patch("box_management.views.create_song_deposit", side_effect=Exception("boom")):
+        with patch(
+            "box_management.services.pinned.create_pinned_deposit.create_song_deposit", side_effect=Exception("boom")
+        ):
             response = self.client.post(
                 reverse("pinned-song"),
                 {

@@ -142,7 +142,7 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(Comment.objects.filter(user=user, deposit=self.deposit).count(), 1)
         self.assertEqual(second.status_code, 400)
-        self.assertEqual(second.data["code"], "COMMENT_ALREADY_EXISTS")
+        self.assertEqual(second.data["code"], "COMMENT_ALREADY_COMMENTED")
 
     def test_double_comment_report_creates_single_report(self):
         comment_author = self.make_user(username="comment-author")
@@ -153,7 +153,7 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
             text="À signaler",
             normalized_text="à signaler",
         )
-        reporter = self.auth(self.make_user(username="reporter", points=0))
+        self.auth(self.make_user(username="reporter", points=0))
 
         first = self.client.post(
             reverse("comments-report", kwargs={"comment_id": comment.id}), {"reason": "spam"}, format="json"

@@ -622,7 +622,7 @@ def _merge_user_into_user(source_user: CustomUser, target_user: CustomUser, *, r
         # -----------------------------
         # 12) Provider connections
         # -----------------------------
-        merge_provider_connections(guest, target)
+        merge_provider_connections(source, target)
 
         # -----------------------------
         # 13) Réécriture des snapshots historiques

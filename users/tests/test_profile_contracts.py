@@ -16,7 +16,7 @@ class UserProfileContractTests(FlowboxAPITestCase):
         self.assert_api_error(response, 403, "USER_ID_LOOKUP_FORBIDDEN")
 
     def test_remove_favorite_song_is_idempotent(self):
-        user = self.auth(self.make_user(username="favorite-owner"))
+        self.auth(self.make_user(username="favorite-owner"))
         first = self.client.post(reverse("remove-favorite-song"), {}, format="json")
         second = self.client.post(reverse("remove-favorite-song"), {}, format="json")
         self.assertEqual(first.status_code, 200)
