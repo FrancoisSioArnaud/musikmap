@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Comment, Deposit
-from box_management.utils import _get_profile_picture_url, _normalize_comment_text
+from box_management.services.comments.moderation_rules import _get_profile_picture_url, _normalize_comment_text
 
 SEED_REASON_CODE = "seed_fake_comment"
 COMMENTS_PER_USER = 5

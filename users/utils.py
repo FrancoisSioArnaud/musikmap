@@ -78,8 +78,8 @@ def build_favorite_deposit_payload(profile_user: CustomUser | None, viewer: Cust
     if not favorite_deposit_id:
         return None
 
+    from box_management.builders.deposit_payloads import _build_deposits_payload
     from box_management.models import Deposit
-    from box_management.utils import _build_deposits_payload
 
     deposit = (
         Deposit.objects.select_related("song", "user").filter(pk=favorite_deposit_id, deposit_type="favorite").first()

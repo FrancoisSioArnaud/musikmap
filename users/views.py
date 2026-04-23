@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from box_management.models import Deposit
-from box_management.utils import create_song_deposit
+from box_management.services.deposits.song_creation import create_song_deposit
 from la_boite_a_son.api_errors import api_error
 from spotify.util import apply_pending_spotify_auth_to_user
 
