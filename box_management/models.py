@@ -676,10 +676,12 @@ class Deposit(models.Model):
     DEPOSIT_TYPE_BOX = "box"
     DEPOSIT_TYPE_FAVORITE = "favorite"
     DEPOSIT_TYPE_PINNED = "pinned"
+    DEPOSIT_TYPE_COMMENT = "comment"
     DEPOSIT_TYPE_CHOICES = (
         (DEPOSIT_TYPE_BOX, "Box"),
         (DEPOSIT_TYPE_FAVORITE, "Favorite"),
         (DEPOSIT_TYPE_PINNED, "Pinned"),
+        (DEPOSIT_TYPE_COMMENT, "Comment"),
     )
 
     deposited_at = models.DateTimeField(default=timezone.now, db_index=True)
@@ -729,7 +731,10 @@ class Deposit(models.Model):
         return f"Deposit {self.public_key} (song={self.song.public_key}, box={self.box_id}, type={self.deposit_type})"
 
     def clean(self):
-        if self.deposit_type in (self.DEPOSIT_TYPE_BOX, self.DEPOSIT_TYPE_PINNED) and not self.box_id:
+        if (
+            self.deposit_type in (self.DEPOSIT_TYPE_BOX, self.DEPOSIT_TYPE_PINNED, self.DEPOSIT_TYPE_COMMENT)
+            and not self.box_id
+        ):
             raise ValidationError({"box": "Une boîte est obligatoire pour ce type de dépôt."})
         if self.deposit_type == self.DEPOSIT_TYPE_FAVORITE:
             self.box = None
@@ -935,6 +940,13 @@ class Comment(models.Model):
         blank=True,
         related_name="comments",
     )
+    reply_deposit = models.ForeignKey(
+        Deposit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reply_comments",
+    )
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -972,9 +984,7 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ["created_at", "id"]
-        constraints = [
-            models.UniqueConstraint(fields=["deposit", "user"], name="unique_comment_per_user_and_deposit"),
-        ]
+        constraints = []
         indexes = [
             models.Index(fields=["client", "status", "created_at"]),
             models.Index(fields=["deposit", "status", "created_at"]),

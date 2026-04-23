@@ -1,89 +1,125 @@
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Drawer from "@mui/material/Drawer";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { buildRelativeLocation, clearAuthReturnContext, saveAuthReturnContext } from "../../../Auth/AuthFlow";
-import AuthModal from "../../../Auth/AuthModal";
 import { getCookie } from "../../../Security/TokensUtils";
+import { formatRelativeTime } from "../../../Utils/time";
+import ConfirmActionDialog from "../../ConfirmActionDialog";
+import SearchPanel from "../../Search/SearchPanel";
 
-const REPORT_REASONS = [
-  { value: "harassment", label: "Insulte / harcèlement" },
-  { value: "personal_info", label: "Information personnelle" },
-  { value: "spam", label: "Spam" },
-  { value: "other", label: "Autre" },
-];
+const EMPTY_CONTEXT = { items: [], count: 0, viewer_state: {} };
+
+function buildSongFromOption(option) {
+  const artists = Array.isArray(option?.artists) ? option.artists.filter(Boolean) : [];
+  return {
+    title: option?.title || "",
+    artist: artists.join(", "),
+    image_url: option?.image_url || option?.image_url_small || "",
+    provider_links: option?.provider_links || {},
+  };
+}
 
 export default function DepositComments({
   open,
-  onClose,
   depPublicKey,
   comments,
   viewer,
   onCommentsChange,
+  isParentRevealed,
+  boxSx,
+  DepositComponent,
 }) {
-  const location = useLocation();
   const navigate = useNavigate();
 
+  const [context, setContext] = useState(comments || EMPTY_CONTEXT);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [activeComment, setActiveComment] = useState(null);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState("harassment");
-  const [reporting, setReporting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedSongOption, setSelectedSongOption] = useState(null);
 
-  const items = Array.isArray(comments?.items) ? comments.items : [];
-  const viewerState = comments?.viewer_state || {};
+  useEffect(() => {
+    setContext(comments || EMPTY_CONTEXT);
+  }, [comments]);
+
+  const items = Array.isArray(context?.items) ? context.items : [];
+  const count = Number.isFinite(Number(context?.count)) ? Number(context.count) : items.length;
+  const viewerState = context?.viewer_state || {};
   const isFullUser = Boolean(viewer?.id && !viewer?.is_guest);
   const canPost = Boolean(isFullUser && viewerState?.can_post);
-  const showCommentPrompt = !isFullUser;
   const notice = viewerState?.notice || "";
-  const remaining = 100 - draft.trim().length;
 
-  const closeMenu = (clearActive = true) => {
+  const selectedSongPreviewDep = useMemo(() => {
+    if (!selectedSongOption) {return null;}
+    return {
+      public_key: `draft-${depPublicKey || "comment"}`,
+      deposited_at: new Date().toISOString(),
+      deposit_type: "comment",
+      song: buildSongFromOption(selectedSongOption),
+      user: viewer || {},
+      comments: EMPTY_CONTEXT,
+      reactions: [],
+      my_reaction: null,
+    };
+  }, [depPublicKey, selectedSongOption, viewer]);
+
+  useEffect(() => {
+    if (!open || hasLoaded || loadingReplies || !depPublicKey || !isParentRevealed) {return;}
+
+    const loadReplies = async () => {
+      setLoadingReplies(true);
+      setError("");
+      try {
+        const response = await fetch(`/box-management/comments/deposit/${depPublicKey}/`, {
+          method: "GET",
+          credentials: "same-origin",
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.detail || "Impossible de charger les réponses.");
+        }
+        const nextComments = payload?.comments || EMPTY_CONTEXT;
+        setContext(nextComments);
+        onCommentsChange?.(nextComments);
+        setHasLoaded(true);
+      } catch (err) {
+        setError(err?.message || "Impossible de charger les réponses.");
+      } finally {
+        setLoadingReplies(false);
+      }
+    };
+
+    loadReplies();
+  }, [depPublicKey, hasLoaded, isParentRevealed, loadingReplies, onCommentsChange, open]);
+
+  const closeMenu = () => {
     setMenuAnchorEl(null);
-    if (clearActive) {setActiveComment(null);}
+    setActiveComment(null);
   };
 
-  const openAuthPrompt = () => {
-    saveAuthReturnContext({
-      returnTo: buildRelativeLocation(location),
-      authContext: "comment",
-      action: {
-        type: "comments",
-        payload: { depPublicKey },
-      },
-    });
-    setAuthPromptOpen(true);
-  };
+  const submitReply = async () => {
+    if (submitting) {return;}
 
-  const handleSubmit = async () => {
-    if (!canPost || submitting) {return;}
-
-    const nextText = draft.trim();
-    if (!nextText) {
+    const nextText = (draft || "").trim();
+    if (!nextText && !selectedSongOption) {
       setError("Le commentaire est vide.");
       return;
     }
@@ -102,18 +138,23 @@ export default function DepositComments({
         body: JSON.stringify({
           dep_public_key: depPublicKey,
           text: nextText,
+          song_option: selectedSongOption,
         }),
       });
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible d’enregistrer le commentaire.");
+        throw new Error(payload?.detail || "Impossible d’envoyer la réponse.");
       }
 
+      const nextComments = payload?.comments || EMPTY_CONTEXT;
+      setContext(nextComments);
+      onCommentsChange?.(nextComments);
       setDraft("");
-      onCommentsChange?.(payload?.comments || { items: [], viewer_state: {} });
+      setSelectedSongOption(null);
+      setHasLoaded(true);
     } catch (err) {
-      setError(err?.message || "Impossible d’enregistrer le commentaire.");
+      setError(err?.message || "Impossible d’envoyer la réponse.");
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +165,6 @@ export default function DepositComments({
 
     setDeleting(true);
     setError("");
-
     try {
       const response = await fetch(`/box-management/comments/${activeComment.id}/`, {
         method: "DELETE",
@@ -135,12 +175,16 @@ export default function DepositComments({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible de supprimer le commentaire.");
+        throw new Error(payload?.detail || "Impossible de supprimer la réponse.");
       }
-      onCommentsChange?.(payload?.comments || { items: [], viewer_state: {} });
+
+      const nextComments = payload?.comments || EMPTY_CONTEXT;
+      setContext(nextComments);
+      onCommentsChange?.(nextComments);
+      setDeleteOpen(false);
       closeMenu();
     } catch (err) {
-      setError(err?.message || "Impossible de supprimer le commentaire.");
+      setError(err?.message || "Impossible de supprimer la réponse.");
     } finally {
       setDeleting(false);
     }
@@ -148,10 +192,8 @@ export default function DepositComments({
 
   const handleReport = async () => {
     if (!activeComment?.id || reporting) {return;}
-
     setReporting(true);
     setError("");
-
     try {
       const response = await fetch(`/box-management/comments/${activeComment.id}/report/`, {
         method: "POST",
@@ -160,253 +202,201 @@ export default function DepositComments({
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
         },
-        body: JSON.stringify({ reason: reportReason }),
+        body: JSON.stringify({ reason: "spam" }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible de signaler le commentaire.");
+        throw new Error(payload?.detail || "Impossible de signaler la réponse.");
       }
-      setReportOpen(false);
-      setActiveComment(null);
+      closeMenu();
     } catch (err) {
-      setError(err?.message || "Impossible de signaler le commentaire.");
+      setError(err?.message || "Impossible de signaler la réponse.");
     } finally {
       setReporting(false);
     }
   };
 
+  if (!open) {return null;}
+
   return (
-    <>
-      <Drawer
-        anchor="bottom"
-        open={open}
-        onClose={() => onClose?.()}
-        className="comments_drawer_modal reaction_summary_modal"
-        PaperProps={{
-          sx: {
-            borderTopLeftRadius: "var(--mm-radius-xl)",
-            borderTopRightRadius: "var(--mm-radius-xl)",
-            maxHeight: "80vh",
-            overflow: "hidden",
-            padding: "26px 20px",
-            maxWidth: 720,
-            mx: "auto",
-            display: "flex",
-            flexDirection: "column",
-          },
-        }}
-      >
-        <Box className="comments_panel">
-          <Box className="intro_small">
-            <Typography variant="h3" component="h3">
-              Commentaires
-            </Typography>
-            <Typography variant="subtitle1" component="subtitle1">
-              Sois bienveillant et respectueux.
-            </Typography>
-          </Box>
+    <Box sx={boxSx}>
+      <Box sx={{ borderLeft: "2px solid rgba(255,255,255,0.12)", pl: 2 }}>
+        {loadingReplies ? <Typography variant="body2">Chargement des réponses…</Typography> : null}
 
-          <Box className="comments_list">
-            {!items.length ? (
-              <Typography variant="body1" sx={{ py: 2 }}>
-                Sois le premier·e à commenter !
-              </Typography>
-            ) : (
-              items.map((comment) => {
-                const commentUser = comment?.user || {};
-                const canNavigate = Boolean(commentUser?.username && !commentUser?.is_guest);
+        {!loadingReplies && count === 0 ? (
+          <Typography variant="body2" sx={{ py: 1.5 }}>
+            Aucune réponse pour l’instant.
+          </Typography>
+        ) : null}
 
-                return (
-                  <Box
-                    key={comment.id}
-                    className={`deposit_comment${canNavigate ? " hasUsername" : ""}`}
-                  >
-                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+        {!loadingReplies
+          ? items.map((comment) => {
+            const commentUser = comment?.user || {};
+            const hasSongReply = Boolean(comment?.reply_deposit);
+            const canNavigate = Boolean(commentUser?.username && !commentUser?.is_guest);
+
+            return (
+              <Box key={comment.id} sx={{ mb: 1.5 }}>
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                  <Avatar
+                    src={commentUser?.profile_picture_url || ""}
+                    alt={commentUser?.display_name || commentUser?.username || "user"}
+                    sx={{ width: 28, height: 28 }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" component="div">
                       <Box
-                        className="comment_main"
-                        role={canNavigate ? "button" : undefined}
-                        tabIndex={canNavigate ? 0 : -1}
+                        component="span"
+                        sx={{
+                          cursor: canNavigate ? "pointer" : "default",
+                          textDecoration: canNavigate ? "underline" : "none",
+                        }}
                         onClick={() => {
                           if (!canNavigate) {return;}
-                          onClose?.({ replace: true });
-                          navigate("/profile/" + commentUser.username);
-                        }}
-                        onKeyDown={(event) => {
-                          if (!canNavigate) {return;}
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            onClose?.({ replace: true });
-                            navigate("/profile/" + commentUser.username);
-                          }
+                          navigate(`/profile/${commentUser.username}`);
                         }}
                       >
-                        <Box className="avatarbox">
-                          <Avatar
-                            src={commentUser?.profile_picture_url || ""}
-                            alt={commentUser?.display_name || commentUser?.username || "user"}
-                            className="avatar"
-                          />
-                        </Box>
-
-                        <Box className="texts">
-                          <Typography component="span" className="username" variant="subtitle1">
-                            {commentUser?.display_name || commentUser?.username || "anonyme"}
-                            {canNavigate ? <ArrowForwardIosIcon className="icon" /> : null}
-                          </Typography>
-                          <Typography variant="body1" className="text">
-                            {comment?.text || ""}
-                          </Typography>
-                        </Box>
+                        {commentUser?.display_name || commentUser?.username || "anonyme"}
                       </Box>
+                      <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.7 }}>
+                        {comment?.created_at ? formatRelativeTime(comment.created_at) : ""}
+                      </Typography>
+                    </Typography>
 
-                      <IconButton
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setMenuAnchorEl(event.currentTarget);
-                          setActiveComment(comment || null);
-                        }}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Stack>
+                    {comment?.text ? (
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>
+                        {comment.text}
+                      </Typography>
+                    ) : null}
+
+                    {hasSongReply && DepositComponent ? (
+                      <Box sx={{ mt: 1 }}>
+                        <DepositComponent
+                          dep={comment.reply_deposit}
+                          user={viewer}
+                          variant="list"
+                          context="comment"
+                          showDate={false}
+                          showUser={false}
+                          showCommentAction={false}
+                        />
+                      </Box>
+                    ) : null}
                   </Box>
-                );
-              })
-            )}
+
+                  <IconButton
+                    size="small"
+                    onClick={(event) => {
+                      setMenuAnchorEl(event.currentTarget);
+                      setActiveComment(comment || null);
+                    }}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
+            );
+          })
+          : null}
+
+        {notice ? <Typography variant="body2" sx={{ mb: 1 }}>{notice}</Typography> : null}
+        {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
+
+        {selectedSongPreviewDep && DepositComponent ? (
+          <Box sx={{ mb: 1 }}>
+            <DepositComponent
+              dep={selectedSongPreviewDep}
+              user={viewer}
+              variant="list"
+              context="comment"
+              showDate={false}
+              showUser={false}
+              showCommentAction={false}
+            />
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
+              <Button size="small" onClick={() => setSearchOpen(true)}>Remplacer</Button>
+              <Button size="small" color="inherit" onClick={() => setSelectedSongOption(null)}>Retirer</Button>
+            </Box>
           </Box>
+        ) : null}
 
-          {notice ? <Typography variant="body2">{notice}</Typography> : null}
-          {error ? <Typography variant="body2">{error}</Typography> : null}
-
-          {canPost ? (
-            <Box className="deposit_comment_form">
-              <TextField
-                fullWidth
-                multiline
-                minRows={1}
-                maxRows={6}
-                value={draft}
-                onChange={(event) => {
-                  const nextValue = event.target.value || "";
-                  if (nextValue.length <= 100) {
-                    setDraft(nextValue);
-                  }
-                }}
-                label="Commenter"
-                helperText={remaining < 10 ? `${remaining} caractère${remaining > 1 ? "s" : ""} restant` : " "}
-                FormHelperTextProps={{
-                  className: remaining < 10 ? "comment_helper_text warning" : "comment_helper_text",
-                }}
-              />
-              <IconButton
-                className="comment_submit_button"
-                onClick={handleSubmit}
-                disabled={submitting || !draft.trim()}
-                aria-label="Publier le commentaire"
-              >
-                <ArrowUpwardIcon />
-              </IconButton>
-            </Box>
-          ) : null}
-
-          {showCommentPrompt ? (
-            <Box
-              className="deposit_comment_form deposit_comment_form_prompt"
-              onClick={openAuthPrompt}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  openAuthPrompt();
-                }
-              }}
-            >
-              <TextField
-                fullWidth
-                multiline
-                minRows={1}
-                maxRows={6}
-                value=""
-                label="Commenter"
-                helperText=" "
-                InputProps={{ readOnly: true }}
-              />
-              <IconButton
-                className="comment_submit_button"
-                aria-label="Publier le commentaire"
-                tabIndex={-1}
-              >
-                <ArrowUpwardIcon />
-              </IconButton>
-            </Box>
-          ) : null}
+        <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end" }}>
+          <IconButton onClick={() => setSearchOpen(true)} aria-label="Ajouter une chanson">
+            <LibraryMusicIcon />
+          </IconButton>
+          <TextField
+            fullWidth
+            multiline
+            minRows={1}
+            maxRows={5}
+            value={draft}
+            onChange={(event) => {
+              const nextValue = event.target.value || "";
+              if (nextValue.length <= 100) {
+                setDraft(nextValue);
+              }
+            }}
+            label="Répondre"
+            helperText=" "
+          />
+          <IconButton
+            onClick={submitReply}
+            disabled={!canPost || submitting || (!draft.trim() && !selectedSongOption)}
+            aria-label="Publier la réponse"
+          >
+            <ArrowUpwardIcon />
+          </IconButton>
         </Box>
-      </Drawer>
 
-      <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={() => closeMenu()}>
+        {!isFullUser ? (
+          <Typography variant="caption" sx={{ opacity: 0.8 }}>
+            Connecte-toi pour répondre.
+          </Typography>
+        ) : null}
+      </Box>
+
+      <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={closeMenu}>
         {activeComment?.is_mine ? (
-          <MenuItem onClick={handleDelete}>Supprimer mon commentaire</MenuItem>
-        ) : (
           <MenuItem
             onClick={() => {
-              setReportOpen(true);
-              closeMenu(false);
+              setDeleteOpen(true);
+              setMenuAnchorEl(null);
             }}
           >
-            Signaler le commentaire
+            Supprimer ma réponse
           </MenuItem>
-        )}
+        ) : null}
+        {!activeComment?.is_mine ? (
+          <MenuItem onClick={handleReport} disabled={reporting}>
+            {reporting ? "Signalement…" : "Signaler la réponse"}
+          </MenuItem>
+        ) : null}
       </Menu>
 
-      <Dialog
-        open={reportOpen}
+      <ConfirmActionDialog
+        open={deleteOpen}
         onClose={() => {
-          setReportOpen(false);
-          setActiveComment(null);
+          setDeleteOpen(false);
+          closeMenu();
         }}
-      >
-        <DialogTitle>Signaler le commentaire</DialogTitle>
-        <DialogContent>
-          <RadioGroup value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
-            {REPORT_REASONS.map((reason) => (
-              <FormControlLabel
-                key={reason.value}
-                value={reason.value}
-                control={<Radio />}
-                label={reason.label}
-              />
-            ))}
-          </RadioGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setReportOpen(false);
-              setActiveComment(null);
-            }}
-          >
-            Annuler
-          </Button>
-          <Button onClick={handleReport} disabled={reporting}>
-            Signaler
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <AuthModal
-        open={authPromptOpen}
-        onClose={() => { clearAuthReturnContext(); setAuthPromptOpen(false); }}
-        initialTab="register"
-        authContext="comment"
-        mergeGuest={Boolean(viewer?.is_guest)}
-        prefillUsername={viewer?.is_guest ? (viewer?.username || "") : ""}
-        authAction={{
-          type: "comments",
-          payload: { depPublicKey },
-        }}
-        onAuthenticated={() => setAuthPromptOpen(false)}
+        onConfirm={handleDelete}
+        title="Supprimer cette réponse ?"
+        description="Cette action masquera la réponse."
+        confirmLabel={deleting ? "Suppression…" : "Supprimer"}
+        loading={deleting}
       />
-    </>
+
+      <Dialog open={searchOpen} onClose={() => setSearchOpen(false)} fullWidth maxWidth="md">
+        <Box sx={{ p: 2, height: "70vh" }}>
+          <SearchPanel
+            onSelectSong={(option) => {
+              setSelectedSongOption(option || null);
+              setSearchOpen(false);
+            }}
+            actionLabel="Choisir"
+          />
+        </Box>
+      </Dialog>
+    </Box>
   );
 }

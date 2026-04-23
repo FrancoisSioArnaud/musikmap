@@ -1,5 +1,6 @@
 
 import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
 import Alert from "@mui/material/Alert";
@@ -249,6 +250,7 @@ export default function Deposit({
   userPrefix = "Partagée par",
   footerSlot = null,
   boxName = "",
+  showCommentAction = true,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -269,7 +271,7 @@ export default function Deposit({
 
   const song = localDep?.song || {};
   const user = localDep?.user || {};
-  const comments = localDep?.comments || { items: [], viewer_state: {} };
+  const comments = localDep?.comments || { items: [], count: 0, viewer_state: {} };
   const accentColor = localDep?.accent_color || undefined;
   const rootClassName = `deposit deposit_${variant}`;
 
@@ -290,7 +292,6 @@ export default function Deposit({
   const [addReactionOpen, setAddReactionOpen] = useState(false);
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const commentsDrawerParamValue = localDep?.public_key || "";
   const reactionsDrawerParamValue = localDep?.public_key || "";
   const [snackOpen, setSnackOpen] = useState(false);
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
@@ -319,7 +320,11 @@ export default function Deposit({
     [reactionsDetail]
   );
   const reactionCount = reactionsDetail.length;
-  const commentsCount = Array.isArray(comments?.items) ? comments.items.length : 0;
+  const commentsCount = Number.isFinite(Number(comments?.count))
+    ? Number(comments?.count)
+    : Array.isArray(comments?.items)
+      ? comments.items.length
+      : 0;
   const canShare = Boolean(viewer?.id && isRevealed);
   const resolvedShareBoxName = useMemo(() => {
     const propName = String(boxName || "").trim();
@@ -652,20 +657,10 @@ export default function Deposit({
   };
 
   const handleCommentsChange = (nextComments) => {
-    const safeComments = nextComments || { items: [], viewer_state: {} };
+    const safeComments = nextComments || { items: [], count: 0, viewer_state: {} };
     setLocalDep((prev) => ({ ...(prev || {}), comments: safeComments }));
     updateDepositCollections((item) => ({ ...(item || {}), comments: safeComments }));
   };
-
-  useEffect(() => {
-    if (!commentsDrawerParamValue) {
-      setCommentsOpen(false);
-      return;
-    }
-
-    const shouldOpenComments = matchesDrawerSearch(location, "comments", commentsDrawerParamValue);
-    setCommentsOpen((prev) => (prev === shouldOpenComments ? prev : shouldOpenComments));
-  }, [commentsDrawerParamValue, location]);
 
   useEffect(() => {
     if (!reactionsDrawerParamValue) {
@@ -677,31 +672,14 @@ export default function Deposit({
     setReactionSummaryOpen((prev) => (prev === shouldOpenReactions ? prev : shouldOpenReactions));
   }, [location, reactionsDrawerParamValue]);
 
-  const openCommentsDrawer = useCallback((event) => {
+  const toggleCommentsInline = useCallback((event) => {
     event?.stopPropagation?.();
-    if (!commentsDrawerParamValue) {return;}
-
-    openDrawerWithHistory({
-      navigate,
-      location,
-      param: "comments",
-      value: commentsDrawerParamValue,
-    });
-  }, [commentsDrawerParamValue, location, navigate]);
-
-  const closeCommentsDrawer = useCallback((options = {}) => {
-    if (
-      !closeDrawerWithHistory({
-        navigate,
-        location,
-        param: "comments",
-        value: commentsDrawerParamValue,
-        replace: Boolean(options?.replace),
-      })
-    ) {
-      setCommentsOpen(false);
+    if (!isRevealed) {
+      openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses");
+      return;
     }
-  }, [commentsDrawerParamValue, location, navigate]);
+    setCommentsOpen((prev) => !prev);
+  }, [isRevealed, openActionErrorDialog]);
 
   const openReactionSummaryDrawer = useCallback((event) => {
     event?.stopPropagation?.();
@@ -740,7 +718,11 @@ export default function Deposit({
     });
 
     if (commentAction) {
-      openCommentsDrawer();
+      if (isRevealed) {
+        setCommentsOpen(true);
+      } else {
+        openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses");
+      }
       return;
     }
 
@@ -753,7 +735,7 @@ export default function Deposit({
     if (reactionAction) {
       setAddReactionOpen(true);
     }
-  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, openCommentsDrawer]);
+  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, isRevealed, openActionErrorDialog]);
 
   const showShareFeedback = useCallback((message) => {
     setShareSnack({ open: true, message });
@@ -922,14 +904,24 @@ export default function Deposit({
           ) : null}
         </Box>
   
-        <Button
-          variant="depositInteract"
-          className="deposit_action_button comments_button"
-          onClick={openCommentsDrawer}
-          startIcon={<ModeCommentOutlinedIcon />}
-        >
-          {commentsCount > 0 ? `x${commentsCount}` : ""}
-        </Button>
+        {showCommentAction ? (
+          <Button
+            variant="depositInteract"
+            className="deposit_action_button comments_button"
+            onClick={toggleCommentsInline}
+            startIcon={<ModeCommentOutlinedIcon />}
+            endIcon={
+              <ArrowDropDownIcon
+                sx={{
+                  transform: commentsOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 120ms ease",
+                }}
+              />
+            }
+          >
+            {commentsCount > 0 ? `x${commentsCount}` : ""}
+          </Button>
+        ) : null}
       </Box>
       <Box className="right">
         <DepositLink canShare={canShare} isSharing={isSharing} onShare={handleShareDeposit} />
@@ -1029,6 +1021,16 @@ export default function Deposit({
           {footerSlot}
           {depositInteractBlock}
         </Card>
+        <DepositComments
+          open={commentsOpen}
+          depPublicKey={localDep?.public_key}
+          comments={comments}
+          viewer={viewer}
+          onCommentsChange={handleCommentsChange}
+          isParentRevealed={isRevealed}
+          boxSx={{ ml: 4, mr: 1, mt: 1 }}
+          DepositComponent={Deposit}
+        />
       </Box>
 
       <Snackbar
@@ -1136,15 +1138,6 @@ export default function Deposit({
         reactions={reactionsDetail}
         viewer={viewer}
         onApplied={handleReactionApplied}
-      />
-
-      <DepositComments
-        open={commentsOpen}
-        onClose={closeCommentsDrawer}
-        depPublicKey={localDep?.public_key}
-        comments={comments}
-        viewer={viewer}
-        onCommentsChange={handleCommentsChange}
       />
 
       <Dialog

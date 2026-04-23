@@ -10,6 +10,7 @@ from box_management.builders.deposit_payloads import (
 )
 from box_management.domain.constants import (
     COMMENT_REASON_ALREADY_COMMENTED,
+    COMMENT_REASON_CONSECUTIVE_BLOCKED,
     COMMENT_REASON_EMAIL_FORBIDDEN,
     COMMENT_REASON_EMPTY,
     COMMENT_REASON_LINK_FORBIDDEN,
@@ -21,7 +22,8 @@ from box_management.domain.constants import (
     COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED,
     COMMENT_REASON_TOO_LONG,
 )
-from box_management.models import Comment
+from box_management.models import Comment, DiscoveredSong
+from box_management.selectors.deposits import get_deposit_for_comment
 from box_management.services.boxes.client_access import _coerce_bool, _get_active_client_user_or_response
 from box_management.services.comments.admin_comments import (
     create_comment_restriction,
@@ -49,6 +51,7 @@ def _get_comment_error_message(reason_code):
     messages = {
         COMMENT_REASON_RATE_LIMIT: "Tu commentes trop vite. Réessaie dans un instant.",
         COMMENT_REASON_ALREADY_COMMENTED: "Tu as déjà commenté ce dépôt.",
+        COMMENT_REASON_CONSECUTIVE_BLOCKED: "Tu ne peux pas envoyer deux réponses d'affilé",
         COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED: "Cet utilisateur a déjà reçu beaucoup de commentaires aujourd’hui.",
         COMMENT_REASON_LINK_FORBIDDEN: "Les liens ne sont pas autorisés dans les commentaires.",
         COMMENT_REASON_EMAIL_FORBIDDEN: "Les adresses email ne sont pas autorisées dans les commentaires.",
@@ -66,6 +69,7 @@ def _comment_reason_to_error_code(reason_code):
     mapping = {
         COMMENT_REASON_RATE_LIMIT: "COMMENT_RATE_LIMIT",
         COMMENT_REASON_ALREADY_COMMENTED: "COMMENT_ALREADY_COMMENTED",
+        COMMENT_REASON_CONSECUTIVE_BLOCKED: "COMMENT_CONSECUTIVE_BLOCKED",
         COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED: "COMMENT_TARGET_LIMIT_REACHED",
         COMMENT_REASON_LINK_FORBIDDEN: "COMMENT_LINK_FORBIDDEN",
         COMMENT_REASON_EMAIL_FORBIDDEN: "COMMENT_EMAIL_FORBIDDEN",
@@ -204,10 +208,12 @@ class CommentCreateView(APIView):
 
         dep_public_key = (request.data.get("dep_public_key") or "").strip()
         text_value = str(request.data.get("text") or "").strip()
+        song_option = request.data.get("song_option")
         result, error = create_comment(
             user=current_user,
             dep_public_key=dep_public_key,
             text_value=text_value,
+            song_option=song_option,
             author_ip=_get_request_ip(request),
             author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
@@ -222,9 +228,9 @@ class CommentCreateView(APIView):
         deposit = result["deposit"]
         comment_status = comment.status
 
-        comments_context = _build_comments_context_for_deposits([deposit], viewer=current_user).get(
+        comments_context = _build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
             deposit.id,
-            {"items": [], "viewer_state": {}},
+            {"items": [], "count": 0, "viewer_state": {}},
         )
         response_status = (
             status.HTTP_202_ACCEPTED if comment_status == Comment.STATUS_QUARANTINED else status.HTTP_201_CREATED
@@ -275,6 +281,37 @@ class CommentReportView(APIView):
         if error:
             return api_error(error["status"], error["code"], error["detail"])
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class DepositRepliesView(APIView):
+    permission_classes = []
+
+    def get(self, request, dep_public_key: str):
+        current_user = get_current_app_user(request)
+        if not current_user:
+            return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Identité requise.")
+        touch_last_seen(current_user)
+
+        deposit = get_deposit_for_comment(dep_public_key)
+        if not deposit:
+            return api_error(status.HTTP_404_NOT_FOUND, "DEPOSIT_NOT_FOUND", "Dépôt introuvable.")
+
+        is_revealed = (
+            bool(getattr(deposit, "user_id", None) == current_user.id)
+            or DiscoveredSong.objects.filter(user_id=current_user.id, deposit_id=deposit.id).exists()
+        )
+        if not is_revealed:
+            return api_error(
+                status.HTTP_403_FORBIDDEN,
+                "DEPOSIT_NOT_REVEALED",
+                "Révèle la chanson pour voir les réponses",
+            )
+
+        comments_context = _build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
+            deposit.id,
+            {"items": [], "count": 0, "viewer_state": {}},
+        )
+        return Response({"comments": comments_context}, status=status.HTTP_200_OK)
 
 
 class ClientAdminCommentListView(APIView):

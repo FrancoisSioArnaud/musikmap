@@ -1,8 +1,19 @@
 from __future__ import annotations
 
-from django.urls import reverse
+from datetime import timedelta
 
-from box_management.models import Comment, CommentModerationDecision, Deposit, EmojiRight, Link, Reaction
+from django.urls import reverse
+from django.utils import timezone
+
+from box_management.models import (
+    Comment,
+    CommentModerationDecision,
+    Deposit,
+    DiscoveredSong,
+    EmojiRight,
+    Link,
+    Reaction,
+)
 from box_management.tests.base import FlowboxAPITestCase
 
 
@@ -132,7 +143,7 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         self.owner = self.make_user(username="owner-comments")
         self.deposit = self.make_deposit(user=self.owner, song=self.make_song(public_key="comment-song"), box=self.box)
 
-    def test_double_comment_create_results_in_single_comment(self):
+    def test_double_comment_create_results_in_two_comments_with_new_rule(self):
         user = self.auth(self.make_user(username="commenter", points=0))
         payload = {"dep_public_key": self.deposit.public_key, "text": "Super partage"}
 
@@ -140,9 +151,9 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         second = self.client.post(reverse("comments-create"), payload, format="json")
 
         self.assertEqual(first.status_code, 201)
-        self.assertEqual(Comment.objects.filter(user=user, deposit=self.deposit).count(), 1)
         self.assertEqual(second.status_code, 400)
-        self.assertEqual(second.data["code"], "COMMENT_ALREADY_COMMENTED")
+        self.assertEqual(second.data["code"], "COMMENT_CONSECUTIVE_BLOCKED")
+        self.assertEqual(Comment.objects.filter(user=user, deposit=self.deposit).count(), 1)
 
     def test_double_comment_report_creates_single_report(self):
         comment_author = self.make_user(username="comment-author")
@@ -206,3 +217,97 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(Link.objects.filter(created_by=sharer, deposit=self.deposit).count(), 1)
         self.assertEqual(first.data["slug"], second.data["slug"])
+
+    def test_create_reply_with_song_only(self):
+        user = self.auth(self.make_user(username="song-only", points=0))
+        payload = {
+            "dep_public_key": self.deposit.public_key,
+            "text": "",
+            "song_option": self.track_option(track_id="reply-song-only"),
+        }
+
+        response = self.client.post(reverse("comments-create"), payload, format="json")
+        self.assertEqual(response.status_code, 201)
+        comment = Comment.objects.get(pk=response.data["comment_id"])
+        self.assertIsNotNone(comment.reply_deposit_id)
+        self.assertEqual(comment.reply_deposit.deposit_type, Deposit.DEPOSIT_TYPE_COMMENT)
+        self.assertEqual(comment.reply_deposit.box_id, self.deposit.box_id)
+        self.assertEqual(comment.user_id, user.id)
+
+    def test_create_reply_with_text_and_song(self):
+        self.auth(self.make_user(username="text-song", points=0))
+        payload = {
+            "dep_public_key": self.deposit.public_key,
+            "text": "texte + chanson",
+            "song_option": self.track_option(track_id="reply-song-text"),
+        }
+        response = self.client.post(reverse("comments-create"), payload, format="json")
+        self.assertEqual(response.status_code, 201)
+        comment = Comment.objects.get(pk=response.data["comment_id"])
+        self.assertEqual(comment.text, "texte + chanson")
+        self.assertIsNotNone(comment.reply_deposit_id)
+
+    def test_create_reply_atomicity_rolls_back_reply_deposit(self):
+        self.auth(self.make_user(username="atomic-user", points=0))
+        payload = {
+            "dep_public_key": self.deposit.public_key,
+            "text": "",
+            "song_option": {"provider_code": "spotify"},
+        }
+        before_count = Deposit.objects.filter(deposit_type=Deposit.DEPOSIT_TYPE_COMMENT).count()
+        response = self.client.post(reverse("comments-create"), payload, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Deposit.objects.filter(deposit_type=Deposit.DEPOSIT_TYPE_COMMENT).count(), before_count)
+        self.assertEqual(Comment.objects.filter(deposit=self.deposit, user__username="atomic-user").count(), 0)
+
+    def test_consecutive_rule_unblocked_after_other_user_reply(self):
+        first_user = self.auth(self.make_user(username="first-user", points=0))
+        payload = {"dep_public_key": self.deposit.public_key, "text": "première"}
+        self.assertEqual(self.client.post(reverse("comments-create"), payload, format="json").status_code, 201)
+
+        blocked = self.client.post(reverse("comments-create"), payload, format="json")
+        self.assertEqual(blocked.status_code, 400)
+        self.assertEqual(blocked.data["code"], "COMMENT_CONSECUTIVE_BLOCKED")
+
+        second_user = self.make_user(username="second-user", points=0)
+        self.auth(second_user)
+        self.assertEqual(
+            self.client.post(
+                reverse("comments-create"), {"dep_public_key": self.deposit.public_key, "text": "ok"}, format="json"
+            ).status_code,
+            201,
+        )
+        Comment.objects.filter(user=first_user).update(created_at=timezone.now() - timedelta(minutes=5))
+
+        self.auth(first_user)
+        allowed_again = self.client.post(reverse("comments-create"), payload, format="json")
+        self.assertEqual(allowed_again.status_code, 201)
+
+    def test_replies_list_requires_reveal_and_counts_only_published(self):
+        viewer = self.auth(self.make_user(username="viewer", points=0))
+        other_user = self.make_user(username="other-user", points=0)
+        Comment.objects.create(
+            client=self.client_entity, deposit=self.deposit, user=other_user, text="visible", normalized_text="visible"
+        )
+        Comment.objects.create(
+            client=self.client_entity,
+            deposit=self.deposit,
+            user=self.make_user(username="hidden-user", points=0),
+            text="hidden",
+            normalized_text="hidden",
+            status=Comment.STATUS_REMOVED_MODERATION,
+        )
+
+        blocked = self.client.get(
+            reverse("comments-deposit-replies", kwargs={"dep_public_key": self.deposit.public_key})
+        )
+        self.assertEqual(blocked.status_code, 403)
+
+        DiscoveredSong.objects.create(user=viewer, deposit=self.deposit, discovered_type="revealed", context="box")
+        visible = self.client.get(
+            reverse("comments-deposit-replies", kwargs={"dep_public_key": self.deposit.public_key})
+        )
+        self.assertEqual(visible.status_code, 200)
+        comments = visible.data["comments"]
+        self.assertEqual(comments["count"], 1)
+        self.assertEqual(len(comments["items"]), 1)

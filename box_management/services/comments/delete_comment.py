@@ -40,9 +40,11 @@ def delete_comment_by_author(*, current_user, comment_id):
             reason_code=COMMENT_REASON_DELETE_BY_AUTHOR,
         )
 
-    comments_context = {"items": [], "viewer_state": {}}
+    comments_context = {"items": [], "count": 0, "viewer_state": {}}
     if comment.deposit_id:
-        comments_context = _build_comments_context_for_deposits([comment.deposit], viewer=current_user).get(
+        comments_context = _build_comments_context_for_deposits(
+            [comment.deposit], viewer=current_user, include_items=True
+        ).get(
             comment.deposit_id,
             comments_context,
         )
