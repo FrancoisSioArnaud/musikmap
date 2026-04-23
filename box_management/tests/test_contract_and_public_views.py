@@ -20,7 +20,7 @@ class EconomyAndPinnedPublicViewTests(FlowboxAPITestCase):
         self.assertTrue(response.data["pinned_price_steps"])
 
     def test_get_pinned_song_returns_active_pin(self):
-        viewer = self.auth(self.make_user(username="viewer-pin", points=1000))
+        self.auth(self.make_user(username="viewer-pin", points=1000))
         client = self.make_client(name="Client public pin", slug="client-public-pin")
         box = self.make_box(url="box-public-pin", name="Box public pin", client=client)
         song = self.make_song(public_key="public_pin_song")
@@ -41,7 +41,7 @@ class EconomyAndPinnedPublicViewTests(FlowboxAPITestCase):
         self.assertEqual(response.data["active_pinned_deposit"]["deposit_type"], "pinned")
 
     def test_get_pinned_song_returns_none_for_expired_pin(self):
-        viewer = self.auth(self.make_user(username="viewer-expired-pin", points=1000))
+        self.auth(self.make_user(username="viewer-expired-pin", points=1000))
         client = self.make_client(name="Client expired pin", slug="client-expired-pin")
         box = self.make_box(url="box-expired-pin", name="Box expired pin", client=client)
         song = self.make_song(public_key="expired_pin_song")

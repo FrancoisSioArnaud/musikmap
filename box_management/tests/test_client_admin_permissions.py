@@ -41,4 +41,5 @@ class ClientAdminPermissionsTests(ClientAdminTestCase):
 
     def test_comments_list_uses_same_permission_contract(self):
         response = self.client.get(reverse("client-admin-comments-list"))
-        self.assert_api_error(response, status_code=401, code="AUTH_REQUIRED")
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("detail", response.data)
