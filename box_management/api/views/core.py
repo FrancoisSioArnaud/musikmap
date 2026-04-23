@@ -1,4 +1,5 @@
 # ===== Standard library =====
+import math
 import re
 from urllib.parse import quote
 
@@ -453,6 +454,15 @@ class Location(APIView):
             latitude = float(request.data.get("latitude"))
             longitude = float(request.data.get("longitude"))
         except (TypeError, ValueError):
+            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_COORDINATES", "Invalid latitude/longitude")
+        if (
+            not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+            or latitude < -90
+            or latitude > 90
+            or longitude < -180
+            or longitude > 180
+        ):
             return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_COORDINATES", "Invalid latitude/longitude")
 
         result, error = verify_location_for_box(
