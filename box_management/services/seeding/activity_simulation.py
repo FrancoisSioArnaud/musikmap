@@ -1,4 +1,5 @@
 import random
+import secrets
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -7,11 +8,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Box, BoxSession, Comment, Deposit, DiscoveredSong, Emoji, EmojiRight, Reaction, Song
-from box_management.provider_services import (
-    backend_search_tracks,
-    get_or_create_song_from_track,
-    upsert_song_provider_link,
-)
 from box_management.services.comments.moderation_rules import _get_profile_picture_url, _normalize_comment_text
 from private_messages.models import ChatMessage, ChatThread
 from private_messages.services.moderation import validate_message_text
@@ -21,7 +17,13 @@ COMMENT_REASON_CODE = "seed_activity_comment"
 COMMENT_USER_AGENT = "seed_activity_command"
 
 INTENSITY_CONFIG = {
-    "low": {"deposits": (1, 2), "reactions": (2, 4), "comments": (0, 1), "reveals": (1, 2), "messages": (0, 1)},
+    "low": {
+        "deposits": (1, 2),
+        "reactions": (2, 4),
+        "comments": (0, 1),
+        "reveals": (1, 2),
+        "messages": (0, 1),
+    },
     "medium": {
         "deposits": (2, 4),
         "reactions": (4, 8),
@@ -48,11 +50,11 @@ PERSONAS = [
         "secondary_genre": "chanson française",
         "songs": [
             ("Amour plastique", "Videoclub"),
+            ("Nights", "Frank Ocean"),
             ("Respire encore", "Clara Luciani"),
             ("Le temps est bon", "Bon Entendeur"),
             ("Sunset", "The xx"),
             ("Tout oublier", "Angèle"),
-            ("Aline", "Christophe"),
         ],
     },
     {
@@ -65,10 +67,10 @@ PERSONAS = [
         "songs": [
             ("Feu de bois", "Damso"),
             ("TPA", "Gazo"),
+            ("Djadja", "Aya Nakamura"),
             ("Basique", "Orelsan"),
             ("Jolie", "Ninho"),
             ("Mwaka Moon", "Kalash"),
-            ("Mauvaise idée", "Luther"),
         ],
     },
     {
@@ -100,7 +102,7 @@ PERSONAS = [
             ("Innerbloom", "RÜFÜS DU SOL"),
             ("Safe and Sound", "Justice"),
             ("Roadgame", "Kavinsky"),
-            ("Baby I'm Yours", "Breakbot"),
+            ("On Hold", "The xx"),
         ],
     },
     {
@@ -135,136 +137,9 @@ PERSONAS = [
             ("Soweto", "Victony"),
         ],
     },
-    {
-        "username": "claire.soul",
-        "first_name": "Claire",
-        "last_name": "Velvet",
-        "social_tone": "Très chaleureuse, recommande des voix soul.",
-        "primary_genre": "soul/RnB",
-        "secondary_genre": "jazz/funk",
-        "songs": [
-            ("Best Part", "Daniel Caesar, H.E.R."),
-            ("Gettin' In The Way", "Jill Scott"),
-            ("Need U Bad", "Jazmine Sullivan"),
-            ("Free Mind", "Tems"),
-            ("Focus", "H.E.R."),
-            ("Come Through and Chill", "Miguel"),
-        ],
-    },
-    {
-        "username": "tom.house",
-        "first_name": "Tom",
-        "last_name": "Night",
-        "social_tone": "Dépose surtout en fin de journée, très club.",
-        "primary_genre": "house",
-        "secondary_genre": "électro",
-        "songs": [
-            ("You & Me - Flume Remix", "Disclosure, Eliza Doolittle"),
-            ("Cola", "CamelPhat, Elderbrook"),
-            ("White Noise", "Disclosure"),
-            ("Losing It", "FISHER"),
-            ("One More Time", "Daft Punk"),
-            ("Music Sounds Better With You", "Stardust"),
-        ],
-    },
-    {
-        "username": "sarah.chanson",
-        "first_name": "Sarah",
-        "last_name": "Plume",
-        "social_tone": "Aime les textes et les mélodies françaises.",
-        "primary_genre": "chanson française",
-        "secondary_genre": "indie pop",
-        "songs": [
-            ("Bruxelles je t'aime", "Angèle"),
-            ("Dernière danse", "Indila"),
-            ("Le vent nous portera", "Noir Désir"),
-            ("La grenade", "Clara Luciani"),
-            ("Sur la planche", "La Femme"),
-            ("L'effet de masse", "Maëlle"),
-        ],
-    },
-    {
-        "username": "wassim.rap",
-        "first_name": "Wassim",
-        "last_name": "Nocturne",
-        "social_tone": "Toujours au courant des sorties FR.",
-        "primary_genre": "rap FR",
-        "secondary_genre": "drill",
-        "songs": [
-            ("Bande organisée", "SCH"),
-            ("Molly", "SDM"),
-            ("Validée", "Booba"),
-            ("Fendi", "Gazo"),
-            ("Dolce Camara", "Booba"),
-            ("Macro", "H JeuneCrack"),
-        ],
-    },
-    {
-        "username": "emma.indie",
-        "first_name": "Emma",
-        "last_name": "Lane",
-        "social_tone": "Partage des sons doux, commente beaucoup.",
-        "primary_genre": "indie pop",
-        "secondary_genre": "dream pop",
-        "songs": [
-            ("Space Song", "Beach House"),
-            ("Cherry-coloured Funk", "Cocteau Twins"),
-            ("Sofia", "Clairo"),
-            ("Bags", "Clairo"),
-            ("Myth", "Beach House"),
-            ("Nothing's Gonna Hurt You Baby", "Cigarettes After Sex"),
-        ],
-    },
-    {
-        "username": "paul.groove",
-        "first_name": "Paul",
-        "last_name": "Swing",
-        "social_tone": "Mixe funk old school et néo-soul moderne.",
-        "primary_genre": "jazz/funk",
-        "secondary_genre": "soul/RnB",
-        "songs": [
-            ("Come Down", "Anderson .Paak"),
-            ("The Less I Know The Better", "Tame Impala"),
-            ("Everybody Loves The Sunshine", "Roy Ayers Ubiquity"),
-            ("Disco Yes", "Tom Misch"),
-            ("Mystery Lady", "Masego"),
-            ("After The Storm", "Kali Uchis"),
-        ],
-    },
-    {
-        "username": "lucie.pop",
-        "first_name": "Lucie",
-        "last_name": "Nova",
-        "social_tone": "Très active en réactions, découvre via la commu.",
-        "primary_genre": "pop",
-        "secondary_genre": "chanson française",
-        "songs": [
-            ("Physical", "Dua Lipa"),
-            ("Levitating", "Dua Lipa"),
-            ("Mauvais payeur", "Clara Luciani"),
-            ("Je te vois enfin", "Yseult"),
-            ("Runaway", "AURORA"),
-            ("Tout va bien", "Orelsan"),
-        ],
-    },
-    {
-        "username": "amine.global",
-        "first_name": "Amine",
-        "last_name": "Mix",
-        "social_tone": "Ouvre des discussions privées après les découvertes.",
-        "primary_genre": "afro",
-        "secondary_genre": "house",
-        "songs": [
-            ("Love Nwantiti", "CKay"),
-            ("People", "Libianca"),
-            ("Jerusalema", "Master KG"),
-            ("Water", "Tyla"),
-            ("Soso", "Omah Lay"),
-            ("Rush", "Ayra Starr"),
-        ],
-    },
 ]
 
+REACTION_TEMPLATES = ["🔥", "🤯", "🎶", "😎", "✨", "🙌"]
 COMMENT_TEMPLATES = [
     "Très bon choix, ça colle grave à l'ambiance.",
     "Je l'avais pas écouté depuis longtemps, merci pour le rappel.",
@@ -292,7 +167,10 @@ class ActivitySeedSummary:
     comments: int = 0
     private_messages: int = 0
     warnings: int = 0
-    warning_samples: list[str] | None = None
+
+
+def _song_public_key():
+    return secrets.token_urlsafe(12)[:25]
 
 
 def _pick_timestamp(rng, *, day_index, start_hour=8, end_hour=23):
@@ -337,6 +215,21 @@ def _ensure_persona_users(rng):
     return users, created
 
 
+  def _ensure_song(title, artist):
+    song = Song.objects.filter(title__iexact=title).first()
+    if song:
+        return song, False
+
+    song = Song.objects.create(
+        public_key=_song_public_key(),
+        title=title[:150],
+        artists_json=[artist],
+        duration=0,
+        n_deposits=0,
+    )
+    return song, True
+
+
 def _ensure_emoji_pool(users_by_username):
     emojis = list(Emoji.objects.filter(active=True).order_by("id"))
     if not emojis:
@@ -350,45 +243,14 @@ def _ensure_emoji_pool(users_by_username):
     return emojis, 0
 
 
-def _resolve_spotify_song(song_item, query_cache, song_cache):
-    title, artist = song_item
-    query = f"{title} {artist}"
-
-    if query not in query_cache:
-        results = backend_search_tracks("spotify", query)
-        query_cache[query] = results[0] if results else None
-
-    track = query_cache[query]
-    if not track:
-        return None, f"Spotify introuvable pour '{title}' - '{artist}'"
-
-    provider_track_id = (track.get("provider_track_id") or "").strip()
-    if provider_track_id in song_cache:
-        return song_cache[provider_track_id], None
-
-    try:
-        song = get_or_create_song_from_track(track)
-        upsert_song_provider_link(song, track)
-    except Exception:
-        return None, f"Spotify erreur pour '{title}' - '{artist}'"
-
-    if provider_track_id:
-        song_cache[provider_track_id] = song
-    return song, None
-
-
-def _create_deposits_for_day(
-    rng, *, box, day_index, personas, users_by_username, intensity_conf, query_cache, song_cache
-):
+def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username, intensity_conf):
     created = []
-    warnings = []
     min_dep, max_dep = intensity_conf["deposits"]
     n_deposits = rng.randint(min_dep, max_dep)
 
     weighted_personas = []
-    very_active = {"malo.rapfr", "nora.boom", "wassim.rap", "emma.indie"}
     for persona in personas:
-        weight = 4 if persona["username"] in very_active else 2
+        weight = 3 if persona["username"] in {"malo.rapfr", "nora.boom"} else 2
         weighted_personas.extend([persona] * weight)
 
     for _ in range(n_deposits):
@@ -397,10 +259,8 @@ def _create_deposits_for_day(
 
         existing_count = Deposit.objects.filter(box=box, user=user, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count()
         songs = persona["songs"]
-        song, warning = _resolve_spotify_song(songs[existing_count % len(songs)], query_cache, song_cache)
-        if warning:
-            warnings.append(warning)
-            continue
+        title, artist = songs[existing_count % len(songs)]
+        song, created_song = _ensure_song(title, artist)
 
         timestamp = _pick_timestamp(rng, day_index=day_index)
         deposit = Deposit.objects.create(
@@ -410,13 +270,19 @@ def _create_deposits_for_day(
             deposit_type=Deposit.DEPOSIT_TYPE_BOX,
             deposited_at=timestamp,
         )
-        Song.objects.filter(pk=song.pk).update(n_deposits=(song.n_deposits or 0) + 1)
+
+        if created_song:
+            song.n_deposits = 1
+            song.save(update_fields=["n_deposits"])
+        else:
+            Song.objects.filter(pk=song.pk).update(n_deposits=(song.n_deposits or 0) + 1)
+
         created.append(deposit)
 
-    return created, warnings
+    return created
 
 
-def _create_reveals(rng, *, day_deposits, users, day_index, intensity_conf):
+def _create_reveals(rng, *, box, day_deposits, users, day_index, intensity_conf):
     min_reveal, max_reveal = intensity_conf["reveals"]
     n_reveals = min(len(day_deposits), rng.randint(min_reveal, max_reveal))
     if n_reveals <= 0:
@@ -440,7 +306,7 @@ def _create_reveals(rng, *, day_deposits, users, day_index, intensity_conf):
     return created
 
 
-def _create_reactions(rng, *, day_deposits, users, emojis, day_index, intensity_conf):
+def _create_reactions(rng, *, box, day_deposits, users, emojis, day_index, intensity_conf):
     if not day_deposits or not emojis:
         return 0
 
@@ -604,8 +470,6 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
         users = list(users_by_username.values())
         emojis, emoji_warning = _ensure_emoji_pool(users_by_username)
 
-        query_cache = {}
-        song_cache = {}
         summaries = []
         for box in boxes:
             summary = ActivitySeedSummary(box_slug=box.url, created_users=created_users, warnings=emoji_warning)
@@ -621,30 +485,20 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
 
             touched_users = set()
             for day_index in range(days):
-                day_deposits, day_warnings = _create_deposits_for_day(
+                day_deposits = _create_deposits_for_day(
                     rng,
                     box=box,
                     day_index=day_index,
                     personas=PERSONAS,
                     users_by_username=users_by_username,
                     intensity_conf=INTENSITY_CONFIG[intensity],
-                    query_cache=query_cache,
-                    song_cache=song_cache,
                 )
-                summary.warnings += len(day_warnings)
-                if day_warnings:
-                    if summary.warning_samples is None:
-                        summary.warning_samples = []
-                    for warning in day_warnings:
-                        if len(summary.warning_samples) >= 5:
-                            break
-                        if warning not in summary.warning_samples:
-                            summary.warning_samples.append(warning)
                 summary.deposits += len(day_deposits)
                 touched_users.update(dep.user_id for dep in day_deposits if dep.user_id)
 
                 summary.reveals += _create_reveals(
                     rng,
+                    box=box,
                     day_deposits=day_deposits,
                     users=users,
                     day_index=day_index,
@@ -652,6 +506,7 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.reactions += _create_reactions(
                     rng,
+                    box=box,
                     day_deposits=day_deposits,
                     users=users,
                     emojis=emojis,

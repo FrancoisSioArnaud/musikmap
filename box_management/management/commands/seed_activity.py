@@ -62,5 +62,3 @@ class Command(BaseCommand):
                     ]
                 )
             )
-            for warning in summary.warning_samples or []:
-                self.stdout.write(self.style.WARNING(f"  - warning: {warning}"))
