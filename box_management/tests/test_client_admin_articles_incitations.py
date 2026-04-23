@@ -54,7 +54,7 @@ class ClientAdminArticlesAndIncitationsTests(ClientAdminTestCase):
             ["Le lien externe est obligatoire pour importer une page."],
         )
 
-    @patch("box_management.views._extract_import_preview_from_url")
+    @patch("box_management.integrations.article_scraper._extract_import_preview_from_url")
     def test_article_import_success_returns_preview_payload(self, extract_preview):
         self.auth(self.owner_a)
         extract_preview.return_value = {

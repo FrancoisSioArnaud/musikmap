@@ -1,27 +1,23 @@
 from django.urls import path
 
-from .views import (
+from box_management.api.views.comments import (
+    ClientAdminCommentListView,
+    ClientAdminCommentModerateView,
+    ClientAdminCommentRestrictionListCreateView,
+    CommentCreateView,
+    CommentDetailView,
+    CommentReportView,
+    DepositRepliesView,
+    ReactionView,
+)
+from box_management.api.views.core import (
     ActiveBoxSessionsView,
     BoxSessionView,
     ClientAdminArticleDetailView,
     ClientAdminArticleImportPageView,
     ClientAdminArticleListCreateView,
-    ClientAdminCommentListView,
-    ClientAdminCommentModerateView,
-    ClientAdminCommentRestrictionListCreateView,
     ClientAdminIncitationDetailView,
     ClientAdminIncitationListCreateView,
-    ClientAdminStickerAssignView,
-    ClientAdminStickerConfirmDownloadView,
-    ClientAdminStickerDownloadView,
-    ClientAdminStickerGenerateView,
-    ClientAdminStickerInstallView,
-    ClientAdminStickerListView,
-    ClientAdminStickerUnassignView,
-    CommentCreateView,
-    CommentDetailView,
-    CommentReportView,
-    DepositRepliesView,
     EconomyConfigView,
     EmojiCatalogView,
     GetBox,
@@ -32,12 +28,20 @@ from .views import (
     PublicVisibleArticleDetailView,
     PublicVisibleArticlesView,
     PurchaseEmojiView,
-    ReactionView,
     ResolveProviderLinkView,
     RevealSong,
     ShareLinkCreateView,
     ShareLinkPublicDetailView,
     UserDepositsView,
+)
+from box_management.api.views.stickers import (
+    ClientAdminStickerAssignView,
+    ClientAdminStickerConfirmDownloadView,
+    ClientAdminStickerDownloadView,
+    ClientAdminStickerGenerateView,
+    ClientAdminStickerInstallView,
+    ClientAdminStickerListView,
+    ClientAdminStickerUnassignView,
 )
 
 urlpatterns = [
@@ -67,7 +71,6 @@ urlpatterns = [
         PublicVisibleArticleDetailView.as_view(),
         name="public-visible-article-detail",
     ),
-    # Client admin - articles
     path(
         "client-admin/articles/import-page/",
         ClientAdminArticleImportPageView.as_view(),
