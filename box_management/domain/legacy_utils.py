@@ -534,6 +534,16 @@ def _build_comment_item_from_instance(comment: Comment, *, viewer_id: int | None
         "user": _get_comment_snapshot_user_payload(comment),
         "is_mine": bool(viewer_id and comment.user_id == viewer_id),
     }
+    reply_deposit = getattr(comment, "reply_deposit", None)
+    if reply_deposit:
+        payload["reply_deposit"] = _build_deposit_from_instance(
+            reply_deposit,
+            include_user=True,
+            include_deposit_time=True,
+            hidden=False,
+            current_user=None,
+            comments_context={"items": [], "viewer_state": {}},
+        )
     return payload
 
 
@@ -562,7 +572,7 @@ def _build_comment_viewer_state(
     *,
     viewer: CustomUser | None,
     dep: Deposit,
-    existing_comment: Comment | None,
+    has_consecutive_block: bool,
     restriction: CommentUserRestriction | None,
 ):
     if not _is_full_comment_user(viewer):
@@ -583,19 +593,6 @@ def _build_comment_viewer_state(
             "ends_at": restriction.ends_at.astimezone(dt_timezone.utc).isoformat() if restriction.ends_at else None,
         }
 
-    if existing_comment:
-        notice = None
-        if existing_comment.status == Comment.STATUS_QUARANTINED:
-            notice = "Votre commentaire est en cours de vérification."
-        return {
-            "can_post": False,
-            "has_spent_right": True,
-            "status": existing_comment.status,
-            "comment_id": existing_comment.id,
-            "notice": notice,
-            "restriction": restriction_payload,
-        }
-
     if restriction:
         return {
             "can_post": False,
@@ -607,16 +604,18 @@ def _build_comment_viewer_state(
         }
 
     return {
-        "can_post": True,
+        "can_post": not has_consecutive_block,
         "has_spent_right": False,
         "status": None,
         "comment_id": None,
-        "notice": None,
+        "notice": "Tu ne peux pas envoyer deux réponses d'affilé" if has_consecutive_block else None,
         "restriction": restriction_payload,
     }
 
 
-def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer: CustomUser | None = None):
+def _build_comments_context_for_deposits(
+    deposits: Iterable[Deposit], *, viewer: CustomUser | None = None, include_items: bool = True
+):
     deps = list(deposits or [])
     if not deps:
         return {}
@@ -627,21 +626,28 @@ def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer:
 
     viewer_id = getattr(viewer, "id", None) if _is_full_comment_user(viewer) else None
     comments_by_dep = {dep_id: [] for dep_id in dep_ids}
-    viewer_comments = {}
+    published_counts_by_dep = {dep_id: 0 for dep_id in dep_ids}
+    last_published_user_by_dep = {}
 
-    comments_qs = Comment.objects.filter(deposit_id__in=dep_ids).select_related("user").order_by("created_at", "id")
+    comments_qs = (
+        Comment.objects.filter(deposit_id__in=dep_ids)
+        .select_related("user", "reply_deposit", "reply_deposit__song", "reply_deposit__user")
+        .order_by("created_at", "id")
+    )
     if viewer_id:
-        comments_qs = comments_qs.filter(Q(status=Comment.STATUS_PUBLISHED) | Q(user_id=viewer_id))
+        comments_qs = comments_qs.filter(status=Comment.STATUS_PUBLISHED)
     else:
         comments_qs = comments_qs.filter(status=Comment.STATUS_PUBLISHED)
 
     for comment in comments_qs:
         if comment.status == Comment.STATUS_PUBLISHED:
-            comments_by_dep.setdefault(comment.deposit_id, []).append(
-                _build_comment_item_from_instance(comment, viewer_id=viewer_id)
-            )
-        if viewer_id and comment.user_id == viewer_id and comment.deposit_id not in viewer_comments:
-            viewer_comments[comment.deposit_id] = comment
+            dep_id = comment.deposit_id
+            published_counts_by_dep[dep_id] = int(published_counts_by_dep.get(dep_id, 0)) + 1
+            last_published_user_by_dep[dep_id] = comment.user_id
+            if include_items:
+                comments_by_dep.setdefault(dep_id, []).append(
+                    _build_comment_item_from_instance(comment, viewer_id=viewer_id)
+                )
 
     client_id_by_dep_id = {}
     missing_dep_ids = []
@@ -670,13 +676,14 @@ def _build_comments_context_for_deposits(deposits: Iterable[Deposit], *, viewer:
     payload = {}
     for dep in deps:
         restriction = restriction_by_client.get(client_id_by_dep_id.get(dep.id))
-        existing_comment = viewer_comments.get(dep.id)
+        has_consecutive_block = bool(viewer_id and last_published_user_by_dep.get(dep.id) == viewer_id)
         payload[dep.id] = {
             "items": comments_by_dep.get(dep.id, []),
+            "count": int(published_counts_by_dep.get(dep.id, 0)),
             "viewer_state": _build_comment_viewer_state(
                 viewer=viewer,
                 dep=dep,
-                existing_comment=existing_comment,
+                has_consecutive_block=has_consecutive_block,
                 restriction=restriction,
             ),
         }
@@ -1291,7 +1298,7 @@ def _build_deposit_from_instance(
     rx = _build_reactions_from_instance(dep, current_user=current_user)
     payload["reactions"] = rx["detail"]
     payload["my_reaction"] = rx["mine"]
-    payload["comments"] = comments_context or {"items": [], "viewer_state": {}}
+    payload["comments"] = comments_context or {"items": [], "count": 0, "viewer_state": {}}
 
     return payload
 
@@ -1361,7 +1368,7 @@ def _build_deposits_payload(
 
         revealed_ids = own_dep_ids | discovered_ids
 
-    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer)
+    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer, include_items=False)
 
     # ------- Construction des payloads à partir des instances -------
     out: list[dict[str, Any]] = []
@@ -1439,7 +1446,7 @@ def _find_recent_duplicate_deposit(
         .order_by("-deposited_at", "-id")
     )
 
-    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED, Deposit.DEPOSIT_TYPE_COMMENT):
         qs = qs.filter(box=box)
     else:
         qs = qs.filter(box__isnull=True)
@@ -1508,7 +1515,10 @@ def create_song_deposit(
         except Exception:
             pass
 
-    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) and box is None:
+    if (
+        deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED, Deposit.DEPOSIT_TYPE_COMMENT)
+        and box is None
+    ):
         raise ValueError("Boîte introuvable")
 
     recent_duplicate = _find_recent_duplicate_deposit(
@@ -1521,13 +1531,15 @@ def create_song_deposit(
     if recent_duplicate is not None:
         return recent_duplicate, song, False
 
-    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED):
+    if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED, Deposit.DEPOSIT_TYPE_COMMENT):
         Song.objects.filter(pk=song.pk).update(n_deposits=int(song.n_deposits or 0) + 1)
         song.n_deposits = int(song.n_deposits or 0) + 1
 
     deposit = Deposit.objects.create(
         song=song,
-        box=box if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED) else None,
+        box=box
+        if deposit_type in (Deposit.DEPOSIT_TYPE_BOX, Deposit.DEPOSIT_TYPE_PINNED, Deposit.DEPOSIT_TYPE_COMMENT)
+        else None,
         user=user,
         deposit_type=deposit_type,
         pin_duration_minutes=pin_duration_minutes,

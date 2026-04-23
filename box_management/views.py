@@ -10,6 +10,7 @@ from .api.views.comments import (
     CommentCreateView,
     CommentDetailView,
     CommentReportView,
+    DepositRepliesView,
     ReactionView,
 )
 from .api.views.core import (
@@ -71,6 +72,7 @@ __all__ = [
     "CommentCreateView",
     "CommentDetailView",
     "CommentReportView",
+    "DepositRepliesView",
     "EconomyConfigView",
     "EmojiCatalogView",
     "GetBox",
