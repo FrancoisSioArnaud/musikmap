@@ -27,7 +27,7 @@ export default function LiveSearch() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user, setUser } = useContext(UserContext) || {};
-  const { getBoxRuntime, saveDiscoverSnapshot } = useContext(FlowboxSessionContext);
+  const { getBoxRuntime, saveDiscoverSnapshot, clearBoxSession } = useContext(FlowboxSessionContext);
 
   const runtime = getBoxRuntime(boxSlug);
   const incitationText = (runtime?.box?.searchIncitationText || "").trim();
@@ -101,6 +101,11 @@ export default function LiveSearch() {
 
         const data = (await response.json().catch(() => null)) || {};
         if (!response.ok) {
+          if (response.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
+            clearBoxSession(boxSlug, { markExpired: true });
+            navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
+            return;
+          }
           throw new Error(data?.detail || "Erreur pendant le dépôt");
         }
 
@@ -154,7 +159,7 @@ export default function LiveSearch() {
         goOnboardingWithError(error?.message || "Erreur pendant le dépôt");
       }
     },
-    [boxSlug, depositFlowState.status, goOnboardingWithError, saveDiscoverSnapshot, setUser]
+    [boxSlug, clearBoxSession, depositFlowState.status, goOnboardingWithError, navigate, saveDiscoverSnapshot, setUser]
   );
 
   const handleDepositVisualComplete = useCallback(

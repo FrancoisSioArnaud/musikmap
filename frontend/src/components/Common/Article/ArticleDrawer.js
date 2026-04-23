@@ -4,11 +4,15 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { FlowboxSessionContext } from "../../Flowbox/runtime/FlowboxSessionContext";
 import MarkdownContent from "../../Utils/MarkdownContent";
 
 export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
+  const navigate = useNavigate();
+  const { clearBoxSession } = useContext(FlowboxSessionContext);
   const previewText = typeof article?.short_text === "string" ? article.short_text : "";
   const [fullText, setFullText] = useState(previewText);
   const [loadingFullText, setLoadingFullText] = useState(false);
@@ -40,6 +44,11 @@ export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
+          if (res.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
+            clearBoxSession(boxSlug, { markExpired: true });
+            navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
+            return;
+          }
           throw new Error(data?.detail || "Impossible de charger l’article.");
         }
 
@@ -60,7 +69,7 @@ export default function ArticleDrawer({ article, open, onClose, boxSlug }) {
     return () => {
       cancelled = true;
     };
-  }, [article?.id, boxSlug, open, previewText]);
+  }, [article?.id, boxSlug, clearBoxSession, navigate, open, previewText]);
 
   return (
     <Drawer

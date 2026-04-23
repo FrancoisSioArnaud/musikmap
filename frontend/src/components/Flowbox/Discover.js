@@ -35,7 +35,7 @@ export default function Discover() {
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
-  const { getDiscoverSnapshot } = useContext(FlowboxSessionContext);
+  const { getDiscoverSnapshot, clearBoxSession } = useContext(FlowboxSessionContext);
 
   const [boxContent, setBoxContent] = useState(null);
   const [openAchievements, setOpenAchievements] = useState(false);
@@ -68,6 +68,11 @@ export default function Discover() {
         const data = await res.json().catch(() => []);
 
         if (!res.ok) {
+          if (res.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
+            clearBoxSession(boxSlug, { markExpired: true });
+            navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
+            return;
+          }
           throw new Error(data?.detail || "Impossible de charger les articles.");
         }
         if (cancelled) {return;}
@@ -83,7 +88,7 @@ export default function Discover() {
     return () => {
       cancelled = true;
     };
-  }, [boxSlug]);
+  }, [boxSlug, clearBoxSession, navigate]);
 
   useEffect(() => {
     const shouldOpenAchievements = matchesDrawerSearch(
