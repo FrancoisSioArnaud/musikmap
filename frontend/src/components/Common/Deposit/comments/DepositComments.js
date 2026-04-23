@@ -1,7 +1,6 @@
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -11,12 +10,12 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { getCookie } from "../../../Security/TokensUtils";
 import { formatRelativeTime } from "../../../Utils/time";
 import ConfirmActionDialog from "../../ConfirmActionDialog";
 import SearchPanel from "../../Search/SearchPanel";
+import UserInline from "../../UserInline";
 
 const EMPTY_CONTEXT = { items: [], count: 0, viewer_state: {} };
 
@@ -40,8 +39,6 @@ export default function DepositComments({
   boxSx,
   DepositComponent,
 }) {
-  const navigate = useNavigate();
-
   const [context, setContext] = useState(comments || EMPTY_CONTEXT);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -233,35 +230,18 @@ export default function DepositComments({
           ? items.map((comment) => {
             const commentUser = comment?.user || {};
             const hasSongReply = Boolean(comment?.reply_deposit);
-            const canNavigate = Boolean(commentUser?.username && !commentUser?.is_guest);
-
             return (
               <Box key={comment.id} sx={{ mb: 1.5 }}>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                  <Avatar
-                    src={commentUser?.profile_picture_url || ""}
-                    alt={commentUser?.display_name || commentUser?.username || "user"}
-                    sx={{ width: 28, height: 28 }}
-                  />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="subtitle2" component="div">
-                      <Box
-                        component="span"
-                        sx={{
-                          cursor: canNavigate ? "pointer" : "default",
-                          textDecoration: canNavigate ? "underline" : "none",
-                        }}
-                        onClick={() => {
-                          if (!canNavigate) {return;}
-                          navigate(`/profile/${commentUser.username}`);
-                        }}
-                      >
-                        {commentUser?.display_name || commentUser?.username || "anonyme"}
+                    <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, gap: 1 }}>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <UserInline user={commentUser} avatarSize={28} />
                       </Box>
-                      <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.7 }}>
+                      <Typography component="span" variant="caption" sx={{ opacity: 0.7, whiteSpace: "nowrap", flex: "0 0 auto" }}>
                         {comment?.created_at ? formatRelativeTime(comment.created_at) : ""}
                       </Typography>
-                    </Typography>
+                    </Box>
 
                     {comment?.text ? (
                       <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>

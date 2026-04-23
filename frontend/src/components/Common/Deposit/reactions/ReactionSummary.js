@@ -1,6 +1,4 @@
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
@@ -8,6 +6,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getCookie } from "../../../Security/TokensUtils";
+import UserInline from "../../UserInline";
 
 function normalizeReactionUser(rawUser = {}) {
   const isGuest = Boolean(rawUser?.is_guest);
@@ -105,32 +104,9 @@ export default function ReactionSummary({
   const renderReactionRow = (reaction, index) => {
     const normalized = normalizeReactionUser(reaction?.user || {});
     const isMine = Boolean(viewerId && normalized.id === viewerId);
-    const canNavigate = !isMine && !normalized.isGuest && Boolean(normalized.username);
-
-    const handleClick = () => {
-      if (isMine) {
-        handleDeleteOwnReaction();
-        return;
-      }
-
-      if (!canNavigate) {return;}
-
-      onClose?.({ replace: true });
-      navigate("/profile/" + normalized.username);
-    };
-
     return (
       <Box
         key={`${reaction?.emoji || "emoji"}-${normalized.id || normalized.username || index}`}
-        onClick={handleClick}
-        role={isMine || canNavigate ? "button" : undefined}
-        tabIndex={isMine || canNavigate ? 0 : -1}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleClick();
-          }
-        }}
         className={normalized?.username ? "hasUsername reaction" : "reaction"}
         sx={{
           py: 1.25,
@@ -144,25 +120,21 @@ export default function ReactionSummary({
           {reaction?.emoji}
         </Typography>
 
-        <Box className="avatarbox">
-          <Avatar
-            src={normalized?.profile_picture_url || undefined}
-            alt={normalized?.displayName || "anonyme"}
-            className="avatar"
+        <Box className="texts" sx={{ minWidth: 0, flex: 1 }}>
+          <UserInline
+            user={{
+              username: normalized?.username,
+              display_name: normalized?.displayName,
+              profile_picture_url: normalized?.profile_picture_url,
+              is_guest: normalized?.isGuest,
+            }}
+            subtitle={isMine ? "tape ici pour supprimer ta réaction" : ""}
+            onClick={isMine ? handleDeleteOwnReaction : undefined}
+            onNavigateProfile={(username) => {
+              onClose?.({ replace: true });
+              navigate(`/profile/${username}`);
+            }}
           />
-        </Box>
-
-        <Box className="texts">
-          <Typography component="span" className="username" variant="subtitle1">
-            {normalized?.displayName || "anonyme"}
-            {canNavigate && <ArrowForwardIosIcon className="icon" />}
-          </Typography>
-
-          {isMine && (
-            <Typography variant="body2" className="click_delete">
-              tape ici pour supprimer ta réaction
-            </Typography>
-          )}
         </Box>
       </Box>
     );
