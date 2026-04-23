@@ -34,6 +34,49 @@ Additional context lives in:
 - Keep request/response handling separate from business rules and data access whenever the local directory architecture supports it.
 - Avoid mixing transport concerns, business decisions, database querying, and response shaping in the same function when a local structure exists to separate them.
 
+
+## API error contract
+- JSON API errors must use the shared project error contract.
+- The standard error payload shape is: `status`, `code`, `title`, `detail`.
+- `code` is the stable application/API error code consumed by the frontend; it does not replace the HTTP status code.
+- The HTTP status code must remain aligned with the response status.
+- Do not return ad-hoc error payloads such as `{ error: ... }`, `{ message: ... }`, or plain text when the endpoint follows the app JSON contract.
+- `detail` must stay targeted and useful. Populate it when it brings real value for user display, debugging, or differentiation between two business errors.
+- Do not make `detail` verbose by default when `title` and `code` already communicate the error sufficiently.
+- Frontend behavior must not depend on exact `detail` string matching.
+
+## Frontend dialogs and confirmations
+- Any destructive irreversible action must be protected by a confirmation dialog.
+- In dialogs with a primary action, the right-most button is always the button that continues or confirms the current action.
+- The secondary cancel / close / back button must stay on the left.
+- Keep this button order consistent across the application.
+- Prefer explicit primary button labels such as `Supprimer`, `Déconnecter`, `Retirer`, or `Confirmer` instead of generic labels.
+
+## Frontend error display
+- Never use `window.alert`, `window.confirm`, or `window.prompt`.
+- Use MUI components for all user-facing confirmations and error displays.
+- Use a MUI `Dialog` for:
+  - destructive irreversible actions,
+  - explicit confirmations,
+  - blocking errors.
+- Use an inline MUI `Alert` for:
+  - non-blocking errors,
+  - local loading failures,
+  - contextual messages inside an already visible area.
+- A dialog may contain a MUI `Alert` when that improves readability.
+
+## Search UX
+- This rule applies specifically to song search used to publish / deposit a song.
+- Any new song search UX for publishing / depositing must use `frontend/src/components/Common/Search/SearchPanel.js`.
+- `SearchPanel` for song publishing / depositing must only be rendered in:
+  - a dedicated page,
+  - or a fullscreen MUI `Drawer` sliding in from the right.
+- Do not create a parallel song publishing / depositing search component without an explicit reason.
+
+## Frontend storage and navigation
+- Do not access `localStorage` directly from components when an existing project wrapper covers the need.
+- Do not use `location.reload()`; prefer state updates, controlled data refresh, or React Router navigation.
+
 ## SCSS policy
 - Do not modify SCSS, CSS, theme styles, or class names unless the user explicitly authorizes it.
 - If SCSS changes seem required to complete the task, stop and ask for authorization before touching any style file.

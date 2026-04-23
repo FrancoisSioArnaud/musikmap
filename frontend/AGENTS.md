@@ -12,6 +12,38 @@ Frontend is React in JavaScript, with MUI, React Router, and existing storage/ne
 - Preserve current routing, storage keys, and payload shapes unless the task explicitly changes them.
 - Do not replace current patterns with TypeScript, new state libraries, or new data layers.
 
+
+## Error display and confirmations
+- Never use `window.alert`, `window.confirm`, or `window.prompt`.
+- Use MUI components for all user-facing confirmations and error displays.
+- Any destructive irreversible action must be protected by a confirmation dialog.
+- In dialogs with a primary action, the right-most button is always the button that continues or confirms the current action.
+- The secondary cancel / close / back button must stay on the left.
+- Keep this button order consistent across the application.
+- Use a MUI `Dialog` for:
+  - destructive irreversible actions,
+  - explicit confirmations,
+  - blocking errors.
+- Use an inline MUI `Alert` for:
+  - non-blocking errors,
+  - local loading failures,
+  - contextual messages inside an already visible area.
+- A dialog may contain a MUI `Alert` when that improves readability.
+- Prefer explicit primary button labels such as `Supprimer`, `Déconnecter`, `Retirer`, or `Confirmer` instead of generic labels.
+
+## Song publishing / depositing search UX
+- This rule applies only to song search used to publish / deposit a song.
+- Any new song search UX for publishing / depositing must use `frontend/src/components/Common/Search/SearchPanel.js`.
+- `SearchPanel` for song publishing / depositing must only be rendered in:
+  - a dedicated page,
+  - or a fullscreen MUI `Drawer` sliding in from the right.
+- Do not create a parallel song publishing / depositing search component without an explicit reason.
+
+## API error handling
+- Keep frontend behavior tied to stable API fields such as `code`, not to exact `detail` string matches.
+- Use `detail` when it brings real display value to the user.
+- Do not introduce silent fallback behavior that hides API failures.
+
 ## Storage rules
 - Do not use `localStorage` directly if an existing wrapper already covers the need.
 - Prefer existing wrappers such as:

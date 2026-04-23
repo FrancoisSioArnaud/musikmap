@@ -21,6 +21,21 @@ Use these responsibilities consistently:
 - `builders/` or response serializers: response payload shaping.
 - `utils/`: generic pure helpers only, with no hidden business rules.
 
+
+## API error contract
+- API views must return JSON errors through the shared project error mechanism.
+- The standard error payload shape is: `status`, `code`, `title`, `detail`.
+- `code` is the stable application/API error code consumed by the frontend; it does not replace the HTTP status code.
+- The HTTP status code must remain aligned with the nature of the error.
+- `detail` must be populated when it adds real differentiation, display value, or debugging value.
+- Do not make frontend logic depend on exact `detail` string matching.
+- Do not introduce local variants of the shared error contract without an explicit project-wide reason.
+
+## API views and business errors
+- Views should map business failures to the shared HTTP/JSON error contract.
+- Do not return ad-hoc error payloads from views when the endpoint follows the app JSON contract.
+- Keep business failure mapping explicit and stable so frontend behavior can rely on `code` rather than message text.
+
 ## Views policy
 - Views must stay thin.
 - Do not place business rules, points logic, permission rules, complex ORM queries, or outbound HTTP calls directly in views when an existing service/selector/integration layer can own them.
