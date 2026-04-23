@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "deezer.apps.DeezerConfig",
     "box_management.apps.BoxManagementConfig",
     "users",
+    "private_messages.apps.PrivateMessagesConfig",
 ]
 
 MIDDLEWARE = [

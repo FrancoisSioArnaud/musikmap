@@ -82,6 +82,7 @@ export default function UserProfilePage() {
     status: "loading",
     user: null,
   });
+  const [chatState, setChatState] = useState({ state: "", thread_id: null, allow_private_message_requests: true });
   const headerAbortRef = useRef(null);
 
   useEffect(() => {
@@ -106,6 +107,7 @@ export default function UserProfilePage() {
       setHeader({
         status: "ready",
         user: {
+          id: user?.id || null,
           username: user?.is_guest ? null : user?.username || null,
           display_name: user?.display_name || user?.username || "Invité",
           profile_picture_url: user?.profile_picture_url || null,
@@ -144,6 +146,7 @@ export default function UserProfilePage() {
       setHeader({
         status: "ready",
         user: {
+          id: data?.id || null,
           username: data?.username || routeUsername,
           display_name: data?.display_name || data?.username || routeUsername,
           profile_picture_url: data?.profile_picture_url || null,
@@ -171,6 +174,42 @@ export default function UserProfilePage() {
     user?.total_deposits,
     user?.favorite_deposit?.public_key,
   ]);
+
+  useEffect(() => {
+    if (!user?.id || isOwner || !routeUsername) {return;}
+    let ignore = false;
+    fetch(`/messages/status/${encodeURIComponent(routeUsername)}`, { credentials: "same-origin" })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (ignore) {return;}
+        if (!ok) {
+          setChatState({ state: "", thread_id: null, allow_private_message_requests: true });
+          return;
+        }
+        setChatState({
+          state: data?.state || "",
+          thread_id: data?.thread_id || null,
+          allow_private_message_requests: Boolean(data?.allow_private_message_requests),
+        });
+      })
+      .catch(() => {
+        if (!ignore) {
+          setChatState({ state: "", thread_id: null, allow_private_message_requests: true });
+        }
+      });
+    return () => { ignore = true; };
+  }, [user?.id, isOwner, routeUsername]);
+
+  const openChatFromProfile = () => {
+    if (chatState?.thread_id) {
+      navigate(`/messages?thread=${chatState.thread_id}`);
+      return;
+    }
+    const targetUserId = header?.user?.id || null;
+    if (targetUserId) {
+      navigate(`/messages?targetUserId=${targetUserId}`);
+    }
+  };
 
   const handleGuestContinue = () => {
     const nextUsername = guestUsernameDraft.trim();
@@ -312,6 +351,21 @@ export default function UserProfilePage() {
             )}
           </Box>
         )}
+
+      {!isOwner && user?.id ? (
+        <Button
+          variant="outlined"
+          disabled={!chatState?.allow_private_message_requests}
+          onClick={openChatFromProfile}
+          sx={{ mt: 1 }}
+        >
+          {chatState?.state === "accepted"
+            ? "Ouvrir le chat"
+            : chatState?.state === "pending_sent"
+              ? "Demande envoyée"
+              : "Envoyer une chanson en privé"}
+        </Button>
+      ) : null}
 
       {userStatusName && (
         <Box className="status">

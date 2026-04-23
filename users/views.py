@@ -380,12 +380,14 @@ class GetUserInfo(APIView):
         viewer = get_current_app_user(request)
         total_deposits = Deposit.objects.filter(user=user).exclude(deposit_type="favorite").count()
         data = {
+            "id": user.id,
             "username": user.username,
             "display_name": user.display_name,
             "profile_picture_url": profile_picture_url,
             "total_deposits": total_deposits,
             "status": get_user_status(user),
             "favorite_deposit": build_favorite_deposit_payload(user, viewer=viewer),
+            "allow_private_message_requests": bool(getattr(user, "allow_private_message_requests", True)),
         }
         return Response(data, status=status.HTTP_200_OK)
 

@@ -38,6 +38,7 @@ import FlowboxSessionProvider from "./Flowbox/runtime/FlowboxSessionProvider";
 import InBoxSessionGate from "./Flowbox/runtime/InBoxSessionGate";
 import HomePage from "./HomePage";
 import LinkDepositPage from "./LinkDepositPage";
+import MessagesPage from "./Messages/MessagesPage";
 import { UserContext } from "./UserContext";
 import UserProfileEdit from "./UserProfile/UserProfileEdit";
 import UserSettings from "./UserProfile/UserSettings";
@@ -172,6 +173,7 @@ export default function App() {
                 <Route element={<LayoutWithHeader />}>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/profile/settings" element={<UserSettings />} />
+                  <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/profile/edit" element={<UserProfileEdit />} />
                   <Route path="/profile" element={<UserProfilePage />} />
                   <Route path="/profile/:username" element={<UserProfilePage />} />
