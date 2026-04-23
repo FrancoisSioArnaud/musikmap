@@ -6,8 +6,10 @@ import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useState, useContext, useEffect } from "react";
@@ -45,11 +47,18 @@ export default function UserSettings() {
   const [providerErrors, setProviderErrors] = useState({});
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [disconnectSpotifyDialogOpen, setDisconnectSpotifyDialogOpen] = useState(false);
+  const [allowPrivateMessages, setAllowPrivateMessages] = useState(
+    Boolean(user?.allow_private_message_requests ?? true)
+  );
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   useEffect(() => {
     checkSpotifyAuthentication(setIsSpotifyAuthenticated);
   }, []);
+
+  useEffect(() => {
+    setAllowPrivateMessages(Boolean(user?.allow_private_message_requests ?? true));
+  }, [user?.allow_private_message_requests]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -140,6 +149,26 @@ export default function UserSettings() {
     sendAndProcessPasswordChange(data);
   };
 
+  const handlePrivateMessagesToggle = async (event) => {
+    const next = Boolean(event.target.checked);
+    setAllowPrivateMessages(next);
+    try {
+      const response = await fetch("/messages/settings", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify({ allow_private_message_requests: next }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.detail || "Impossible de mettre à jour ce réglage.");
+      }
+      setUser((prev) => ({ ...prev, allow_private_message_requests: next }));
+    } catch (e) {
+      setAllowPrivateMessages((prev) => !prev);
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       <Stack spacing={3}>
@@ -158,6 +187,21 @@ export default function UserSettings() {
                 </Grid>
               ) : null}
             </Grid>
+          </CardContent>
+        </Card>
+
+        <Card variant="outlined">
+          <CardHeader
+            titleTypographyProps={{ variant: "h6" }}
+            title="Messagerie privée"
+            subheader="Autoriser les autres utilisateurs à t’envoyer une demande privée."
+          />
+          <Divider />
+          <CardContent>
+            <FormControlLabel
+              control={<Switch checked={allowPrivateMessages} onChange={handlePrivateMessagesToggle} />}
+              label={allowPrivateMessages ? "Demandes privées autorisées" : "Demandes privées désactivées"}
+            />
           </CardContent>
         </Card>
 

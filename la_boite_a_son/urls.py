@@ -17,6 +17,7 @@ urlpatterns = [
     path("auth/return", TemplateView.as_view(template_name="index.html")),
     path("profile", TemplateView.as_view(template_name="index.html")),
     path("profile/<str:username>", TemplateView.as_view(template_name="index.html")),
+    path("messages", TemplateView.as_view(template_name="index.html")),
     path("library", TemplateView.as_view(template_name="index.html")),
     path("l/<str:link_slug>", TemplateView.as_view(template_name="index.html")),
     path("box/<str:boxName>", TemplateView.as_view(template_name="index.html")),
@@ -26,6 +27,7 @@ urlpatterns = [
     path("box-management/", include("box_management.urls")),
     path("deezer/", include("deezer.urls")),
     path("users/", include("users.urls")),
+    path("messages/", include("private_messages.urls")),
 ]
 
 if settings.DEBUG:

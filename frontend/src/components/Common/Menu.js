@@ -1,3 +1,4 @@
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import MusicNote from "@mui/icons-material/MusicNote";
 import PersonIcon from "@mui/icons-material/Person";
 import AppBar from "@mui/material/AppBar";
@@ -185,6 +186,17 @@ export default function MenuAppBar() {
                 </Typography>
                 <MusicNote />
               </Box>
+
+              <IconButton
+                size="large"
+                aria-label="messages"
+                color="inherit"
+                component={Link}
+                to="/messages"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <MailOutlineIcon />
+              </IconButton>
 
               <IconButton
                 size="large"

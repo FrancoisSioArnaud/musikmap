@@ -39,6 +39,7 @@ class CustomUser(AbstractUser):
     converted_at = models.DateTimeField(null=True, blank=True)
 
     last_platform = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    allow_private_message_requests = models.BooleanField(default=True)
 
     # -----------------------------
     # Client portal fields

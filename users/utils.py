@@ -192,6 +192,7 @@ def build_current_user_payload(user: CustomUser):
         "connected_providers": [
             provider_code for provider_code, payload in provider_connections.items() if payload.get("connected")
         ],
+        "allow_private_message_requests": bool(getattr(user, "allow_private_message_requests", True)),
     }
 
 
