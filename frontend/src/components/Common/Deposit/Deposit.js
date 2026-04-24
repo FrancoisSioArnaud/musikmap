@@ -59,6 +59,17 @@ function sleep(ms) {
   });
 }
 
+function blurActiveElement() {
+  if (typeof document === "undefined") {return;}
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
+function blurEventTarget(event) {
+  event?.currentTarget?.blur?.();
+}
+
 function shuffleArray(list) {
   const next = Array.isArray(list) ? [...list] : [];
 
@@ -303,7 +314,9 @@ export default function Deposit({
   const [isHoldingReveal, setIsHoldingReveal] = useState(false);
   const [isRevealLoading, setIsRevealLoading] = useState(false);
 
-  const openActionErrorDialog = useCallback((title, message) => {
+  const openActionErrorDialog = useCallback((title, message, event = null) => {
+    blurEventTarget(event);
+    blurActiveElement();
     setActionErrorDialog({ open: true, title, message });
   }, []);
 
@@ -675,7 +688,7 @@ export default function Deposit({
   const toggleCommentsInline = useCallback((event) => {
     event?.stopPropagation?.();
     if (!isRevealed) {
-      openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses");
+      openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses", event);
       return;
     }
     setCommentsOpen((prev) => !prev);
@@ -684,6 +697,8 @@ export default function Deposit({
   const openReactionSummaryDrawer = useCallback((event) => {
     event?.stopPropagation?.();
     if (!reactionsDrawerParamValue) {return;}
+    blurEventTarget(event);
+    blurActiveElement();
 
     openDrawerWithHistory({
       navigate,
@@ -719,6 +734,7 @@ export default function Deposit({
 
     if (commentAction) {
       if (isRevealed) {
+        blurActiveElement();
         setCommentsOpen(true);
       } else {
         openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses");
@@ -733,6 +749,7 @@ export default function Deposit({
     });
 
     if (reactionAction) {
+      blurActiveElement();
       setAddReactionOpen(true);
     }
   }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, isRevealed, openActionErrorDialog]);
@@ -749,6 +766,8 @@ export default function Deposit({
     }
 
     if (!viewer?.id) {
+      blurEventTarget(event);
+      blurActiveElement();
       saveAuthReturnContext({
         returnTo: buildRelativeLocation(location),
         authContext: "share_song",
@@ -854,10 +873,14 @@ export default function Deposit({
             onClick={(event) => {
               event.stopPropagation();
               if (!isRevealed) {
+                blurEventTarget(event);
+                blurActiveElement();
                 setReactionRevealPromptOpen(true);
                 return;
               }
               if (!viewer?.id) {
+                blurEventTarget(event);
+                blurActiveElement();
                 saveAuthReturnContext({
                   returnTo: buildRelativeLocation(location),
                   authContext: "react",
@@ -877,6 +900,8 @@ export default function Deposit({
                 });
                 return;
               }
+              blurEventTarget(event);
+              blurActiveElement();
               setAddReactionOpen(true);
             }}
           >
@@ -1089,6 +1114,7 @@ export default function Deposit({
           const actionType = authModalConfig?.action?.type;
           setAuthModalConfig(null);
           if (actionType === "reactions") {
+            blurActiveElement();
             setAddReactionOpen(true);
           }
         }}
