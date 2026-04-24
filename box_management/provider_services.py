@@ -8,6 +8,7 @@ from typing import Any
 import requests
 from django.db import transaction
 from django.utils import timezone
+from spotipy.exceptions import SpotifyException
 
 from spotify.spotipy_client import sp
 
@@ -15,6 +16,17 @@ from .models import Song, SongProviderLink
 
 SUPPORTED_PROVIDER_CODES = ("spotify", "deezer")
 NEGATIVE_CACHE_HOURS = 4
+
+
+class ProviderSearchError(Exception):
+    def __init__(self, message: str, *, provider_code: str, retry_after: int | None = None):
+        super().__init__(message)
+        self.provider_code = provider_code
+        self.retry_after = retry_after
+
+
+class ProviderRateLimitError(ProviderSearchError):
+    pass
 
 
 def normalize_provider_code(value: Any) -> str:
@@ -182,22 +194,49 @@ def normalize_deezer_track(item: dict[str, Any], *, include_isrc: bool = True) -
     )
 
 
-def backend_search_tracks(provider_code: str, search_query: str) -> list[dict[str, Any]]:
+def backend_search_tracks_strict(provider_code: str, search_query: str) -> list[dict[str, Any]]:
     provider = normalize_provider_code(provider_code)
     query = _safe_text(search_query)
     if not provider or not query:
         return []
-    try:
-        if provider == "spotify":
+    if provider == "spotify":
+        try:
             results = sp.search(q=query, type="track", limit=15)
             return [normalize_spotify_track(item) for item in ((results.get("tracks") or {}).get("items") or [])]
+        except SpotifyException as exc:
+            retry_after = None
+            headers = getattr(exc, "headers", None) or {}
+            raw_retry_after = headers.get("Retry-After") or headers.get("retry-after")
+            if raw_retry_after is not None:
+                try:
+                    retry_after = max(1, int(raw_retry_after))
+                except (TypeError, ValueError):
+                    retry_after = 1
+            if getattr(exc, "http_status", None) == 429:
+                raise ProviderRateLimitError(
+                    "Spotify rate limit reached.",
+                    provider_code="spotify",
+                    retry_after=retry_after or 1,
+                ) from exc
+            raise ProviderSearchError("Spotify search failed.", provider_code="spotify") from exc
+        except Exception as exc:
+            raise ProviderSearchError("Spotify search failed.", provider_code="spotify") from exc
+    try:
         response = requests.get(
             "https://api.deezer.com/search/track",
             params={"q": query, "limit": 15, "output": "json"},
             timeout=10,
         )
+        response.raise_for_status()
         data = response.json() if response.ok else {}
         return [normalize_deezer_track(item, include_isrc=False) for item in (data.get("data") or [])]
+    except Exception as exc:
+        raise ProviderSearchError("Provider search failed.", provider_code=provider) from exc
+
+
+def backend_search_tracks(provider_code: str, search_query: str) -> list[dict[str, Any]]:
+    try:
+        return backend_search_tracks_strict(provider_code, search_query)
     except Exception:
         return []
 
