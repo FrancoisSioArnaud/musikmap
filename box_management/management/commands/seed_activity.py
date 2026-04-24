@@ -3,6 +3,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -147,6 +148,17 @@ class Command(BaseCommand):
         ctx.users_created += 1
         self.log_ok(ctx, "create_user", f"{username} créé avec 5000 points")
         return user
+
+
+    def build_api_client(self) -> APIClient:
+        client = APIClient()
+
+        allowed_hosts = [host.strip() for host in settings.ALLOWED_HOSTS if host and host.strip()]
+        preferred_host = next((host for host in allowed_hosts if host != "*"), None)
+        if preferred_host:
+            client.defaults["HTTP_HOST"] = preferred_host
+
+        return client
 
     def login_user(self, ctx: SeedContext, client: APIClient, user: User) -> bool:
         ok, _data, _status = self.api_request(
@@ -510,7 +522,7 @@ class Command(BaseCommand):
         clients_by_user: list[tuple[User, APIClient]] = []
         for idx in range(users_count):
             user = self.create_user(ctx, idx)
-            client = APIClient()
+            client = self.build_api_client()
             if not self.login_user(ctx, client, user):
                 self.log_error(ctx, "login_user", f"échec login pour {user.username}")
                 if not ctx.dry_run:

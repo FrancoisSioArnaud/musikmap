@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from box_management.models import Box, Comment, Deposit, DiscoveredSong, Emoji, Reaction, SongProviderLink
 from box_management.provider_services import ProviderRateLimitError
@@ -17,6 +17,15 @@ class SeedActivityCommandTests(TestCase):
         Box.objects.create(name="Hôpital Bellier", url="hopital-bellier")
         for char in ["🔥", "🎶", "😎"]:
             Emoji.objects.create(char=char, active=True, cost=0)
+
+
+    @override_settings(ALLOWED_HOSTS=["seed.local"])
+    def test_build_api_client_uses_allowed_host(self):
+        from box_management.management.commands.seed_activity import Command
+
+        client = Command().build_api_client()
+
+        self.assertEqual(client.defaults.get("HTTP_HOST"), "seed.local")
 
     def test_command_creates_activity_for_default_boxes(self):
         out = StringIO()
