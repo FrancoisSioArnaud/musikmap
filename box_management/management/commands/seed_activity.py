@@ -22,6 +22,11 @@ class Command(BaseCommand):
         )
         parser.add_argument("--seed", type=int, default=None, help="Seed aléatoire pour un run reproductible.")
         parser.add_argument("--dry-run", action="store_true", help="Affiche la cible sans écrire en base.")
+        parser.add_argument(
+            "--errors",
+            action="store_true",
+            help="Affiche les erreurs détaillées (avec traceback) au lieu d'un message simplifié.",
+        )
 
     def handle(self, *args, **options):
         days = int(options["days"])
@@ -37,6 +42,8 @@ class Command(BaseCommand):
                 dry_run=bool(options.get("dry_run")),
             )
         except ValueError as exc:
+            if options.get("errors"):
+                raise
             raise CommandError(str(exc)) from exc
 
         if status == "dry_run":
