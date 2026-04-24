@@ -1,6 +1,6 @@
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from difflib import SequenceMatcher
 
@@ -173,6 +173,12 @@ class ActivitySeedSummary:
     comments: int = 0
     private_messages: int = 0
     warnings: int = 0
+    warning_messages: list[str] = field(default_factory=list)
+
+
+def _push_warning(warning_messages, message, *, max_messages=100):
+    if len(warning_messages) < max_messages:
+        warning_messages.append(message)
 
 
 def _pick_timestamp(rng, *, day_index, start_hour=8, end_hour=23):
@@ -280,6 +286,7 @@ def _ensure_emoji_pool(users_by_username):
 def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username, intensity_conf):
     created = []
     warnings = 0
+    warning_messages = []
     min_dep, max_dep = intensity_conf["deposits"]
     n_deposits = rng.randint(min_dep, max_dep)
 
@@ -300,20 +307,25 @@ def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username
             spotify_results = _search_spotify_track_with_retry(query)
         except ProviderRateLimitError:
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} rate-limit provider sur '{query}'.")
             continue
         except ProviderSearchError:
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} erreur provider sur '{query}'.")
             continue
 
         track = _pick_best_spotify_track(spotify_results, title=title, artist=artist)
         if not track:
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} aucun match fiable pour '{query}'.")
             continue
         if not int(track.get("duration") or 0):
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} track sans durée pour '{query}'.")
             continue
         if not (track.get("image_url") or track.get("image_url_small")):
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} track sans image pour '{query}'.")
             continue
 
         timestamp = _pick_timestamp(rng, day_index=day_index)
@@ -328,23 +340,25 @@ def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username
             )
         except ValueError:
             warnings += 1
+            _push_warning(warning_messages, f"[{box.url}] j-{day_index} dépôt refusé pour '{query}'.")
             continue
 
         if was_created:
             Deposit.objects.filter(pk=deposit.pk).update(deposited_at=timestamp)
         created.append(deposit)
 
-    return created, warnings
+    return created, warnings, warning_messages
 
 
 def _create_reveals(rng, *, box, day_deposits, users, day_index, intensity_conf):
     min_reveal, max_reveal = intensity_conf["reveals"]
     n_reveals = min(len(day_deposits), rng.randint(min_reveal, max_reveal))
     if n_reveals <= 0:
-        return 0, 0
+        return 0, 0, []
 
     created = 0
     warnings = 0
+    warning_messages = []
     for deposit in rng.sample(day_deposits, k=n_reveals):
         candidates = [user for user in users if user.id != deposit.user_id]
         if not candidates:
@@ -358,22 +372,27 @@ def _create_reveals(rng, *, box, day_deposits, users, day_index, intensity_conf)
         )
         if error:
             warnings += 1
+            _push_warning(
+                warning_messages,
+                f"[{box.url}] j-{day_index} reveal impossible pour dep={deposit.public_key}.",
+            )
             continue
         if result and DiscoveredSong.objects.filter(user=user, deposit=deposit).exists():
             reveal_time = _pick_timestamp(rng, day_index=day_index, start_hour=10, end_hour=23)
             DiscoveredSong.objects.filter(user=user, deposit=deposit).update(discovered_at=reveal_time)
             created += 1
-    return created, warnings
+    return created, warnings, warning_messages
 
 
 def _create_reactions(rng, *, box, day_deposits, users, emojis, day_index, intensity_conf):
     if not day_deposits or not emojis:
-        return 0, 0
+        return 0, 0, []
 
     min_rea, max_rea = intensity_conf["reactions"]
     n_reactions = rng.randint(min_rea, max_rea)
     created = 0
     warnings = 0
+    warning_messages = []
     for _ in range(n_reactions):
         deposit = rng.choice(day_deposits)
         reactors = [u for u in users if u.id != deposit.user_id]
@@ -393,27 +412,36 @@ def _create_reactions(rng, *, box, day_deposits, users, emojis, day_index, inten
             payload, error = add_or_remove_reaction(user=user, dep_public_key=deposit.public_key, emoji_id=emoji.id)
         if error:
             warnings += 1
+            _push_warning(
+                warning_messages,
+                f"[{box.url}] j-{day_index} réaction impossible pour dep={deposit.public_key}.",
+            )
             continue
         reaction = Reaction.objects.filter(user=user, deposit=deposit).first()
         if not reaction:
             warnings += 1
+            _push_warning(
+                warning_messages,
+                f"[{box.url}] j-{day_index} réaction absente après création dep={deposit.public_key}.",
+            )
             continue
         created_at = _pick_timestamp(rng, day_index=day_index, start_hour=9, end_hour=23)
         Reaction.objects.filter(pk=reaction.pk).update(created_at=created_at, updated_at=created_at)
         if payload is not None:
             created += 1
 
-    return created, warnings
+    return created, warnings, warning_messages
 
 
 def _create_comments(rng, *, box, day_deposits, users, day_index, intensity_conf):
     if not day_deposits:
-        return 0, 0
+        return 0, 0, []
 
     min_com, max_com = intensity_conf["comments"]
     n_comments = rng.randint(min_com, max_com)
     created = 0
     warnings = 0
+    warning_messages = []
 
     for _ in range(n_comments):
         deposit = rng.choice(day_deposits)
@@ -437,16 +465,24 @@ def _create_comments(rng, *, box, day_deposits, users, day_index, intensity_conf
         )
         if error:
             warnings += 1
+            _push_warning(
+                warning_messages,
+                f"[{box.url}] j-{day_index} commentaire refusé dep={deposit.public_key}.",
+            )
             continue
         comment = (result or {}).get("comment")
         if not comment:
             warnings += 1
+            _push_warning(
+                warning_messages,
+                f"[{box.url}] j-{day_index} commentaire non créé dep={deposit.public_key}.",
+            )
             continue
         created_at = _pick_timestamp(rng, day_index=day_index, start_hour=11, end_hour=23)
         Comment.objects.filter(pk=comment.pk).update(created_at=created_at, updated_at=created_at)
         created += 1
 
-    return created, warnings
+    return created, warnings, warning_messages
 
 
 def _sorted_pair(user_a, user_b):
@@ -457,11 +493,12 @@ def _create_private_messages(rng, *, users_by_username, day_index, intensity_con
     min_msg, max_msg = intensity_conf["messages"]
     n_threads = rng.randint(min_msg, max_msg)
     if n_threads <= 0:
-        return 0, 0
+        return 0, 0, []
 
     usernames = list(users_by_username.keys())
     created_messages = 0
     warnings = 0
+    warning_messages = []
 
     for _ in range(n_threads):
         initiator_username = rng.choice(usernames)
@@ -507,6 +544,10 @@ def _create_private_messages(rng, *, users_by_username, day_index, intensity_con
             if ok_reply:
                 if ChatMessage.objects.filter(thread=thread, sender=receiver, text=cleaned_reply).exists():
                     warnings += 1
+                    _push_warning(
+                        warning_messages,
+                        f"j-{day_index} réponse DM déjà présente thread={thread.id}.",
+                    )
                     continue
                 second = ChatMessage.objects.create(
                     thread=thread,
@@ -518,7 +559,7 @@ def _create_private_messages(rng, *, users_by_username, day_index, intensity_con
                 ChatMessage.objects.filter(pk=second.pk).update(created_at=second_at)
                 created_messages += 1
 
-    return created_messages, warnings
+    return created_messages, warnings, warning_messages
 
 
 def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry_run=False):
@@ -541,6 +582,11 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
         summaries = []
         for box in boxes:
             summary = ActivitySeedSummary(box_slug=box.url, created_users=created_users, warnings=emoji_warning)
+            if emoji_warning:
+                _push_warning(
+                    summary.warning_messages,
+                    f"[{box.url}] aucun emoji actif trouvé: réactions ignorées.",
+                )
 
             for user in users:
                 started = timezone.now() - timedelta(days=days)
@@ -553,7 +599,7 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
 
             touched_users = set()
             for day_index in range(days):
-                day_deposits, deposit_warnings = _create_deposits_for_day(
+                day_deposits, deposit_warnings, deposit_warning_messages = _create_deposits_for_day(
                     rng,
                     box=box,
                     day_index=day_index,
@@ -563,9 +609,10 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.deposits += len(day_deposits)
                 summary.warnings += deposit_warnings
+                summary.warning_messages.extend(deposit_warning_messages)
                 touched_users.update(dep.user_id for dep in day_deposits if dep.user_id)
 
-                reveals, reveal_warnings = _create_reveals(
+                reveals, reveal_warnings, reveal_warning_messages = _create_reveals(
                     rng,
                     box=box,
                     day_deposits=day_deposits,
@@ -575,7 +622,8 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.reveals += reveals
                 summary.warnings += reveal_warnings
-                reactions, reaction_warnings = _create_reactions(
+                summary.warning_messages.extend(reveal_warning_messages)
+                reactions, reaction_warnings, reaction_warning_messages = _create_reactions(
                     rng,
                     box=box,
                     day_deposits=day_deposits,
@@ -586,7 +634,8 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.reactions += reactions
                 summary.warnings += reaction_warnings
-                comments, comment_warnings = _create_comments(
+                summary.warning_messages.extend(reaction_warning_messages)
+                comments, comment_warnings, comment_warning_messages = _create_comments(
                     rng,
                     box=box,
                     day_deposits=day_deposits,
@@ -596,7 +645,8 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.comments += comments
                 summary.warnings += comment_warnings
-                private_messages, pm_warnings = _create_private_messages(
+                summary.warning_messages.extend(comment_warning_messages)
+                private_messages, pm_warnings, pm_warning_messages = _create_private_messages(
                     rng,
                     users_by_username=users_by_username,
                     day_index=day_index,
@@ -604,6 +654,7 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 )
                 summary.private_messages += private_messages
                 summary.warnings += pm_warnings
+                summary.warning_messages.extend(pm_warning_messages)
 
             summary.users_touched = len(touched_users)
             summaries.append(summary)

@@ -69,3 +69,7 @@ class Command(BaseCommand):
                     ]
                 )
             )
+            if options.get("errors") and summary.warning_messages:
+                self.stdout.write(self.style.WARNING(f"  warnings ({len(summary.warning_messages)}):"))
+                for warning in summary.warning_messages:
+                    self.stdout.write(self.style.WARNING(f"    - {warning}"))
