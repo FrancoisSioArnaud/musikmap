@@ -9,13 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Box, BoxSession, Comment, Deposit, DiscoveredSong, Emoji, EmojiRight, Reaction
-from box_management.provider_services import (
-    ProviderRateLimitError,
-    ProviderSearchError,
-    backend_search_tracks_strict,
-    get_or_create_song_from_track,
-    upsert_song_provider_link,
-)
+from box_management.provider_services import ProviderRateLimitError, ProviderSearchError, backend_search_tracks_strict
 from box_management.services.comments.create_comment import create_comment
 from box_management.services.comments.moderation_rules import _normalize_comment_text
 from box_management.services.deposits.song_creation import create_song_deposit
@@ -298,8 +292,12 @@ def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username
         persona = rng.choice(weighted_personas)
         user = users_by_username[persona["username"]]
 
+        existing_count = Deposit.objects.filter(box=box, user=user, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count()
+        songs = persona["songs"]
+        title, artist = songs[existing_count % len(songs)]
+        query = f"{title} {artist}"
         try:
-            track = _build_track_from_persona_song(rng, persona=persona, user=user, box=box)
+            spotify_results = _search_spotify_track_with_retry(query)
         except ProviderRateLimitError:
             warnings += 1
             continue
@@ -307,7 +305,14 @@ def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username
             warnings += 1
             continue
 
+        track = _pick_best_spotify_track(spotify_results, title=title, artist=artist)
         if not track:
+            warnings += 1
+            continue
+        if not int(track.get("duration") or 0):
+            warnings += 1
+            continue
+        if not (track.get("image_url") or track.get("image_url_small")):
             warnings += 1
             continue
 
@@ -330,22 +335,6 @@ def _create_deposits_for_day(rng, *, box, day_index, personas, users_by_username
         created.append(deposit)
 
     return created, warnings
-
-
-def _build_track_from_persona_song(rng, *, persona, user, box):
-    existing_count = Deposit.objects.filter(box=box, user=user, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count()
-    songs = persona["songs"]
-    title, artist = songs[existing_count % len(songs)]
-    query = f"{title} {artist}"
-    spotify_results = _search_spotify_track_with_retry(query)
-    track = _pick_best_spotify_track(spotify_results, title=title, artist=artist)
-    if not track:
-        return None
-    if not int(track.get("duration") or 0):
-        return None
-    if not (track.get("image_url") or track.get("image_url_small")):
-        return None
-    return track
 
 
 def _create_reveals(rng, *, box, day_deposits, users, day_index, intensity_conf):
@@ -438,21 +427,11 @@ def _create_comments(rng, *, box, day_deposits, users, personas_by_username, day
         if Comment.objects.filter(user=user, deposit=deposit, normalized_text=normalized_text).exists():
             continue
 
-        song_option = None
-        if rng.random() < 0.35:
-            persona = personas_by_username.get(user.username)
-            if persona:
-                try:
-                    song_option = _build_track_from_persona_song(rng, persona=persona, user=user, box=box)
-                except (ProviderRateLimitError, ProviderSearchError):
-                    warnings += 1
-                    song_option = None
-
         result, error = create_comment(
             user=user,
             dep_public_key=deposit.public_key,
             text_value=text,
-            song_option=song_option,
+            song_option=None,
             author_ip=None,
             author_user_agent=COMMENT_USER_AGENT,
         )
@@ -512,21 +491,6 @@ def _create_private_messages(rng, *, box, users_by_username, personas_by_usernam
         if ChatMessage.objects.filter(thread=thread, sender=initiator, text=cleaned).exists():
             continue
 
-        first_message_type = ChatMessage.TYPE_TEXT
-        first_song = None
-        if rng.random() < 0.5:
-            persona = personas_by_username.get(initiator.username)
-            if persona:
-                try:
-                    song_track = _build_track_from_persona_song(rng, persona=persona, user=initiator, box=box)
-                except (ProviderRateLimitError, ProviderSearchError):
-                    warnings += 1
-                    song_track = None
-                if song_track:
-                    first_song = get_or_create_song_from_track(song_track)
-                    upsert_song_provider_link(first_song, song_track)
-                    first_message_type = ChatMessage.TYPE_SONG
-
         first = ChatMessage.objects.create(
             thread=thread,
             sender=initiator,
@@ -545,21 +509,6 @@ def _create_private_messages(rng, *, box, users_by_username, personas_by_usernam
                 if ChatMessage.objects.filter(thread=thread, sender=receiver, text=cleaned_reply).exists():
                     warnings += 1
                     continue
-                second_message_type = ChatMessage.TYPE_TEXT
-                second_song = None
-                if rng.random() < 0.35:
-                    persona = personas_by_username.get(receiver.username)
-                    if persona:
-                        try:
-                            reply_track = _build_track_from_persona_song(rng, persona=persona, user=receiver, box=box)
-                        except (ProviderRateLimitError, ProviderSearchError):
-                            warnings += 1
-                            reply_track = None
-                        if reply_track:
-                            second_song = get_or_create_song_from_track(reply_track)
-                            upsert_song_provider_link(second_song, reply_track)
-                            second_message_type = ChatMessage.TYPE_SONG
-
                 second = ChatMessage.objects.create(
                     thread=thread,
                     sender=receiver,
