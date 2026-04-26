@@ -1,15 +1,19 @@
 
 .comments_list{
-  border-left: 2px solid black;
+  border-left: 1px solid var(--mm-color-divider);
   padding: 8px 12px;
+  padding-top: 100px;
+  margin-top: -100px;
+  margin-left: 1px;
   display: grid;
-  gap:26px;
+  gap: 26px;
+  z-index:1
 }
 
 .comment_composer{
   display: flex;
   gap: 6px;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .comment{
