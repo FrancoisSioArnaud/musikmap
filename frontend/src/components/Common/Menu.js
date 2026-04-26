@@ -39,13 +39,10 @@ function formatLongRemaining(remainingMs) {
 }
 
 function getSessionTone(remainingMs) {
-  if (remainingMs <= ERROR_THRESHOLD_MS) {
-    return { color: "error.main", bg: "error.main" };
-  }
-  if (remainingMs <= WARNING_THRESHOLD_MS) {
+  if (remainingMs < ERROR_THRESHOLD_MS) {
     return { color: "warning.main", bg: "warning.main" };
   }
-  return { color: "success.main", bg: "success.main" };
+  return { color: "primary.main", bg: "primary.main" };
 }
 
 export default function MenuAppBar() {
