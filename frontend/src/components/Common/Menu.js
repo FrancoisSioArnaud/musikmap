@@ -19,7 +19,7 @@ const COMPACT_HEADER_HEIGHT = 56;
 const EXPANDED_HEADER_HEIGHT = 86;
 const WARNING_THRESHOLD_MS = 3 * 60 * 1000;
 const ERROR_THRESHOLD_MS = 60 * 1000;
-const EXTEND_DURATION_MS = 6000;
+const EXTEND_DURATION_MS = 3000;
 
 function formatCompactRemaining(remainingMs) {
   const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
