@@ -1,10 +1,8 @@
 
 .comments_list{
-  border-left: 1px solid var(--mm-color-divider);
-  padding: 8px 0px 12px 12px;
+  padding-left: 12px;
   padding-top: 100px;
   margin-top: -88px;
-  margin-left: 1px;
   display: grid;
   gap: 26px;
   z-index:1;
@@ -53,6 +51,8 @@
     padding-left: 36px;
     display:grid;
     gap: 12px;
+    border-left: 1px solid var(--mm-color-divider);
+    margin-left: 14px;
   }
 
   .comment_message{
