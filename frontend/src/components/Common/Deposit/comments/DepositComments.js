@@ -317,7 +317,6 @@ export default function DepositComments({
               }
             }}
             label="Répondre"
-            helperText=" "
           />
           <IconButton
             onClick={submitReply}
