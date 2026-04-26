@@ -279,7 +279,7 @@ export default function DepositComments({
           })
           : null}
 
-  
+        {notice ? <Typography variant="body2" sx={{ mb: 1 }}>{notice}</Typography> : null}
         {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
         {selectedSongPreviewDep && DepositComponent ? (
