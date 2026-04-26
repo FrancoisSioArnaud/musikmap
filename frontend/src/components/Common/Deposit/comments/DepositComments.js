@@ -273,7 +273,7 @@ export default function DepositComments({
           </Box>
         ) : null}
 
-        <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end" }}>
+        <Box className="comment_composer">
           <IconButton onClick={openSongDrawer} aria-label="Ajouter une chanson">
             <LibraryMusicIcon />
           </IconButton>
