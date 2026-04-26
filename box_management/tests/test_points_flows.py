@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.urls import reverse
 from django.utils import timezone
 
-from box_management.models import Deposit, DiscoveredSong, EmojiRight, Reaction
+from box_management.models import BoxSession, Deposit, DiscoveredSong, EmojiRight, Reaction
 from box_management.tests.base import FlowboxAPITestCase
 from la_boite_a_son.economy import (
     COST_REVEAL_BOX,
@@ -383,6 +383,42 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         response = self.client.get(reverse("emoji-catalog"), {"dep_public_key": deposit.public_key})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["current_reaction"]["id"], emoji.id)
+
+    def test_reaction_on_box_deposit_without_active_box_session_is_allowed(self):
+        user = self.auth(self.make_user(username="react-no-session", points=500))
+        emoji = self.make_emoji(char="🔥", cost=0)
+        box = self.make_box(url="box-react-no-session", name="Box react no session")
+        deposit = self.make_deposit(user=user, song=self.make_song(public_key="react_song_no_session"), box=box)
+        BoxSession.objects.filter(user=user, box=box).delete()
+
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": deposit.public_key, "emoji_id": emoji.id}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Reaction.objects.filter(user=user, deposit=deposit, emoji=emoji).count(), 1)
+
+    def test_reaction_on_pinned_deposit_without_active_box_session_is_allowed(self):
+        user = self.auth(self.make_user(username="react-pinned-no-session", points=500))
+        emoji = self.make_emoji(char="🔥", cost=0)
+        box = self.make_box(url="box-react-pinned-no-session", name="Box react pinned no session")
+        pinned = self.make_deposit(
+            user=self.make_user(username="owner-react-pinned"),
+            song=self.make_song(public_key="react_song_pinned_no_session"),
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_duration_minutes=10,
+            pin_points_spent=149,
+            pin_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        BoxSession.objects.filter(user=user, box=box).delete()
+
+        response = self.client.post(
+            reverse("reactions"), {"dep_public_key": pinned.public_key, "emoji_id": emoji.id}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Reaction.objects.filter(user=user, deposit=pinned, emoji=emoji).count(), 1)
 
 
 class DepositPointsFlowTests(FlowboxAPITestCase):

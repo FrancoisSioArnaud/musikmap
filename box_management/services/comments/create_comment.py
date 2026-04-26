@@ -17,7 +17,6 @@ from box_management.domain.constants import (
     COMMENT_TARGET_USER_DAILY_LIMIT,
 )
 from box_management.models import Comment, CommentModerationDecision, Deposit
-from box_management.selectors.boxes import get_active_box_session
 from box_management.selectors.deposits import get_deposit_for_comment
 from box_management.services.comments.moderation_rules import (
     _detect_comment_pre_creation_error,
@@ -42,14 +41,6 @@ def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, 
     deposit = get_deposit_for_comment(dep_public_key)
     if not deposit:
         return None, {"status": status.HTTP_404_NOT_FOUND, "code": "DEPOSIT_NOT_FOUND", "detail": "Dépôt introuvable."}
-
-    if getattr(deposit, "box", None) and getattr(deposit, "deposit_type", "box") != "favorite":
-        if not get_active_box_session(user, deposit.box):
-            return None, {
-                "status": status.HTTP_403_FORBIDDEN,
-                "code": "BOX_SESSION_REQUIRED",
-                "detail": "Ouvre la boîte pour continuer.",
-            }
 
     client = getattr(getattr(deposit, "box", None), "client", None)
     if not client and getattr(deposit, "deposit_type", "box") != "favorite":
