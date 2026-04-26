@@ -1,18 +1,14 @@
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import Alert from "@mui/material/Alert";
 import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,10 +20,9 @@ import {
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../../../Utils/drawerHistory";
-import { formatRelativeTime } from "../../../Utils/time";
-import ConfirmActionDialog from "../../ConfirmActionDialog";
 import SearchPanel from "../../Search/SearchPanel";
-import UserInline from "../../UserInline";
+
+import Comment from "./Comment";
 
 const EMPTY_CONTEXT = { items: [], count: 0, viewer_state: {} };
 const COMMENT_SONG_DRAWER_PARAM = "commentDrawer";
@@ -59,11 +54,6 @@ export default function DepositComments({
   const [error, setError] = useState("");
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
-  const [activeComment, setActiveComment] = useState(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [reporting, setReporting] = useState(false);
   const [songDrawerOpen, setSongDrawerOpen] = useState(false);
   const [selectedSongOption, setSelectedSongOption] = useState(null);
   const [isConsecutiveReplyDialogOpen, setIsConsecutiveReplyDialogOpen] = useState(false);
@@ -145,11 +135,6 @@ export default function DepositComments({
     setSongDrawerOpen(false);
   }, [commentSongDrawerValue, location]);
 
-  const closeMenu = () => {
-    setMenuAnchorEl(null);
-    setActiveComment(null);
-  };
-
   const closeSongDrawer = useCallback((options = {}) => {
     if (
       closeDrawerWithHistory({
@@ -229,62 +214,6 @@ export default function DepositComments({
     }
   };
 
-  const handleDelete = async () => {
-    if (!activeComment?.id || deleting) {return;}
-
-    setDeleting(true);
-    setError("");
-    try {
-      const response = await fetch(`/box-management/comments/${activeComment.id}/`, {
-        method: "DELETE",
-        credentials: "same-origin",
-        headers: {
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible de supprimer la réponse.");
-      }
-
-      const nextComments = payload?.comments || EMPTY_CONTEXT;
-      setContext(nextComments);
-      onCommentsChange?.(nextComments);
-      setDeleteOpen(false);
-      closeMenu();
-    } catch (err) {
-      setError(err?.message || "Impossible de supprimer la réponse.");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleReport = async () => {
-    if (!activeComment?.id || reporting) {return;}
-    setReporting(true);
-    setError("");
-    try {
-      const response = await fetch(`/box-management/comments/${activeComment.id}/report/`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ reason: "spam" }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible de signaler la réponse.");
-      }
-      closeMenu();
-    } catch (err) {
-      setError(err?.message || "Impossible de signaler la réponse.");
-    } finally {
-      setReporting(false);
-    }
-  };
-
   if (!open) {return null;}
 
   const closeConsecutiveReplyDialog = () => {
@@ -309,56 +238,18 @@ export default function DepositComments({
         ) : null}
 
         {!loadingReplies
-          ? items.map((comment) => {
-            const commentUser = comment?.user || {};
-            const hasSongReply = Boolean(comment?.reply_deposit);
-            return (
-              <Card key={comment.id} sx={{ mb: 1.5 }}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, gap: 1 }}>
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <UserInline user={commentUser} avatarSize={28} />
-                      </Box>
-                      <Typography component="span" variant="caption" sx={{ opacity: 0.7, whiteSpace: "nowrap", flex: "0 0 auto" }}>
-                        {comment?.created_at ? formatRelativeTime(comment.created_at) : ""}
-                      </Typography>
-                    </Box>
-
-                    {comment?.text ? (
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>
-                        {comment.text}
-                      </Typography>
-                    ) : null}
-
-                    {hasSongReply && DepositComponent ? (
-                      <Box sx={{ mt: 1 }}>
-                        <DepositComponent
-                          dep={comment.reply_deposit}
-                          user={viewer}
-                          variant="list"
-                          context="comment"
-                          showDate={false}
-                          showUser={false}
-                          showCommentAction={false}
-                        />
-                      </Box>
-                    ) : null}
-                  </Box>
-
-                  <IconButton
-                    size="small"
-                    onClick={(event) => {
-                      setMenuAnchorEl(event.currentTarget);
-                      setActiveComment(comment || null);
-                    }}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Card>
-            );
-          })
+          ? items.map((comment) => (
+            <Comment
+              key={comment.id}
+              comment={comment}
+              viewer={viewer}
+              DepositComponent={DepositComponent}
+              onCommentsChange={(nextComments) => {
+                setContext(nextComments || EMPTY_CONTEXT);
+                onCommentsChange?.(nextComments || EMPTY_CONTEXT);
+              }}
+            />
+          ))
           : null}
 
         {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
@@ -419,37 +310,6 @@ export default function DepositComments({
           </Typography>
         ) : null}
       </Box>
-
-      <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={closeMenu}>
-        {activeComment?.is_mine ? (
-          <MenuItem
-            onClick={() => {
-              setDeleteOpen(true);
-              setMenuAnchorEl(null);
-            }}
-          >
-            Supprimer ma réponse
-          </MenuItem>
-        ) : null}
-        {!activeComment?.is_mine ? (
-          <MenuItem onClick={handleReport} disabled={reporting}>
-            {reporting ? "Signalement…" : "Signaler la réponse"}
-          </MenuItem>
-        ) : null}
-      </Menu>
-
-      <ConfirmActionDialog
-        open={deleteOpen}
-        onClose={() => {
-          setDeleteOpen(false);
-          closeMenu();
-        }}
-        onConfirm={handleDelete}
-        title="Supprimer cette réponse ?"
-        description="Cette action masquera la réponse."
-        confirmLabel={deleting ? "Suppression…" : "Supprimer"}
-        loading={deleting}
-      />
 
       <Drawer
         anchor="right"
