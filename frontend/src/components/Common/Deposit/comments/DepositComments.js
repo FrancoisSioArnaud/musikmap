@@ -48,7 +48,6 @@ export default function DepositComments({
   viewer,
   onCommentsChange,
   isParentRevealed,
-  boxSx,
   DepositComponent,
 }) {
   const navigate = useNavigate();
@@ -293,8 +292,8 @@ export default function DepositComments({
   };
 
   return (
-    <Box sx={boxSx}>
-      <Box sx={{ borderLeft: "2px solid rgba(255,255,255,0.12)", pl: 2 }}>
+    <Box sx={{ width:100% }}>
+      <Box sx={{ borderLeft: "2px solid black", pl: 2 }}>
         {loadingReplies ? <Typography variant="body2">Chargement des réponses…</Typography> : null}
 
         {!loadingReplies && count === 0 ? (
@@ -308,7 +307,7 @@ export default function DepositComments({
             const commentUser = comment?.user || {};
             const hasSongReply = Boolean(comment?.reply_deposit);
             return (
-              <Box key={comment.id} sx={{ mb: 1.5 }}>
+              <Card key={comment.id} sx={{ mb: 1.5 }}>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, gap: 1 }}>
@@ -351,7 +350,7 @@ export default function DepositComments({
                     <MoreVertIcon fontSize="small" />
                   </IconButton>
                 </Box>
-              </Box>
+              </Card>
             );
           })
           : null}
