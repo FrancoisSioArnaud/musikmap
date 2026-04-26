@@ -1,6 +1,5 @@
 
 .comments_list{
-  padding-left: 12px;
   padding-top: 100px;
   margin-top: -88px;
   display: grid;
@@ -32,6 +31,7 @@
   
   display: grid;
   gap: 12px;
+  margin-left:12px;
   
   .comment_header{
     display: flex;
