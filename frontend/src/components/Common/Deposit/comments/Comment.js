@@ -114,7 +114,13 @@ export default function Comment({ comment, viewer, DepositComponent, onCommentsC
             />
           </div>
         ) : null}
-        {comment?.text ? <Card variant="body1" className="comment_message">{comment.text}</Card> : null}
+          {comment?.text ? (
+            <Card className="comment_message">
+              <Typography variant="body1">
+                {comment.text}
+              </Typography>
+            </Card>
+          ) : null}
       </div>
 
       {actionError ? (
