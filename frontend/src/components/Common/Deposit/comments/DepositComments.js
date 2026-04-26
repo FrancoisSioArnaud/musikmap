@@ -228,7 +228,7 @@ export default function DepositComments({
 
   return (
     <Box sx={{ width:"100%" }}>
-      <Box sx={{ borderLeft: "2px solid black", p: "8px 12px" }}>
+      <Box className="comments_list">
         {loadingReplies ? <Typography variant="body2">Chargement des réponses…</Typography> : null}
 
         {!loadingReplies && count === 0 ? (
