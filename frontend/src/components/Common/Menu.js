@@ -136,10 +136,10 @@ export default function MenuAppBar() {
   const helperText = useMemo(() => {
     if (!activeSession) {return "";}
     if (remainingMs <= ERROR_THRESHOLD_MS) {
-      return `Cette boîte se referme dans ${formatLongRemaining(remainingMs)}.`;
+      return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
     }
     if (remainingMs <= WARNING_THRESHOLD_MS) {
-      return `Cette boîte se refermera dans ${formatLongRemaining(remainingMs)}.`;
+      return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
     }
     return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
   }, [activeSession, remainingMs]);
