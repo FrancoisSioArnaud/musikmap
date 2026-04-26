@@ -1,7 +1,7 @@
 .comment{
   
   display: grid;
-  gap: 6px;
+  gap: 12px;
   
   .comment_header{
     display: flex;
@@ -20,13 +20,12 @@
   .comment_content{
     padding-left: 36px;
     display:grid;
-    gap: 6px;
+    gap: 12px;
   }
 
   .comment_message{
     padding: 12px 12px;
     background-color: var(--mm-color-surface);
-    box-shadow: var(--mm-shadow-high);
     border-radius: var(--mm-radius-md);
     border: var(--mm-border-default);
   }
