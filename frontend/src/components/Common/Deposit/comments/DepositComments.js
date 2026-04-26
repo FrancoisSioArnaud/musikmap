@@ -286,8 +286,13 @@ export default function DepositComments({
 
   if (!open) {return null;}
 
+  const closeConsecutiveReplyDialog = () => {
+    setIsConsecutiveReplyDialogOpen(false);
+    document.activeElement?.blur?.();
+  };
+
   const handleBlockedComposerInteraction = () => {
-    if (!isConsecutiveReplyBlocked) {return;}
+    if (!isConsecutiveReplyBlocked || isConsecutiveReplyDialogOpen) {return;}
     setIsConsecutiveReplyDialogOpen(true);
   };
 
@@ -486,14 +491,15 @@ export default function DepositComments({
 
       <Dialog
         open={isConsecutiveReplyDialogOpen}
-        onClose={() => setIsConsecutiveReplyDialogOpen(false)}
+        onClose={closeConsecutiveReplyDialog}
+        disableRestoreFocus
         fullWidth
         maxWidth="xs"
       >
         <DialogTitle>Réponse indisponible</DialogTitle>
         <DialogContent>Tu ne peux pas envoyer deux réponses d’affilé</DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsConsecutiveReplyDialogOpen(false)}>J’ai compris</Button>
+          <Button onClick={closeConsecutiveReplyDialog}>J’ai compris</Button>
         </DialogActions>
       </Dialog>
     </Box>
