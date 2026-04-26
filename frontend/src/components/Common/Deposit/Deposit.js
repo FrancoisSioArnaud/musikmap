@@ -1053,7 +1053,6 @@ export default function Deposit({
           viewer={viewer}
           onCommentsChange={handleCommentsChange}
           isParentRevealed={isRevealed}
-          boxSx={{ ml: 4, mr: 1, mt: 1 }}
           DepositComponent={Deposit}
         />
       </Box>
