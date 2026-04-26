@@ -2,7 +2,6 @@ from django.db import transaction
 from rest_framework import status
 
 from box_management.models import Deposit, DiscoveredSong, Emoji, EmojiRight, Reaction
-from box_management.selectors.boxes import get_active_box_session
 from box_management.selectors.deposits import get_deposit_for_reaction, get_deposit_with_reactions
 from users.models import CustomUser
 
@@ -11,21 +10,6 @@ def add_or_remove_reaction(*, user, dep_public_key, emoji_id):
     deposit = get_deposit_for_reaction(dep_public_key)
     if not deposit:
         return None, {"status": status.HTTP_404_NOT_FOUND, "code": "DEPOSIT_NOT_FOUND", "detail": "Dépôt introuvable"}
-
-    if (
-        getattr(deposit, "box", None)
-        and getattr(deposit, "deposit_type", Deposit.DEPOSIT_TYPE_BOX)
-        in (
-            Deposit.DEPOSIT_TYPE_BOX,
-            Deposit.DEPOSIT_TYPE_PINNED,
-        )
-        and not get_active_box_session(user, deposit.box)
-    ):
-        return None, {
-            "status": status.HTTP_403_FORBIDDEN,
-            "code": "BOX_SESSION_REQUIRED",
-            "detail": "Ouvre la boîte pour continuer.",
-        }
 
     is_revealed_for_user = bool(
         getattr(deposit, "user_id", None) == getattr(user, "id", None)

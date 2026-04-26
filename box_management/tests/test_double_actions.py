@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from box_management.models import (
+    BoxSession,
     Comment,
     CommentModerationDecision,
     Deposit,
@@ -311,3 +312,55 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         comments = visible.data["comments"]
         self.assertEqual(comments["count"], 1)
         self.assertEqual(len(comments["items"]), 1)
+
+    def test_comment_on_box_deposit_without_active_box_session_is_allowed(self):
+        user = self.auth(self.make_user(username="comment-no-session", points=0))
+        BoxSession.objects.filter(user=user, box=self.box).delete()
+
+        response = self.client.post(
+            reverse("comments-create"),
+            {"dep_public_key": self.deposit.public_key, "text": "hors session"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Comment.objects.filter(user=user, deposit=self.deposit, text="hors session").exists())
+
+    def test_comment_on_pinned_deposit_without_active_box_session_is_allowed(self):
+        user = self.auth(self.make_user(username="comment-pinned-no-session", points=0))
+        pinned = self.make_deposit(
+            user=self.owner,
+            song=self.make_song(public_key="comment-pinned-song"),
+            box=self.box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_duration_minutes=10,
+            pin_points_spent=149,
+            pin_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        BoxSession.objects.filter(user=user, box=self.box).delete()
+
+        response = self.client.post(
+            reverse("comments-create"),
+            {"dep_public_key": pinned.public_key, "text": "comment pinned hors session"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Comment.objects.filter(user=user, deposit=pinned).exists())
+
+    def test_comment_requires_authentication(self):
+        response = self.client.post(
+            reverse("comments-create"),
+            {"dep_public_key": self.deposit.public_key, "text": "sans auth"},
+            format="json",
+        )
+        self.assert_api_error(response, 401, "AUTH_REQUIRED")
+
+    def test_comment_empty_content_is_rejected(self):
+        self.auth(self.make_user(username="comment-empty", points=0))
+        response = self.client.post(
+            reverse("comments-create"),
+            {"dep_public_key": self.deposit.public_key, "text": "   "},
+            format="json",
+        )
+        self.assert_api_error(response, 400, "COMMENT_EMPTY")
