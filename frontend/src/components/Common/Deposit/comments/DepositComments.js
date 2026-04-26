@@ -4,6 +4,7 @@ import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -76,7 +77,7 @@ export default function DepositComments({
   const viewerState = context?.viewer_state || {};
   const isFullUser = Boolean(viewer?.id && !viewer?.is_guest);
   const canPost = Boolean(isFullUser && viewerState?.can_post);
-  const notice = viewerState?.notice || "";
+  const notice = typeof viewerState?.notice === "string" ? viewerState.notice : "";
   const isConsecutiveReplyBlocked = Boolean(
     isFullUser && !canPost && notice.toLowerCase().includes("deux réponses"),
   );
@@ -287,8 +288,8 @@ export default function DepositComments({
   if (!open) {return null;}
 
   const closeConsecutiveReplyDialog = () => {
-    setIsConsecutiveReplyDialogOpen(false);
     document.activeElement?.blur?.();
+    setIsConsecutiveReplyDialogOpen(false);
   };
 
   const handleBlockedComposerInteraction = () => {

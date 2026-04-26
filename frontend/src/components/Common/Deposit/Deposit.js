@@ -1046,15 +1046,17 @@ export default function Deposit({
           {footerSlot}
           {depositInteractBlock}
         </Card>
-        <DepositComments
-          open={commentsOpen}
-          depPublicKey={localDep?.public_key}
-          comments={comments}
-          viewer={viewer}
-          onCommentsChange={handleCommentsChange}
-          isParentRevealed={isRevealed}
-          DepositComponent={Deposit}
-        />
+        {showCommentAction ? (
+          <DepositComments
+            open={commentsOpen}
+            depPublicKey={localDep?.public_key}
+            comments={comments}
+            viewer={viewer}
+            onCommentsChange={handleCommentsChange}
+            isParentRevealed={isRevealed}
+            DepositComponent={Deposit}
+          />
+        ) : null}
       </Box>
 
       <Snackbar
