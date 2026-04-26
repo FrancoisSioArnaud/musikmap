@@ -1,88 +1,41 @@
-.comments_drawer_modal .comments_panel {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  gap: 16px;
-}
+.comment{
+  
+  display: grid;
+  gap: 6px;
+  
+  .comment_header{
+    display: flex;
+    align-items: center;
+  }
 
-.comments_drawer_modal .deposit_comment {
-  padding: 8px 0;
-}
+  .comment_header_user{
+    width: 100%;
+  }
 
-.comments_drawer_modal .comment_main {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  gap: 12px;
-}
+  .comment_date{
+    text-wrap-mode: nowrap;
+    opacity: var(--mm-opacity-light-text);
+  }
 
-.comments_drawer_modal .username {
-  display: flex;
-  align-items: center;
-}
+  .comment_content{
+    padding-left: 36px;
+    display:grid;
+    gap: 6px;
+  }
 
-.comments_drawer_modal .username svg {
-  font-size: 16px;
-}
+  .comment_message{
+    padding: 12px 12px;
+    background-color: var(--mm-color-surface);
+    box-shadow: var(--mm-shadow-high);
+    border-radius: var(--mm-radius-md);
+    border: var(--mm-border-default);
+  }
 
-.comments_drawer_modal .deposit_comment_form {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
+  
 
-.comments_drawer_modal .deposit_comment_form .MuiTextField-root {
-  flex: 1;
-}
 
-.comments_drawer_modal .deposit_comment_form .MuiInputBase-root {
-  align-items: flex-start;
-}
 
-.comments_drawer_modal
-  .deposit_comment_form
-  textarea.MuiInputBase-inputMultiline {
-  overflow: hidden !important;
-}
 
-.comments_drawer_modal .comment_helper_text {
-  min-height: 20px;
-}
-
-.comments_drawer_modal .comment_helper_text.warning {
-  color: var(--mm-color-danger, #d32f2f);
-}
-
-.comments_drawer_modal .comment_submit_button {
-  flex: 0 0 auto;
-  margin-bottom: 20px;
-  color: var(--mm-color-text);
-}
-
-.comments_drawer_modal .comment_submit_button.Mui-disabled {
-  color: rgb(0 0 0 / 26%);
-}
-
-.comments_drawer_modal .deposit_comment_form_prompt {
-  cursor: pointer;
-}
-
-.comments_drawer_modal .deposit_comment_form_prompt .MuiFormControl-root,
-.comments_drawer_modal .deposit_comment_form_prompt .comment_submit_button {
-  pointer-events: none;
-}
-
-.comments_drawer_modal .MuiDrawer-paper {
-  display: flex;
-  flex-direction: column;
-}
-
-.comments_drawer_modal .comments_list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  
+  
 }
