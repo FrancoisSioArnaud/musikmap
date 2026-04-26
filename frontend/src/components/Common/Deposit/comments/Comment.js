@@ -86,11 +86,11 @@ export default function Comment({ comment, viewer, DepositComponent, onCommentsC
     <div className="comment">
       <div className="comment_header">
         <div className="comment_header_user">
-          <UserInline user={commentUser} avatarSize={28} />
+          <UserInline user={commentUser} avatarSize={32} />
         </div>
-        <span className="comment_date">
+        <Typography variant="body2" className="comment_date">
           {comment?.created_at ? formatRelativeTime(comment.created_at) : ""}
-        </span>
+        </Typography>
         <IconButton
           size="small"
           className="comment_menu_button"
@@ -114,7 +114,7 @@ export default function Comment({ comment, viewer, DepositComponent, onCommentsC
             />
           </div>
         ) : null}
-        {comment?.text ? <div className="comment_message">{comment.text}</div> : null}
+        {comment?.text ? <Typography variant="body1" className="comment_message">{comment.text}</Typography> : null}
       </div>
 
       {actionError ? (
