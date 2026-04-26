@@ -187,7 +187,7 @@ export default function MenuAppBar() {
               <IconButton
                 size="large"
                 aria-label="messages"
-                color="inherit"
+                color="text.primary"
                 component={Link}
                 to="/messages"
                 onClick={(event) => event.stopPropagation()}
