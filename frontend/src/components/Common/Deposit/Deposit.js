@@ -15,7 +15,7 @@ import Slide from "@mui/material/Slide";
 import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -50,7 +50,6 @@ function SlideDownTransition(props) {
 
 const KEY_BOX_CONTENT = "mm_box_content";
 const TTL_MINUTES = 20;
-const HOLD_TO_REVEAL_MS = 1200;
 const MIN_REVEAL_LOADING_MS = 750;
 
 function sleep(ms) {
@@ -83,41 +82,6 @@ function shuffleArray(list) {
 
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
-}
-
-function evaluateCubicBezier(progress, x1, y1, x2, y2) {
-  const clampedProgress = Math.min(Math.max(progress, 0), 1);
-
-  if (clampedProgress === 0 || clampedProgress === 1) {
-    return clampedProgress;
-  }
-
-  const sampleCurve = (a1, a2, t) => {
-    const mt = 1 - t;
-    return (3 * a1 * mt * mt * t) + (3 * a2 * mt * t * t) + (t * t * t);
-  };
-
-  let lower = 0;
-  let upper = 1;
-  let t = clampedProgress;
-
-  for (let index = 0; index < 12; index += 1) {
-    const x = sampleCurve(x1, x2, t);
-
-    if (Math.abs(x - clampedProgress) < 0.0005) {
-      break;
-    }
-
-    if (x < clampedProgress) {
-      lower = t;
-    } else {
-      upper = t;
-    }
-
-    t = (lower + upper) / 2;
-  }
-
-  return sampleCurve(y1, y2, t);
 }
 
 async function copyText(text) {
@@ -298,8 +262,6 @@ export default function Deposit({
     [depositedAt]
   );
 
-  const [playOpen, setPlayOpen] = useState(false);
-  const [playSong, setPlaySong] = useState(null);
   const [addReactionOpen, setAddReactionOpen] = useState(false);
   const [reactionSummaryOpen, setReactionSummaryOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -310,19 +272,12 @@ export default function Deposit({
   const [authModalConfig, setAuthModalConfig] = useState(null);
   const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
   const [actionErrorDialog, setActionErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [isHoldingReveal, setIsHoldingReveal] = useState(false);
-  const [isRevealLoading, setIsRevealLoading] = useState(false);
 
   const openActionErrorDialog = useCallback((title, message, event = null) => {
     blurEventTarget(event);
     blurActiveElement();
     setActionErrorDialog({ open: true, title, message });
   }, []);
-
-  const revealHoldFrameRef = useRef(null);
-  const revealHoldStartRef = useRef(null);
-  const revealHoldTriggeredRef = useRef(false);
 
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
   const reactionsDetail = Array.isArray(localDep?.reactions)
@@ -417,76 +372,12 @@ export default function Deposit({
     } catch (error) {}
   }, [localDep?.public_key]);
 
-  const getPlaySongKey = (currentSong) => {
-    if (!currentSong) {return "";}
-
-    return [
-      currentSong?.public_key,
-      currentSong?.provider_links?.spotify?.provider_url,
-      currentSong?.provider_links?.deezer?.provider_url,
-      currentSong?.spotify_url,
-      currentSong?.deezer_url,
-      currentSong?.title,
-      currentSong?.artist,
-    ]
-      .filter(Boolean)
-      .join("|");
-  };
-
   const handleSongResolved = useCallback((resolvedSong) => {
     if (!resolvedSong) {return;}
-
-    setPlaySong(resolvedSong);
     setLocalDep((prev) => ({ ...(prev || {}), song: { ...(prev?.song || {}), ...resolvedSong } }));
     updateDepositCollections((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
     updateStorageSnapshot((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
   }, [updateDepositCollections, updateStorageSnapshot]);
-
-  const openPlayFor = (nextSong) => {
-    const songToPlay = nextSong || null;
-    const nextKey = getPlaySongKey(songToPlay);
-    const currentKey = getPlaySongKey(playSong);
-
-    if (playOpen && nextKey && nextKey === currentKey) {
-      setPlayOpen(false);
-      setPlaySong(null);
-      return;
-    }
-
-    setPlaySong(songToPlay);
-    setPlayOpen(Boolean(songToPlay));
-  };
-
-  const closePlay = () => {
-    setPlayOpen(false);
-    setPlaySong(null);
-  };
-
-  const stopRevealHoldAnimation = useCallback(() => {
-    if (revealHoldFrameRef.current) {
-      window.cancelAnimationFrame(revealHoldFrameRef.current);
-      revealHoldFrameRef.current = null;
-    }
-  }, []);
-
-  const resetRevealHold = useCallback(() => {
-    stopRevealHoldAnimation();
-    revealHoldStartRef.current = null;
-    revealHoldTriggeredRef.current = false;
-    setIsHoldingReveal(false);
-    setHoldProgress(0);
-  }, [stopRevealHoldAnimation]);
-
-  useEffect(() => () => {
-    stopRevealHoldAnimation();
-  }, [stopRevealHoldAnimation]);
-
-  useEffect(() => {
-    if (isRevealed) {
-      resetRevealHold();
-      setIsRevealLoading(false);
-    }
-  }, [isRevealed, resetRevealHold]);
 
   const revealDeposit = useCallback(async () => {
     let didReveal = false;
@@ -500,7 +391,6 @@ export default function Deposit({
         return;
       }
 
-      setIsRevealLoading(true);
       const requestStartedAt = Date.now();
       const csrftoken = getCookie("csrftoken");
       const res = await fetch("/box-management/revealSong", {
@@ -578,63 +468,9 @@ export default function Deposit({
     } catch {
       openActionErrorDialog("Erreur", "Oops, une erreur s’est produite. Réessaie dans quelques instants.");
     } finally {
-      setIsRevealLoading(false);
-
-      if (!didReveal) {
-        resetRevealHold();
-      }
+      return didReveal;
     }
-  }, [context, localDep.public_key, openActionErrorDialog, resetRevealHold, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
-
-  const beginRevealHold = useCallback((event) => {
-    if (isRevealed || isRevealLoading || isHoldingReveal) {
-      return;
-    }
-
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-
-    revealHoldTriggeredRef.current = false;
-    revealHoldStartRef.current = performance.now();
-    setHoldProgress(0);
-    setIsHoldingReveal(true);
-
-    const tick = (now) => {
-      if (!revealHoldStartRef.current) {
-        return;
-      }
-
-      const linearProgress = Math.min((now - revealHoldStartRef.current) / HOLD_TO_REVEAL_MS, 1);
-      const progress = evaluateCubicBezier(linearProgress, 0,.94,1,.49);
-      setHoldProgress(progress);
-
-      if (linearProgress >= 1) {
-        revealHoldTriggeredRef.current = true;
-        stopRevealHoldAnimation();
-        revealHoldStartRef.current = null;
-        setIsHoldingReveal(false);
-        setHoldProgress(1);
-        revealDeposit();
-        return;
-      }
-
-      revealHoldFrameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    stopRevealHoldAnimation();
-    revealHoldFrameRef.current = window.requestAnimationFrame(tick);
-  }, [isHoldingReveal, isRevealLoading, isRevealed, revealDeposit, stopRevealHoldAnimation]);
-
-  const endRevealHold = useCallback((event) => {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-
-    if (revealHoldTriggeredRef.current || isRevealLoading) {
-      return;
-    }
-
-    resetRevealHold();
-  }, [isRevealLoading, resetRevealHold]);
+  }, [context, localDep.public_key, openActionErrorDialog, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
 
   const handleReactionApplied = (result) => {
     const nextReactions = Array.isArray(result?.reactions)
@@ -954,65 +790,6 @@ export default function Deposit({
     </Box>
   );
 
-  const renderFloatingReactions = () => {
-    if (!floatingEmojiItems.length) {return null;}
-
-    return (
-      <Box className={`emojis${isRevealed ? " is_revealed" : ""}`}>
-        {floatingEmojiItems.map((item) => (
-          <Box
-            key={item.key}
-            className={`emoji_shell edge_${item.edge || "right"}`}
-            sx={{
-              left: `${item.left}%`,
-              top: `${item.top}%`,
-              "--emoji-target-left": `${item.targetLeft}%`,
-              "--emoji-target-top": `${item.targetTop}%`,
-              "--emoji-settle-duration": item.settleDuration,
-              "--emoji-settle-delay": item.settleDelay,
-              zIndex: item.zIndex,
-              opacity: item.opacity,
-            }}
-            onClick={openReactionSummaryDrawer}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                openReactionSummaryDrawer(event);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-          >
-            <Typography
-              className="emoji"
-              component="span"
-              sx={{
-                fontSize: item.fontSize,
-                "--float-duration": item.floatDuration,
-                "--float-delay": item.floatDelay,
-                "--x1": item.x1,
-                "--y1": item.y1,
-                "--x2": item.x2,
-                "--y2": item.y2,
-                "--x3": item.x3,
-                "--y3": item.y3,
-                "--x4": item.x4,
-                "--y4": item.y4,
-                "--rot-max": item.rotMax,
-                "--scale-min": item.scaleMin,
-                "--scale-max": item.scaleMax,
-              }}
-            >
-              {item.emoji}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
-    );
-  };
-
-
-
   return (
     <>
       <Box className={rootClassName}>
@@ -1029,17 +806,10 @@ export default function Deposit({
             song={song}
             accentColor={accentColor}
             isRevealed={isRevealed}
-            isHoldingReveal={isHoldingReveal}
-            isRevealLoading={isRevealLoading}
-            holdProgress={holdProgress}
-            renderFloatingReactions={renderFloatingReactions}
-            playOpen={playOpen}
-            playSong={playSong}
-            closePlay={closePlay}
-            handleSongResolved={handleSongResolved}
-            openPlayFor={openPlayFor}
-            beginRevealHold={beginRevealHold}
-            endRevealHold={endRevealHold}
+            floatingEmojiItems={floatingEmojiItems}
+            onFloatingReactionClick={openReactionSummaryDrawer}
+            onRevealRequest={revealDeposit}
+            onSongResolved={handleSongResolved}
             revealCost={revealCost}
           />
 
