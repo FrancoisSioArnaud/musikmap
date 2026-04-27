@@ -257,7 +257,7 @@ export default function DepositSong({
 
   return (
     <Box
-      className={`${className ? `${className} ` : ""}deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
+      className={`deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
       style={{
         ...(accentColor ? { "--deposit-accent": accentColor } : {}),
         ...(isRevealed ? {} : { "--deposit-reveal-progress": holdProgress }),
