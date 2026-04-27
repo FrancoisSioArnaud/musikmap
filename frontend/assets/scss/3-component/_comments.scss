@@ -40,7 +40,14 @@
   padding-bottom: 0px;
   margin: 12px;
   margin-bottom: 0px;
+
+  .deposit_list{
+    border-radius: var(--mm-radius-xs);
+    overflow: clip;
+  }
 }
+
+
 
 .composer_container .deposit_interact{
   display:none;
