@@ -13,7 +13,6 @@ export default function EnableLocation({
   open,
   boxTitle = "Boîte",
   loading = false,
-  error = "",
   onAuthorize,
   onClose,
 }) {
@@ -43,12 +42,6 @@ export default function EnableLocation({
           <Typography variant="body1">
             Pour éviter la triche, la boîte s’ouvre seulement si tu es sur place.
           </Typography>
-
-          {error ? (
-            <Typography variant="body1" color="error">
-              {error}
-            </Typography>
-          ) : null}
 
           <Button
             variant="contained"
