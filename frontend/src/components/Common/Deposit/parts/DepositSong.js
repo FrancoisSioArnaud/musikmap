@@ -62,7 +62,6 @@ function getPlaySongKey(currentSong) {
 }
 
 export default function DepositSong({
-  className = "",
   variant = "list",
   song,
   accentColor,
