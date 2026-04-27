@@ -31,8 +31,25 @@
 }
 
 .composer_container .deposit_interact{
-    display:none;
+  display:none;
 }
+
+.composer_container .deposit_song{
+
+  padding:0;
+  
+  
+  button{
+    display:none;
+  }
+  
+  interact{
+    gap:0;
+  }
+  texts{
+    align-items:left;
+  }
+  
 
 
 .comment{
