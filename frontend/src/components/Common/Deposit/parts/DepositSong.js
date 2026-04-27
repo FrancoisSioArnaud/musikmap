@@ -62,6 +62,7 @@ function getPlaySongKey(currentSong) {
 }
 
 export default function DepositSong({
+  className = "",
   variant = "list",
   song,
   accentColor,
@@ -257,7 +258,7 @@ export default function DepositSong({
 
   return (
     <Box
-      className={`deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
+      className={`${className ? `${className} ` : ""}deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
       style={{
         ...(accentColor ? { "--deposit-accent": accentColor } : {}),
         ...(isRevealed ? {} : { "--deposit-reveal-progress": holdProgress }),

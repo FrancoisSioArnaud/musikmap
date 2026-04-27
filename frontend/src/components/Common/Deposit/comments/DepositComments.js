@@ -21,6 +21,7 @@ import {
   openDrawerWithHistory,
 } from "../../../Utils/drawerHistory";
 import SearchPanel from "../../Search/SearchPanel";
+import DepositSong from "../parts/DepositSong";
 
 import Comment from "./Comment";
 
@@ -77,19 +78,10 @@ export default function DepositComments({
     [depPublicKey],
   );
 
-  const selectedSongPreviewDep = useMemo(() => {
+  const selectedSongPreviewSong = useMemo(() => {
     if (!selectedSongOption) {return null;}
-    return {
-      public_key: `draft-${depPublicKey || "comment"}`,
-      deposited_at: new Date().toISOString(),
-      deposit_type: "comment",
-      song: buildSongFromOption(selectedSongOption),
-      user: viewer || {},
-      comments: EMPTY_CONTEXT,
-      reactions: [],
-      my_reaction: null,
-    };
-  }, [depPublicKey, selectedSongOption, viewer]);
+    return buildSongFromOption(selectedSongOption);
+  }, [selectedSongOption]);
 
   useEffect(() => {
     if (!open || hasLoaded || loadingReplies || !depPublicKey || !isParentRevealed) {return;}
@@ -256,16 +248,13 @@ export default function DepositComments({
         {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
         <Box className="composer_container">
-          {selectedSongPreviewDep && DepositComponent ? (
+          {selectedSongPreviewSong ? (
             <Box>
-              <DepositComponent
-                dep={selectedSongPreviewDep}
-                user={viewer}
+              <DepositSong
+                className="deposit_card"
                 variant="list"
-                context="comment"
-                showDate={false}
-                showUser={false}
-                showCommentAction={false}
+                song={selectedSongPreviewSong}
+                isRevealed
               />
               <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
                 <Button size="small" onClick={openSongDrawer}>Remplacer</Button>
