@@ -135,10 +135,7 @@ export default function MenuAppBar() {
     if (remainingMs <= ERROR_THRESHOLD_MS) {
       return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
     }
-    if (remainingMs <= WARNING_THRESHOLD_MS) {
-      return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
-    }
-    return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
+    return `Tu as accès à tout le contenu de la boîte pendant ${formatLongRemaining(remainingMs)}.`;
   }, [activeSession, remainingMs]);
 
   return (
