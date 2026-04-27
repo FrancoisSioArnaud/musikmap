@@ -276,7 +276,7 @@ export default function DepositComments({
   
           <Box className="comment_composer">
             <IconButton onClick={openSongDrawer} aria-label="Ajouter une chanson">
-              <LibraryMusicIcon />
+              <LibraryMusicIcon sx={{ color : "var(--mm-color-primary)" }} />
             </IconButton>
             <TextField
               fullWidth
