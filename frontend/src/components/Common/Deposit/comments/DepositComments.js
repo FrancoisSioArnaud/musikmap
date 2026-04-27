@@ -252,63 +252,65 @@ export default function DepositComments({
           ))
           : null}
 
-        {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
-        {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
+        <Box className="composer_container">
+          {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
+          {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
-        {selectedSongPreviewDep && DepositComponent ? (
-          <Box sx={{ mb: 1 }}>
-            <DepositComponent
-              dep={selectedSongPreviewDep}
-              user={viewer}
-              variant="list"
-              context="comment"
-              showDate={false}
-              showUser={false}
-              showCommentAction={false}
-            />
-            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
-              <Button size="small" onClick={openSongDrawer}>Remplacer</Button>
-              <Button size="small" color="inherit" onClick={() => setSelectedSongOption(null)}>Retirer</Button>
+          {selectedSongPreviewDep && DepositComponent ? (
+            <Box sx={{ mb: 1 }}>
+              <DepositComponent
+                dep={selectedSongPreviewDep}
+                user={viewer}
+                variant="list"
+                context="comment"
+                showDate={false}
+                showUser={false}
+                showCommentAction={false}
+              />
+              <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
+                <Button size="small" onClick={openSongDrawer}>Remplacer</Button>
+                <Button size="small" color="inherit" onClick={() => setSelectedSongOption(null)}>Retirer</Button>
+              </Box>
             </Box>
+          ) : null}
+  
+          <Box className="comment_composer">
+            <IconButton onClick={openSongDrawer} aria-label="Ajouter une chanson">
+              <LibraryMusicIcon />
+            </IconButton>
+            <TextField
+              fullWidth
+              multiline
+              minRows={1}
+              maxRows={5}
+              value={draft}
+              onClick={handleBlockedComposerInteraction}
+              onFocus={handleBlockedComposerInteraction}
+              onChange={(event) => {
+                if (isConsecutiveReplyBlocked) {return;}
+                const nextValue = event.target.value || "";
+                if (nextValue.length <= 100) {
+                  setDraft(nextValue);
+                }
+              }}
+              label="Répondre"
+              inputProps={{ readOnly: isConsecutiveReplyBlocked }}
+            />
+            <IconButton
+              onClick={submitReply}
+              disabled={(!canPost && !isConsecutiveReplyBlocked) || submitting || (!draft.trim() && !selectedSongOption)}
+              aria-label="Publier la réponse"
+            >
+              <ArrowUpwardIcon />
+            </IconButton>
           </Box>
-        ) : null}
-
-        <Box className="comment_composer">
-          <IconButton onClick={openSongDrawer} aria-label="Ajouter une chanson">
-            <LibraryMusicIcon />
-          </IconButton>
-          <TextField
-            fullWidth
-            multiline
-            minRows={1}
-            maxRows={5}
-            value={draft}
-            onClick={handleBlockedComposerInteraction}
-            onFocus={handleBlockedComposerInteraction}
-            onChange={(event) => {
-              if (isConsecutiveReplyBlocked) {return;}
-              const nextValue = event.target.value || "";
-              if (nextValue.length <= 100) {
-                setDraft(nextValue);
-              }
-            }}
-            label="Répondre"
-            inputProps={{ readOnly: isConsecutiveReplyBlocked }}
-          />
-          <IconButton
-            onClick={submitReply}
-            disabled={(!canPost && !isConsecutiveReplyBlocked) || submitting || (!draft.trim() && !selectedSongOption)}
-            aria-label="Publier la réponse"
-          >
-            <ArrowUpwardIcon />
-          </IconButton>
+  
+          {!isFullUser ? (
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+              Connecte-toi pour répondre.
+            </Typography>
+          ) : null}
         </Box>
-
-        {!isFullUser ? (
-          <Typography variant="caption" sx={{ opacity: 0.8 }}>
-            Connecte-toi pour répondre.
-          </Typography>
-        ) : null}
       </Box>
 
       <Drawer
