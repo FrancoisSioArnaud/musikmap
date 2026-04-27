@@ -250,11 +250,13 @@ export default function DepositComments({
         <Box className="composer_container">
           {selectedSongPreviewSong ? (
             <Box>
-              <DepositSong
-                variant="list"
-                song={selectedSongPreviewSong}
-                isRevealed
-              />
+              <Box className="deposit deposit_list deposit_card">
+                <DepositSong
+                  variant="list"
+                  song={selectedSongPreviewSong}
+                  isRevealed
+                />
+              </Box>
               <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
                 <Button size="small" onClick={openSongDrawer}>Remplacer</Button>
                 <Button size="small" color="inherit" onClick={() => setSelectedSongOption(null)}>Retirer</Button>
