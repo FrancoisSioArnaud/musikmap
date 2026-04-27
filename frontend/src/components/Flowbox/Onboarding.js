@@ -18,12 +18,47 @@ import EnableLocation from "./EnableLocation";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
 function getCookie(name) {
-  const match = document.cookie.match(new RegExp(`(^|;\s*)${name}=([^;]*)`));
+  const match = document.cookie.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`));
   return match ? decodeURIComponent(match[2]) : "";
 }
 
 function isPermissionDeniedError(error) {
   return error?.code === 1 || /denied/i.test(String(error?.message || ""));
+}
+
+function getDeviceOs() {
+  const userAgent = navigator?.userAgent || "";
+  const platform = navigator?.platform || "";
+  const maxTouchPoints = navigator?.maxTouchPoints || 0;
+
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent)
+    || /iPhone|iPad|iPod/i.test(platform)
+    || (platform === "MacIntel" && maxTouchPoints > 1);
+  if (isIOS) {return "ios";}
+  if (/Android/i.test(userAgent)) {return "android";}
+  return "unknown";
+}
+
+function getPermissionDialogContent(os) {
+  const title = "Autorise la localisation pour continuer";
+  if (os === "ios") {
+    return {
+      title,
+      content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, puis va dans Confidentialité et sécurité > Service de localisation et active-la.\nSi besoin, autorise aussi la localisation pour les sites dans Safari.\nEnsuite, reviens ici et recommence.",
+    };
+  }
+
+  if (os === "android") {
+    return {
+      title,
+      content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, puis va dans Localisation et active-la.\nSi besoin, autorise aussi la localisation pour Chrome ou ton navigateur dans les autorisations des applications.\nEnsuite, reviens ici et recommence.",
+    };
+  }
+
+  return {
+    title,
+    content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, active la localisation, puis autorise-la aussi pour ton navigateur si nécessaire.\nEnsuite, reviens ici et recommence.",
+  };
 }
 
 async function getLocationPermissionState() {
@@ -75,10 +110,12 @@ export default function Onboarding() {
   const [pageError, setPageError] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
-  const [locationError, setLocationError] = useState("");
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [outsideRangeDialogOpen, setOutsideRangeDialogOpen] = useState(false);
 
   const boxName = runtime?.box?.name || "Boîte";
+  const deviceOs = getDeviceOs();
+  const permissionDialog = getPermissionDialogContent(deviceOs);
 
   useEffect(() => {
     const err = location.state?.error;
@@ -93,8 +130,9 @@ export default function Onboarding() {
 
   const verifyAndOpenBox = useCallback(async () => {
     setGeoLoading(true);
-    setLocationError("");
     setPageError("");
+    setSettingsDialogOpen(false);
+    setOutsideRangeDialogOpen(false);
 
     try {
       const position = await requestLocationOnce();
@@ -115,9 +153,13 @@ export default function Onboarding() {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        if (response.status === 403) {
-          setLocationError(data?.detail || "Rapproche-toi de la boîte pour l’ouvrir.");
-          setSheetOpen(true);
+        const outsideRangeByCode = data?.code === "OUTSIDE_ALLOWED_BOX_RANGE";
+        const outsideRangeByMessage = /rapproche|près de la boîte|outside.*range/i.test(
+          String(data?.detail || "")
+        );
+        if (response.status === 403 && (outsideRangeByCode || outsideRangeByMessage)) {
+          setSheetOpen(false);
+          setOutsideRangeDialogOpen(true);
           return;
         }
         throw new Error(data?.detail || "Impossible d’ouvrir la boîte.");
@@ -144,7 +186,7 @@ export default function Onboarding() {
 
   const handleStart = useCallback(async () => {
     setPageError("");
-    setLocationError("");
+    setOutsideRangeDialogOpen(false);
     const permissionState = await getLocationPermissionState();
 
     if (permissionState === "granted") {
@@ -220,21 +262,39 @@ export default function Onboarding() {
         open={sheetOpen}
         boxTitle={boxName}
         loading={geoLoading}
-        error={locationError}
         onAuthorize={verifyAndOpenBox}
         onClose={() => setSheetOpen(false)}
       />
 
       <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Active la localisation</DialogTitle>
+        <DialogTitle>{permissionDialog.title}</DialogTitle>
         <DialogContent>
-          <Typography variant="body1">
-            Pour ouvrir cette boîte, la localisation doit être autorisée pour ce site dans les réglages de ton téléphone ou de ton navigateur.
+          <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+            {permissionDialog.content}
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button variant="light" onClick={() => setSettingsDialogOpen(false)}>
             Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={outsideRangeDialogOpen}
+        onClose={() => setOutsideRangeDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Tu es trop loin</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Rapproche-toi de la boîte pour l’ouvrir.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="light" onClick={() => setOutsideRangeDialogOpen(false)}>
+            J’ai compris
           </Button>
         </DialogActions>
       </Dialog>
