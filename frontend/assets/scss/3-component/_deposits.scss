@@ -62,7 +62,7 @@
   background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
 }
 
-#older_deposits_list .deposit::after {
+#older_deposits_list>.deposit::after {
   content: "...";
   transform: rotate(90deg) translate(0, -15px);
   padding: 16px;
