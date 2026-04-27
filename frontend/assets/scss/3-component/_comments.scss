@@ -35,13 +35,14 @@
 }
 
 .composer_container .deposit_list .deposit_song{
-  padding:0;
+  padding: 0 12px 0 0px;
 }
 
 .composer_container .deposit_song{
 
- 
-  
+  .cover_media{
+    width: 20%;
+  }
   
   button{
     display:none;
@@ -53,6 +54,8 @@
   texts{
     align-items:left;
   }
+
+
 }
   
 
