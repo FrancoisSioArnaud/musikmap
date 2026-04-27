@@ -249,7 +249,7 @@ export default function DepositComments({
 
         <Box className="composer_container">
           {selectedSongPreviewSong ? (
-            <Box>
+            <Box className="preview_song">
               <Box className="deposit deposit_list deposit_card">
                 <DepositSong
                   variant="list"
