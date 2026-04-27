@@ -251,6 +251,7 @@ export default function DepositComments({
           {selectedSongPreviewSong ? (
             <Box>
               <DepositSong
+                className="deposit_card"
                 variant="list"
                 song={selectedSongPreviewSong}
                 isRevealed
