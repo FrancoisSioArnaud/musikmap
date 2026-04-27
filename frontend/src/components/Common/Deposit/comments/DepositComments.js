@@ -257,7 +257,7 @@ export default function DepositComments({
 
         <Box className="composer_container">
           {selectedSongPreviewDep && DepositComponent ? (
-            <Box sx={{ mb: 1 }}>
+            <Box>
               <DepositComponent
                 dep={selectedSongPreviewDep}
                 user={viewer}
