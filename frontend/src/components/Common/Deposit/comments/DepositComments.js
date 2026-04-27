@@ -252,10 +252,10 @@ export default function DepositComments({
           ))
           : null}
 
-        <Box className="composer_container">
-          {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
-          {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
+        {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
+        {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
+        <Box className="composer_container">
           {selectedSongPreviewDep && DepositComponent ? (
             <Box sx={{ mb: 1 }}>
               <DepositComponent
