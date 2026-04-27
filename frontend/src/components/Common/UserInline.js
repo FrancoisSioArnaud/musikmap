@@ -72,7 +72,7 @@ function UserInline({
         />
       </Box>
 
-      <Box sx={{ minWidth: 0, flex: "1 1 auto", maxWidth: "100%" }}>
+      <Box sx={{ minWidth: 0, maxWidth: "100%" }}>
         <Typography
           component="span"
           className="username"
