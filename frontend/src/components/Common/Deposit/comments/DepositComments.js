@@ -291,7 +291,7 @@ export default function DepositComments({
               disabled={(!canPost && !isConsecutiveReplyBlocked) || submitting || (!draft.trim() && !selectedSongOption)}
               aria-label="Publier la réponse"
             >
-              <ArrowUpwardIcon />
+              <ArrowUpwardIcon sx={{ color : "var(--mm-color-primary)" }} />
             </IconButton>
           </Box>
   
