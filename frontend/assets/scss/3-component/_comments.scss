@@ -21,12 +21,16 @@
   }
 }
 
+.composer_container{
+  background:var(--mm-color-primary-light);
+  border-radius: var(--mm-radius-md);
+}
+
 .comment_composer{
   display: flex;
   gap: 6px;
   align-items: center;
-  background:var(--mm-color-primary-light);
-  border-radius: var(--mm-radius-md);
+
   padding:4px 12px 4px 12px;
 }
 
