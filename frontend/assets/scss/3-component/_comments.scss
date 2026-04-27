@@ -35,7 +35,10 @@
 }
 
 .preview_song{
-  margin: 16px 16px 12px 16px;
+  background: var(--mm-color-surface);
+  padding: 12px;
+  border-radius: var(--mm-radius-xs);
+  padding-bottom: 0px;
 }
 
 .composer_container .deposit_interact{
@@ -44,6 +47,7 @@
 
 .composer_container .deposit_list .deposit_song{
   padding: 0 12px 0 0px;
+  gap: 0;
 }
 
 .composer_container .deposit_song{
