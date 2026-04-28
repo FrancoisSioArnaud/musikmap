@@ -314,12 +314,13 @@ export default function Conversation({
                   <Box sx={{ 
                         maxWidth: "min(420px, 100%)",
                         display: "flex",
+                        gap:"4px",
                         flexDirection: "column",
                         alignItems: isOwnMessage ? "flex-end" : "flex-start",
                           }}>
                     {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
                     {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
-                    <Typography variant="caption">{formatRelativeTime(message.created_at)}</Typography>
+                    <Typography variant="body2" sx={{ opacity : "var(--mm-opacity-light-text)" }}>{formatRelativeTime(message.created_at)}</Typography>
                   </Box>
                 </Box>
               );
