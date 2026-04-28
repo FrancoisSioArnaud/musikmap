@@ -319,7 +319,7 @@ export default function Conversation({
                         alignItems: isOwnMessage ? "flex-end" : "flex-start",
                           }}>
                     {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
-                    {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
+                    {message.text ? <Typography variant="body1" sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
                     <Typography variant="body2" sx={{ opacity : "var(--mm-opacity-light-text)" }}>{formatRelativeTime(message.created_at)}</Typography>
                   </Box>
                 </Box>
