@@ -62,13 +62,15 @@ export default function MessagesPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {throw new Error(data?.detail || "Erreur chargement messages");}
     setSummary(data);
-    if (!selectedThreadId) {
-      const firstId = data?.conversations?.[0]?.id || data?.received_requests?.[0]?.id || null;
-      if (firstId) {
-        setSelectedThreadId(firstId);
-      }
+    const firstId = data?.conversations?.[0]?.id || data?.received_requests?.[0]?.id || null;
+    if (firstId) {
+      setSelectedThreadId((prev) => prev || firstId);
     }
-  }, [selectedThreadId]);
+  }, []);
+
+  const refreshSummaryAfterThreadMutation = useCallback(() => {
+    loadSummary().catch(() => {});
+  }, [loadSummary]);
 
   useEffect(() => {
     let mounted = true;
@@ -146,7 +148,7 @@ export default function MessagesPage() {
                   mode="thread"
                   threadId={selectedThreadId}
                   viewer={user}
-                  onThreadUpdated={() => loadSummary().catch(() => {})}
+                  onThreadUpdated={refreshSummaryAfterThreadMutation}
                 />
               ) : (
                 <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, minHeight: 380 }}>
@@ -172,7 +174,7 @@ export default function MessagesPage() {
               viewer={user}
               isInDrawer
               onClose={() => setMobileDrawerOpen(false)}
-              onThreadUpdated={() => loadSummary().catch(() => {})}
+              onThreadUpdated={refreshSummaryAfterThreadMutation}
             />
           ) : null}
         </Box>

@@ -4,6 +4,7 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -62,7 +63,7 @@ export default function Conversation({
   const loadThread = useCallback(async (nextThreadId, { silent = false } = {}) => {
     if (!nextThreadId) {
       setThread(null);
-      return;
+      return null;
     }
     if (!silent) {setLoading(true);}
     const res = await fetch(`/messages/thread/${nextThreadId}`, { credentials: "same-origin" });
@@ -71,9 +72,9 @@ export default function Conversation({
       throw new Error(data?.detail || "Erreur chargement discussion");
     }
     setThread(data);
-    onThreadUpdated?.(data);
     if (!silent) {setLoading(false);}
-  }, [onThreadUpdated]);
+    return data;
+  }, []);
 
   const resolveFromUsername = useCallback(async () => {
     if (!username) {return;}
@@ -189,8 +190,9 @@ export default function Conversation({
         }
         if (data?.thread_id) {
           setResolvedThreadId(data.thread_id);
-          await loadThread(data.thread_id, { silent: false });
+          const nextThread = await loadThread(data.thread_id, { silent: false });
           onThreadResolved?.(data.thread_id, data);
+          onThreadUpdated?.(nextThread || data);
         }
         return;
       }
@@ -205,7 +207,8 @@ export default function Conversation({
       if (!response.ok) {
         throw new Error(data?.detail || "Envoi impossible");
       }
-      await loadThread(resolvedThreadId, { silent: true });
+      const nextThread = await loadThread(resolvedThreadId, { silent: true });
+      onThreadUpdated?.(nextThread);
     } catch (err) {
       setError(err?.message || "Envoi impossible");
       throw err;
@@ -227,7 +230,8 @@ export default function Conversation({
       setError(data?.detail || "Refus impossible");
       return;
     }
-    await loadThread(resolvedThreadId, { silent: false });
+    const nextThread = await loadThread(resolvedThreadId, { silent: false });
+    onThreadUpdated?.(nextThread);
   };
 
   const statusState = statusPayload?.state || "";
