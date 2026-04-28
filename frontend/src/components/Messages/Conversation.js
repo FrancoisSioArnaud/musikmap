@@ -301,7 +301,7 @@ export default function Conversation({
                     alignItems: "flex-end",
                     justifyContent: isOwnMessage ? "flex-end" : "flex-start",
                     gap: 1,
-                    maxWidth: "70%",
+                    maxWidth: "100%",
                   }}
                 >
                   {!isOwnMessage ? (
@@ -312,7 +312,7 @@ export default function Conversation({
                     />
                   ) : null}
                   <Box sx={{ 
-                        maxWidth: "min(420px, 100%)",
+                        maxWidth: "min(420px, 70%)",
                         display: "flex",
                         gap:"6px",
                         flexDirection: "column",
