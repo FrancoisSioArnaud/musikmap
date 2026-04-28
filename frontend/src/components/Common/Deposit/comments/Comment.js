@@ -104,14 +104,12 @@ export default function Comment({ comment, onCommentsChange }) {
 
       <div className="comment_content">
         {hasSongReply ? (
-          <div className="comment_song">
-            <SongCompact
-              song={replySong}
-              playButton="icon"
-              coverSize={48}
-              className="song"
-            />
-          </div>
+          <SongCompact
+            song={replySong}
+            playButton="icon"
+            coverSize={48}
+            className="song"
+          />
         ) : null}
           {comment?.text ? (
             <Card className="comment_message">
