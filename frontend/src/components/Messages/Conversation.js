@@ -311,7 +311,12 @@ export default function Conversation({
                       sx={{ width: 28, height: 28, flex: "0 0 auto" }}
                     />
                   ) : null}
-                  <Box sx={{ maxWidth: "min(420px, 100%)" }}>
+                  <Box sx={{ 
+                        maxWidth: "min(420px, 100%)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: isOwnMessage ? "flex-end" : "flex-start",
+                          }}>
                     {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
                     {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
                     <Typography variant="caption">{formatRelativeTime(message.created_at)}</Typography>
