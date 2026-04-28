@@ -201,14 +201,8 @@ export default function UserProfilePage() {
   }, [user?.id, isOwner, routeUsername]);
 
   const openChatFromProfile = () => {
-    if (chatState?.thread_id) {
-      navigate(`/messages?thread=${chatState.thread_id}`);
-      return;
-    }
-    const targetUserId = header?.user?.id || null;
-    if (targetUserId) {
-      navigate(`/messages?targetUserId=${targetUserId}`);
-    }
+    if (!routeUsername) {return;}
+    navigate(`/messages/${encodeURIComponent(routeUsername)}`);
   };
 
   const handleGuestContinue = () => {

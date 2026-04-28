@@ -1,6 +1,7 @@
 from django.utils import timezone
 
 from private_messages.models import ChatThread
+from private_messages.services.read_state import thread_has_unread_for_user
 
 
 def _build_user_payload(user):
@@ -60,6 +61,7 @@ def build_thread_payload(thread, current_user):
         "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
         "is_pending_sent": thread.status == ChatThread.STATUS_PENDING and thread.initiator_id == current_user.id,
         "is_pending_received": thread.status == ChatThread.STATUS_PENDING and thread.initiator_id != current_user.id,
+        "has_unread": thread_has_unread_for_user(thread, current_user),
         "messages": [_build_message_payload(message) for message in messages],
         "last_message": _build_message_payload(last_message) if last_message else None,
         "server_time": timezone.now().isoformat(),
