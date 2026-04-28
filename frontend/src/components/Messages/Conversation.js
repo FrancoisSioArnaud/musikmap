@@ -301,7 +301,7 @@ export default function Conversation({
                     alignItems: "flex-end",
                     justifyContent: isOwnMessage ? "flex-end" : "flex-start",
                     gap: 1,
-                    maxWidth: "100%",
+                    maxWidth: "70%",
                   }}
                 >
                   {!isOwnMessage ? (
