@@ -9,7 +9,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useMemo, useState } from "react";
 
-import DepositSong from "../Deposit/parts/DepositSong";
+import SongCompact from "../Song/SongCompact";
 import SearchPanel from "../Search/SearchPanel";
 
 export function buildSongPreviewFromOption(option) {
@@ -187,7 +187,7 @@ export default function MessageComposer({
 
       {previewSong ? (
         <Box sx={{ mb: 1 }}>
-          <DepositSong variant="list" song={previewSong} isRevealed />
+          <SongCompact song={previewSong} playButton="hidden" className="song" />
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
             <Button size="small" onClick={handleOpenSongDrawer}>Remplacer</Button>
             <Button size="small" color="inherit" onClick={() => setSongOption(null)}>Retirer</Button>

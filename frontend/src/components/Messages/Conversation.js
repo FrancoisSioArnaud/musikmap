@@ -12,26 +12,21 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from "rea
 import { useNavigate } from "react-router-dom";
 
 import MessageComposer from "../Common/Composer/MessageComposer";
-import DepositSong from "../Common/Deposit/parts/DepositSong";
+import SongCompact from "../Common/Song/SongCompact";
 import UserInline from "../Common/UserInline";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { formatRelativeTime } from "../Utils/time";
 
 function SongMessage({ song }) {
-  const [open, setOpen] = useState(false);
   if (!song) {return null;}
   return (
-    <Box sx={{ maxWidth: 420 }}>
-      <DepositSong
+    <Box sx={{ width: "100%", maxWidth: 420 }}>
+      <SongCompact
         song={song}
-        isRevealed
-        playOpen={open}
-        playSong={song}
-        closePlay={() => setOpen(false)}
-        openPlayFor={() => setOpen(true)}
-        handleSongResolved={() => {}}
-        renderFloatingReactions={() => null}
+        playButton="icon"
+        coverSize={48}
+        className="song"
       />
     </Box>
   );

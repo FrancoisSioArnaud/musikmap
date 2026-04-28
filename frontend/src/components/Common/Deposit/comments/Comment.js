@@ -9,11 +9,12 @@ import React, { useState } from "react";
 import { getCookie } from "../../../Security/TokensUtils";
 import { formatRelativeTime } from "../../../Utils/time";
 import ConfirmActionDialog from "../../ConfirmActionDialog";
+import SongCompact from "../../Song/SongCompact";
 import UserInline from "../../UserInline";
 
 const EMPTY_CONTEXT = { items: [], count: 0, viewer_state: {} };
 
-export default function Comment({ comment, viewer, DepositComponent, onCommentsChange }) {
+export default function Comment({ comment, onCommentsChange }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -21,7 +22,8 @@ export default function Comment({ comment, viewer, DepositComponent, onCommentsC
   const [actionError, setActionError] = useState("");
 
   const commentUser = comment?.user || {};
-  const hasSongReply = Boolean(comment?.reply_deposit);
+  const replySong = comment?.reply_deposit?.song || null;
+  const hasSongReply = Boolean(replySong);
 
   const closeMenu = () => {
     setMenuAnchorEl(null);
@@ -101,16 +103,13 @@ export default function Comment({ comment, viewer, DepositComponent, onCommentsC
       </div>
 
       <div className="comment_content">
-        {hasSongReply && DepositComponent ? (
+        {hasSongReply ? (
           <div className="comment_song">
-            <DepositComponent
-              dep={comment.reply_deposit}
-              user={viewer}
-              variant="list"
-              context="comment"
-              showDate={false}
-              showUser={false}
-              showCommentAction={false}
+            <SongCompact
+              song={replySong}
+              playButton="icon"
+              coverSize={48}
+              className="song"
             />
           </div>
         ) : null}
