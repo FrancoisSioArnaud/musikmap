@@ -308,7 +308,7 @@ export default function Conversation({
                     <Avatar
                       src={thread?.other_user?.profile_picture_url || undefined}
                       alt={thread?.other_user?.display_name || thread?.other_user?.username || "Utilisateur"}
-                      sx={{ width: 28, height: 28, flex: "0 0 auto" }}
+                      sx={{ width: 28, height: 28, flex: "0 0 auto", marginBottom: "24px" }}
                     />
                   ) : null}
                   <Box sx={{ 
@@ -319,8 +319,8 @@ export default function Conversation({
                         alignItems: isOwnMessage ? "flex-end" : "flex-start",
                           }}>
                     {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
-                    {message.text ? <Typography variant="body1" sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
-                    <Typography variant="body2" sx={{ opacity : "var(--mm-opacity-light-text)" }}>{formatRelativeTime(message.created_at)}</Typography>
+                    {message.text ? <Typography variant="body1" sx={{ backgroundColor: "var(--mm-color-primary-light)", p: "12px 16px", borderRadius: "var(--mm-radius-xs)", whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
+                    <Typography variant="body2" sx={{ opacity : "var(--mm-opacity-light-text)", p: "0 6px" }}>{formatRelativeTime(message.created_at)}</Typography>
                   </Box>
                 </Box>
               );
