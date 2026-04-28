@@ -187,7 +187,9 @@ export default function MessageComposer({
 
       {previewSong ? (
         <Box sx={{ mb: 1 }}>
-          <SongCompact song={previewSong} playButton="hidden" className="song" />
+          <Box sx={{ padding:"12px", width: "100%" }}>
+            <SongCompact song={previewSong} playButton="hidden" className="song" />
+          </Box>
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
             <Button size="small" onClick={handleOpenSongDrawer}>Remplacer</Button>
             <Button size="small" color="inherit" onClick={() => setSongOption(null)}>Retirer</Button>
