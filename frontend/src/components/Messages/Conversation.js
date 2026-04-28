@@ -288,13 +288,6 @@ export default function Conversation({
 
       {!loading && thread ? (
         <Stack spacing={2} sx={{ minHeight: 0, height: "100%" }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <UserInline user={thread?.other_user} avatarSize={32} />
-              {thread?.is_pending_received ? <Typography variant="body2">Réponds pour accepter la discussion.</Typography> : null}
-              {thread?.is_pending_sent ? <Typography variant="body2">En attente de réponse.</Typography> : null}
-            </Box>
-          </Box>
           <Divider />
 
           <Stack spacing={1} ref={messagesContainerRef} sx={{ overflowY: "auto", flex: 1, minHeight: 120 }}>
