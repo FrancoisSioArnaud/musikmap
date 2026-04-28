@@ -1,100 +1,74 @@
-import MusicNoteIcon from "@mui/icons-material/MusicNote";
-import SendIcon from "@mui/icons-material/Send";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
+import { useTheme } from "@mui/material/styles";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
-import { DepositSong } from "../Common/Deposit/index";
-import SearchPanel from "../Common/Search/SearchPanel";
-import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { formatRelativeTime } from "../Utils/time";
 
+import Conversation from "./Conversation";
+
 function MessageRow({ item, active, onClick }) {
-  const preview = item?.last_message?.text || (item?.last_message?.message_type === "song" ? "🎵 Chanson" : "");
+  let preview = item?.last_message?.text || "";
+  if (!preview && item?.last_message?.message_type === "song") {
+    preview = "A partagé une chanson";
+  }
+  if (!preview && item?.is_pending_sent) {
+    preview = "En attente de réponse";
+  }
+
   return (
-    <ListItemButton selected={active} onClick={onClick}>
+    <ListItemButton selected={active} onClick={onClick} sx={{ opacity: item?.has_unread ? 1 : 0.8 }}>
       <Avatar src={item?.other_user?.profile_picture_url || undefined} sx={{ mr: 1.5 }} />
       <ListItemText
         primary={item?.other_user?.display_name || "Utilisateur"}
-        secondary={preview || (item?.is_pending_sent ? "En attente de réponse" : "")}
+        secondary={preview}
+        primaryTypographyProps={{ fontWeight: item?.has_unread ? 700 : 400 }}
       />
       <Typography variant="caption">{formatRelativeTime(item?.updated_at)}</Typography>
     </ListItemButton>
   );
 }
 
-function SongMessage({ song }) {
-  const [open, setOpen] = useState(false);
-  if (!song) {return null;}
-  return (
-    <Box sx={{ maxWidth: 420 }}>
-      <DepositSong
-        song={song}
-        isRevealed
-        playOpen={open}
-        playSong={song}
-        closePlay={() => setOpen(false)}
-        openPlayFor={() => setOpen(true)}
-        handleSongResolved={() => {}}
-        renderFloatingReactions={() => null}
-      />
-    </Box>
-  );
-}
-
 export default function MessagesPage() {
   const { user } = useContext(UserContext) || {};
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const queryThreadId = Number(params.get("thread") || 0);
-  const queryTargetUserId = Number(params.get("targetUserId") || 0);
-
-  const [summary, setSummary] = useState({ received_requests: [], conversations: [] });
-  const [selectedThreadId, setSelectedThreadId] = useState(queryThreadId || null);
-  const [thread, setThread] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [summary, setSummary] = useState({
+    received_requests: [],
+    conversations: [],
+    unread_conversations_count: 0,
+    pending_invitations_count: 0,
+  });
+  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [activeTab, setActiveTab] = useState("conversations");
   const [loading, setLoading] = useState(true);
-  const [loadingThread, setLoadingThread] = useState(false);
   const [error, setError] = useState("");
-  const [composeText, setComposeText] = useState("");
-  const [songDrawerOpen, setSongDrawerOpen] = useState(false);
-  const [startDrawerOpen, setStartDrawerOpen] = useState(Boolean(queryTargetUserId && !queryThreadId));
-
-  const withCsrf = useCallback(() => ({ "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") }), []);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const loadSummary = useCallback(async () => {
     const res = await fetch("/messages/summary", { credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {throw new Error(data?.detail || "Erreur chargement messages");}
     setSummary(data);
-    if (!selectedThreadId && data?.conversations?.[0]?.id) {
-      setSelectedThreadId(data.conversations[0].id);
+    if (!selectedThreadId) {
+      const firstId = data?.conversations?.[0]?.id || data?.received_requests?.[0]?.id || null;
+      if (firstId) {
+        setSelectedThreadId(firstId);
+      }
     }
   }, [selectedThreadId]);
-
-  const loadThread = useCallback(async (threadId) => {
-    if (!threadId) {setThread(null);return;}
-    setLoadingThread(true);
-    const res = await fetch(`/messages/thread/${threadId}`, { credentials: "same-origin" });
-    const data = await res.json().catch(() => ({}));
-    setLoadingThread(false);
-    if (!res.ok) {throw new Error(data?.detail || "Erreur chargement discussion");}
-    setThread(data);
-  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -104,11 +78,6 @@ export default function MessagesPage() {
   }, [loadSummary]);
 
   useEffect(() => {
-    if (!selectedThreadId) {return;}
-    loadThread(selectedThreadId).catch((e) => setError(e.message));
-  }, [selectedThreadId, loadThread]);
-
-  useEffect(() => {
     const id = window.setInterval(() => {
       if (document.visibilityState !== "visible") {return;}
       loadSummary().catch(() => {});
@@ -116,61 +85,17 @@ export default function MessagesPage() {
     return () => window.clearInterval(id);
   }, [loadSummary]);
 
-  useEffect(() => {
-    if (!selectedThreadId) {return;}
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== "visible") {return;}
-      loadThread(selectedThreadId).catch(() => {});
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [selectedThreadId, loadThread]);
-
-  const sendReply = async ({ text = "", song = null }) => {
-    if (!thread?.id) {return;}
-    const res = await fetch(`/messages/thread/${thread.id}/reply`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: withCsrf(),
-      body: JSON.stringify({ text, song }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {throw new Error(data?.detail || "Envoi impossible");}
-    setComposeText("");
-    await loadSummary();
-    await loadThread(thread.id);
-  };
-
-  const refuse = async () => {
-    const res = await fetch(`/messages/thread/${thread.id}/refuse`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: withCsrf(),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data?.detail || "Refus impossible");
+  const displayedItems = useMemo(() => {
+    if (activeTab === "invitations") {
+      return summary?.received_requests || [];
     }
-    await loadSummary();
-    await loadThread(thread.id);
-  };
+    return summary?.conversations || [];
+  }, [activeTab, summary]);
 
-  const startRequest = async (songOption) => {
-    const res = await fetch("/messages/thread/start", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: withCsrf(),
-      body: JSON.stringify({ target_user_id: queryTargetUserId, song: songOption, text: composeText }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data?.detail || "Impossible de créer la demande");
-    }
-    setStartDrawerOpen(false);
-    setComposeText("");
-    await loadSummary();
-    if (data?.thread_id) {
-      setSelectedThreadId(data.thread_id);
-      navigate(`/messages?thread=${data.thread_id}`, { replace: true });
+  const handleSelectItem = (item) => {
+    setSelectedThreadId(item.id);
+    if (isMobile) {
+      setMobileDrawerOpen(true);
     }
   };
 
@@ -185,104 +110,71 @@ export default function MessagesPage() {
       {loading ? <CircularProgress /> : (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: 2 }}>
           <Box>
-            <Typography variant="h6">Demandes reçues</Typography>
+            <Tabs value={activeTab} onChange={(_, next) => setActiveTab(next)}>
+              <Tab
+                value="conversations"
+                label={<Badge color="primary" badgeContent={summary?.unread_conversations_count || 0}>Conversations</Badge>}
+              />
+              <Tab
+                value="invitations"
+                label={<Badge color="secondary" badgeContent={summary?.pending_invitations_count || 0}>Invitations</Badge>}
+              />
+            </Tabs>
+
             <List dense>
-              {(summary?.received_requests || []).map((item) => (
-                <MessageRow key={`req-${item.id}`} item={item} active={item.id === selectedThreadId} onClick={() => setSelectedThreadId(item.id)} />
+              {displayedItems.map((item) => (
+                <MessageRow
+                  key={`${activeTab}-${item.id}`}
+                  item={item}
+                  active={item.id === selectedThreadId}
+                  onClick={() => handleSelectItem(item)}
+                />
               ))}
             </List>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="h6">Conversations</Typography>
-            <List dense>
-              {(summary?.conversations || []).map((item) => (
-                <MessageRow key={`conv-${item.id}`} item={item} active={item.id === selectedThreadId} onClick={() => setSelectedThreadId(item.id)} />
-              ))}
-            </List>
-          </Box>
 
-          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, minHeight: 380 }}>
-            {!selectedThreadId ? (
-              <Typography variant="body1">Sélectionne une discussion.</Typography>
-            ) : loadingThread ? (
-              <CircularProgress size={20} />
-            ) : thread ? (
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="h6">{thread?.other_user?.display_name}</Typography>
-                  {thread?.is_pending_received ? <Typography variant="body2">Réponds pour accepter la discussion.</Typography> : null}
-                  {thread?.is_pending_sent ? <Typography variant="body2">En attente de réponse.</Typography> : null}
-                </Box>
-                <Divider />
-                <Stack spacing={1}>
-                  {(thread?.messages || []).map((message) => (
-                    <Box key={message.id} sx={{ alignSelf: message?.sender?.id === user.id ? "flex-end" : "flex-start", maxWidth: "100%" }}>
-                      {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
-                      {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
-                      <Typography variant="caption">{formatRelativeTime(message.created_at)}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-
-                <Divider />
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    maxRows={6}
-                    value={composeText}
-                    inputProps={{ maxLength: 300 }}
-                    onChange={(event) => setComposeText(event.target.value)}
-                    placeholder={thread?.is_pending_sent ? "En attente de réponse" : "Écrire un message"}
-                    disabled={thread?.is_pending_sent}
-                  />
-                  <Button variant="outlined" startIcon={<MusicNoteIcon />} disabled={thread?.is_pending_sent} onClick={() => setSongDrawerOpen(true)}>
-                    Chanson
-                  </Button>
-                  <Button variant="contained" startIcon={<SendIcon />} disabled={!composeText.trim() || thread?.is_pending_sent} onClick={() => sendReply({ text: composeText })}>
-                    Envoyer
-                  </Button>
-                </Stack>
-                {thread?.is_pending_received ? <Button color="error" variant="outlined" onClick={refuse}>Refuser</Button> : null}
-              </Stack>
+            {displayedItems.length === 0 ? (
+              activeTab === "conversations"
+                ? <Alert severity="info">Aucune conversation pour l’instant.</Alert>
+                : <Alert severity="info">Aucune invitation en attente.</Alert>
             ) : null}
           </Box>
+
+          {!isMobile ? (
+            <Box sx={{ minHeight: 380 }}>
+              {selectedThreadId ? (
+                <Conversation
+                  mode="thread"
+                  threadId={selectedThreadId}
+                  viewer={user}
+                  onThreadUpdated={() => loadSummary().catch(() => {})}
+                />
+              ) : (
+                <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, minHeight: 380 }}>
+                  <Typography>Sélectionne une discussion.</Typography>
+                </Box>
+              )}
+            </Box>
+          ) : null}
         </Box>
       )}
 
-      <Drawer anchor="bottom" open={songDrawerOpen} onClose={() => setSongDrawerOpen(false)}>
-        <Box sx={{ p: 2, height: "70vh" }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>Choisir une chanson</Typography>
-          <SearchPanel
-            actionLabel="Envoyer"
-            onSelectSong={async (option) => {
-              try {
-                await sendReply({ text: "", song: option });
-                setSongDrawerOpen(false);
-              } catch (e) {
-                setError(e.message);
-              }
-            }}
-          />
-        </Box>
-      </Drawer>
-
-      <Drawer anchor="bottom" open={startDrawerOpen} onClose={() => setStartDrawerOpen(false)}>
-        <Box sx={{ p: 2, height: "75vh" }}>
-          <Typography variant="h6">Envoyer une chanson en privé</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>La chanson est obligatoire pour démarrer la discussion.</Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            maxRows={4}
-            value={composeText}
-            inputProps={{ maxLength: 300 }}
-            onChange={(event) => setComposeText(event.target.value)}
-            placeholder="Message d’accompagnement (optionnel)"
-            sx={{ mb: 1 }}
-          />
-          <SearchPanel actionLabel="Envoyer" onSelectSong={startRequest} />
+      <Drawer
+        anchor="right"
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        PaperProps={{ sx: { width: "100vw", maxWidth: "100vw" } }}
+      >
+        <Box sx={{ p: 2, height: "100%" }}>
+          {selectedThreadId ? (
+            <Conversation
+              mode="thread"
+              threadId={selectedThreadId}
+              viewer={user}
+              isInDrawer
+              onClose={() => setMobileDrawerOpen(false)}
+              onThreadUpdated={() => loadSummary().catch(() => {})}
+            />
+          ) : null}
         </Box>
       </Drawer>
     </Box>

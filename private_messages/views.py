@@ -18,6 +18,7 @@ from private_messages.models import ChatMessage, ChatThread
 from private_messages.selectors.threads import get_thread_for_users, list_threads_for_user, sorted_pair
 from private_messages.services.moderation import validate_message_text
 from private_messages.services.payloads import build_thread_payload
+from private_messages.services.read_state import set_last_read_at_for_user
 from users.utils import get_current_app_user, touch_last_seen
 
 RATE_LIMIT_WINDOW_SECONDS = 10
@@ -75,8 +76,17 @@ class MessageSummaryView(APIView):
             if thread.status == ChatThread.STATUS_ACCEPTED or payload["is_pending_sent"]:
                 conversations.append(payload)
 
+        unread_conversations_count = sum(1 for item in conversations if item.get("has_unread"))
+        pending_invitations_count = len(received_requests)
+
         return Response(
-            {"received_requests": received_requests, "conversations": conversations}, status=status.HTTP_200_OK
+            {
+                "received_requests": received_requests,
+                "conversations": conversations,
+                "unread_conversations_count": unread_conversations_count,
+                "pending_invitations_count": pending_invitations_count,
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -90,6 +100,7 @@ class MessageThreadDetailView(APIView):
         if not thread:
             return api_error(status.HTTP_404_NOT_FOUND, "THREAD_NOT_FOUND", "Discussion introuvable.")
 
+        set_last_read_at_for_user(thread, user, timezone.now())
         return Response(build_thread_payload(thread, user), status=status.HTTP_200_OK)
 
 
@@ -175,6 +186,8 @@ class MessageThreadStartView(APIView):
                     accepted_at=None,
                     refused_at=None,
                     expired_at=None,
+                    user_a_last_read_at=now if left_id == user.id else None,
+                    user_b_last_read_at=now if right_id == user.id else None,
                 )
             else:
                 thread.initiator_id = user.id
@@ -182,8 +195,19 @@ class MessageThreadStartView(APIView):
                 thread.accepted_at = None
                 thread.refused_at = None
                 thread.expired_at = None
+                thread.user_a_last_read_at = now if left_id == user.id else None
+                thread.user_b_last_read_at = now if right_id == user.id else None
                 thread.save(
-                    update_fields=["initiator", "status", "accepted_at", "refused_at", "expired_at", "updated_at"]
+                    update_fields=[
+                        "initiator",
+                        "status",
+                        "accepted_at",
+                        "refused_at",
+                        "expired_at",
+                        "user_a_last_read_at",
+                        "user_b_last_read_at",
+                        "updated_at",
+                    ]
                 )
                 thread.messages.all().delete()
 
@@ -194,6 +218,7 @@ class MessageThreadStartView(APIView):
                 text=normalized_text,
                 song=song,
             )
+            set_last_read_at_for_user(thread, user, now)
 
         return Response(
             {"thread_id": thread.id, "status": thread.status, "created": True}, status=status.HTTP_201_CREATED
@@ -257,6 +282,7 @@ class MessageThreadReplyView(APIView):
                 text=normalized_text,
                 song=song,
             )
+            set_last_read_at_for_user(thread, user, timezone.now())
 
         return Response({"thread_id": thread.id, "status": thread.status}, status=status.HTTP_200_OK)
 

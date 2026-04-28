@@ -1,5 +1,3 @@
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -7,36 +5,15 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 
 import { getCookie } from "../../../Security/TokensUtils";
-import {
-  closeDrawerWithHistory,
-  matchesDrawerSearch,
-  openDrawerWithHistory,
-} from "../../../Utils/drawerHistory";
-import SearchPanel from "../../Search/SearchPanel";
-import DepositSong from "../parts/DepositSong";
+import MessageComposer from "../../Composer/MessageComposer";
 
 import Comment from "./Comment";
 
 const EMPTY_CONTEXT = { items: [], count: 0, viewer_state: {} };
-const COMMENT_SONG_DRAWER_PARAM = "commentDrawer";
-
-function buildSongFromOption(option) {
-  const artists = Array.isArray(option?.artists) ? option.artists.filter(Boolean) : [];
-  return {
-    title: option?.title || "",
-    artist: artists.join(", "),
-    image_url: option?.image_url || option?.image_url_small || "",
-    provider_links: option?.provider_links || {},
-  };
-}
 
 export default function DepositComments({
   open,
@@ -47,16 +24,11 @@ export default function DepositComments({
   isParentRevealed,
   DepositComponent,
 }) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [context, setContext] = useState(comments || EMPTY_CONTEXT);
-  const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [songDrawerOpen, setSongDrawerOpen] = useState(false);
-  const [selectedSongOption, setSelectedSongOption] = useState(null);
   const [isConsecutiveReplyDialogOpen, setIsConsecutiveReplyDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -73,15 +45,6 @@ export default function DepositComments({
     isFullUser && !canPost && notice.toLowerCase().includes("deux réponses"),
   );
   const inlineNotice = isConsecutiveReplyBlocked ? "" : notice;
-  const commentSongDrawerValue = useMemo(
-    () => `song-reply-${depPublicKey || "unknown"}`,
-    [depPublicKey],
-  );
-
-  const selectedSongPreviewSong = useMemo(() => {
-    if (!selectedSongOption) {return null;}
-    return buildSongFromOption(selectedSongOption);
-  }, [selectedSongOption]);
 
   useEffect(() => {
     if (!open || hasLoaded || loadingReplies || !depPublicKey || !isParentRevealed) {return;}
@@ -112,110 +75,11 @@ export default function DepositComments({
     loadReplies();
   }, [depPublicKey, hasLoaded, isParentRevealed, loadingReplies, onCommentsChange, open]);
 
-  useEffect(() => {
-    const shouldOpenDrawer = matchesDrawerSearch(
-      location,
-      COMMENT_SONG_DRAWER_PARAM,
-      commentSongDrawerValue,
-    );
-
-    if (shouldOpenDrawer) {
-      setSongDrawerOpen((prev) => (prev ? prev : true));
-      return;
-    }
-
-    setSongDrawerOpen(false);
-  }, [commentSongDrawerValue, location]);
-
-  const closeSongDrawer = useCallback((options = {}) => {
-    if (
-      closeDrawerWithHistory({
-        navigate,
-        location,
-        param: COMMENT_SONG_DRAWER_PARAM,
-        value: commentSongDrawerValue,
-        replace: Boolean(options?.replace),
-      })
-    ) {
-      return;
-    }
-
-    setSongDrawerOpen(false);
-  }, [commentSongDrawerValue, location, navigate]);
-
-  const openSongDrawer = useCallback(() => {
-    if (isConsecutiveReplyBlocked) {
-      setIsConsecutiveReplyDialogOpen(true);
-      return;
-    }
-
-    openDrawerWithHistory({
-      navigate,
-      location,
-      param: COMMENT_SONG_DRAWER_PARAM,
-      value: commentSongDrawerValue,
-    });
-  }, [commentSongDrawerValue, isConsecutiveReplyBlocked, location, navigate]);
-
-  const submitReply = async () => {
-    if (submitting) {return;}
-    if (isConsecutiveReplyBlocked) {
-      setIsConsecutiveReplyDialogOpen(true);
-      return;
-    }
-
-    const nextText = (draft || "").trim();
-    if (!nextText && !selectedSongOption) {
-      setError("Le commentaire est vide.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
-
-    try {
-      const response = await fetch("/box-management/comments/", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({
-          dep_public_key: depPublicKey,
-          text: nextText,
-          song_option: selectedSongOption,
-        }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.detail || "Impossible d’envoyer la réponse.");
-      }
-
-      const nextComments = payload?.comments || EMPTY_CONTEXT;
-      setContext(nextComments);
-      onCommentsChange?.(nextComments);
-      setDraft("");
-      setSelectedSongOption(null);
-      setHasLoaded(true);
-    } catch (err) {
-      setError(err?.message || "Impossible d’envoyer la réponse.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (!open) {return null;}
 
   const closeConsecutiveReplyDialog = () => {
     document.activeElement?.blur?.();
     setIsConsecutiveReplyDialogOpen(false);
-  };
-
-  const handleBlockedComposerInteraction = () => {
-    if (!isConsecutiveReplyBlocked || isConsecutiveReplyDialogOpen) {return;}
-    setIsConsecutiveReplyDialogOpen(true);
   };
 
   return (
@@ -248,53 +112,53 @@ export default function DepositComments({
         {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
         <Box className="composer_container">
-          {selectedSongPreviewSong ? (
-            <Box className="preview_song">
-              <Box className="deposit_list">
-                <DepositSong
-                  variant="list"
-                  song={selectedSongPreviewSong}
-                  isRevealed
-                />
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 0.5 }}>
-                <Button size="small" onClick={openSongDrawer}>Remplacer</Button>
-                <Button size="small" color="inherit" onClick={() => setSelectedSongOption(null)}>Retirer</Button>
-              </Box>
-            </Box>
-          ) : null}
-  
-          <Box className="comment_composer">
-            <IconButton onClick={openSongDrawer} aria-label="Ajouter une chanson">
-              <LibraryMusicIcon sx={{ color : "var(--mm-color-primary)" }} />
-            </IconButton>
-            <TextField
-              fullWidth
-              multiline
-              minRows={1}
-              maxRows={5}
-              value={draft}
-              onClick={handleBlockedComposerInteraction}
-              onFocus={handleBlockedComposerInteraction}
-              onChange={(event) => {
-                if (isConsecutiveReplyBlocked) {return;}
-                const nextValue = event.target.value || "";
-                if (nextValue.length <= 100) {
-                  setDraft(nextValue);
+          <MessageComposer
+            scope="comment"
+            target={{ depPublicKey }}
+            viewer={viewer}
+            loading={submitting}
+            canSubmit={canPost || isConsecutiveReplyBlocked}
+            blockReason={isConsecutiveReplyBlocked ? "consecutive_reply" : ""}
+            maxTextLength={100}
+            songRequired={false}
+            drawerAnchor="right"
+            searchDrawerTitle="Attacher une chanson"
+            songActionLabel="Choisir"
+            textLabel="Répondre"
+            textPlaceholder="Répondre"
+            onBlockedInteraction={() => setIsConsecutiveReplyDialogOpen(true)}
+            onSubmit={async (payload) => {
+              setSubmitting(true);
+              setError("");
+              try {
+                const response = await fetch("/box-management/comments/", {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: JSON.stringify(payload.requestBody),
+                });
+
+                const responsePayload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                  throw new Error(responsePayload?.detail || "Impossible d’envoyer la réponse.");
                 }
-              }}
-              label="Répondre"
-              inputProps={{ readOnly: isConsecutiveReplyBlocked }}
-            />
-            <IconButton
-              onClick={submitReply}
-              disabled={(!canPost && !isConsecutiveReplyBlocked) || submitting || (!draft.trim() && !selectedSongOption)}
-              aria-label="Publier la réponse"
-            >
-              <ArrowUpwardIcon sx={{ color : "var(--mm-color-primary)" }} />
-            </IconButton>
-          </Box>
-  
+
+                const nextComments = responsePayload?.comments || EMPTY_CONTEXT;
+                setContext(nextComments);
+                onCommentsChange?.(nextComments);
+                setHasLoaded(true);
+              } catch (err) {
+                setError(err?.message || "Impossible d’envoyer la réponse.");
+                throw err;
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          />
+
           {!isFullUser ? (
             <Typography variant="caption" sx={{ opacity: 0.8 }}>
               Connecte-toi pour répondre.
@@ -303,56 +167,13 @@ export default function DepositComments({
         </Box>
       </Box>
 
-      <Drawer
-        anchor="right"
-        open={songDrawerOpen}
-        onClose={() => closeSongDrawer()}
-        PaperProps={{
-          sx: {
-            width: "100vw",
-            maxWidth: "100vw",
-            height: "100vh",
-            overflow: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ p: 5, pb: 2 }}>
-            <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-              Attacher une chanson
-            </Typography>
-          </Box>
-
-          {songDrawerOpen ? (
-            <SearchPanel
-              onSelectSong={(option) => {
-                setSelectedSongOption(option || null);
-                closeSongDrawer({ replace: true });
-              }}
-              actionLabel="Choisir"
-              rootSx={{ flex: 1, minHeight: 0 }}
-              searchBarWrapperSx={{ px: 5, pb: 2 }}
-              contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
-            />
-          ) : null}
-
-          <Button variant="contained" onClick={() => closeSongDrawer()} className="bottom_fixed">
-            Fermer
-          </Button>
-        </Box>
-      </Drawer>
-
-      <Dialog
-        open={isConsecutiveReplyDialogOpen}
-        onClose={closeConsecutiveReplyDialog}
-        disableRestoreFocus
-        fullWidth
-        maxWidth="xs"
-      >
+      <Dialog open={isConsecutiveReplyDialogOpen} onClose={closeConsecutiveReplyDialog}>
         <DialogTitle>Réponse indisponible</DialogTitle>
-        <DialogContent>Tu ne peux pas envoyer deux réponses d’affilé</DialogContent>
+        <DialogContent>
+          <Typography>Tu ne peux pas envoyer deux réponses d’affilé</Typography>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={closeConsecutiveReplyDialog}>J’ai compris</Button>
+          <Button onClick={closeConsecutiveReplyDialog} variant="contained">J’ai compris</Button>
         </DialogActions>
       </Dialog>
     </Box>
