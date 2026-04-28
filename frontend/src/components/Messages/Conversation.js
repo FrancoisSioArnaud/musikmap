@@ -290,7 +290,7 @@ export default function Conversation({
         <Stack spacing={2} sx={{ minHeight: 0, height: "100%" }}>
           <Divider />
 
-          <Stack spacing={1} ref={messagesContainerRef} sx={{ overflowY: "auto", flex: 1, minHeight: 120 }}>
+          <Stack spacing={4} ref={messagesContainerRef} sx={{ overflowY: "auto", flex: 1, minHeight: 120}}>
             {(thread?.messages || []).map((message) => {
               const isOwnMessage = message?.sender?.id === currentViewer.id;
               return (
