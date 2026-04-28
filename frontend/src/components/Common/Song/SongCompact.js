@@ -37,8 +37,8 @@ export default function SongCompact({
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.5,
         width: "100%",
+        gap: "12px",
         minWidth: 0,
       }}
     >
@@ -69,9 +69,8 @@ export default function SongCompact({
 
       <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 0.25 }}>
         <Typography
-          variant="body2"
+          variant="body1"
           sx={{
-            fontWeight: 600,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -80,12 +79,12 @@ export default function SongCompact({
           {song?.title || "Chanson sans titre"}
         </Typography>
         <Typography
-          variant="caption"
+          variant="body2"
           sx={{
-            color: "text.secondary",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            opacity : "var(--mm-opacity-light-text)",
           }}
         >
           {artistText || "Artiste inconnu"}
@@ -103,9 +102,9 @@ export default function SongCompact({
             size="small"
             aria-label="Écouter"
             onClick={() => setPlayOpen((prev) => !prev)}
-            sx={{ flex: "0 0 auto" }}
+            sx={{ flex: "0 0 auto", backgroundColor: "var(--mm-color-primary)" }}
           >
-            <PlayArrowIcon sx={{ color: "var(--mm-color-primary)" }} />
+            <PlayArrowIcon sx={{ color: "white" }} />
           </IconButton>
         </PlayModal>
       ) : null}
