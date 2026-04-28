@@ -1,10 +1,11 @@
+import CloseIcon from "@mui/icons-material/Close";
 import Alert from "@mui/material/Alert";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 
 import MessageComposer from "../Common/Composer/MessageComposer";
 import DepositSong from "../Common/Deposit/parts/DepositSong";
+import UserInline from "../Common/UserInline";
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { formatRelativeTime } from "../Utils/time";
@@ -236,6 +238,7 @@ export default function Conversation({
 
   const statusState = statusPayload?.state || "";
   const renderStatusOnly = mode === "username" && !resolvedThreadId;
+  const headerUser = thread?.other_user || statusPayload?.target_user || (username ? { username } : null);
 
   if (!currentViewer?.id) {
     return <Alert severity="info">Connecte-toi pour accéder à tes messages.</Alert>;
@@ -244,8 +247,13 @@ export default function Conversation({
   return (
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, minHeight: 380, height: "100%", display: "flex", flexDirection: "column" }}>
       {isInDrawer ? (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-          <IconButton onClick={onClose} aria-label="Fermer"><CloseIcon /></IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1.5 }}>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            {headerUser ? <UserInline user={headerUser} avatarSize={32} /> : null}
+          </Box>
+          <IconButton onClick={onClose} aria-label="Fermer" sx={{ flex: "0 0 auto" }}>
+            <CloseIcon />
+          </IconButton>
         </Box>
       ) : null}
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
@@ -281,10 +289,8 @@ export default function Conversation({
       {!loading && thread ? (
         <Stack spacing={2} sx={{ minHeight: 0, height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-            <Box>
-              <Typography variant="h6" onClick={() => navigate(`/profile/${thread?.other_user?.username}`)} sx={{ cursor: "pointer" }}>
-                {thread?.other_user?.display_name}
-              </Typography>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <UserInline user={thread?.other_user} avatarSize={32} />
               {thread?.is_pending_received ? <Typography variant="body2">Réponds pour accepter la discussion.</Typography> : null}
               {thread?.is_pending_sent ? <Typography variant="body2">En attente de réponse.</Typography> : null}
             </Box>
@@ -292,13 +298,34 @@ export default function Conversation({
           <Divider />
 
           <Stack spacing={1} ref={messagesContainerRef} sx={{ overflowY: "auto", flex: 1, minHeight: 120 }}>
-            {(thread?.messages || []).map((message) => (
-              <Box key={message.id} sx={{ alignSelf: message?.sender?.id === currentViewer.id ? "flex-end" : "flex-start", maxWidth: "100%" }}>
-                {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
-                {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
-                <Typography variant="caption">{formatRelativeTime(message.created_at)}</Typography>
-              </Box>
-            ))}
+            {(thread?.messages || []).map((message) => {
+              const isOwnMessage = message?.sender?.id === currentViewer.id;
+              return (
+                <Box
+                  key={message.id}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: isOwnMessage ? "flex-end" : "flex-start",
+                    gap: 1,
+                    maxWidth: "100%",
+                  }}
+                >
+                  {!isOwnMessage ? (
+                    <Avatar
+                      src={thread?.other_user?.profile_picture_url || undefined}
+                      alt={thread?.other_user?.display_name || thread?.other_user?.username || "Utilisateur"}
+                      sx={{ width: 28, height: 28, flex: "0 0 auto" }}
+                    />
+                  ) : null}
+                  <Box sx={{ maxWidth: "min(420px, 100%)" }}>
+                    {message.message_type === "song" ? <SongMessage song={message.song} /> : null}
+                    {message.text ? <Typography sx={{ whiteSpace: "pre-wrap", mt: message.message_type === "song" ? 0.5 : 0 }}>{message.text}</Typography> : null}
+                    <Typography variant="caption">{formatRelativeTime(message.created_at)}</Typography>
+                  </Box>
+                </Box>
+              );
+            })}
           </Stack>
 
           <Divider />
