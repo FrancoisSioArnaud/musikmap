@@ -362,7 +362,7 @@ export default function UserProfilePage() {
           />
   
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: 0 }}> 
-            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "6px", mb: "16px" }}>
+            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "6px" }}>
               <Typography variant="h4">{headerUser?.display_name}</Typography>
               {isOwner && !isGuestOwner && (
                 <IconButton
@@ -377,7 +377,7 @@ export default function UserProfilePage() {
     
     
             {userStatusName && (
-              <Box className="status">
+              <Box className="status" sx={{ mt: "16px" }}>
                 <Typography className="statusName" variant="body1">{userStatusName}</Typography>
                 <Typography variant="h5">• {depositsCount}</Typography>
               </Box>
