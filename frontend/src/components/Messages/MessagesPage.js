@@ -166,7 +166,7 @@ export default function MessagesPage() {
               <Tab
                 value="conversations"
                 label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>Conversations</span>
                     <Box
                       sx={{
@@ -193,7 +193,7 @@ export default function MessagesPage() {
               <Tab
                 value="invitations"
                 label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>Invitations</span>
                     <Box
                       sx={{
@@ -201,7 +201,7 @@ export default function MessagesPage() {
                         height: 18,
                         px: 0.75,
                         borderRadius: "999px",
-                        bgcolor: "secondary.main",
+                        bgcolor: "primary.main",
                         color: "secondary.contrastText",
                         display: "inline-flex",
                         alignItems: "center",
