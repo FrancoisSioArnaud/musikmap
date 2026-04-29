@@ -33,13 +33,13 @@ function MessageRow({ item, active, onClick }) {
       onClick={onClick}
       sx={{
         gap: 1,
-        display: "flex", 
-        alignItems: "center", 
+        display: "flex",
+        alignItems: "center",
         p: "12px 16px",
         justifyContent: "space-between",
       }}
     >
-      <Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
         <UserInline
           user={item?.other_user}
           subtitle={preview}
@@ -48,11 +48,19 @@ function MessageRow({ item, active, onClick }) {
           interactive={false}
         />
       </Box>
-      <Box sx={{ display: "flex", alignItems: "center"}}>      
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          flex: "0 0 auto",
+          whiteSpace: "nowrap",
+        }}
+      >
         <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
           {formatRelativeTime(item?.updated_at)}
         </Typography>
-  
+
         {item?.has_unread ? (
           <Box
             aria-label="Conversation non lue"
