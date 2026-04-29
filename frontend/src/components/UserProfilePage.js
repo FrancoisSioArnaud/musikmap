@@ -366,52 +366,20 @@ export default function UserProfilePage() {
           sx={{ width: 64, height: 64 }}
         />
 
-        {isGuestOwner ? (
-          <>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Box sx={{ display: "flex", maxWidth: 320, gap: "12px" }}>
-                <TextField
-                  fullWidth
-                  label="Choisis ton pseudo"
-                  value={guestUsernameDraft}
-                  onChange={(event) => setGuestUsernameDraft(event.target.value)}
-                  inputProps={{ maxLength: 150 }}
-                  autoFocus
-                  sx={{ width: "auto" }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleGuestContinue}
-                  disabled={!trimmedGuestUsername}
-                  size="small"
-                >
-                  Valider
-                </Button>
-              </Box>
-              <Typography variant="body2" sx={{ opacity: "var(--mm-opacity-light-text)", padding: "0 6px" }}>
-                {user.username}
-              </Typography>
-              {userStatusName && (
-                <Typography className="status" variant="body1">{userStatusName}</Typography>
-              )}
-            </Box>
-          </>
-        ) : (
-          <Box
-            sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" }}
-          >
-            <Typography variant="h4">{headerUser?.display_name}</Typography>
-            {isOwner && !isGuestOwner && (
-              <IconButton
-                aria-label="Modifier"
-                onClick={() => navigate("/profile/edit")}
-                size="small"
-              >
-                <EditIcon />
-              </IconButton>
-            )}
-          </Box>
-        )}
+
+        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "6px" }}>
+          <Typography variant="h4">{headerUser?.display_name}</Typography>
+          {isOwner && !isGuestOwner && (
+            <IconButton
+              aria-label="Modifier"
+              onClick={() => navigate("/profile/edit")}
+              size="small"
+            >
+              <EditIcon />
+            </IconButton>
+          )}
+        </Box>
+
 
         {userStatusName && (
           <Box className="status">
