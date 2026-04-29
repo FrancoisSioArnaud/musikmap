@@ -303,7 +303,7 @@ export default function Conversation({
                     <Avatar
                       src={thread?.other_user?.profile_picture_url || undefined}
                       alt={thread?.other_user?.display_name || thread?.other_user?.username || "Utilisateur"}
-                      sx={{ width: 28, height: 28, flex: "0 0 auto", marginBottom: "24px" }}
+                      sx={{ width: 28, height: 28, flex: "0 0 auto", marginBottom: "27px" }}
                     />
                   ) : null}
                   <Box sx={{ 
