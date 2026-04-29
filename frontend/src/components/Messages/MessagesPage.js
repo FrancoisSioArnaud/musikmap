@@ -32,11 +32,13 @@ function MessageRow({ item, active, onClick }) {
       selected={active}
       onClick={onClick}
       sx={{
-        alignItems: "flex-start",
         gap: 1,
+        display: "flex", 
+        alignItems: "center", 
+        p: "12px 16px",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", p: "12px 16px"}}>
+      <Box>
         <UserInline
           user={item?.other_user}
           subtitle={preview}
