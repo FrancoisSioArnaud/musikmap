@@ -237,43 +237,6 @@ export default function UserProfilePage() {
     });
   };
 
-  if (shouldCanonicalRedirect) {
-    return (
-      <Navigate
-        to={`/profile${location.search || ""}${location.hash || ""}`}
-        replace
-      />
-    );
-  }
-
-  if (header.status === "loading") {
-    return (
-      <Box sx={{ pb: 8 }}>
-        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress />
-        </Box>
-      </Box>
-    );
-  }
-
-  if (header.status === "not_found") {
-    return (
-      <Box sx={{ pb: 8, p: 2 }}>
-        <Typography>Ce profil est introuvable</Typography>
-      </Box>
-    );
-  }
-
-  if (header.status === "error") {
-    return (
-      <Box sx={{ pb: 8, p: 2 }}>
-        <Typography>
-          Une erreur s&apos;est produite, veuillez réessayer ulterieurement
-        </Typography>
-      </Box>
-    );
-  }
-
   const openFollowDrawer = (mode) => {
     openDrawerWithHistory({ navigate, location, param: "profileDrawer", value: mode });
   };
@@ -281,6 +244,8 @@ export default function UserProfilePage() {
   const closeFollowDrawer = () => {
     closeDrawerWithHistory({ navigate, location, param: "profileDrawer", value: followDrawerMode });
   };
+
+  const headerUser = header.user || {};
 
   const handleToggleFollow = async (target, forceMode = null) => {
     if (!user?.id || user?.is_guest) {
@@ -322,7 +287,42 @@ export default function UserProfilePage() {
       .finally(()=>setFollowDrawerLoading(false));
   }, [location.search, header.user?.username, routeUsername, user?.username]);
 
-  const headerUser = header.user || {};
+  if (shouldCanonicalRedirect) {
+    return (
+      <Navigate
+        to={`/profile${location.search || ""}${location.hash || ""}`}
+        replace
+      />
+    );
+  }
+
+  if (header.status === "loading") {
+    return (
+      <Box sx={{ pb: 8 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <CircularProgress />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (header.status === "not_found") {
+    return (
+      <Box sx={{ pb: 8, p: 2 }}>
+        <Typography>Ce profil est introuvable</Typography>
+      </Box>
+    );
+  }
+
+  if (header.status === "error") {
+    return (
+      <Box sx={{ pb: 8, p: 2 }}>
+        <Typography>
+          Une erreur s&apos;est produite, veuillez réessayer ulterieurement
+        </Typography>
+      </Box>
+    );
+  }
   const totalDeposits = headerUser?.total_deposits ?? 0;
   const depositsCount = `${totalDeposits} partage${
     totalDeposits > 1 ? "s" : ""
