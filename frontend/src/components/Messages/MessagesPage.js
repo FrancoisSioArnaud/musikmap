@@ -39,15 +39,15 @@ function MessageRow({ item, active, onClick }) {
         justifyContent: "space-between",
       }}
     >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <UserInline
-          user={item?.other_user}
-          subtitle={preview}
-          avatarSize={32}
-          className="message_row_user"
-          interactive={false}
-        />
-      </Box>
+    
+      <UserInline
+        user={item?.other_user}
+        subtitle={preview}
+        avatarSize={32}
+        className="message_row_user"
+        interactive={false}
+      />
+
       <Box
         sx={{
           display: "flex",
