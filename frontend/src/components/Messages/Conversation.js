@@ -295,7 +295,7 @@ export default function Conversation({
                     display: "flex",
                     alignItems: "flex-end",
                     justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-                    gap: 1,
+                    gap: "6px",
                     maxWidth: "100%",
                   }}
                 >
