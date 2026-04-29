@@ -32,12 +32,11 @@ function MessageRow({ item, active, onClick }) {
       selected={active}
       onClick={onClick}
       sx={{
-        opacity: item?.has_unread ? 1 : 0.8,
         alignItems: "flex-start",
         gap: 1,
       }}
     >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Box sx={{ display: "flex", alignItems: "center", p: "12px 16px"}}>
         <UserInline
           user={item?.other_user}
           subtitle={preview}
@@ -46,9 +45,24 @@ function MessageRow({ item, active, onClick }) {
           interactive={false}
         />
       </Box>
-      <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
-        {formatRelativeTime(item?.updated_at)}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center"}}>      
+        <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
+          {formatRelativeTime(item?.updated_at)}
+        </Typography>
+  
+        {item?.has_unread ? (
+          <Box
+            aria-label="Conversation non lue"
+            sx={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              bgcolor: "primary.main",
+              flex: "0 0 auto",
+            }}
+          />
+        ) : null}
+      </Box>
     </ListItemButton>
   );
 }
