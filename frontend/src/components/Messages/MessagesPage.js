@@ -165,11 +165,56 @@ export default function MessagesPage() {
             <Tabs value={activeTab} onChange={(_, next) => setActiveTab(next)}>
               <Tab
                 value="conversations"
-                label={<Badge color="primary" badgeContent={summary?.unread_conversations_count || 0}>Conversations</Badge>}
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <span>Conversations</span>
+                    <Box
+                      sx={{
+                        minWidth: 18,
+                        height: 18,
+                        px: 0.75,
+                        borderRadius: "999px",
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        typography: "caption",
+                        fontWeight: 700,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {summary?.unread_conversations_count || 0}
+                    </Box>
+                  </Box>
+                }
               />
+            
               <Tab
                 value="invitations"
-                label={<Badge color="secondary" badgeContent={summary?.pending_invitations_count || 0}>Invitations</Badge>}
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <span>Invitations</span>
+                    <Box
+                      sx={{
+                        minWidth: 18,
+                        height: 18,
+                        px: 0.75,
+                        borderRadius: "999px",
+                        bgcolor: "secondary.main",
+                        color: "secondary.contrastText",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        typography: "caption",
+                        fontWeight: 700,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {summary?.pending_invitations_count || 0}
+                    </Box>
+                  </Box>
+                }
               />
             </Tabs>
 
