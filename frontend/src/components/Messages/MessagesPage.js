@@ -1,12 +1,10 @@
 import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
 import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -14,6 +12,7 @@ import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import UserInline from "../Common/UserInline";
 import { UserContext } from "../UserContext";
 import { formatRelativeTime } from "../Utils/time";
 
@@ -29,14 +28,27 @@ function MessageRow({ item, active, onClick }) {
   }
 
   return (
-    <ListItemButton selected={active} onClick={onClick} sx={{ opacity: item?.has_unread ? 1 : 0.8 }}>
-      <Avatar src={item?.other_user?.profile_picture_url || undefined} sx={{ mr: 1.5 }} />
-      <ListItemText
-        primary={item?.other_user?.display_name || "Utilisateur"}
-        secondary={preview}
-        primaryTypographyProps={{ fontWeight: item?.has_unread ? 700 : 400 }}
-      />
-      <Typography variant="caption">{formatRelativeTime(item?.updated_at)}</Typography>
+    <ListItemButton
+      selected={active}
+      onClick={onClick}
+      sx={{
+        opacity: item?.has_unread ? 1 : 0.8,
+        alignItems: "flex-start",
+        gap: 1,
+      }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <UserInline
+          user={item?.other_user}
+          subtitle={preview}
+          avatarSize={32}
+          className="message_row_user"
+          interactive={false}
+        />
+      </Box>
+      <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
+        {formatRelativeTime(item?.updated_at)}
+      </Typography>
     </ListItemButton>
   );
 }

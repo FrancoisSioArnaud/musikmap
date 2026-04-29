@@ -13,13 +13,14 @@ function UserInline({
   prefix,
   className = "",
   avatarSize = 26,
+  interactive = true,
 }) {
   const navigate = useNavigate();
 
   const username = (user?.username || "").trim();
   const displayName = (user?.display_name || user?.displayName || username || "anonyme").trim() || "anonyme";
-  const canAutoNavigate = !onClick && Boolean(username && !user?.is_guest);
-  const hasAction = Boolean(onClick || canAutoNavigate);
+  const canAutoNavigate = interactive && !onClick && Boolean(username && !user?.is_guest);
+  const hasAction = interactive && Boolean(onClick || canAutoNavigate);
   const trimmedSubtitle = typeof subtitle === "string" ? subtitle.trim() : "";
 
   const handleClick = () => {
@@ -40,8 +41,8 @@ function UserInline({
 
   return (
     <Box
-      component="button"
-      type="button"
+      component={hasAction ? "button" : "div"}
+      type={hasAction ? "button" : undefined}
       onClick={handleClick}
       className={`${username ? "hasUsername " : ""}${className}`.trim() || undefined}
       sx={{
