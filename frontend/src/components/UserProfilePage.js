@@ -362,7 +362,7 @@ export default function UserProfilePage() {
           />
   
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "12px" }}> 
-            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "6px" }}>
+            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "6px", mb: "16px" }}>
               <Typography variant="h4">{headerUser?.display_name}</Typography>
               {isOwner && !isGuestOwner && (
                 <IconButton
@@ -383,7 +383,7 @@ export default function UserProfilePage() {
               </Box>
             )}
     
-            <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+            <Box sx={{ display: "flex", gap: 2 }}>
               <Button variant="text" onClick={() => openFollowDrawer("followers")}>{`${headerUser?.followers_count || 0} abonnés`}</Button>
               <Button variant="text" onClick={() => openFollowDrawer("following")}>{`${headerUser?.following_count || 0} abonnements`}</Button>
             </Box>
@@ -392,6 +392,7 @@ export default function UserProfilePage() {
   
         {!isOwner && user?.id ? (
           <Box sx={{ display: "flex", width: "100%", gap: "6px", alignItems: "center", justifyContent: "center" }}>
+            <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
             <Button
               variant="outlined"
               disabled={!chatState?.allow_private_message_requests}
@@ -403,7 +404,6 @@ export default function UserProfilePage() {
                   ? "Demande envoyée"
                   : "Envoyer une chanson"}
             </Button>
-            <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
           </Box>
         ) : null}
 
