@@ -36,17 +36,19 @@ function MessageRow({ item, active, onClick }) {
         display: "flex",
         alignItems: "center",
         p: "12px 16px",
-        justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
-    
-      <UserInline
-        user={item?.other_user}
-        subtitle={preview}
-        avatarSize={32}
-        className="message_row_user"
-        interactive={false}
-      />
+      <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+        <UserInline
+          user={item?.other_user}
+          subtitle={preview}
+          avatarSize={32}
+          className="message_row_user"
+          interactive={false}
+        />
+      </Box>
 
       <Box
         sx={{
@@ -55,6 +57,7 @@ function MessageRow({ item, active, onClick }) {
           gap: 1,
           flex: "0 0 auto",
           whiteSpace: "nowrap",
+          pl: 1,
         }}
       >
         <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
