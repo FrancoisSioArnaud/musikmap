@@ -10,7 +10,7 @@ from django.utils import timezone
 from la_boite_a_son.api_errors import api_error_payload
 from users.provider_connections import merge_provider_connections, serialize_provider_connections_for_user
 
-from .models import CustomUser
+from .models import CustomUser, UserFollow
 
 GUEST_COOKIE_NAME = "mm_guest"
 GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5
@@ -161,6 +161,9 @@ def build_current_user_payload(user: CustomUser):
     favorite_deposit = build_favorite_deposit_payload(user, viewer=user)
     provider_connections = serialize_provider_connections_for_user(user)
 
+    followers_count = UserFollow.objects.filter(following=user).count()
+    following_count = UserFollow.objects.filter(follower=user).count()
+
     return {
         "id": user.id,
         "username": user.username,
@@ -193,6 +196,9 @@ def build_current_user_payload(user: CustomUser):
             provider_code for provider_code, payload in provider_connections.items() if payload.get("connected")
         ],
         "allow_private_message_requests": bool(getattr(user, "allow_private_message_requests", True)),
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "is_followed_by_me": False,
     }
 
 

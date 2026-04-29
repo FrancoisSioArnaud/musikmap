@@ -9,14 +9,22 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { getCookie } from "./Security/TokensUtils";
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { startAuthPageFlow } from "./Auth/AuthFlow";
 import { UserContext } from "./UserContext";
 import FavoriteSongSection from "./UserProfile/FavoriteSongSection";
+import FollowButton from "./UserProfile/FollowButton";
+import ProfileFollowDrawer from "./UserProfile/ProfileFollowDrawer";
 import Library from "./UserProfile/Library";
 import Shares from "./UserProfile/Shares";
+import {
+  closeDrawerWithHistory,
+  matchesDrawerSearch,
+  openDrawerWithHistory,
+} from "./Utils/drawerHistory";
 import {
   getProfilePageStateKey,
   readPageState,
@@ -83,6 +91,11 @@ export default function UserProfilePage() {
     user: null,
   });
   const [chatState, setChatState] = useState({ state: "", thread_id: null, allow_private_message_requests: true });
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followDrawerMode, setFollowDrawerMode] = useState(null);
+  const [followDrawerLoading, setFollowDrawerLoading] = useState(false);
+  const [followDrawerError, setFollowDrawerError] = useState("");
+  const [followDrawerItems, setFollowDrawerItems] = useState([]);
   const headerAbortRef = useRef(null);
 
   useEffect(() => {
@@ -116,6 +129,9 @@ export default function UserProfilePage() {
           status: user?.status || null,
           is_guest: Boolean(user?.is_guest),
           favorite_deposit: user?.favorite_deposit || null,
+          followers_count: typeof user?.followers_count === "number" ? user.followers_count : 0,
+          following_count: typeof user?.following_count === "number" ? user.following_count : 0,
+          is_followed_by_me: false,
         },
       });
       return () => controller.abort();
@@ -155,6 +171,9 @@ export default function UserProfilePage() {
           status: data?.status || null,
           is_guest: false,
           favorite_deposit: data?.favorite_deposit || null,
+          followers_count: typeof data?.followers_count === "number" ? data.followers_count : 0,
+          following_count: typeof data?.following_count === "number" ? data.following_count : 0,
+          is_followed_by_me: Boolean(data?.is_followed_by_me),
         },
       });
     }
@@ -254,6 +273,54 @@ export default function UserProfilePage() {
       </Box>
     );
   }
+
+  const openFollowDrawer = (mode) => {
+    openDrawerWithHistory({ navigate, location, param: "profileDrawer", value: mode });
+  };
+
+  const closeFollowDrawer = () => {
+    closeDrawerWithHistory({ navigate, location, param: "profileDrawer", value: followDrawerMode });
+  };
+
+  const handleToggleFollow = async (target, forceMode = null) => {
+    if (!user?.id || user?.is_guest) {
+      startAuthPageFlow({ navigate, location, tab: "register", authContext: "account", mergeGuest: true });
+      return;
+    }
+    const username = target?.username || headerUser?.username;
+    if (!username) {return;}
+    const followed = Boolean(target?.is_followed_by_me ?? headerUser?.is_followed_by_me);
+    const method = followed ? "DELETE" : "POST";
+    if (!target) {setFollowBusy(true);}
+    setFollowDrawerItems((prev)=>prev.map((i)=> i.id===target?.id ? {...i,_loading:true}:i));
+    const res = await fetch(`/users/${encodeURIComponent(username)}/follow/`, { method, credentials: "same-origin", headers: { "X-CSRFToken": getCookie("csrftoken"), Accept: "application/json" } });
+    const data = await res.json().catch(()=>({}));
+    if (res.ok) {
+      setHeader((prev)=>({ ...prev, user: prev.user ? { ...prev.user, is_followed_by_me: Boolean(data.followed), followers_count: Math.max(0, Number(data.followers_count||0)) } : prev.user }));
+      setFollowDrawerItems((prev)=>prev.map((i)=> i.id===target?.id ? {...i,is_followed_by_me:Boolean(data.followed),_loading:false}: {...i,_loading:false}));
+    } else {
+      setFollowDrawerItems((prev)=>prev.map((i)=> ({...i,_loading:false})));
+    }
+    if (!target) {setFollowBusy(false);}
+  };
+
+  useEffect(() => {
+    const mode = matchesDrawerSearch(location, "profileDrawer", "followers") ? "followers" : (matchesDrawerSearch(location, "profileDrawer", "following") ? "following" : null);
+    setFollowDrawerMode(mode);
+    if (!mode) {return;}
+    const uname = (header.user?.username || routeUsername || user?.username || "").trim();
+    if (!uname) {return;}
+    setFollowDrawerLoading(true);
+    setFollowDrawerError("");
+    fetch(`/users/${encodeURIComponent(uname)}/${mode}/?page=1&page_size=20`, { credentials: "same-origin", headers: { Accept: "application/json" }})
+      .then((r)=>r.json().then((d)=>({ok:r.ok,d})))
+      .then(({ok,d})=>{
+        if (!ok) { setFollowDrawerError("Impossible de charger la liste."); return; }
+        setFollowDrawerItems(Array.isArray(d?.results) ? d.results : []);
+      })
+      .catch(()=>setFollowDrawerError("Impossible de charger la liste."))
+      .finally(()=>setFollowDrawerLoading(false));
+  }, [location.search, header.user?.username, routeUsername, user?.username]);
 
   const headerUser = header.user || {};
   const totalDeposits = headerUser?.total_deposits ?? 0;
@@ -361,6 +428,15 @@ export default function UserProfilePage() {
         </Button>
       ) : null}
 
+      <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+        <Button variant="text" onClick={() => openFollowDrawer("followers")}>{`${headerUser?.followers_count || 0} abonnés`}</Button>
+        <Button variant="text" onClick={() => openFollowDrawer("following")}>{`${headerUser?.following_count || 0} abonnements`}</Button>
+      </Box>
+
+      {!isOwner && !!headerUser?.username ? (
+        <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
+      ) : null}
+
       {userStatusName && (
         <Box className="status">
           <Typography className="statusName" variant="body1">{userStatusName}</Typography>
@@ -396,6 +472,16 @@ export default function UserProfilePage() {
       ) : (
         <Shares username={routeUsername} me={false} user={user} autoLoad={true} />
       )}
+      <ProfileFollowDrawer
+        open={Boolean(followDrawerMode)}
+        mode={followDrawerMode || "followers"}
+        items={followDrawerItems}
+        loading={followDrawerLoading}
+        error={followDrawerError}
+        onClose={closeFollowDrawer}
+        onToggleFollow={handleToggleFollow}
+        currentUserId={user?.id || null}
+      />
     </Box>
   );
 }

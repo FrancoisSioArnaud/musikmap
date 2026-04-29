@@ -23,7 +23,7 @@ from la_boite_a_son.api_errors import api_error
 from spotify.util import apply_pending_spotify_auth_to_user
 
 from .forms import RegisterUserForm
-from .models import CustomUser
+from .models import CustomUser, UserFollow
 from .utils import (
     build_current_user_payload,
     build_favorite_deposit_payload,
@@ -364,9 +364,7 @@ class GetUserInfo(APIView):
                 )
             return api_error(status.HTTP_400_BAD_REQUEST, "USERNAME_REQUIRED", "username query param is required")
 
-        lookup = {"is_guest": False, "username": username}
-
-        user = CustomUser.objects.filter(**lookup).first()
+        user = CustomUser.objects.filter(is_guest=False, username__iexact=username).first()
         if not user:
             return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
 
@@ -379,6 +377,11 @@ class GetUserInfo(APIView):
 
         viewer = get_current_app_user(request)
         total_deposits = Deposit.objects.filter(user=user).exclude(deposit_type="favorite").count()
+        followers_count = UserFollow.objects.filter(following=user).count()
+        following_count = UserFollow.objects.filter(follower=user).count()
+        is_followed_by_me = False
+        if viewer and not getattr(viewer, "is_guest", False) and viewer.pk != user.pk:
+            is_followed_by_me = UserFollow.objects.filter(follower=viewer, following=user).exists()
         data = {
             "id": user.id,
             "username": user.username,
@@ -388,6 +391,9 @@ class GetUserInfo(APIView):
             "status": get_user_status(user),
             "favorite_deposit": build_favorite_deposit_payload(user, viewer=viewer),
             "allow_private_message_requests": bool(getattr(user, "allow_private_message_requests", True)),
+            "followers_count": followers_count,
+            "following_count": following_count,
+            "is_followed_by_me": is_followed_by_me,
         }
         return Response(data, status=status.HTTP_200_OK)
 
@@ -526,3 +532,121 @@ class ChangeUsername(APIView):
         return Response(
             {"status": "Nom d’utilisateur modifié avec succès.", "username": new_username}, status=status.HTTP_200_OK
         )
+
+
+def _get_public_profile_by_username(username):
+    return CustomUser.objects.filter(is_guest=False, username__iexact=(username or "").strip()).first()
+
+
+def _require_full_user(request):
+    user = get_current_app_user(request)
+    if not user:
+        return None, api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
+    if getattr(user, "is_guest", False):
+        return None, api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+    return user, None
+
+
+def _follow_counts(user):
+    return (
+        UserFollow.objects.filter(following=user).count(),
+        UserFollow.objects.filter(follower=user).count(),
+    )
+
+
+def _paginate(request):
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(request.GET.get("page_size", 20))
+    except (TypeError, ValueError):
+        page_size = 20
+    page_size = max(1, min(50, page_size))
+    return page, page_size
+
+
+class UserFollowView(APIView):
+    def post(self, request, username, format=None):
+        viewer, error = _require_full_user(request)
+        if error:
+            return error
+
+        target = _get_public_profile_by_username(username)
+        if not target:
+            return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
+        if viewer.pk == target.pk:
+            return api_error(status.HTTP_400_BAD_REQUEST, "SELF_FOLLOW_FORBIDDEN", "Tu ne peux pas te suivre toi-même.")
+
+        relation, created = UserFollow.objects.get_or_create(follower=viewer, following=target)
+        followers_count, following_count = _follow_counts(target)
+        return Response({"followed": True, "followers_count": followers_count, "following_count": following_count}, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    def delete(self, request, username, format=None):
+        viewer, error = _require_full_user(request)
+        if error:
+            return error
+
+        target = _get_public_profile_by_username(username)
+        if not target:
+            return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
+        UserFollow.objects.filter(follower=viewer, following=target).delete()
+        followers_count, following_count = _follow_counts(target)
+        return Response({"followed": False, "followers_count": followers_count, "following_count": following_count}, status=status.HTTP_200_OK)
+
+
+class _UserFollowListBase(APIView):
+    list_type = None
+
+    def get(self, request, username, format=None):
+        target = _get_public_profile_by_username(username)
+        if not target:
+            return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
+
+        viewer = get_current_app_user(request)
+        viewer_is_full = bool(viewer and not getattr(viewer, "is_guest", False))
+
+        page, page_size = _paginate(request)
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        if self.list_type == "followers":
+            qs = UserFollow.objects.select_related("follower").filter(following=target, follower__is_guest=False).order_by("-created_at", "-pk")
+            total = qs.count()
+            users = [rel.follower for rel in qs[start:end]]
+        else:
+            qs = UserFollow.objects.select_related("following").filter(follower=target, following__is_guest=False).order_by("-created_at", "-pk")
+            total = qs.count()
+            users = [rel.following for rel in qs[start:end]]
+
+        ids = [u.pk for u in users]
+        followed_ids = set()
+        if viewer_is_full and ids:
+            followed_ids = set(UserFollow.objects.filter(follower=viewer, following_id__in=ids).values_list("following_id", flat=True))
+
+        results = []
+        for u in users:
+            profile_picture_url = None
+            try:
+                if u.profile_picture:
+                    profile_picture_url = u.profile_picture.url
+            except Exception:
+                profile_picture_url = None
+            results.append({
+                "id": u.id,
+                "username": u.username,
+                "display_name": u.display_name,
+                "profile_picture_url": profile_picture_url,
+                "is_followed_by_me": bool(viewer_is_full and viewer.pk != u.pk and u.pk in followed_ids),
+            })
+
+        return Response({"results": results, "count": total, "next": end < total, "previous": start > 0}, status=status.HTTP_200_OK)
+
+
+class UserFollowersView(_UserFollowListBase):
+    list_type = "followers"
+
+
+class UserFollowingView(_UserFollowListBase):
+    list_type = "following"

@@ -15,4 +15,7 @@ urlpatterns = [
     path("set-favorite-song", views.SetFavoriteSong.as_view(), name="set-favorite-song"),
     path("remove-favorite-song", views.RemoveFavoriteSong.as_view(), name="remove-favorite-song"),
     path("change-username", views.ChangeUsername.as_view(), name="change-username"),
+    path("<str:username>/follow/", views.UserFollowView.as_view(), name="user-follow"),
+    path("<str:username>/followers/", views.UserFollowersView.as_view(), name="user-followers"),
+    path("<str:username>/following/", views.UserFollowingView.as_view(), name="user-following"),
 ]
