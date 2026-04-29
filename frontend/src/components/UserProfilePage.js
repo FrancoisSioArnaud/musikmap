@@ -351,7 +351,7 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "12px" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left" }}>
 
         <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "left", gap: "12px", p: "26px" }}> 
         
@@ -391,7 +391,7 @@ export default function UserProfilePage() {
         </Box> 
   
         {!isOwner && user?.id ? (
-          <Box sx={{ display: "flex", width: "100%", gap: "6px", alignItems: "center", justifyContent: "center" }}>
+          <Box sx={{ display: "flex", width: "100%", gap: "12px", alignItems: "center", justifyContent: "center" }}>
             <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
             <Button
               variant="outlined"
