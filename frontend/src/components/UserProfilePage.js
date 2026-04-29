@@ -414,18 +414,21 @@ export default function UserProfilePage() {
         )}
 
       {!isOwner && user?.id ? (
-        <Button
-          variant="outlined"
-          disabled={!chatState?.allow_private_message_requests}
-          onClick={openChatFromProfile}
-          sx={{ mt: 1 }}
-        >
-          {chatState?.state === "accepted"
-            ? "Ouvrir le chat"
-            : chatState?.state === "pending_sent"
-              ? "Demande envoyée"
-              : "Envoyer une chanson en privé"}
-        </Button>
+        <Box sx={{ display: "flex", width: "100%" }}>
+          <Button
+            variant="outlined"
+            disabled={!chatState?.allow_private_message_requests}
+            onClick={openChatFromProfile}
+            sx={{ mt: 1 }}
+          >
+            {chatState?.state === "accepted"
+              ? "Ouvrir le chat"
+              : chatState?.state === "pending_sent"
+                ? "Demande envoyée"
+                : "Envoyer une chanson en privé"}
+          </Button>
+          <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
+        </Box>
       ) : null}
 
       <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
@@ -433,9 +436,6 @@ export default function UserProfilePage() {
         <Button variant="text" onClick={() => openFollowDrawer("following")}>{`${headerUser?.following_count || 0} abonnements`}</Button>
       </Box>
 
-      {!isOwner && !!headerUser?.username ? (
-        <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
-      ) : null}
 
       {userStatusName && (
         <Box className="status">
