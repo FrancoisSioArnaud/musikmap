@@ -36,11 +36,21 @@ function MessageRow({ item, active, onClick }) {
         display: "flex",
         alignItems: "center",
         p: "12px 16px",
+        justifyContent: "flex-start",
+        width: "100%",
+        maxWidth: "100%",
         minWidth: 0,
         overflow: "hidden",
       }}
     >
-      <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+      <Box
+        sx={{
+          flex: "1 1 auto",
+          minWidth: 0,
+          maxWidth: "100%",
+          overflow: "hidden",
+        }}
+      >
         <UserInline
           user={item?.other_user}
           subtitle={preview}
@@ -56,8 +66,8 @@ function MessageRow({ item, active, onClick }) {
           alignItems: "center",
           gap: 1,
           flex: "0 0 auto",
+          minWidth: 0,
           whiteSpace: "nowrap",
-          pl: 1,
         }}
       >
         <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
@@ -150,8 +160,8 @@ export default function MessagesPage() {
       <Typography variant="h4" sx={{ mb: 2 }}>Messages</Typography>
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       {loading ? <CircularProgress /> : (
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: 2 }}>
-          <Box>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: 2, minWidth: 0, width: "100%", maxWidth: "100%" }}>
+          <Box sx={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
             <Tabs value={activeTab} onChange={(_, next) => setActiveTab(next)}>
               <Tab
                 value="conversations"
@@ -163,7 +173,7 @@ export default function MessagesPage() {
               />
             </Tabs>
 
-            <List dense>
+            <List dense sx={{ width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
               {displayedItems.map((item) => (
                 <MessageRow
                   key={`${activeTab}-${item.id}`}

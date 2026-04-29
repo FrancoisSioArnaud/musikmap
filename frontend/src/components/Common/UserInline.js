@@ -54,8 +54,6 @@ function UserInline({
         width: "100%",
         maxWidth: "100%",
         minWidth: 0,
-        flex: 1,
-        overflow: "hidden",
         cursor: hasAction ? "pointer" : "default",
         "&:active": hasAction ? { opacity: 0.92 } : undefined,
       }}
@@ -75,7 +73,7 @@ function UserInline({
         />
       </Box>
 
-      <Box sx={{ minWidth: 0, maxWidth: "100%", flex: 1, overflow: "hidden" }}>
+      <Box sx={{ flex: "1 1 auto", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
         <Typography
           component="span"
           className="username"
