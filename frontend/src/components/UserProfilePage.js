@@ -351,7 +351,7 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "12px" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "12px" }}>
 
         <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "12px" }}> 
         
