@@ -149,3 +149,24 @@ class UserProviderConnection(models.Model):
 
     def __str__(self):
         return f"{self.user_id} · {self.provider_code}"
+
+
+class UserFollow(models.Model):
+    follower = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="following_relations")
+    following = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="follower_relations")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["follower", "following"], name="users_follow_unique_pair"),
+        ]
+        indexes = [
+            models.Index(fields=["follower"]),
+            models.Index(fields=["following"]),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["following", "created_at"]),
+            models.Index(fields=["follower", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.follower_id}->{self.following_id}"
