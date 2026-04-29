@@ -36,6 +36,7 @@ function MessageRow({ item, active, onClick }) {
         display: "flex", 
         alignItems: "center", 
         p: "12px 16px",
+        justifyContent: "space-between",
       }}
     >
       <Box>
