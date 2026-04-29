@@ -351,9 +351,9 @@ export default function UserProfilePage() {
         )}
       </Box>
 
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "left", gap: "12px" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "12px" }}>
 
-        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: 0 }}> 
+        <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "left", gap: "12px" }}> 
         
           <Avatar
             src={headerUser?.profile_picture_url || undefined}
@@ -361,7 +361,7 @@ export default function UserProfilePage() {
             sx={{ width: 64, height: 64 }}
           />
   
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: "12px" }}> 
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left", gap: 0 }}> 
             <Box sx={{ display: "flex", flexDirection: "row", alignItems: "left", gap: "6px", mb: "16px" }}>
               <Typography variant="h4">{headerUser?.display_name}</Typography>
               {isOwner && !isGuestOwner && (
