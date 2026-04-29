@@ -1,5 +1,4 @@
 import Alert from "@mui/material/Alert";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
@@ -11,9 +10,15 @@ import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import UserInline from "../Common/UserInline";
 import { UserContext } from "../UserContext";
+import {
+  closeDrawerWithHistory,
+  getDrawerParamValue,
+  openDrawerWithHistory,
+} from "../Utils/drawerHistory";
 import { formatRelativeTime } from "../Utils/time";
 
 import Conversation from "./Conversation";
@@ -94,6 +99,8 @@ function MessageRow({ item, active, onClick }) {
 export default function MessagesPage() {
   const { user } = useContext(UserContext) || {};
   const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [summary, setSummary] = useState({
     received_requests: [],
@@ -106,6 +113,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const threadDrawerParamValue = getDrawerParamValue(location, "thread");
 
   const loadSummary = useCallback(async () => {
     const res = await fetch("/messages/summary", { credentials: "same-origin" });
@@ -137,6 +145,49 @@ export default function MessagesPage() {
     return () => window.clearInterval(id);
   }, [loadSummary]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileDrawerOpen(false);
+      return;
+    }
+
+    const shouldOpenDrawer = Boolean(threadDrawerParamValue);
+    setMobileDrawerOpen((prev) => (prev === shouldOpenDrawer ? prev : shouldOpenDrawer));
+
+    if (threadDrawerParamValue) {
+      setSelectedThreadId((prev) => (String(prev) === String(threadDrawerParamValue) ? prev : threadDrawerParamValue));
+    }
+  }, [isMobile, threadDrawerParamValue]);
+
+  useEffect(() => {
+    if (!selectedThreadId) {return;}
+
+    const selectedId = String(selectedThreadId);
+    const isInvitation = (summary?.received_requests || []).some((item) => String(item?.id) === selectedId);
+    const isConversation = (summary?.conversations || []).some((item) => String(item?.id) === selectedId);
+
+    if (isInvitation && activeTab !== "invitations") {
+      setActiveTab("invitations");
+      return;
+    }
+
+    if (isConversation && activeTab !== "conversations") {
+      setActiveTab("conversations");
+    }
+  }, [activeTab, selectedThreadId, summary]);
+
+  const handleCloseMobileDrawer = useCallback((options = {}) => {
+    if (!closeDrawerWithHistory({
+      navigate,
+      location,
+      param: "thread",
+      value: selectedThreadId,
+      replace: Boolean(options?.replace),
+    })) {
+      setMobileDrawerOpen(false);
+    }
+  }, [location, navigate, selectedThreadId]);
+
   const displayedItems = useMemo(() => {
     if (activeTab === "invitations") {
       return summary?.received_requests || [];
@@ -144,12 +195,43 @@ export default function MessagesPage() {
     return summary?.conversations || [];
   }, [activeTab, summary]);
 
-  const handleSelectItem = (item) => {
+  const handleSelectItem = useCallback((item) => {
     setSelectedThreadId(item.id);
-    if (isMobile) {
+
+    if (!isMobile) {return;}
+
+    const nextValue = String(item.id);
+    const currentValue = threadDrawerParamValue ? String(threadDrawerParamValue) : "";
+
+    if (currentValue && currentValue !== nextValue) {
+      const nextSearchParams = new URLSearchParams(location?.search || "");
+      nextSearchParams.set("thread", nextValue);
+      navigate(
+        {
+          pathname: location?.pathname || "/messages",
+          search: `?${nextSearchParams.toString()}`,
+        },
+        {
+          replace: true,
+          state: {
+            ...(location?.state || {}),
+            __drawer_thread: nextValue,
+          },
+          preventScrollReset: true,
+        }
+      );
+      return;
+    }
+
+    if (!openDrawerWithHistory({
+      navigate,
+      location,
+      param: "thread",
+      value: item.id,
+    })) {
       setMobileDrawerOpen(true);
     }
-  };
+  }, [isMobile, location, navigate, threadDrawerParamValue]);
 
   if (!user?.id) {
     return <Box sx={{ p: 2 }}><Alert severity="info">Connecte-toi pour accéder à tes messages.</Alert></Box>;
@@ -227,7 +309,7 @@ export default function MessagesPage() {
                 <MessageRow
                   key={`${activeTab}-${item.id}`}
                   item={item}
-                  active={item.id === selectedThreadId}
+                  active={String(item.id) === String(selectedThreadId)}
                   onClick={() => handleSelectItem(item)}
                 />
               ))}
@@ -262,7 +344,7 @@ export default function MessagesPage() {
       <Drawer
         anchor="right"
         open={mobileDrawerOpen}
-        onClose={() => setMobileDrawerOpen(false)}
+        onClose={() => handleCloseMobileDrawer()}
         PaperProps={{ sx: { width: "100vw", maxWidth: "100vw" } }}
       >
         <Box sx={{ p: 2, height: "100%" }}>
@@ -272,7 +354,7 @@ export default function MessagesPage() {
               threadId={selectedThreadId}
               viewer={user}
               isInDrawer
-              onClose={() => setMobileDrawerOpen(false)}
+              onClose={() => handleCloseMobileDrawer()}
               onThreadUpdated={refreshSummaryAfterThreadMutation}
             />
           ) : null}
