@@ -414,12 +414,11 @@ export default function UserProfilePage() {
         )}
 
       {!isOwner && user?.id ? (
-        <Box sx={{ display: "flex", width: "100%" }}>
+        <Box sx={{ display: "flex", width: "100%", gap: "6px", alignItems: "center" }}>
           <Button
             variant="outlined"
             disabled={!chatState?.allow_private_message_requests}
             onClick={openChatFromProfile}
-            sx={{ mt: 1 }}
           >
             {chatState?.state === "accepted"
               ? "Ouvrir le chat"
