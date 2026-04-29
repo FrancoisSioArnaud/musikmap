@@ -15,18 +15,18 @@ export default function ProfileFollowDrawer({ open, mode, items, loading, error,
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: "100vw", maxWidth: "100vw", height: "100vh" } }}>
-      <Box sx={{ p: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Box sx={{ p: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6">{title}</Typography>
         <Button onClick={onClose}>Fermer</Button>
       </Box>
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: "0px 20px" }}>
         {error ? <Alert severity="error">{error}</Alert> : null}
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress /></Box>
         ) : null}
         {!loading && !error && items.length === 0 ? <Typography>{emptyText}</Typography> : null}
         {!loading && !error ? items.map((item) => (
-          <Box key={item.id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1 }}>
+          <Box key={item.id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: "12px 0px" }}>
             <Box sx={{ flex: 1, minWidth: 0 }}><UserInline user={item} /></Box>
             {currentUserId && item.id === currentUserId ? (
               <Typography variant="body2">Toi</Typography>
