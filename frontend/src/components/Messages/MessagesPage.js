@@ -23,6 +23,26 @@ import { formatRelativeTime } from "../Utils/time";
 
 import Conversation from "./Conversation";
 
+function getThreadTab(summary, threadId) {
+  if (!threadId) {return null;}
+
+  const selectedId = String(threadId);
+  if ((summary?.received_requests || []).some((item) => String(item?.id) === selectedId)) {
+    return "invitations";
+  }
+  if ((summary?.conversations || []).some((item) => String(item?.id) === selectedId)) {
+    return "conversations";
+  }
+  return null;
+}
+
+function getItemsForTab(summary, tab) {
+  if (tab === "invitations") {
+    return summary?.received_requests || [];
+  }
+  return summary?.conversations || [];
+}
+
 function MessageRow({ item, active, onClick }) {
   let preview = item?.last_message?.text || "";
   if (!preview && item?.last_message?.message_type === "song") {
@@ -120,9 +140,14 @@ export default function MessagesPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {throw new Error(data?.detail || "Erreur chargement messages");}
     setSummary(data);
-    const firstId = data?.conversations?.[0]?.id || data?.received_requests?.[0]?.id || null;
+    const firstConversationId = data?.conversations?.[0]?.id || null;
+    const firstInvitationId = data?.received_requests?.[0]?.id || null;
+    const firstId = firstConversationId || firstInvitationId || null;
     if (firstId) {
       setSelectedThreadId((prev) => prev || firstId);
+    }
+    if (!firstConversationId && firstInvitationId) {
+      setActiveTab((prev) => (prev === "conversations" ? "invitations" : prev));
     }
   }, []);
 
@@ -160,21 +185,13 @@ export default function MessagesPage() {
   }, [isMobile, threadDrawerParamValue]);
 
   useEffect(() => {
-    if (!selectedThreadId) {return;}
+    if (!threadDrawerParamValue) {return;}
 
-    const selectedId = String(selectedThreadId);
-    const isInvitation = (summary?.received_requests || []).some((item) => String(item?.id) === selectedId);
-    const isConversation = (summary?.conversations || []).some((item) => String(item?.id) === selectedId);
-
-    if (isInvitation && activeTab !== "invitations") {
-      setActiveTab("invitations");
-      return;
+    const drawerThreadTab = getThreadTab(summary, threadDrawerParamValue);
+    if (drawerThreadTab && activeTab !== drawerThreadTab) {
+      setActiveTab(drawerThreadTab);
     }
-
-    if (isConversation && activeTab !== "conversations") {
-      setActiveTab("conversations");
-    }
-  }, [activeTab, selectedThreadId, summary]);
+  }, [activeTab, summary, threadDrawerParamValue]);
 
   const handleCloseMobileDrawer = useCallback((options = {}) => {
     if (!closeDrawerWithHistory({
@@ -188,12 +205,16 @@ export default function MessagesPage() {
     }
   }, [location, navigate, selectedThreadId]);
 
-  const displayedItems = useMemo(() => {
-    if (activeTab === "invitations") {
-      return summary?.received_requests || [];
-    }
-    return summary?.conversations || [];
-  }, [activeTab, summary]);
+  const displayedItems = useMemo(() => getItemsForTab(summary, activeTab), [activeTab, summary]);
+
+  const handleTabChange = useCallback((_, next) => {
+    setActiveTab(next);
+
+    if (isMobile) {return;}
+
+    const nextItems = getItemsForTab(summary, next);
+    setSelectedThreadId(nextItems?.[0]?.id || null);
+  }, [isMobile, summary]);
 
   const handleSelectItem = useCallback((item) => {
     setSelectedThreadId(item.id);
@@ -244,7 +265,7 @@ export default function MessagesPage() {
       {loading ? <CircularProgress /> : (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: 2, minWidth: 0, width: "100%", maxWidth: "100%" }}>
           <Box sx={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-            <Tabs value={activeTab} onChange={(_, next) => setActiveTab(next)}>
+            <Tabs value={activeTab} onChange={handleTabChange}>
               <Tab
                 value="conversations"
                 label={
@@ -309,7 +330,7 @@ export default function MessagesPage() {
                 <MessageRow
                   key={`${activeTab}-${item.id}`}
                   item={item}
-                  active={String(item.id) === String(selectedThreadId)}
+                  active={!isMobile && String(item.id) === String(selectedThreadId)}
                   onClick={() => handleSelectItem(item)}
                 />
               ))}
