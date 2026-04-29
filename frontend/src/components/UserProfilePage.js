@@ -426,7 +426,7 @@ export default function UserProfilePage() {
         </Box>
 
         {!isOwner && user?.id ? (
-          <Box sx={{ display: "flex", width: "100%", gap: "6px", alignItems: "center" }}>
+          <Box sx={{ display: "flex", width: "100%", gap: "6px", alignItems: "center", justifyContent: "center" }}>
             <Button
               variant="outlined"
               disabled={!chatState?.allow_private_message_requests}
