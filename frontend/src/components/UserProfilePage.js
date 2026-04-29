@@ -424,7 +424,7 @@ export default function UserProfilePage() {
               ? "Ouvrir le chat"
               : chatState?.state === "pending_sent"
                 ? "Demande envoyée"
-                : "Envoyer une chanson en privé"}
+                : "Envoyer une chanson"}
           </Button>
           <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
         </Box>
