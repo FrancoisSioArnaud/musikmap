@@ -309,7 +309,7 @@ export default function MessagesPage() {
                 <MessageRow
                   key={`${activeTab}-${item.id}`}
                   item={item}
-                  active={String(item.id) === String(selectedThreadId)}
+                  active={!isMobile && String(item.id) === String(selectedThreadId)}
                   onClick={() => handleSelectItem(item)}
                 />
               ))}
