@@ -168,24 +168,26 @@ export default function MessagesPage() {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>Conversations</span>
-                    <Box
-                      sx={{
-                        minWidth: 18,
-                        height: 18,
-                        px: 0.75,
-                        borderRadius: "999px",
-                        bgcolor: "primary.main",
-                        color: "primary.contrastText",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        typography: "caption",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {summary?.unread_conversations_count || 0}
-                    </Box>
+                    {(summary?.unread_conversations_count || 0) > 0 ? (
+                      <Box
+                        sx={{
+                          minWidth: 18,
+                          height: 18,
+                          px: 0.75,
+                          borderRadius: "999px",
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          typography: "caption",
+                          fontWeight: 700,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {summary.unread_conversations_count}
+                      </Box>
+                    ) : null}
                   </Box>
                 }
               />
@@ -195,24 +197,26 @@ export default function MessagesPage() {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>Invitations</span>
-                    <Box
-                      sx={{
-                        minWidth: 18,
-                        height: 18,
-                        px: 0.75,
-                        borderRadius: "999px",
-                        bgcolor: "primary.main",
-                        color: "secondary.contrastText",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        typography: "caption",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {summary?.pending_invitations_count || 0}
-                    </Box>
+                    {(summary?.pending_invitations_count || 0) > 0 ? (
+                      <Box
+                        sx={{
+                          minWidth: 18,
+                          height: 18,
+                          px: 0.75,
+                          borderRadius: "999px",
+                          bgcolor: "secondary.main",
+                          color: "secondary.contrastText",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          typography: "caption",
+                          fontWeight: 700,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {summary.pending_invitations_count}
+                      </Box>
+                    ) : null}
                   </Box>
                 }
               />
