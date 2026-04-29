@@ -383,7 +383,7 @@ export default function UserProfilePage() {
               </Box>
             )}
     
-            <Box sx={{ display: "flex", gap: 2 }}>
+            <Box sx={{ display: "flex" }}>
               <Button variant="text" onClick={() => openFollowDrawer("followers")}>{`${headerUser?.followers_count || 0} abonnés`}</Button>
               <Button variant="text" onClick={() => openFollowDrawer("following")}>{`${headerUser?.following_count || 0} abonnements`}</Button>
             </Box>
