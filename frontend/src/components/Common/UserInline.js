@@ -21,7 +21,7 @@ function UserInline({
   const displayName = (user?.display_name || user?.displayName || username || "anonyme").trim() || "anonyme";
   const canAutoNavigate = interactive && !onClick && Boolean(username && !user?.is_guest);
   const hasAction = interactive && Boolean(onClick || canAutoNavigate);
-  const subtitle = typeof subtitle === "string" ? subtitle.trim() : "";
+  subtitle = typeof subtitle === "string" ? subtitle.trim() : "";
 
   const handleClick = () => {
     if (onClick) {
