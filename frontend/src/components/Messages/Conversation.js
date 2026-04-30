@@ -240,7 +240,7 @@ export default function Conversation({
   }
 
   return (
-    <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 2, minHeight: 380, height: "100%", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ minHeight: 380, height: "100%", display: "flex", flexDirection: "column" }}>
       {isInDrawer ? (
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1.5 }}>
           <Box sx={{ minWidth: 0, flex: 1 }}>
