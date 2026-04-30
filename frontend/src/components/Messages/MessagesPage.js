@@ -262,7 +262,8 @@ export default function MessagesPage() {
     <Box sx={{ p: 2, pb: 8 }}>
       <Typography variant="h4" sx={{ mb: 2 }}>Messages</Typography>
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
-      {loading ? <CircularProgress /> : (
+      {loading ? <Box sx={{ width: "100%", padding: "26px", display: "flex", justifyContent: "center" }}><CircularProgress /></Box>
+        : (
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: 2, minWidth: 0, width: "100%", maxWidth: "100%" }}>
           <Box sx={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
             <Tabs value={activeTab} onChange={handleTabChange}>
