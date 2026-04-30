@@ -694,7 +694,6 @@ export default function Deposit({
       <DepositUser
         user={user}
         userPrefix={userPrefix}
-        onNavigateProfile={(username) => navigate("/profile/" + username)}
       />
     </Box>
   ) : null;
