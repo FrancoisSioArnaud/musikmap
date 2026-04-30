@@ -8,7 +8,6 @@ export default function DepositUser({ user, userPrefix = "Partagée par", onNavi
       user={user}
       prefix={userPrefix}
       className="deposit_user"
-      onNavigateProfile={onNavigateProfile}
       avatarSize={32}
     />
   );
