@@ -13,6 +13,14 @@ class UserFollowTests(FlowboxAPITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.data["followed"])
 
+    def test_follow_lookup_is_case_insensitive(self):
+        viewer = self.make_user(username="aliceci")
+        target = self.make_user(username="TargetCi")
+        self.auth(viewer)
+        response = self.client.post(reverse("user-follow", kwargs={"username": "targetci"}), {}, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data["followed"])
+
     def test_follow_idempotent(self):
         viewer = self.make_user(username="alice2")
         target = self.make_user(username="bob2")

@@ -473,7 +473,7 @@ class ChangeUsername(APIView):
         if getattr(request.user, "is_guest", False):
             return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
 
-        new_username = request.data.get("username") or request.data.get("new_username")
+        new_username = (request.data.get("username") or request.data.get("new_username") or "").strip()
         if not new_username:
             return api_error(
                 status.HTTP_400_BAD_REQUEST,

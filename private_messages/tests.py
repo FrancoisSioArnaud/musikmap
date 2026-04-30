@@ -127,6 +127,13 @@ class MessagingFlowTests(APITestCase):
         sender_after_expired = self.client.get(reverse("messages-summary"))
         self.assertEqual(sender_after_expired.data["conversations"], [])
 
+
+    def test_status_lookup_by_username_is_case_insensitive(self):
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-status", kwargs={"username": "BOB"}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["target_user"]["username"], "bob")
+
     def test_settings_toggle_updates_user(self):
         self.client.force_authenticate(self.receiver)
         response = self.client.post(

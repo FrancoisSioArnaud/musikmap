@@ -330,7 +330,7 @@ class MessageThreadStatusView(APIView):
 
         from users.models import CustomUser
 
-        target = CustomUser.objects.filter(username=username, is_guest=False).first()
+        target = CustomUser.objects.filter(username__iexact=username, is_guest=False).first()
         if not target:
             return api_error(status.HTTP_404_NOT_FOUND, "TARGET_USER_NOT_FOUND", "Utilisateur introuvable.")
 
