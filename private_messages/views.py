@@ -17,7 +17,7 @@ from la_boite_a_son.api_errors import api_error
 from private_messages.models import ChatMessage, ChatThread
 from private_messages.selectors.threads import get_thread_for_users, list_threads_for_user, sorted_pair
 from private_messages.services.moderation import validate_message_text
-from private_messages.services.payloads import build_thread_payload
+from private_messages.services.payloads import build_summary_thread_payload, build_thread_payload
 from private_messages.services.read_state import set_last_read_at_for_user
 from users.utils import get_current_app_user, touch_last_seen
 
@@ -70,10 +70,11 @@ class MessageSummaryView(APIView):
         conversations = []
 
         for thread in list_threads_for_user(user.id):
-            payload = build_thread_payload(thread, user)
-            if payload["is_pending_received"]:
+            payload = build_summary_thread_payload(thread, user)
+            is_pending_received = thread.status == ChatThread.STATUS_PENDING and thread.initiator_id != user.id
+            if is_pending_received:
                 received_requests.append(payload)
-            if thread.status == ChatThread.STATUS_ACCEPTED or payload["is_pending_sent"]:
+            if thread.status == ChatThread.STATUS_ACCEPTED:
                 conversations.append(payload)
 
         unread_conversations_count = sum(1 for item in conversations if item.get("has_unread"))
@@ -102,6 +103,47 @@ class MessageThreadDetailView(APIView):
 
         set_last_read_at_for_user(thread, user, timezone.now())
         return Response(build_thread_payload(thread, user), status=status.HTTP_200_OK)
+
+
+class MessageThreadByUsernameDetailView(APIView):
+    def get(self, request, username, format=None):
+        user, error = _get_authenticated_non_guest_user(request)
+        if error:
+            return error
+
+        from users.models import CustomUser
+
+        target = CustomUser.objects.filter(username__iexact=username, is_guest=False).first()
+        if not target:
+            return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur introuvable.")
+
+        if target.id == user.id:
+            return api_error(status.HTTP_400_BAD_REQUEST, "SELF_CHAT_FORBIDDEN", "Tu ne peux pas t’écrire à toi-même.")
+
+        thread = get_thread_for_users(user.id, target.id)
+        if thread:
+            thread.ensure_not_expired()
+            set_last_read_at_for_user(thread, user, timezone.now())
+            return Response(build_thread_payload(thread, user), status=status.HTTP_200_OK)
+
+        return Response(
+            {
+                "id": None,
+                "status": "new",
+                "other_user": {
+                    "id": target.id,
+                    "username": target.username,
+                    "display_name": target.display_name,
+                    "profile_picture_url": target.profile_picture.url if getattr(target, "profile_picture", None) else None,
+                },
+                "has_unread": False,
+                "unread_count": 0,
+                "updated_at": None,
+                "server_time": timezone.now().isoformat(),
+                "messages": [],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class MessageThreadStartView(APIView):

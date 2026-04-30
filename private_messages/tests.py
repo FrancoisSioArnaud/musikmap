@@ -76,6 +76,9 @@ class MessagingFlowTests(APITestCase):
         self.assertEqual(sender_summary.status_code, status.HTTP_200_OK)
         self.assertEqual(sender_summary.data["unread_conversations_count"], 1)
         self.assertTrue(sender_summary.data["conversations"][0]["has_unread"])
+        self.assertNotIn("messages", sender_summary.data["conversations"][0])
+        self.assertIn("text_preview", sender_summary.data["conversations"][0]["last_message"])
+        self.assertIn("sender_id", sender_summary.data["conversations"][0]["last_message"])
 
     def test_pending_then_reply_accepts(self):
         thread_id = self.start_thread()
@@ -101,13 +104,13 @@ class MessagingFlowTests(APITestCase):
         )
         self.assertEqual(blocked.status_code, status.HTTP_409_CONFLICT)
 
-    def test_summary_filters_pending_sent_pending_received_refused_expired(self):
+    def test_summary_filters_pending_received_and_accepted_only(self):
         thread_id = self.start_thread()
         thread = ChatThread.objects.get(pk=thread_id)
 
         self.client.force_authenticate(self.sender)
         sender_summary = self.client.get(reverse("messages-summary"))
-        self.assertEqual(len(sender_summary.data["conversations"]), 1)
+        self.assertEqual(len(sender_summary.data["conversations"]), 0)
 
         self.client.force_authenticate(self.receiver)
         receiver_summary = self.client.get(reverse("messages-summary"))
@@ -142,3 +145,44 @@ class MessagingFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.receiver.refresh_from_db()
         self.assertFalse(self.receiver.allow_private_message_requests)
+
+    def test_thread_detail_payload_is_simplified(self):
+        thread_id = self.start_thread()
+        self.client.force_authenticate(self.receiver)
+        self.client.post(reverse("messages-thread-reply", kwargs={"thread_id": thread_id}), {"text": "ok"}, format="json")
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-thread-detail", kwargs={"thread_id": thread_id}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        message = response.data["messages"][0]
+        self.assertIn("sender_id", message)
+        self.assertNotIn("sender", message)
+        self.assertIn("image_url_small", message["song"])
+        self.assertNotIn("image_url", message["song"])
+
+    def test_thread_by_username_returns_existing_thread_case_insensitive(self):
+        thread_id = self.start_thread()
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "BOB"}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], thread_id)
+
+    def test_thread_by_username_returns_virtual_thread_when_missing(self):
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "bob"}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["id"])
+        self.assertEqual(response.data["status"], "new")
+        self.assertEqual(response.data["messages"], [])
+        self.assertEqual(ChatThread.objects.count(), 0)
+
+    def test_thread_by_username_returns_user_not_found(self):
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "unknown_user"}))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["code"], "USER_NOT_FOUND")
+
+    def test_thread_by_username_self_is_forbidden(self):
+        self.client.force_authenticate(self.sender)
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "alice"}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["code"], "SELF_CHAT_FORBIDDEN")

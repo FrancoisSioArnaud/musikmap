@@ -44,13 +44,12 @@ function getItemsForTab(summary, tab) {
 }
 
 function MessageRow({ item, active, onClick }) {
-  let preview = item?.last_message?.text || "";
+  let preview = item?.last_message?.text_preview || "";
   if (!preview && item?.last_message?.message_type === "song") {
-    preview = "A partagé une chanson";
+    const songTitle = item?.last_message?.song?.title;
+    preview = songTitle ? `A partagé : ${songTitle}` : "A partagé une chanson";
   }
-  if (!preview && item?.is_pending_sent) {
-    preview = "En attente de réponse";
-  }
+  if (!preview && item?.status === "pending") { preview = "En attente de réponse"; }
 
   return (
     <ListItemButton
@@ -96,7 +95,7 @@ function MessageRow({ item, active, onClick }) {
         }}
       >
         <Typography variant="caption" sx={{ flex: "0 0 auto", pt: 0.5, whiteSpace: "nowrap" }}>
-          {formatRelativeTime(item?.updated_at)}
+          {formatRelativeTime(item?.last_message?.created_at || item?.updated_at)}
         </Typography>
 
         {item?.has_unread ? (
