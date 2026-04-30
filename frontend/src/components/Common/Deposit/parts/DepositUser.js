@@ -2,11 +2,11 @@ import React from "react";
 
 import UserInline from "../../UserInline";
 
-export default function DepositUser({ user, userPrefix = "Partagée par", onNavigateProfile }) {
+export default function DepositUser({ user, onNavigateProfile }) {
   return (
+    <Typography variant="body1" component="span" sx={{ flex: "0 0 auto", whiteSpace: "nowrap" }}>Partagée par</Typography>
     <UserInline
       user={user}
-      prefix={userPrefix}
       className="deposit_user"
       avatarSize={32}
     />
