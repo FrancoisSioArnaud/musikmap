@@ -283,7 +283,6 @@ export default function Conversation({
 
       {!loading && thread ? (
         <Stack spacing={2} sx={{ minHeight: 0, height: "100%" }}>
-          <Divider />
 
           <Stack spacing={4} ref={messagesContainerRef} sx={{ overflowY: "auto", flex: 1, minHeight: 120}}>
             {(thread?.messages || []).map((message) => {
