@@ -10,7 +10,6 @@ function UserInline({
   subtitle,
   onClick,
   onNavigateProfile,
-  prefix,
   className = "",
   avatarSize = 26,
   interactive = true,
