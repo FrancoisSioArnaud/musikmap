@@ -21,7 +21,7 @@ function UserInline({
   const displayName = (user?.display_name || user?.displayName || username || "anonyme").trim() || "anonyme";
   const canAutoNavigate = interactive && !onClick && Boolean(username && !user?.is_guest);
   const hasAction = interactive && Boolean(onClick || canAutoNavigate);
-  const trimmedSubtitle = typeof subtitle === "string" ? subtitle.trim() : "";
+  const subtitle = typeof subtitle === "string" ? subtitle.trim() : "";
 
   const handleClick = () => {
     if (onClick) {
@@ -58,11 +58,6 @@ function UserInline({
         "&:active": hasAction ? { opacity: 0.92 } : undefined,
       }}
     >
-      {prefix ? (
-        <Typography variant="body1" component="span" sx={{ flex: "0 0 auto", whiteSpace: "nowrap" }}>
-          {prefix}
-        </Typography>
-      ) : null}
 
       <Box className="avatarbox" sx={{ flex: "0 0 auto" }}>
         <Avatar
@@ -102,7 +97,7 @@ function UserInline({
           {canAutoNavigate ? <ArrowForwardIosIcon className="icon" sx={{ height: "0.8em", width: "0.8em", flex: "0 0 auto" }} /> : null}
         </Typography>
 
-        {trimmedSubtitle ? (
+        {subtitle ? (
           <Typography
             variant="body2"
             className="click_delete"
@@ -115,7 +110,7 @@ function UserInline({
               whiteSpace: "nowrap",
             }}
           >
-            {trimmedSubtitle}
+            {subtitle}
           </Typography>
         ) : null}
       </Box>
