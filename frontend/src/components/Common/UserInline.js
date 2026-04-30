@@ -50,7 +50,7 @@ function UserInline({
         display: "flex",
         alignItems: "center",
         gap: "6px",
-        width: "100%",
+        width: "auto",
         maxWidth: "100%",
         minWidth: 0,
         cursor: hasAction ? "pointer" : "default",
