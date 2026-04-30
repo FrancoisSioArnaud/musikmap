@@ -21,3 +21,15 @@ class RegisterUserForm(UserCreationForm):
         self.fields["username"].widget.attrs["class"] = "form-control"
         self.fields["password1"].widget.attrs["class"] = "form-control"
         self.fields["password2"].widget.attrs["class"] = "form-control"
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if not username:
+            return username
+
+        duplicate = CustomUser.objects.filter(username__iexact=username)
+        if self.instance and self.instance.pk:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+        if duplicate.exists():
+            raise forms.ValidationError("Ce nom d’utilisateur est déjà pris.")
+        return username
