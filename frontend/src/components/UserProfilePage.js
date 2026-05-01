@@ -1,4 +1,5 @@
 import EditIcon from "@mui/icons-material/Edit";
+import ChatBubble from "@mui/icons-material/ChatBubble";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -395,6 +396,7 @@ export default function UserProfilePage() {
             <FollowButton isFollowed={Boolean(headerUser?.is_followed_by_me)} loading={followBusy} onClick={() => handleToggleFollow(null)} />
             <Button
               variant="outlined"
+              startIcon={<ChatBubble />}
               disabled={!chatState?.allow_private_message_requests}
               onClick={openChatFromProfile}
             >
