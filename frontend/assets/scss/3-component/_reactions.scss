@@ -59,7 +59,6 @@
   left: 50%;
   z-index: 4;
   transform: translateX(-50%);
-  box-shadow: var(--mm-shadow-high);
 }
 
 .unlock_cta::before {
@@ -78,6 +77,7 @@
 .unlock_cta_button {
   min-width: 0;
   white-space: nowrap;
+  box-shadow: var(--mm-shadow-high);
 }
 
 .reaction_summary_modal {
