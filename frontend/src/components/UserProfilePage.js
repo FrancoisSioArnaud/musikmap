@@ -353,7 +353,7 @@ export default function UserProfilePage() {
 
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "left" }}>
 
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "left", gap: "12px", p: "26px" }}> 
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "left", gap: "12px", p: "16px 26px 0px 26px" }}> 
         
           <Avatar
             src={headerUser?.profile_picture_url || undefined}
