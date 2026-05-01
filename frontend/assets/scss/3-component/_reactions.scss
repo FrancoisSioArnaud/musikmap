@@ -41,6 +41,10 @@
 }
 
 .react_item_wrap.selected .react_emoji{
+  transform: scale(1.1);
+}
+
+.react_item_wrap.selected.react_free .react_emoji{
   transform: scale(1.5);
 }
 
