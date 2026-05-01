@@ -473,6 +473,8 @@
   min-height: 100px;
   margin-top: 12px;
   padding: 12px 16px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-lg);
   background-color: var(--mm-color-surface);
   width: 100%;
   box-sizing: border-box;
