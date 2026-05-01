@@ -291,7 +291,7 @@ export default function FavoriteSongSection({
 
     return (
       <Typography variant="body1" sx={{ textAlign: "center" }}>
-        {displayName} n&apos;a pas épinglé de chanson à son profil
+        {displayName} n&apos;a pas encore épinglé de chanson à son profil
       </Typography>
     );
   }, [displayName, isCurrentFullUser, isGuestOwner, location, navigate, openDrawer, user?.username]);
