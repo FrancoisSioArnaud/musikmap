@@ -1,4 +1,4 @@
-import ChatBubble from "@mui/icons-material/ChatBubble";
+import Chat from "@mui/icons-material/Chat";
 import MusicNote from "@mui/icons-material/MusicNote";
 import PersonIcon from "@mui/icons-material/Person";
 import AppBar from "@mui/material/AppBar";
@@ -189,7 +189,7 @@ export default function MenuAppBar() {
                 to="/messages"
                 onClick={(event) => event.stopPropagation()}
               >
-                <ChatBubble />
+                <Chat />
               </IconButton>
 
               <IconButton
