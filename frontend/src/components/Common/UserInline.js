@@ -107,6 +107,7 @@ function UserInline({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              mt:"2px",
             }}
           >
             {subtitle}
