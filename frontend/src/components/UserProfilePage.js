@@ -141,7 +141,7 @@ export default function UserProfilePage() {
 
     async function load() {
       if (!routeUsername) {
-        setHeader({ status: "error", user: null });
+        setHeader({ status: "loading", user: null });
         return;
       }
 
