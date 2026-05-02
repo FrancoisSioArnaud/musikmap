@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Count
 
-from users.models import CustomUser, UserProviderConnection
+from users.models import CustomUser, UserFollow, UserProviderConnection
 
 
 @admin.register(CustomUser)
@@ -77,6 +78,8 @@ class CustomUserAdmin(UserAdmin):
         "converted_at",
         "is_staff",
         "is_active",
+        "followers_count",
+        "following_count",
     )
     list_filter = (
         "is_guest",
@@ -98,6 +101,44 @@ class CustomUserAdmin(UserAdmin):
     autocomplete_fields = ("client",)
     readonly_fields = ("guest_device_token", "last_seen_at", "converted_at")
     ordering = ("username",)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            _followers_count=Count("follower_relations", distinct=True),
+            _following_count=Count("following_relations", distinct=True),
+        )
+
+    @admin.display(description="Followers")
+    def followers_count(self, obj):
+        return getattr(obj, "_followers_count", obj.follower_relations.count())
+
+    @admin.display(description="Following")
+    def following_count(self, obj):
+        return getattr(obj, "_following_count", obj.following_relations.count())
+
+
+@admin.register(UserFollow)
+class UserFollowAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "follower",
+        "following",
+        "created_at",
+    )
+    list_filter = ("created_at",)
+    search_fields = (
+        "follower__username",
+        "following__username",
+        "follower__email",
+        "following__email",
+    )
+    autocomplete_fields = (
+        "follower",
+        "following",
+    )
+    readonly_fields = ("created_at",)
+    ordering = ("-created_at",)
 
 
 @admin.register(UserProviderConnection)
