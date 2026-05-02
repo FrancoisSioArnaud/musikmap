@@ -1,5 +1,5 @@
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import SearchIcon from "@mui/icons-material/Search";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDownRounded";
+import SearchIcon from "@mui/icons-material/SearchRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";

@@ -1,5 +1,5 @@
 // frontend/src/components/Flowbox/AchievementsPanel.js
-import MusicNote from "@mui/icons-material/MusicNote";
+import MusicNote from "@mui/icons-material/MusicNoteRounded";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";

@@ -1,4 +1,4 @@
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";

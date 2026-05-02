@@ -1,4 +1,4 @@
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";

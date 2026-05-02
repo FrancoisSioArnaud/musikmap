@@ -1,5 +1,5 @@
-import KeyIcon from "@mui/icons-material/Key";
-import LockIcon from "@mui/icons-material/Lock";
+import KeyIcon from "@mui/icons-material/KeyRounded";
+import LockIcon from "@mui/icons-material/LockRounded";
 import {
   Box,
   Button,

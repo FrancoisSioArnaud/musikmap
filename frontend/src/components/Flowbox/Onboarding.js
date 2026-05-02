@@ -1,4 +1,4 @@
-import LockIcon from "@mui/icons-material/Lock";
+import LockIcon from "@mui/icons-material/LockRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

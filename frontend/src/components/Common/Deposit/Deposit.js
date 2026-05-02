@@ -1,8 +1,8 @@
 
-import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionOutlined";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentOutlined";
+import AddReactionOutlinedIcon from "@mui/icons-material/AddReactionRounded";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDownRounded";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusicRounded";
+import ModeCommentOutlinedIcon from "@mui/icons-material/ModeCommentRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

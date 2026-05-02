@@ -1,4 +1,4 @@
-import MusicNote from "@mui/icons-material/MusicNote";
+import MusicNote from "@mui/icons-material/MusicNoteRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

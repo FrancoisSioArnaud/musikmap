@@ -1,7 +1,7 @@
 // frontend/src/components/Flowbox/Discover.js
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import MusicNote from "@mui/icons-material/MusicNote";
+import CheckCircleIcon from "@mui/icons-material/CheckCircleRounded";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import MusicNote from "@mui/icons-material/MusicNoteRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
