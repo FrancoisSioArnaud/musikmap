@@ -33,12 +33,9 @@ function SongMessage({ song }) {
 }
 
 export default function Conversation({
-  threadId,
   username,
-  mode = "thread",
   viewer,
   isInDrawer = false,
-  onThreadResolved,
   onClose,
   onThreadUpdated,
 }) {
@@ -46,24 +43,20 @@ export default function Conversation({
   const { user } = useContext(UserContext) || {};
   const currentViewer = viewer || user;
   const [thread, setThread] = useState(null);
-  const [statusPayload, setStatusPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [resolvedThreadId, setResolvedThreadId] = useState(threadId || null);
+  const [resolvedThreadId, setResolvedThreadId] = useState(null);
   const messagesContainerRef = useRef(null);
   const shouldStickToBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
 
   const withCsrf = useCallback(() => ({ "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") }), []);
 
-  const loadThread = useCallback(async (nextThreadId, { silent = false } = {}) => {
-    if (!nextThreadId) {
-      setThread(null);
-      return null;
-    }
+  const loadThread = useCallback(async ({ silent = false } = {}) => {
+    if (!username) { setThread(null); return null; }
     if (!silent) {setLoading(true);}
-    const res = await fetch(`/messages/thread/${nextThreadId}`, { credentials: "same-origin" });
+    const res = await fetch(`/messages/threads/${encodeURIComponent(username)}`, { credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(data?.detail || "Erreur chargement discussion");
@@ -73,65 +66,16 @@ export default function Conversation({
     return data;
   }, []);
 
-  const resolveFromUsername = useCallback(async () => {
-    if (!username) {return;}
-    setLoading(true);
-    const statusRes = await fetch(`/messages/status/${encodeURIComponent(username)}`, { credentials: "same-origin" });
-    const statusData = await statusRes.json().catch(() => ({}));
-    if (!statusRes.ok) {
-      throw new Error(statusData?.detail || "Utilisateur introuvable.");
-    }
-    setStatusPayload(statusData);
 
-    if (statusData?.thread_id) {
-      setResolvedThreadId(statusData.thread_id);
-      onThreadResolved?.(statusData.thread_id, statusData);
-      await loadThread(statusData.thread_id, { silent: false });
-      return;
-    }
-
-    setThread(null);
-    onThreadResolved?.(null, statusData);
-    setLoading(false);
-  }, [loadThread, onThreadResolved, username]);
-
-  useEffect(() => {
-    let mounted = true;
-    setError("");
-
-    const bootstrap = async () => {
-      try {
-        if (mode === "username") {
-          await resolveFromUsername();
-        } else {
-          setResolvedThreadId(threadId || null);
-          await loadThread(threadId, { silent: false });
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err?.message || "Erreur de conversation.");
-          setLoading(false);
-        }
-      }
-    };
-
-    bootstrap();
-    return () => { mounted = false; };
-  }, [loadThread, mode, resolveFromUsername, threadId]);
+  useEffect(() => { let mounted = true; setError(""); loadThread({ silent: false }).catch((err) => { if (mounted) { setError(err?.message || "Erreur de conversation."); setLoading(false); } }); return () => { mounted = false; }; }, [loadThread]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
       if (document.visibilityState !== "visible") {return;}
-      if (mode === "username" && !resolvedThreadId) {
-        resolveFromUsername().catch(() => {});
-        return;
-      }
-      if (resolvedThreadId) {
-        loadThread(resolvedThreadId, { silent: true }).catch(() => {});
-      }
+      loadThread({ silent: true }).catch(() => {});
     }, 5000);
     return () => window.clearInterval(id);
-  }, [loadThread, mode, resolveFromUsername, resolvedThreadId]);
+  }, [loadThread]);
 
   const canAutoScroll = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -186,9 +130,7 @@ export default function Conversation({
           throw new Error(data?.detail || "Impossible de créer la demande");
         }
         if (data?.thread_id) {
-          setResolvedThreadId(data.thread_id);
-          const nextThread = await loadThread(data.thread_id, { silent: false });
-          onThreadResolved?.(data.thread_id, data);
+          const nextThread = await loadThread({ silent: false });
           onThreadUpdated?.(nextThread || data);
         }
         return;
@@ -204,7 +146,7 @@ export default function Conversation({
       if (!response.ok) {
         throw new Error(data?.detail || "Envoi impossible");
       }
-      const nextThread = await loadThread(resolvedThreadId, { silent: true });
+      const nextThread = await loadThread({ silent: true });
       onThreadUpdated?.(nextThread);
     } catch (err) {
       setError(err?.message || "Envoi impossible");
@@ -227,13 +169,11 @@ export default function Conversation({
       setError(data?.detail || "Refus impossible");
       return;
     }
-    const nextThread = await loadThread(resolvedThreadId, { silent: false });
+    const nextThread = await loadThread({ silent: false });
     onThreadUpdated?.(nextThread);
   };
 
-  const statusState = statusPayload?.state || "";
-  const renderStatusOnly = mode === "username" && !resolvedThreadId;
-  const headerUser = thread?.other_user || statusPayload?.target_user || (username ? { username } : null);
+  const headerUser = thread?.other_user || (username ? { username } : null);
 
   if (!currentViewer?.id) {
     return <Alert severity="info">Connecte-toi pour accéder à tes messages.</Alert>;
@@ -254,33 +194,7 @@ export default function Conversation({
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
       {loading ? <CircularProgress size={20} /> : null}
 
-      {!loading && renderStatusOnly ? (
-        <>
-          {statusState === "self" ? <Alert severity="info">Tu ne peux pas t’écrire à toi-même.</Alert> : null}
-          {statusState === "pending_sent" ? <Alert severity="info">En attente de réponse.</Alert> : null}
-          {statusState === "pending_received" ? <Alert severity="info">Réponds pour accepter la discussion.</Alert> : null}
-          {!statusPayload?.allow_private_message_requests ? <Alert severity="warning">Ce profil n’accepte pas les demandes privées.</Alert> : null}
-          {!statusState || (statusState === "can_start" && !statusPayload?.allow_private_message_requests)
-            ? <Alert severity="error">Conversation indisponible.</Alert>
-            : null}
-          {statusState === "can_start" && statusPayload?.allow_private_message_requests ? (
-            <MessageComposer
-              scope="thread_start"
-              target={{ targetUserId: statusPayload?.target_user?.id, username: statusPayload?.target_user?.username }}
-              viewer={currentViewer}
-              loading={sending}
-              songRequired
-              textLabel="Message"
-              textPlaceholder="Message d’accompagnement (optionnel)"
-              searchDrawerTitle="Attacher une chanson"
-              songActionLabel="Choisir"
-              drawerAnchor="right"
-              onSubmit={sendRequest}
-            />
-          ) : null}
-        </>
-      ) : null}
-
+      
       {!loading && thread ? (
         <Stack spacing={2} sx={{ minHeight: 0, height: "100%" }}>
 
@@ -324,8 +238,8 @@ export default function Conversation({
           <Divider />
 
           <MessageComposer
-            scope="thread_reply"
-            target={{ threadId: thread?.id, username: thread?.other_user?.username }}
+            scope={thread?.id ? "thread_reply" : "thread_start"}
+            target={thread?.id ? { threadId: thread?.id, username: thread?.other_user?.username } : { targetUserId: thread?.other_user?.id, username: thread?.other_user?.username }}
             viewer={currentViewer}
             loading={sending}
             notice={thread?.is_pending_sent ? "En attente de réponse." : ""}

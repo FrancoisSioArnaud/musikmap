@@ -49,7 +49,7 @@ class MessagingFlowTests(APITestCase):
     def test_detail_marks_as_read(self):
         thread_id = self.start_thread()
         self.client.force_authenticate(self.receiver)
-        response = self.client.get(reverse("messages-thread-detail", kwargs={"thread_id": thread_id}))
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "alice"}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         thread = ChatThread.objects.get(pk=thread_id)
         receiver_last_read = thread.user_a_last_read_at if thread.user_a_id == self.receiver.id else thread.user_b_last_read_at
@@ -151,7 +151,7 @@ class MessagingFlowTests(APITestCase):
         self.client.force_authenticate(self.receiver)
         self.client.post(reverse("messages-thread-reply", kwargs={"thread_id": thread_id}), {"text": "ok"}, format="json")
         self.client.force_authenticate(self.sender)
-        response = self.client.get(reverse("messages-thread-detail", kwargs={"thread_id": thread_id}))
+        response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "bob"}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         message = response.data["messages"][0]
         self.assertIn("sender_id", message)
@@ -186,3 +186,9 @@ class MessagingFlowTests(APITestCase):
         response = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "alice"}))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["code"], "SELF_CHAT_FORBIDDEN")
+
+
+class MessagingPublicRoutesTests(APITestCase):
+    def test_old_thread_detail_route_is_not_publicly_available(self):
+        response = self.client.get("/messages/thread/1")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

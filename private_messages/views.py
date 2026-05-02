@@ -91,20 +91,6 @@ class MessageSummaryView(APIView):
         )
 
 
-class MessageThreadDetailView(APIView):
-    def get(self, request, thread_id, format=None):
-        user, error = _get_authenticated_non_guest_user(request)
-        if error:
-            return error
-
-        thread = _get_thread_for_user_or_404(thread_id, user)
-        if not thread:
-            return api_error(status.HTTP_404_NOT_FOUND, "THREAD_NOT_FOUND", "Discussion introuvable.")
-
-        set_last_read_at_for_user(thread, user, timezone.now())
-        return Response(build_thread_payload(thread, user), status=status.HTTP_200_OK)
-
-
 class MessageThreadByUsernameDetailView(APIView):
     def get(self, request, username, format=None):
         user, error = _get_authenticated_non_guest_user(request)

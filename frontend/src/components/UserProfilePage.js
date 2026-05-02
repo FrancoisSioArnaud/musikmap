@@ -222,7 +222,7 @@ export default function UserProfilePage() {
 
   const openChatFromProfile = () => {
     if (!routeUsername) {return;}
-    navigate(`/messages/${encodeURIComponent(routeUsername)}`);
+    navigate(`/messages?thread=${encodeURIComponent(routeUsername)}`);
   };
 
   const handleGuestContinue = () => {
