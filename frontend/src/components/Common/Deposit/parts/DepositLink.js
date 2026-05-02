@@ -1,4 +1,4 @@
-import SendIcon from "@mui/icons-material/Send";
+import SendIcon from "@mui/icons-material/SendRounded";
 import Button from "@mui/material/Button";
 import React from "react";
 

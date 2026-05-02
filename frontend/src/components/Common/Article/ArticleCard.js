@@ -1,4 +1,4 @@
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import OpenInNewIcon from "@mui/icons-material/OpenInNewRounded";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";

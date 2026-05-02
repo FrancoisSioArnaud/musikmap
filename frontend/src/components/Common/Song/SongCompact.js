@@ -1,5 +1,5 @@
-import MusicNoteIcon from "@mui/icons-material/MusicNote";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import MusicNoteIcon from "@mui/icons-material/MusicNoteRounded";
+import PlayArrowIcon from "@mui/icons-material/PlayArrowRounded";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";

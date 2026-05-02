@@ -1,5 +1,5 @@
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
-import SendIcon from "@mui/icons-material/Send";
+import LibraryMusicIcon from "@mui/icons-material/LibraryMusicRounded";
+import SendIcon from "@mui/icons-material/SendRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

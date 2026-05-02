@@ -1,4 +1,4 @@
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
