@@ -78,8 +78,9 @@
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
   box-shadow: 0 4px 8px -4px rgb(0 0 0 / 20%);
-  z-index:2;
+  z-index: 2;
   overflow: clip;
+  width: 100%;
 }
 
 .favorite_song_section .deposit_card, .pinned_song_section .deposit_card{
