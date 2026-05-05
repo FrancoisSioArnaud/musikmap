@@ -16,6 +16,7 @@ from users.models import CustomUser
 from .models import (
     Article,
     Box,
+    BoxSession,
     Client,
     Comment,
     CommentAttemptLog,
@@ -51,6 +52,68 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_filter = ("client",)
     search_fields = ("name", "description", "url", "client__name")
     autocomplete_fields = ("client",)
+
+
+class BoxSessionStateFilter(admin.SimpleListFilter):
+    title = "État"
+    parameter_name = "state"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("active", "Active"),
+            ("expired", "Expirée"),
+        )
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        if self.value() == "active":
+            return queryset.filter(expires_at__gt=now)
+        if self.value() == "expired":
+            return queryset.filter(expires_at__lte=now)
+        return queryset
+
+
+@admin.register(BoxSession)
+class BoxSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "box",
+        "state_label",
+        "started_at",
+        "expires_at",
+        "remaining_seconds_admin",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (BoxSessionStateFilter, "box", "started_at", "expires_at", "created_at")
+    search_fields = (
+        "user__username",
+        "user__email",
+        "box__name",
+        "box__url",
+    )
+    autocomplete_fields = ("user", "box")
+    readonly_fields = (
+        "state_label",
+        "remaining_seconds_admin",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-expires_at", "-id")
+    date_hierarchy = "started_at"
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related("user", "box")
+
+    @admin.display(description="État", boolean=True)
+    def state_label(self, obj):
+        return obj.is_active
+
+    @admin.display(description="Secondes restantes")
+    def remaining_seconds_admin(self, obj):
+        return obj.remaining_seconds
 
 
 @admin.register(Article)
