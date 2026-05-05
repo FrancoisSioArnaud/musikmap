@@ -12,6 +12,8 @@ from box_management.api.views.comments import (
 )
 from box_management.api.views.core import (
     ActiveBoxSessionsView,
+    BoxContentView,
+    BoxDepositsView,
     BoxSessionView,
     ClientAdminArticleDetailView,
     ClientAdminArticleImportPageView,
@@ -46,7 +48,9 @@ from box_management.api.views.stickers import (
 
 urlpatterns = [
     path("economy/", EconomyConfigView.as_view(), name="economy"),
-    path("get-box/", GetBox.as_view(), name="get-box"),
+    path("box-bootstrap/", GetBox.as_view(), name="box-bootstrap"),
+    path("box-content/", BoxContentView.as_view(), name="box-content"),
+    path("box-deposits/", BoxDepositsView.as_view(), name="box-deposits"),
     path("get-main/<slug:box_url>/", GetMain.as_view(), name="get-main"),
     path("verify-location", Location.as_view(), name="verify-location"),
     path("box-session/", BoxSessionView.as_view(), name="box-session"),

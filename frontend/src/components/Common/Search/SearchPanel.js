@@ -32,6 +32,9 @@ export default function SearchPanel({
   searchBarWrapperSx,
   contentSx,
   searchBarSx,
+  collapsed = false,
+  onCollapsedClick,
+  collapsedPlaceholder = "Déposer une chanson",
 }) {
   const { user } = useContext(UserContext) || {};
 
@@ -67,6 +70,37 @@ export default function SearchPanel({
 
   const hasSearchValue = Boolean(String(searchValue || "").trim());
   const shouldShowIncitation = !hasSearchValue && Boolean(String(searchIncitationText || "").trim());
+  if (collapsed) {
+    return (
+      <Box sx={[{ position: "relative" }, ...(Array.isArray(searchBarWrapperSx) ? searchBarWrapperSx : searchBarWrapperSx ? [searchBarWrapperSx] : [])]}>
+        <Box sx={{ pointerEvents: "none" }}>
+          <SearchBar
+            inputRef={inputRef}
+            value=""
+            onChange={() => {}}
+            selectedProviderCode={selectedProvider}
+            connectedProviderCodes={connectedPersonalizedProviderCodes}
+            onSelectProvider={handleSelectProvider}
+            onConnectProvider={handleConnectProvider}
+            placeholder={collapsedPlaceholder}
+            sx={searchBarSx}
+          />
+        </Box>
+        <Box
+          role="button"
+          tabIndex={0}
+          onClick={onCollapsedClick}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onCollapsedClick?.(event);
+            }
+          }}
+          sx={{ position: "absolute", inset: 0, cursor: "pointer" }}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box

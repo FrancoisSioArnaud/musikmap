@@ -171,7 +171,7 @@ export default function Onboarding() {
       if (data?.current_user && setUser) {
         setUser(data.current_user);
       }
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`, { replace: true });
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, { replace: true });
     } catch (error) {
       if (isPermissionDeniedError(error)) {
         setSheetOpen(false);

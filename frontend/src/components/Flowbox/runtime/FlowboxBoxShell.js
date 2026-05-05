@@ -37,7 +37,7 @@ export default function FlowboxBoxShell() {
         setLoading(true);
         setError("");
 
-        const url = `/box-management/get-box/?name=${encodeURIComponent(boxSlug)}`;
+        const url = `/box-management/box-bootstrap/?name=${encodeURIComponent(boxSlug)}`;
         const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },

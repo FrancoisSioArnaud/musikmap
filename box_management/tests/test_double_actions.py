@@ -24,14 +24,13 @@ class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
         box = self.make_box(url="box-dup-dep", name="Box dup dep")
         option = self.track_option(track_id="dup-track-1", title="Duplicate Track")
 
-        first = self.client.post(reverse("get-box"), {"boxSlug": box.url, "option": option}, format="json")
-        second = self.client.post(reverse("get-box"), {"boxSlug": box.url, "option": option}, format="json")
+        first = self.client.post(reverse("box-deposits"), {"boxSlug": box.url, "option": option}, format="json")
+        second = self.client.post(reverse("box-deposits"), {"boxSlug": box.url, "option": option}, format="json")
 
         self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.status_code, 403)
         self.assertEqual(Deposit.objects.filter(user=user, box=box, deposit_type="box").count(), 1)
         user.refresh_from_db()
-        self.assertEqual(first.data["points_balance"], second.data["points_balance"])
         self.assertEqual(user.points, first.data["points_balance"])
 
     def test_double_set_favorite_within_reuse_window_reuses_same_deposit(self):

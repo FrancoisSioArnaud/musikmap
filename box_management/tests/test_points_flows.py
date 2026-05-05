@@ -426,7 +426,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         user = self.auth(self.make_user(username="dep1", points=0))
         box = self.make_box(url="box-dep-1", name="Box dep 1")
         response = self.client.post(
-            reverse("get-box"),
+            reverse("box-deposits"),
             {
                 "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-1", title="Deposit Track 1"),
@@ -453,7 +453,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            reverse("box-deposits"),
             {
                 "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-2", title="Deposit Track 2"),
@@ -481,7 +481,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            reverse("box-deposits"),
             {
                 "boxSlug": box.url,
                 "option": self.track_option(
@@ -510,7 +510,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            reverse("box-deposits"),
             {
                 "boxSlug": box.url,
                 "option": self.track_option(
@@ -534,7 +534,7 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         user = self.auth(self.make_user(username="dep5", points=0))
         box = self.make_box(url="box-dep-5", name="Box dep 5")
         response = self.client.post(
-            reverse("get-box"),
+            reverse("box-deposits"),
             {
                 "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-5", title="Deposit Track 5"),

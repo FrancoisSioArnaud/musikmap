@@ -68,7 +68,7 @@ class PublicContractViewTests(FlowboxAPITestCase):
         song = self.make_song(public_key="public-box-song")
         self.make_deposit(user=self.make_user(username="owner-public-box"), song=song, box=box)
 
-        response = self.client.get(reverse("get-box"), {"name": box.url})
+        response = self.client.get(reverse("box-bootstrap"), {"name": box.url})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["name"], box.name)
         self.assertEqual(response.data["deposit_count"], 1)
