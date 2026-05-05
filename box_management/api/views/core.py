@@ -443,9 +443,19 @@ class BoxContentView(APIView):
         my_deposit = None
         session = _get_active_box_session(user, box)
         if session and session.deposit_id:
-            my_payload = _build_deposits_payload([session.deposit], viewer=user, include_user=True, force_song_infos_for=[session.deposit_id])
-            my_deposit = my_payload[0] if my_payload else None
-            serialized_older = [d for d in serialized_older if d.get("id") != session.deposit_id]
+            session_deposit = Deposit.objects.filter(pk=session.deposit_id).first()
+            if session_deposit is not None:
+                my_payload = _build_deposits_payload(
+                    [session_deposit],
+                    viewer=user,
+                    include_user=True,
+                    force_song_infos_for=[session.deposit_id],
+                )
+                my_deposit = my_payload[0] if my_payload else None
+                serialized_older = [d for d in serialized_older if d.get("id") != session.deposit_id]
+            else:
+                session.deposit_id = None
+                session.save(update_fields=["deposit", "updated_at"])
         if main is not None:
             DiscoveredSong.objects.get_or_create(user=user, deposit=main, defaults={"discovered_type": "main"})
 
@@ -483,11 +493,15 @@ class BoxDepositsView(APIView):
                     .first()
                 )
                 if box_session and box_session.deposit_id:
-                    return api_error(
-                        status.HTTP_403_FORBIDDEN,
-                        "BOX_DEPOSIT_ALREADY_EXISTS",
-                        "Tu as déjà déposé une chanson.",
-                    )
+                    session_deposit_exists = Deposit.objects.filter(pk=box_session.deposit_id).exists()
+                    if session_deposit_exists:
+                        return api_error(
+                            status.HTTP_403_FORBIDDEN,
+                            "BOX_DEPOSIT_ALREADY_EXISTS",
+                            "Tu as déjà déposé une chanson.",
+                        )
+                    box_session.deposit_id = None
+                    box_session.save(update_fields=["deposit", "updated_at"])
                 payload = create_box_deposit_payload(
                     request=request, user=user, box=box, option=option, box_session=box_session
                 )
