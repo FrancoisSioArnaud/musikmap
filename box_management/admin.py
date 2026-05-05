@@ -16,6 +16,7 @@ from users.models import CustomUser
 from .models import (
     Article,
     Box,
+    BoxSession,
     Client,
     Comment,
     CommentAttemptLog,
@@ -51,6 +52,123 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_filter = ("client",)
     search_fields = ("name", "description", "url", "client__name")
     autocomplete_fields = ("client",)
+
+
+class BoxSessionStateFilter(admin.SimpleListFilter):
+    title = "État"
+    parameter_name = "state"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("active", "Active"),
+            ("expired", "Expirée"),
+        )
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        if self.value() == "active":
+            return queryset.filter(expires_at__gt=now)
+        if self.value() == "expired":
+            return queryset.filter(expires_at__lte=now)
+        return queryset
+
+
+@admin.register(BoxSession)
+class BoxSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "box",
+        "client_admin",
+        "deposit",
+        "is_active_admin",
+        "remaining_time_admin",
+        "started_at",
+        "expires_at",
+        "created_at",
+    )
+    list_filter = (
+        BoxSessionStateFilter,
+        "box__client",
+        "box",
+        "started_at",
+        "expires_at",
+        "created_at",
+    )
+    search_fields = (
+        "user__username",
+        "user__email",
+        "box__name",
+        "box__url",
+        "box__client__name",
+        "deposit__public_key",
+        "deposit__song__title",
+    )
+    autocomplete_fields = ("user", "box", "deposit")
+    readonly_fields = (
+        "is_active_admin",
+        "remaining_time_admin",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-expires_at", "-id")
+    date_hierarchy = "expires_at"
+    list_select_related = ("user", "box", "box__client", "deposit", "deposit__song")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "user",
+                    "box",
+                    "deposit",
+                )
+            },
+        ),
+        (
+            "Session",
+            {
+                "fields": (
+                    "started_at",
+                    "expires_at",
+                    "is_active_admin",
+                    "remaining_time_admin",
+                )
+            },
+        ),
+        (
+            "Dates",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    @admin.display(description="Client", ordering="box__client__name")
+    def client_admin(self, obj):
+        return getattr(obj.box, "client", None) or "—"
+
+    @admin.display(boolean=True, description="Active", ordering="expires_at")
+    def is_active_admin(self, obj):
+        return obj.is_active
+
+    @admin.display(description="Temps restant")
+    def remaining_time_admin(self, obj):
+        remaining_seconds = obj.remaining_seconds
+        if remaining_seconds <= 0:
+            return "0 s"
+
+        minutes, seconds = divmod(remaining_seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+
+        if hours:
+            return f"{hours} h {minutes} min"
+        if minutes:
+            return f"{minutes} min {seconds} s"
+        return f"{seconds} s"
 
 
 @admin.register(Article)
