@@ -31,7 +31,6 @@ import ClientStickersList from "./ClientAdmin/StickersList";
 import MenuAppBar from "./Common/Menu";
 import ClosedBoxPage from "./Flowbox/ClosedBoxPage";
 import Discover from "./Flowbox/Discover";
-import LiveSearch from "./Flowbox/LiveSearch";
 import Onboarding from "./Flowbox/Onboarding";
 import FlowboxBoxShell from "./Flowbox/runtime/FlowboxBoxShell";
 import FlowboxSessionProvider from "./Flowbox/runtime/FlowboxSessionProvider";
@@ -182,7 +181,6 @@ export default function App() {
                     <Route index element={<Onboarding />} />
                     <Route path="closed" element={<ClosedBoxPage />} />
                     <Route element={<InBoxSessionGate />}>
-                      <Route path="search" element={<LiveSearch />} />
                       <Route path="discover" element={<Discover />} />
                     </Route>
                   </Route>

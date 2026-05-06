@@ -79,6 +79,7 @@ class BoxSessionAdmin(admin.ModelAdmin):
         "id",
         "user",
         "box",
+        "deposit",
         "state_label",
         "started_at",
         "expires_at",
@@ -93,7 +94,7 @@ class BoxSessionAdmin(admin.ModelAdmin):
         "box__name",
         "box__url",
     )
-    autocomplete_fields = ("user", "box")
+    autocomplete_fields = ("user", "box", "deposit")
     readonly_fields = (
         "state_label",
         "remaining_seconds_admin",
@@ -105,7 +106,7 @@ class BoxSessionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        return queryset.select_related("user", "box")
+        return queryset.select_related("user", "box", "deposit", "deposit__song")
 
     @admin.display(description="État", boolean=True)
     def state_label(self, obj):

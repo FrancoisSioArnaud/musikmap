@@ -421,14 +421,249 @@ class EmojiPurchaseAndReactionFlowTests(FlowboxAPITestCase):
         self.assertEqual(Reaction.objects.filter(user=user, deposit=pinned, emoji=emoji).count(), 1)
 
 
+class BoxContentFlowTests(FlowboxAPITestCase):
+    def test_box_content_without_active_session_returns_session_required(self):
+        user = self.auth(self.make_user(username="content-no-session"))
+        box = self.make_box(url="box-content-no-session", name="Box content no session")
+        BoxSession.objects.filter(user=user, box=box).delete()
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assert_api_error(response, 403, "BOX_SESSION_REQUIRED")
+
+    def test_box_content_with_active_session_returns_main_older_and_excludes_later_deposits(self):
+        user = self.auth(self.make_user(username="content-active"))
+        box = self.make_box(url="box-content-active", name="Box content active")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        main = self.make_deposit(
+            user=self.make_user(username="content-active-owner"),
+            song=self.make_song(public_key="content-active-main"),
+            box=box,
+            deposited_at=session.started_at - timedelta(minutes=1),
+        )
+        older = self.make_deposit(
+            user=self.make_user(username="content-active-older"),
+            song=self.make_song(public_key="content-active-older"),
+            box=box,
+            deposited_at=session.started_at - timedelta(minutes=2),
+        )
+        later = self.make_deposit(
+            user=self.make_user(username="content-active-later"),
+            song=self.make_song(public_key="content-active-later"),
+            box=box,
+            deposited_at=session.started_at + timedelta(seconds=1),
+        )
+        pinned = self.make_deposit(
+            user=self.make_user(username="content-active-pin-owner"),
+            song=self.make_song(public_key="content-active-pin"),
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_duration_minutes=10,
+            pin_points_spent=149,
+            pin_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["boxSlug"], box.url)
+        self.assertEqual(response.data["main"]["public_key"], main.public_key)
+        self.assertEqual(response.data["main"]["song"]["public_key"], main.song.public_key)
+        self.assertEqual(len(response.data["older_deposits"]), 1)
+        self.assertEqual(response.data["older_deposits"][0]["public_key"], older.public_key)
+        returned_keys = [response.data["main"]["public_key"]] + [
+            deposit["public_key"] for deposit in response.data["older_deposits"]
+        ]
+        self.assertNotIn(later.public_key, returned_keys)
+        self.assertEqual(response.data["active_pinned_deposit"]["public_key"], pinned.public_key)
+        self.assertIsNone(response.data["my_deposit"])
+
+    def test_box_content_returns_empty_payload_when_no_deposit_before_session(self):
+        user = self.auth(self.make_user(username="content-empty"))
+        box = self.make_box(url="box-content-empty", name="Box content empty")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="content-empty-later"),
+            song=self.make_song(public_key="content-empty-later"),
+            box=box,
+            deposited_at=session.started_at + timedelta(seconds=1),
+        )
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["boxSlug"], box.url)
+        self.assertIsNone(response.data["main"])
+        self.assertEqual(response.data["older_deposits"], [])
+        self.assertIsNone(response.data["active_pinned_deposit"])
+        self.assertIsNone(response.data["my_deposit"])
+        self.assertEqual(DiscoveredSong.objects.filter(user=user).count(), 0)
+
+    def test_box_content_main_is_stable_from_session_started_at(self):
+        user = self.auth(self.make_user(username="content-stable"))
+        box = self.make_box(url="box-content-stable", name="Box content stable")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        old = self.make_deposit(
+            user=self.make_user(username="content-stable-old"),
+            song=self.make_song(public_key="content-stable-old"),
+            box=box,
+            deposited_at=session.started_at - timedelta(minutes=2),
+        )
+        main = self.make_deposit(
+            user=self.make_user(username="content-stable-main"),
+            song=self.make_song(public_key="content-stable-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        later = self.make_deposit(
+            user=self.make_user(username="content-stable-later"),
+            song=self.make_song(public_key="content-stable-later"),
+            box=box,
+            deposited_at=session.started_at + timedelta(seconds=1),
+        )
+
+        first = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+        second = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.data["main"]["public_key"], main.public_key)
+        self.assertEqual(second.data["main"]["public_key"], main.public_key)
+        self.assertEqual(len(first.data["older_deposits"]), 1)
+        self.assertEqual(first.data["older_deposits"][0]["public_key"], old.public_key)
+        returned_keys = [first.data["main"]["public_key"]] + [
+            deposit["public_key"] for deposit in first.data["older_deposits"]
+        ]
+        self.assertNotIn(later.public_key, returned_keys)
+        self.assertEqual(DiscoveredSong.objects.filter(user=user, deposit=main).count(), 1)
+        self.assertEqual(DiscoveredSong.objects.filter(user=user).count(), 1)
+
+    def test_box_content_refresh_creates_single_discovered_song_for_main_only(self):
+        user = self.auth(self.make_user(username="content-discovery"))
+        box = self.make_box(url="box-content-discovery", name="Box content discovery")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        main = self.make_deposit(
+            user=self.make_user(username="content-discovery-main"),
+            song=self.make_song(public_key="content-discovery-main"),
+            box=box,
+            deposited_at=session.started_at - timedelta(minutes=1),
+        )
+        older = self.make_deposit(
+            user=self.make_user(username="content-discovery-older"),
+            song=self.make_song(public_key="content-discovery-older"),
+            box=box,
+            deposited_at=session.started_at - timedelta(minutes=2),
+        )
+
+        self.client.get(reverse("box-content"), {"boxSlug": box.url})
+        self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(DiscoveredSong.objects.filter(user=user, deposit=main).count(), 1)
+        self.assertEqual(DiscoveredSong.objects.filter(user=user, deposit=older).count(), 0)
+        self.assertEqual(DiscoveredSong.objects.filter(user=user).count(), 1)
+
+    def test_box_content_returns_my_deposit_from_session_deposit(self):
+        user = self.auth(self.make_user(username="content-my-deposit"))
+        box = self.make_box(url="box-content-my-deposit", name="Box content my deposit")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        my_deposit = self.make_deposit(
+            user=user,
+            song=self.make_song(public_key="content-my-deposit-song"),
+            box=box,
+            deposited_at=session.started_at + timedelta(minutes=1),
+        )
+        session.deposit = my_deposit
+        session.save(update_fields=["started_at", "expires_at", "deposit"])
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["my_deposit"]["public_key"], my_deposit.public_key)
+        self.assertEqual(response.data["my_deposit"]["song"]["public_key"], my_deposit.song.public_key)
+
+
+class BoxDepositFlowTests(FlowboxAPITestCase):
+    def test_box_deposit_creates_session_deposit_and_returns_points_payload(self):
+        user = self.auth(self.make_user(username="box-deposit-create", points=0))
+        box = self.make_box(url="box-deposit-create", name="Box deposit create")
+
+        deposit_count_before = Deposit.objects.filter(
+            user=user,
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_BOX,
+        ).count()
+
+        response = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": self.track_option(track_id="box-deposit-track", title="Box Deposit Track")},
+            format="json",
+        )
+
+        expected = (
+            NB_POINTS_ADD_SONG
+            + NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX
+            + NB_POINTS_FIRST_SONG_DEPOSIT_BOX
+            + NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL
+        )
+        user.refresh_from_db()
+        session = BoxSession.objects.get(user=user, box=box)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(session.deposit_id)
+        self.assertEqual(session.deposit.deposit_type, Deposit.DEPOSIT_TYPE_BOX)
+        self.assertEqual(session.deposit.box_id, box.id)
+        self.assertEqual(session.deposit.user_id, user.id)
+        self.assertEqual(
+            Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
+            deposit_count_before + 1,
+        )
+        self.assertEqual(response.data["my_deposit"]["public_key"], session.deposit.public_key)
+        self.assertIn("successes", response.data)
+        self.assertIsInstance(response.data["successes"], list)
+        self.assertTrue(response.data["successes"])
+        self.assertEqual(response.data["points_balance"], expected)
+        self.assertEqual(user.points, expected)
+        self.assertFalse(response.data["already_exists"])
+        self.assertNotIn("current_user", response.data)
+
+    def test_box_deposit_without_active_session_returns_session_required(self):
+        user = self.auth(self.make_user(username="box-deposit-no-session", points=0))
+        box = self.make_box(url="box-deposit-no-session", name="Box deposit no session")
+        BoxSession.objects.filter(user=user, box=box).delete()
+
+        response = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": self.track_option(track_id="box-deposit-no-session-track")},
+            format="json",
+        )
+
+        self.assert_api_error(response, 403, "BOX_SESSION_REQUIRED")
+        self.assertEqual(
+            Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
+            0,
+        )
+
+
 class DepositPointsFlowTests(FlowboxAPITestCase):
     def test_first_deposit_grants_all_first_time_bonuses(self):
         user = self.auth(self.make_user(username="dep1", points=0))
         box = self.make_box(url="box-dep-1", name="Box dep 1")
         response = self.client.post(
-            reverse("get-box"),
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
             {
-                "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-1", title="Deposit Track 1"),
             },
             format="json",
@@ -453,9 +688,8 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
             {
-                "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-2", title="Deposit Track 2"),
             },
             format="json",
@@ -481,9 +715,8 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
             {
-                "boxSlug": box.url,
                 "option": self.track_option(
                     track_id="dep-track-3", title="Shared Song", artists=["Shared Artist"], duration=180
                 ),
@@ -510,9 +743,8 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         self.auth(user)
 
         response = self.client.post(
-            reverse("get-box"),
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
             {
-                "boxSlug": box.url,
                 "option": self.track_option(
                     track_id="dep-track-4", title="Seen Song", artists=["Seen Artist"], duration=180
                 ),
@@ -534,9 +766,8 @@ class DepositPointsFlowTests(FlowboxAPITestCase):
         user = self.auth(self.make_user(username="dep5", points=0))
         box = self.make_box(url="box-dep-5", name="Box dep 5")
         response = self.client.post(
-            reverse("get-box"),
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
             {
-                "boxSlug": box.url,
                 "option": self.track_option(track_id="dep-track-5", title="Deposit Track 5"),
             },
             format="json",

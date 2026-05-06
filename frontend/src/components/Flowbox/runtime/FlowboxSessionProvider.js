@@ -41,6 +41,75 @@ function sanitizeBox(box, fallbackSlug = null) {
   };
 }
 
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj || {}, key);
+}
+
+function cleanUndefinedEntries(payload) {
+  return Object.entries(payload || {}).reduce((acc, [key, value]) => {
+    if (value !== undefined) {acc[key] = value;}
+    return acc;
+  }, {});
+}
+
+function normalizeLoadedAt(value) {
+  if (!value) {return null;}
+  if (typeof value === "number") {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+  return value;
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizePointsBalance(value) {
+  return typeof value === "number" ? value : null;
+}
+
+function normalizeDiscoverSnapshot(snapshot, fallbackSlug = null, { partial = false } = {}) {
+  const source = snapshot || {};
+  const normalized = {
+    boxSlug: hasOwn(source, "boxSlug") || hasOwn(source, "box_slug")
+      ? (source.boxSlug || source.box_slug || fallbackSlug || null)
+      : undefined,
+    loadedAt: hasOwn(source, "loadedAt") || hasOwn(source, "loaded_at") || hasOwn(source, "timestamp")
+      ? normalizeLoadedAt(source.loadedAt || source.loaded_at || source.timestamp)
+      : undefined,
+    main: hasOwn(source, "main") ? (source.main || null) : undefined,
+    olderDeposits: hasOwn(source, "olderDeposits") || hasOwn(source, "older_deposits")
+      ? normalizeArray(source.olderDeposits || source.older_deposits)
+      : undefined,
+    activePinnedDeposit: hasOwn(source, "activePinnedDeposit") || hasOwn(source, "active_pinned_deposit")
+      ? (source.activePinnedDeposit || source.active_pinned_deposit || null)
+      : undefined,
+    myDeposit: hasOwn(source, "myDeposit") || hasOwn(source, "my_deposit")
+      ? (source.myDeposit || source.my_deposit || null)
+      : undefined,
+    successes: hasOwn(source, "successes")
+      ? (Array.isArray(source.successes) ? source.successes : [])
+      : undefined,
+    pointsBalance: hasOwn(source, "pointsBalance") || hasOwn(source, "points_balance")
+      ? normalizePointsBalance(source.pointsBalance ?? source.points_balance)
+      : undefined,
+  };
+
+  if (partial) {return cleanUndefinedEntries(normalized);}
+
+  return {
+    boxSlug: normalized.boxSlug || fallbackSlug || null,
+    loadedAt: normalized.loadedAt || new Date().toISOString(),
+    main: normalized.main ?? null,
+    olderDeposits: normalized.olderDeposits || [],
+    activePinnedDeposit: normalized.activePinnedDeposit ?? null,
+    myDeposit: normalized.myDeposit ?? null,
+    successes: normalized.successes || [],
+    pointsBalance: normalized.pointsBalance ?? null,
+  };
+}
+
 export default function FlowboxSessionProvider({ children }) {
   const initialIndex = useMemo(() => getFlowboxIndex(), []);
   const [boxesBySlug, setBoxesBySlug] = useState(() => getAllStoredFlowboxBoxes());
@@ -133,13 +202,39 @@ export default function FlowboxSessionProvider({ children }) {
 
   const saveDiscoverSnapshot = useCallback((boxSlug, snapshot) => {
     if (!boxSlug) {return null;}
-    return persistBoxState(boxSlug, (current) => ({
-      ...current,
-      discoverSnapshot: {
-        cachedAt: new Date().toISOString(),
-        data: snapshot,
-      },
-    }));
+    return persistBoxState(boxSlug, (current) => {
+      const normalizedSnapshot = normalizeDiscoverSnapshot(snapshot, boxSlug);
+      return {
+        ...current,
+        discoverSnapshot: {
+          cachedAt: normalizedSnapshot.loadedAt,
+          data: normalizedSnapshot,
+        },
+      };
+    });
+  }, [persistBoxState]);
+
+  const patchDiscoverSnapshot = useCallback((boxSlug, patch) => {
+    if (!boxSlug) {return null;}
+    return persistBoxState(boxSlug, (current) => {
+      const currentSnapshot = normalizeDiscoverSnapshot(
+        current?.discoverSnapshot?.data || {},
+        boxSlug
+      );
+      const normalizedPatch = normalizeDiscoverSnapshot(patch, boxSlug, { partial: true });
+      const nextSnapshot = {
+        ...currentSnapshot,
+        ...normalizedPatch,
+        boxSlug: normalizedPatch.boxSlug || currentSnapshot.boxSlug || boxSlug,
+      };
+      return {
+        ...current,
+        discoverSnapshot: {
+          cachedAt: nextSnapshot.loadedAt,
+          data: nextSnapshot,
+        },
+      };
+    });
   }, [persistBoxState]);
 
   const clearDiscoverSnapshot = useCallback((boxSlug) => {
@@ -301,6 +396,7 @@ export default function FlowboxSessionProvider({ children }) {
     clearCurrentFlowboxSlug,
     saveVerifiedSession,
     saveDiscoverSnapshot,
+    patchDiscoverSnapshot,
     clearDiscoverSnapshot,
     clearBoxSession,
     expireBoxSession,
@@ -321,6 +417,7 @@ export default function FlowboxSessionProvider({ children }) {
     clearCurrentFlowboxSlug,
     saveVerifiedSession,
     saveDiscoverSnapshot,
+    patchDiscoverSnapshot,
     clearDiscoverSnapshot,
     clearBoxSession,
     expireBoxSession,

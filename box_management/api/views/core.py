@@ -41,7 +41,6 @@ from box_management.models import (
 )
 from box_management.provider_services import resolve_provider_link_for_song
 from box_management.serializers import (
-    BoxSerializer,
     ClientAdminArticleSerializer,
     ClientAdminIncitationSerializer,
     EmojiSerializer,
@@ -50,8 +49,9 @@ from box_management.serializers import (
 )
 from box_management.services.articles.get_visible_articles import get_visible_article_detail, get_visible_articles
 from box_management.services.articles.import_article_preview import import_article_preview
+from box_management.services.boxes.box_content import get_box_content, serialize_active_pinned_deposit_for_box
 from box_management.services.boxes.client_access import _coerce_bool, _get_active_client_user_or_response
-from box_management.services.boxes.get_box_page_data import get_box_page_data
+from box_management.services.boxes.get_box_preview import get_box_preview
 from box_management.services.boxes.session_helpers import (
     ensure_active_session_for_box_or_response as _ensure_active_session_for_box_or_response,
 )
@@ -74,7 +74,7 @@ from box_management.services.boxes.session_helpers import (
     session_payload_for_box as _session_payload_for_box,
 )
 from box_management.services.boxes.verify_location import verify_location_for_box
-from box_management.services.deposits.create_box_deposit import create_box_deposit_payload
+from box_management.services.deposits.create_session_box_deposit import create_session_box_deposit
 from box_management.services.incitations.admin_incitations import (
     create_incitation,
     get_incitation_or_none,
@@ -396,52 +396,33 @@ class EconomyConfigView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
-def _serialize_active_pinned_deposit_for_box(box, viewer):
-    active_pinned = get_active_pinned_deposit_for_box(box)
-    if not active_pinned:
-        return None
-
-    payloads = _build_deposits_payload(
-        [active_pinned],
-        viewer=viewer,
-        include_user=True,
-        force_song_infos_for=[active_pinned.pk],
-    )
-    return payloads[0] if payloads else None
-
-
-@method_decorator(ensure_csrf_cookie, name="dispatch")
-class GetBox(APIView):
-    lookup_url_kwarg = "name"
-    serializer_class = BoxSerializer
-
+class BoxContentView(APIView):
     def get(self, request, format=None):
-        data, error = get_box_page_data(request.GET.get("name"))
+        data, error = get_box_content(request, request.query_params.get("boxSlug"))
         if error:
             return api_error(error["status"], error["code"], error["detail"])
         return Response(data, status=status.HTTP_200_OK)
 
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
+class BoxPreviewView(APIView):
+    def get(self, request, format=None):
+        data, error = get_box_preview(request.query_params.get("boxSlug"))
+        if error:
+            return api_error(error["status"], error["code"], error["detail"])
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class BoxDepositView(APIView):
     def post(self, request, format=None):
-        option = request.data.get("option") or {}
-        box_slug = (request.data.get("boxSlug") or "").strip()
-        if not box_slug:
-            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
-
-        box = _get_box_by_slug(box_slug)
-        if not box:
-            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable")
-
-        user, session_error = _ensure_active_session_for_box_or_response(request, box)
-        if session_error is not None:
-            return session_error
-
-        try:
-            response_payload = create_box_deposit_payload(request=request, user=user, box=box, option=option)
-        except ValueError:
-            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide.")
-
-        response_payload["active_pinned_deposit"] = _serialize_active_pinned_deposit_for_box(box, user)
-        return Response(response_payload, status=status.HTTP_200_OK)
+        payload, error = create_session_box_deposit(
+            request=request,
+            box_slug=request.query_params.get("boxSlug"),
+            option=request.data.get("option") or {},
+        )
+        if error:
+            return api_error(error["status"], error["code"], error["detail"])
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class Location(APIView):
@@ -960,7 +941,7 @@ class PinnedSongView(APIView):
     def _serialize_active_deposit(self, deposit, viewer):
         if not deposit:
             return None
-        return _serialize_active_pinned_deposit_for_box(deposit.box, viewer)
+        return serialize_active_pinned_deposit_for_box(deposit.box, viewer=viewer)
 
     def get(self, request):
         box, error_response = self._get_box(request)

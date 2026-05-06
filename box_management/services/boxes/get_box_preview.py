@@ -7,15 +7,16 @@ from box_management.selectors.boxes import get_box_with_stats
 from box_management.services.boxes.incitations import _get_current_incitation_for_box
 
 
-def get_box_page_data(slug):
-    if not slug:
+def get_box_preview(box_slug):
+    box_slug = (box_slug or "").strip()
+    if not box_slug:
         return None, {
             "status": status.HTTP_400_BAD_REQUEST,
-            "code": "BOX_NAME_REQUIRED",
-            "detail": "Merci de spécifier le nom d'une boîte (paramètre ?name=)",
+            "code": "BOX_SLUG_REQUIRED",
+            "detail": "boxSlug manquant.",
         }
 
-    box = get_box_with_stats(slug)
+    box = get_box_with_stats(box_slug)
     if not box:
         return None, {
             "status": status.HTTP_404_NOT_FOUND,

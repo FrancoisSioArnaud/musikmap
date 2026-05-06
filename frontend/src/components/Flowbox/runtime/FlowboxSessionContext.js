@@ -11,6 +11,7 @@ export const FlowboxSessionContext = createContext({
   clearCurrentFlowboxSlug: () => {},
   saveVerifiedSession: () => {},
   saveDiscoverSnapshot: () => {},
+  patchDiscoverSnapshot: () => {},
   clearDiscoverSnapshot: () => {},
   clearBoxSession: () => {},
   expireBoxSession: () => {},

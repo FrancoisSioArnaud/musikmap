@@ -12,6 +12,9 @@ from box_management.api.views.comments import (
 )
 from box_management.api.views.core import (
     ActiveBoxSessionsView,
+    BoxContentView,
+    BoxDepositView,
+    BoxPreviewView,
     BoxSessionView,
     ClientAdminArticleDetailView,
     ClientAdminArticleImportPageView,
@@ -20,7 +23,6 @@ from box_management.api.views.core import (
     ClientAdminIncitationListCreateView,
     EconomyConfigView,
     EmojiCatalogView,
-    GetBox,
     GetMain,
     Location,
     ManageDiscoveredSongs,
@@ -46,7 +48,9 @@ from box_management.api.views.stickers import (
 
 urlpatterns = [
     path("economy/", EconomyConfigView.as_view(), name="economy"),
-    path("get-box/", GetBox.as_view(), name="get-box"),
+    path("box-preview/", BoxPreviewView.as_view(), name="box-preview"),
+    path("box-content/", BoxContentView.as_view(), name="box-content"),
+    path("box-deposit/", BoxDepositView.as_view(), name="box-deposit"),
     path("get-main/<slug:box_url>/", GetMain.as_view(), name="get-main"),
     path("verify-location", Location.as_view(), name="verify-location"),
     path("box-session/", BoxSessionView.as_view(), name="box-session"),

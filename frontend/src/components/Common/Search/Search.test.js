@@ -20,14 +20,14 @@ jest.mock('../../Utils/streaming/SpotifyUtils', () => ({
   ensureValidSpotifyAccessToken: jest.fn(async () => 'token'),
 }));
 
-const searchTracksViaBackend = jest.fn();
-const searchTracksViaProviderClient = jest.fn();
-const getProviderConnection = jest.fn(() => null);
+const mockSearchTracksViaBackend = jest.fn();
+const mockSearchTracksViaProviderClient = jest.fn();
+const mockGetProviderConnection = jest.fn(() => null);
 
 jest.mock('../../Utils/streaming/providerClient', () => ({
-  getProviderConnection: (...args) => getProviderConnection(...args),
-  searchTracksViaBackend: (...args) => searchTracksViaBackend(...args),
-  searchTracksViaProviderClient: (...args) => searchTracksViaProviderClient(...args),
+  getProviderConnection: (...args) => mockGetProviderConnection(...args),
+  searchTracksViaBackend: (...args) => mockSearchTracksViaBackend(...args),
+  searchTracksViaProviderClient: (...args) => mockSearchTracksViaProviderClient(...args),
 }));
 
 function renderSearch(props = {}, contextValue = {}) {
@@ -50,7 +50,7 @@ describe('Search', () => {
   });
 
   test('shows inline error alert instead of empty state when backend search fails', async () => {
-    searchTracksViaBackend.mockRejectedValueOnce(new Error('boom'));
+    mockSearchTracksViaBackend.mockRejectedValueOnce(new Error('boom'));
 
     renderSearch({ provider: 'none' });
 
@@ -63,7 +63,7 @@ describe('Search', () => {
   });
 
   test('reuses cached results with a short loading state', async () => {
-    searchTracksViaBackend.mockResolvedValueOnce([{ title: 'Muse Song' }]);
+    mockSearchTracksViaBackend.mockResolvedValueOnce([{ title: 'Muse Song' }]);
 
     const { rerender } = render(
       <UserContext.Provider value={{ user: null, setUser: jest.fn() }}>
@@ -75,7 +75,7 @@ describe('Search', () => {
       jest.advanceTimersByTime(560);
     });
 
-    expect(searchTracksViaBackend).toHaveBeenCalledTimes(1);
+    expect(mockSearchTracksViaBackend).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Muse Song')).toBeInTheDocument();
 
     rerender(
@@ -91,7 +91,7 @@ describe('Search', () => {
     });
 
     expect(screen.getByTestId('songlist-loading')).toHaveTextContent('idle');
-    expect(searchTracksViaBackend).toHaveBeenCalledTimes(1);
+    expect(mockSearchTracksViaBackend).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Muse Song')).toBeInTheDocument();
   });
 });

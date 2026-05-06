@@ -594,7 +594,7 @@ def seed_activity(*, box_slugs=None, days=10, intensity="medium", seed=None, dry
                 BoxSession.objects.update_or_create(
                     user=user,
                     box=box,
-                    defaults={"started_at": started, "expires_at": expires},
+                    defaults={"started_at": started, "expires_at": expires, "deposit": None},
                 )
 
             touched_users = set()

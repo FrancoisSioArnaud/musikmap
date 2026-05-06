@@ -111,6 +111,13 @@ class BoxSession(models.Model):
         on_delete=models.CASCADE,
         related_name="sessions",
     )
+    deposit = models.ForeignKey(
+        "Deposit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="box_sessions_as_session_deposit",
+    )
     started_at = models.DateTimeField(db_index=True)
     expires_at = models.DateTimeField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -126,6 +133,18 @@ class BoxSession(models.Model):
     @property
     def is_active(self):
         return bool(self.expires_at and self.expires_at > timezone.now())
+
+    def clean(self):
+        super().clean()
+        if not self.deposit_id:
+            return
+
+        if self.deposit.deposit_type != Deposit.DEPOSIT_TYPE_BOX:
+            raise ValidationError({"deposit": "Le dépôt de session doit être un dépôt de boîte."})
+        if self.deposit.box_id != self.box_id:
+            raise ValidationError({"deposit": "Le dépôt de session doit appartenir à la même boîte."})
+        if self.deposit.user_id != self.user_id:
+            raise ValidationError({"deposit": "Le dépôt de session doit appartenir au même utilisateur."})
 
     @property
     def remaining_seconds(self):

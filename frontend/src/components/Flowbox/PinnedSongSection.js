@@ -25,7 +25,6 @@ import {
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
-import { getValid, setWithTTL } from "../Utils/mmStorage";
 
 function formatDuration(minutes) {
   const totalMinutes = Math.max(0, Number(minutes) || 0);
@@ -73,8 +72,6 @@ function buildPinnedDateLabel(dep) {
   return "Épinglée à l’instant";
 }
 
-const KEY_BOX_CONTENT = "mm_box_content";
-const TTL_MINUTES = 120;
 const PINNED_SONG_DRAWER_PARAM = "flowboxDrawer";
 const PINNED_SONG_DRAWER_VALUE = "pinned-song";
 
@@ -103,44 +100,6 @@ export default function PinnedSongSection({ boxSlug }) {
     setSelectedSong(null);
   }, []);
 
-  const updateBoxContentStorage = useCallback((nextActivePinnedDeposit) => {
-    try {
-      const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap || snap.boxSlug !== boxSlug) {return;}
-
-      setWithTTL(
-        KEY_BOX_CONTENT,
-        {
-          ...snap,
-          timestamp: Date.now(),
-          activePinnedDeposit: nextActivePinnedDeposit || null,
-        },
-        TTL_MINUTES
-      );
-    } catch {}
-  }, [boxSlug]);
-
-  const hydratePinnedFromStorage = useCallback(() => {
-    try {
-      const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap || snap.boxSlug !== boxSlug) {
-        return { hydrated: false, shouldRefresh: true };
-      }
-
-      const cachedPinnedDeposit = snap.activePinnedDeposit || null;
-      if (cachedPinnedDeposit && getRemainingMs(cachedPinnedDeposit, Date.now()) <= 0) {
-        setActivePinnedDeposit(null);
-        updateBoxContentStorage(null);
-        return { hydrated: true, shouldRefresh: true };
-      }
-
-      setActivePinnedDeposit(cachedPinnedDeposit);
-      return { hydrated: true, shouldRefresh: !cachedPinnedDeposit };
-    } catch {
-      return { hydrated: false, shouldRefresh: true };
-    }
-  }, [boxSlug, updateBoxContentStorage]);
-
   const refreshPinnedSection = useCallback(async ({ preserveLoadedState = false } = {}) => {
     try {
       if (!preserveLoadedState) {
@@ -163,23 +122,16 @@ export default function PinnedSongSection({ boxSlug }) {
       const nextActivePinnedDeposit = data?.active_pinned_deposit || null;
       setActivePinnedDeposit(nextActivePinnedDeposit);
       setPriceSteps(Array.isArray(data?.price_steps) ? data.price_steps : []);
-      updateBoxContentStorage(nextActivePinnedDeposit);
     } catch {
       setActivePinnedDeposit(null);
     } finally {
       setLoading(false);
     }
-  }, [boxSlug, updateBoxContentStorage]);
+  }, [boxSlug]);
 
   useEffect(() => {
-    const { hydrated, shouldRefresh } = hydratePinnedFromStorage();
-    if (hydrated) {
-      setLoading(false);
-    }
-    if (shouldRefresh) {
-      refreshPinnedSection({ preserveLoadedState: hydrated });
-    }
-  }, [hydratePinnedFromStorage, refreshPinnedSection]);
+    refreshPinnedSection();
+  }, [refreshPinnedSection]);
 
   useEffect(() => {
     const shouldOpenDrawer = matchesDrawerSearch(
@@ -211,8 +163,7 @@ export default function PinnedSongSection({ boxSlug }) {
     if (!activePinnedDeposit?.pin_expires_at) {return;}
     if (getRemainingMs(activePinnedDeposit, nowTs) > 0) {return;}
     setActivePinnedDeposit(null);
-    updateBoxContentStorage(null);
-  }, [activePinnedDeposit, nowTs, updateBoxContentStorage]);
+  }, [activePinnedDeposit, nowTs]);
 
   useEffect(() => {
     if (!drawerOpen) {return undefined;}
@@ -323,7 +274,6 @@ export default function PinnedSongSection({ boxSlug }) {
         }
         if (data?.active_pinned_deposit) {
           setActivePinnedDeposit(data.active_pinned_deposit);
-          updateBoxContentStorage(data.active_pinned_deposit);
         }
         setErrorDialog({
           open: true,
@@ -335,7 +285,6 @@ export default function PinnedSongSection({ boxSlug }) {
       const nextActivePinnedDeposit = data?.active_pinned_deposit || null;
       setActivePinnedDeposit(nextActivePinnedDeposit);
       setPriceSteps(Array.isArray(data?.price_steps) ? data.price_steps : []);
-      updateBoxContentStorage(nextActivePinnedDeposit);
       if (typeof data?.points_balance === "number" && setUser) {
         setUser((prev) => ({ ...(prev || {}), points: data.points_balance }));
       }
@@ -356,7 +305,6 @@ export default function PinnedSongSection({ boxSlug }) {
     selectedPriceStep,
     selectedSong,
     setUser,
-    updateBoxContentStorage,
   ]);
 
   const remainingMs = getRemainingMs(activePinnedDeposit, nowTs);

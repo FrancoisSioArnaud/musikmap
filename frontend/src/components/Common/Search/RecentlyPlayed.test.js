@@ -16,17 +16,17 @@ jest.mock('./SongList', () => ({
   ),
 }));
 
-const ensureValidSpotifyAccessToken = jest.fn();
-const fetchRecentPlaysViaProviderClient = jest.fn();
-const getProviderConnection = jest.fn();
+const mockEnsureValidSpotifyAccessToken = jest.fn();
+const mockFetchRecentPlaysViaProviderClient = jest.fn();
+const mockGetProviderConnection = jest.fn();
 
 jest.mock('../../Utils/streaming/SpotifyUtils', () => ({
-  ensureValidSpotifyAccessToken: (...args) => ensureValidSpotifyAccessToken(...args),
+  ensureValidSpotifyAccessToken: (...args) => mockEnsureValidSpotifyAccessToken(...args),
 }));
 
 jest.mock('../../Utils/streaming/providerClient', () => ({
-  fetchRecentPlaysViaProviderClient: (...args) => fetchRecentPlaysViaProviderClient(...args),
-  getProviderConnection: (...args) => getProviderConnection(...args),
+  fetchRecentPlaysViaProviderClient: (...args) => mockFetchRecentPlaysViaProviderClient(...args),
+  getProviderConnection: (...args) => mockGetProviderConnection(...args),
 }));
 
 function renderRecentlyPlayed() {
@@ -40,33 +40,33 @@ function renderRecentlyPlayed() {
 describe('RecentlyPlayed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getProviderConnection.mockReturnValue({ connected: true, can_recent_plays: true, access_token: 'token' });
-    ensureValidSpotifyAccessToken.mockResolvedValue('token');
+    mockGetProviderConnection.mockReturnValue({ connected: true, can_recent_plays: true, access_token: 'token' });
+    mockEnsureValidSpotifyAccessToken.mockResolvedValue('token');
   });
 
   test('shows info alert when there are no recent plays', async () => {
-    fetchRecentPlaysViaProviderClient.mockResolvedValueOnce([]);
+    mockFetchRecentPlaysViaProviderClient.mockResolvedValueOnce([]);
     renderRecentlyPlayed();
 
     expect(await screen.findByText('Aucune écoute récente disponible')).toBeInTheDocument();
   });
 
   test('shows warning when provider connection cannot be used', async () => {
-    getProviderConnection.mockReturnValueOnce({ connected: false, can_recent_plays: false, access_token: '' });
+    mockGetProviderConnection.mockReturnValueOnce({ connected: false, can_recent_plays: false, access_token: '' });
     renderRecentlyPlayed();
 
     expect(await screen.findByText('Connexion à Spotify impossible')).toBeInTheDocument();
   });
 
   test('shows request error with retry button and retries on click', async () => {
-    fetchRecentPlaysViaProviderClient.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([{ title: 'Retry Song' }]);
+    mockFetchRecentPlaysViaProviderClient.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([{ title: 'Retry Song' }]);
     renderRecentlyPlayed();
 
     expect(await screen.findByText('La connexion à Spotify a échoué')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
 
-    await waitFor(() => expect(fetchRecentPlaysViaProviderClient).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockFetchRecentPlaysViaProviderClient).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('Retry Song')).toBeInTheDocument();
   });
 });
