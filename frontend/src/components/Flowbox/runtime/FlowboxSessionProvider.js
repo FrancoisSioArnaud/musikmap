@@ -82,6 +82,12 @@ function normalizeDiscoverSnapshot(snapshot, fallbackSlug = null, { partial = fa
     olderDeposits: hasOwn(source, "olderDeposits") || hasOwn(source, "older_deposits")
       ? normalizeArray(source.olderDeposits || source.older_deposits)
       : undefined,
+    olderDepositsNextCursor: hasOwn(source, "olderDepositsNextCursor") || hasOwn(source, "older_deposits_next_cursor")
+      ? (source.olderDepositsNextCursor ?? source.older_deposits_next_cursor ?? null)
+      : undefined,
+    olderDepositsHasMore: hasOwn(source, "olderDepositsHasMore") || hasOwn(source, "older_deposits_has_more")
+      ? Boolean(source.olderDepositsHasMore ?? source.older_deposits_has_more)
+      : undefined,
     activePinnedDeposit: hasOwn(source, "activePinnedDeposit") || hasOwn(source, "active_pinned_deposit")
       ? (source.activePinnedDeposit || source.active_pinned_deposit || null)
       : undefined,
@@ -103,6 +109,8 @@ function normalizeDiscoverSnapshot(snapshot, fallbackSlug = null, { partial = fa
     loadedAt: normalized.loadedAt || new Date().toISOString(),
     main: normalized.main ?? null,
     olderDeposits: normalized.olderDeposits || [],
+    olderDepositsNextCursor: normalized.olderDepositsNextCursor ?? null,
+    olderDepositsHasMore: Boolean(normalized.olderDepositsHasMore),
     activePinnedDeposit: normalized.activePinnedDeposit ?? null,
     myDeposit: normalized.myDeposit ?? null,
     successes: normalized.successes || [],

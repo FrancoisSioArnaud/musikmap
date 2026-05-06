@@ -49,7 +49,12 @@ from box_management.serializers import (
 )
 from box_management.services.articles.get_visible_articles import get_visible_article_detail, get_visible_articles
 from box_management.services.articles.import_article_preview import import_article_preview
-from box_management.services.boxes.box_content import get_box_content, serialize_active_pinned_deposit_for_box
+from box_management.services.boxes.box_content import (
+    InvalidOlderDepositsCursor,
+    get_box_content,
+    get_older_deposits_page,
+    serialize_active_pinned_deposit_for_box,
+)
 from box_management.services.boxes.client_access import _coerce_bool, _get_active_client_user_or_response
 from box_management.services.boxes.get_box_preview import get_box_preview
 from box_management.services.boxes.session_helpers import (
@@ -58,6 +63,7 @@ from box_management.services.boxes.session_helpers import (
 from box_management.services.boxes.session_helpers import (
     get_active_box_session as _get_active_box_session,
 )
+from box_management.services.boxes.session_helpers import get_active_box_session_context
 from box_management.services.boxes.session_helpers import (
     get_box_by_slug as _get_box_by_slug,
 )
@@ -402,6 +408,26 @@ class BoxContentView(APIView):
         if error:
             return api_error(error["status"], error["code"], error["detail"])
         return Response(data, status=status.HTTP_200_OK)
+
+
+class BoxOlderDepositsView(APIView):
+    def get(self, request, format=None):
+        context, error = get_active_box_session_context(request, request.query_params.get("boxSlug"))
+        if error:
+            return api_error(error["status"], error["code"], error["detail"])
+
+        try:
+            page = get_older_deposits_page(
+                context["box"],
+                context["user"],
+                context["session"],
+                cursor=request.query_params.get("cursor"),
+                limit=request.query_params.get("limit"),
+            )
+        except InvalidOlderDepositsCursor:
+            return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_CURSOR", "Cursor invalide.")
+
+        return Response(page, status=status.HTTP_200_OK)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
