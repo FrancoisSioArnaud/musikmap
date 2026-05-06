@@ -5,13 +5,13 @@ from typing import Any
 
 from django.conf import settings
 
-from box_management.builders.comment_payloads import _build_comments_context_for_deposits
+from box_management.builders.comment_payloads import build_comments_context_for_deposits
 from box_management.models import Deposit, DiscoveredSong
 from box_management.provider_services import get_song_provider_links_map
 from users.models import CustomUser
 
 
-def _build_user_from_instance(user: CustomUser | None) -> dict[str, Any]:
+def build_user_payload_from_instance(user: CustomUser | None) -> dict[str, Any]:
     default_pic = f"{settings.STATIC_URL.rstrip('/')}/img/default_profile.jpg"
     if not user:
         return {
@@ -37,7 +37,7 @@ def _build_user_from_instance(user: CustomUser | None) -> dict[str, Any]:
     }
 
 
-def _build_song_from_instance(song, hidden: bool) -> dict[str, Any]:
+def build_song_payload_from_instance(song, hidden: bool) -> dict[str, Any]:
     if hidden:
         return {"image_url": song.image_url, "image_url_small": song.image_url_small or None}
 
@@ -67,7 +67,7 @@ def _iter_reactions_from_instance(dep: Deposit):
     return dep.reactions.select_related("emoji", "user").order_by("created_at", "id").all()
 
 
-def _build_reactions_from_instance(dep: Deposit, current_user: CustomUser | None = None) -> dict[str, Any]:
+def build_reactions_payload_from_instance(dep: Deposit, current_user: CustomUser | None = None) -> dict[str, Any]:
     current_user_id = getattr(current_user, "id", None) if current_user else None
 
     detail: list[dict[str, Any]] = []
@@ -77,7 +77,7 @@ def _build_reactions_from_instance(dep: Deposit, current_user: CustomUser | None
         if not getattr(r.emoji, "active", True):
             continue
         payload = {
-            "user": _build_user_from_instance(getattr(r, "user", None)),
+            "user": build_user_payload_from_instance(getattr(r, "user", None)),
             "emoji": r.emoji.char,
         }
         if current_user_id is not None and r.user_id == current_user_id:
@@ -87,7 +87,7 @@ def _build_reactions_from_instance(dep: Deposit, current_user: CustomUser | None
     return {"detail": detail, "mine": mine}
 
 
-def _build_deposit_from_instance(
+def build_deposit_payload_from_instance(
     dep: Deposit,
     *,
     include_user: bool,
@@ -99,7 +99,7 @@ def _build_deposit_from_instance(
     payload: dict[str, Any] = {
         "public_key": dep.public_key,
         "deposit_type": getattr(dep, "deposit_type", Deposit.DEPOSIT_TYPE_BOX),
-        "song": _build_song_from_instance(dep.song, hidden),
+        "song": build_song_payload_from_instance(dep.song, hidden),
         "accent_color": (getattr(dep.song, "accent_color", "") or "") or None,
         "pin_expires_at": dep.pin_expires_at.isoformat() if getattr(dep, "pin_expires_at", None) else None,
         "pin_duration_minutes": int(getattr(dep, "pin_duration_minutes", 0) or 0),
@@ -110,9 +110,9 @@ def _build_deposit_from_instance(
         payload["deposited_at"] = dep.deposited_at.astimezone(dt_timezone.utc).isoformat()
 
     if include_user:
-        payload["user"] = _build_user_from_instance(dep.user)
+        payload["user"] = build_user_payload_from_instance(dep.user)
 
-    rx = _build_reactions_from_instance(dep, current_user=current_user)
+    rx = build_reactions_payload_from_instance(dep, current_user=current_user)
     payload["reactions"] = rx["detail"]
     payload["my_reaction"] = rx["mine"]
     payload["comments"] = comments_context or {"items": [], "count": 0, "viewer_state": {}}
@@ -120,7 +120,7 @@ def _build_deposit_from_instance(
     return payload
 
 
-def _build_deposits_payload(
+def build_deposits_payload(
     deposits: Deposit | Iterable[Deposit] | Sequence[Deposit],
     *,
     viewer: CustomUser | None = None,
@@ -168,13 +168,13 @@ def _build_deposits_payload(
 
         revealed_ids = own_dep_ids | discovered_ids
 
-    comments_by_deposit = _build_comments_context_for_deposits(deps, viewer=viewer, include_items=False)
+    comments_by_deposit = build_comments_context_for_deposits(deps, viewer=viewer, include_items=False)
 
     out: list[dict[str, Any]] = []
     for dep in deps:
         hidden = (dep.pk not in revealed_ids) and (dep.pk not in force_ids)
 
-        payload = _build_deposit_from_instance(
+        payload = build_deposit_payload_from_instance(
             dep,
             include_user=include_user,
             include_deposit_time=include_deposit_time,
@@ -188,10 +188,10 @@ def _build_deposits_payload(
 
 
 __all__ = [
-    "_build_comments_context_for_deposits",
-    "_build_deposit_from_instance",
-    "_build_deposits_payload",
-    "_build_reactions_from_instance",
-    "_build_song_from_instance",
-    "_build_user_from_instance",
+    "build_comments_context_for_deposits",
+    "build_deposit_payload_from_instance",
+    "build_deposits_payload",
+    "build_reactions_payload_from_instance",
+    "build_song_payload_from_instance",
+    "build_user_payload_from_instance",
 ]

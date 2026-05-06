@@ -20,10 +20,10 @@ from box_management.models import Comment, CommentModerationDecision, Deposit
 from box_management.selectors.deposits import get_deposit_for_comment
 from box_management.services.comments.moderation_rules import (
     _detect_comment_pre_creation_error,
-    _get_active_comment_restrictions_for_clients,
-    _get_profile_picture_url,
+    get_active_comment_restrictions_for_clients,
+    get_profile_picture_url,
     _log_blocked_comment_attempt,
-    _normalize_comment_text,
+    normalize_comment_text,
     _score_comment_risk,
 )
 from box_management.services.deposits.song_creation import create_song_deposit
@@ -37,7 +37,7 @@ def _is_consecutive_comment_blocked(*, deposit, user):
 
 
 def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, author_user_agent):
-    normalized_text = _normalize_comment_text(text_value)
+    normalized_text = normalize_comment_text(text_value)
     deposit = get_deposit_for_comment(dep_public_key)
     if not deposit:
         return None, {"status": status.HTTP_404_NOT_FOUND, "code": "DEPOSIT_NOT_FOUND", "detail": "Dépôt introuvable."}
@@ -56,7 +56,7 @@ def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, 
         return None, {"reason_code": COMMENT_REASON_EMPTY, "status": status.HTTP_400_BAD_REQUEST}
 
     active_restriction = (
-        _get_active_comment_restrictions_for_clients(user, [client.id]).get(client.id) if client else None
+        get_active_comment_restrictions_for_clients(user, [client.id]).get(client.id) if client else None
     )
     if active_restriction:
         _log_blocked_comment_attempt(
@@ -174,7 +174,7 @@ def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, 
                 author_username=user.username or "",
                 author_display_name=getattr(user, "display_name", None) or user.username or "",
                 author_email=user.email or "",
-                author_avatar_url=_get_profile_picture_url(user) or "",
+                author_avatar_url=get_profile_picture_url(user) or "",
                 author_ip=author_ip,
                 author_user_agent=(author_user_agent or "")[:255],
             )

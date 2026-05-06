@@ -1,7 +1,7 @@
 from django.db.models import Prefetch, Q
 from django.utils.dateparse import parse_datetime
 
-from box_management.builders.deposit_payloads import _build_deposits_payload
+from box_management.builders.deposit_payloads import build_deposits_payload
 from box_management.models import Deposit, DiscoveredSong, Reaction
 from box_management.services.boxes.session_helpers import get_active_box_session_context
 from box_management.services.pinned.pricing import get_active_pinned_deposit_for_box
@@ -32,7 +32,7 @@ def _serialize_one_deposit(deposit, *, viewer, force_revealed=False):
     if not deposit:
         return None
     force_song_infos_for = [deposit.pk] if force_revealed else None
-    payloads = _build_deposits_payload(
+    payloads = build_deposits_payload(
         [deposit],
         viewer=viewer,
         include_user=True,
@@ -124,7 +124,7 @@ def get_older_deposits_page(box, user, session, cursor=None, limit=OLDER_DEPOSIT
     next_cursor = build_older_deposits_cursor(page_deposits[-1]) if has_more and page_deposits else None
 
     return {
-        "older_deposits": _build_deposits_payload(
+        "older_deposits": build_deposits_payload(
             page_deposits,
             viewer=user,
             include_user=True,

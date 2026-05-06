@@ -78,7 +78,7 @@ def build_favorite_deposit_payload(profile_user: CustomUser | None, viewer: Cust
     if not favorite_deposit_id:
         return None
 
-    from box_management.builders.deposit_payloads import _build_deposits_payload
+    from box_management.builders.deposit_payloads import build_deposits_payload
     from box_management.models import Deposit
 
     deposit = (
@@ -87,7 +87,7 @@ def build_favorite_deposit_payload(profile_user: CustomUser | None, viewer: Cust
     if not deposit:
         return None
 
-    payloads = _build_deposits_payload(
+    payloads = build_deposits_payload(
         [deposit],
         viewer=viewer,
         include_user=False,

@@ -1,7 +1,7 @@
 from math import atan2, cos, radians, sin, sqrt
 
 
-def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
+def calculate_distance(lat1, lon1, lat2, lon2) -> float:
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     r = 6371000
 
@@ -13,4 +13,4 @@ def _calculate_distance(lat1, lon1, lat2, lon2) -> float:
     return r * c
 
 
-__all__ = ["_calculate_distance"]
+__all__ = ["calculate_distance"]

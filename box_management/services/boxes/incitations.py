@@ -3,7 +3,7 @@ from django.utils.timezone import localdate
 from box_management.models import IncitationPhrase
 
 
-def _get_current_incitation_for_box(box, at_date=None):
+def get_current_incitation_for_box(box, at_date=None):
     client_id = getattr(box, "client_id", None)
     if not client_id:
         return None
@@ -17,4 +17,4 @@ def _get_current_incitation_for_box(box, at_date=None):
     )
 
 
-__all__ = ["_get_current_incitation_for_box"]
+__all__ = ["get_current_incitation_for_box"]

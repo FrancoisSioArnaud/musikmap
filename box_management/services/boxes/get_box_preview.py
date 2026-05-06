@@ -4,7 +4,7 @@ from rest_framework import status
 
 from box_management.models import Deposit
 from box_management.selectors.boxes import get_box_with_stats
-from box_management.services.boxes.incitations import _get_current_incitation_for_box
+from box_management.services.boxes.incitations import get_current_incitation_for_box
 
 
 def get_box_preview(box_slug):
@@ -31,7 +31,7 @@ def get_box_preview(box_slug):
         .first()
     )
 
-    current_incitation = _get_current_incitation_for_box(box)
+    current_incitation = get_current_incitation_for_box(box)
     return {
         "slug": box.slug,
         "name": box.name,

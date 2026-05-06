@@ -1,7 +1,7 @@
 from box_management.selectors.incitations import get_client_phrase_by_id, get_client_phrases
 from box_management.selectors.incitations_overlap import (
-    _build_incitation_overlap_counts,
-    _get_incitation_overlap_queryset,
+    build_incitation_overlap_counts,
+    get_incitation_overlap_queryset,
 )
 
 
@@ -19,7 +19,7 @@ def sort_incitations_for_today(phrases, today):
 
 def list_client_incitations(user, today):
     phrases = get_client_phrases(user)
-    overlap_counts = _build_incitation_overlap_counts(phrases)
+    overlap_counts = build_incitation_overlap_counts(phrases)
     return {"phrases": sort_incitations_for_today(phrases, today), "overlap_counts": overlap_counts}
 
 
@@ -27,7 +27,7 @@ def create_incitation(user, serializer, force_overlap):
     start_date = serializer.validated_data.get("start_date")
     end_date = serializer.validated_data.get("end_date")
 
-    overlap_qs = _get_incitation_overlap_queryset(
+    overlap_qs = get_incitation_overlap_queryset(
         client_id=user.client_id,
         start_date=start_date,
         end_date=end_date,
@@ -48,7 +48,7 @@ def update_incitation(phrase, serializer, force_overlap):
     start_date = serializer.validated_data.get("start_date", phrase.start_date)
     end_date = serializer.validated_data.get("end_date", phrase.end_date)
 
-    overlap_qs = _get_incitation_overlap_queryset(
+    overlap_qs = get_incitation_overlap_queryset(
         client_id=phrase.client_id,
         start_date=start_date,
         end_date=end_date,

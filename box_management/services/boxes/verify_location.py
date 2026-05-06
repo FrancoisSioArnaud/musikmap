@@ -1,7 +1,7 @@
 from rest_framework import status
 
 from box_management.selectors.boxes import get_box_by_slug, get_location_points
-from box_management.services.geo.distance import _calculate_distance
+from box_management.services.geo.distance import calculate_distance
 
 
 def verify_location_for_box(*, box_slug, latitude, longitude):
@@ -29,7 +29,7 @@ def verify_location_for_box(*, box_slug, latitude, longitude):
         }
 
     for point in points:
-        if _calculate_distance(latitude, longitude, point.latitude, point.longitude) <= point.dist_location:
+        if calculate_distance(latitude, longitude, point.latitude, point.longitude) <= point.dist_location:
             return {"box": box}, None
 
     return None, {

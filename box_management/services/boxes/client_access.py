@@ -3,7 +3,7 @@ from rest_framework import status
 from la_boite_a_son.api_errors import api_error
 
 
-def _coerce_bool(value):
+def coerce_bool(value):
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -12,7 +12,7 @@ def _coerce_bool(value):
     return value in {"1", "true", "yes", "y", "on", "oui"}
 
 
-def _get_active_client_user_or_response(request):
+def get_active_client_user_or_response(request):
     user = request.user
 
     if not user or not user.is_authenticated:
@@ -46,4 +46,4 @@ def _get_active_client_user_or_response(request):
     return user, None
 
 
-__all__ = ["_coerce_bool", "_get_active_client_user_or_response"]
+__all__ = ["coerce_bool", "get_active_client_user_or_response"]

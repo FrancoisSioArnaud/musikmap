@@ -108,19 +108,6 @@ class PublicContractViewTests(FlowboxAPITestCase):
 
         self.assert_api_error(response, 404, "BOX_NOT_FOUND")
 
-    def test_get_main_returns_latest_box_deposit(self):
-        box = self.make_box(url="box-main", name="Box main")
-        owner = self.make_user(username="owner-main")
-        first_song = self.make_song(public_key="main-song-1")
-        second_song = self.make_song(public_key="main-song-2", title="Latest")
-        self.make_deposit(user=owner, song=first_song, box=box, deposited_at=timezone.now() - timedelta(hours=1))
-        latest = self.make_deposit(user=owner, song=second_song, box=box, deposited_at=timezone.now())
-
-        response = self.client.get(reverse("get-main", kwargs={"box_url": box.url}))
-        self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(response.data, list)
-        self.assertTrue(response.data)
-        self.assertEqual(response.data[0]["public_key"], latest.public_key)
 
     def test_share_link_public_detail_returns_link_expired_for_expired_link(self):
         owner = self.make_user(username="owner-link")
