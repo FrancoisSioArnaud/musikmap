@@ -99,7 +99,7 @@ export default function Library() {
   }
 
   return (
-    <Box sx={{ display: "grid", gap: 5, p: 5 }}>
+    <Box sx={{ display: "grid", gap: "56px", p: "26px 20px" }}>
       {sessions.map((sess) => {
         const sessionType =
           sess?.session_type === "profile"
