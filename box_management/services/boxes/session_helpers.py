@@ -4,29 +4,16 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
 
-from box_management.models import Box, BoxSession
+from box_management.models import BoxSession
+from box_management.selectors.boxes import get_active_box_session, get_box_by_slug
 from la_boite_a_son.api_errors import api_error
 from users.utils import get_current_app_user, touch_last_seen
 
 BOX_SESSION_DURATION_MINUTES = int(getattr(settings, "BOX_SESSION_DURATION_MINUTES", 20) or 20)
 
 
-def get_box_by_slug(box_slug):
-    box_slug = (box_slug or "").strip()
-    if not box_slug:
-        return None
-    return Box.objects.select_related("client").filter(url=box_slug).first()
-
-
 def is_box_session_active(session):
     return bool(session and getattr(session, "expires_at", None) and session.expires_at > timezone.now())
-
-
-def get_active_box_session(user, box):
-    if not user or not box:
-        return None
-    now = timezone.now()
-    return BoxSession.objects.filter(user=user, box=box, expires_at__gt=now).order_by("-expires_at", "-id").first()
 
 
 def get_active_box_session_context(request, box_slug):

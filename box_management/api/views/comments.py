@@ -4,10 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from box_management.builders.deposit_payloads import (
-    _build_comments_context_for_deposits,
-    _build_reactions_from_instance,
+from box_management.builders.comment_payloads import (
+    build_comments_context_for_deposits,
+    build_client_admin_comment_payload,
+    build_comment_restriction_payload,
 )
+from box_management.builders.deposit_payloads import build_reactions_payload_from_instance
 from box_management.domain.constants import (
     COMMENT_REASON_ALREADY_COMMENTED,
     COMMENT_REASON_CONSECUTIVE_BLOCKED,
@@ -24,7 +26,7 @@ from box_management.domain.constants import (
 )
 from box_management.models import Comment, DiscoveredSong
 from box_management.selectors.deposits import get_deposit_for_comment
-from box_management.services.boxes.client_access import _coerce_bool, _get_active_client_user_or_response
+from box_management.services.boxes.client_access import coerce_bool, get_active_client_user_or_response
 from box_management.services.comments.admin_comments import (
     create_comment_restriction,
     list_client_admin_comments,
@@ -33,14 +35,13 @@ from box_management.services.comments.admin_comments import (
 from box_management.services.comments.create_comment import create_comment
 from box_management.services.comments.delete_comment import delete_comment_by_author
 from box_management.services.comments.moderate_comment import moderate_comment
-from box_management.services.comments.moderation_rules import _get_profile_picture_url
 from box_management.services.comments.report_comment import report_comment
 from box_management.services.reactions.add_reaction import add_or_remove_reaction
 from la_boite_a_son.api_errors import api_error
 from users.utils import get_current_app_user, touch_last_seen
 
 
-def _get_request_ip(request):
+def get_request_ip(request):
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -93,81 +94,6 @@ def _comment_error(status_code, reason_code, detail=None, **extra):
     )
 
 
-def _serialize_client_admin_comment(comment):
-    reports = list(getattr(comment, "prefetched_reports", []) or [])
-    decisions = list(getattr(comment, "prefetched_decisions", []) or [])
-    latest_decision = decisions[0] if decisions else None
-
-    user = getattr(comment, "user", None)
-    profile_picture_url = _get_profile_picture_url(user) if user else (comment.author_avatar_url or None)
-
-    return {
-        "id": comment.id,
-        "text": comment.text,
-        "status": comment.status,
-        "reason_code": comment.reason_code or "",
-        "risk_score": int(comment.risk_score or 0),
-        "risk_flags": list(comment.risk_flags or []),
-        "reports_count": int(comment.reports_count or 0),
-        "created_at": comment.created_at.isoformat(),
-        "updated_at": comment.updated_at.isoformat() if getattr(comment, "updated_at", None) else None,
-        "deposit_deleted": bool(comment.deposit_deleted or not comment.deposit_id),
-        "deposit": {
-            "public_key": comment.deposit_public_key
-            or (comment.deposit.public_key if getattr(comment, "deposit", None) else ""),
-            "box_name": comment.deposit_box_name
-            or (
-                comment.deposit.box.name
-                if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None)
-                else ""
-            ),
-            "box_url": comment.deposit_box_url
-            or (
-                comment.deposit.box.url
-                if getattr(comment, "deposit", None) and getattr(comment.deposit, "box", None)
-                else ""
-            ),
-        },
-        "author": {
-            "id": comment.user_id,
-            "username": getattr(user, "username", None) or comment.author_username or None,
-            "display_name": getattr(user, "username", None)
-            or comment.author_display_name
-            or comment.author_username
-            or "anonyme",
-            "email": getattr(user, "email", None) or comment.author_email or None,
-            "profile_picture_url": profile_picture_url,
-        },
-        "report_reason_codes": [r.reason_code for r in reports],
-        "latest_decision": (
-            {
-                "decision_code": latest_decision.decision_code,
-                "reason_code": latest_decision.reason_code,
-                "internal_note": latest_decision.internal_note,
-                "created_at": latest_decision.created_at.isoformat(),
-                "acted_by": getattr(latest_decision.acted_by, "username", None),
-            }
-            if latest_decision
-            else None
-        ),
-    }
-
-
-def _serialize_comment_restriction(restriction):
-    return {
-        "id": restriction.id,
-        "user_id": restriction.user_id,
-        "username": getattr(restriction.user, "username", None),
-        "email": getattr(restriction.user, "email", None),
-        "restriction_type": restriction.restriction_type,
-        "reason_code": restriction.reason_code or "",
-        "internal_note": restriction.internal_note or "",
-        "starts_at": restriction.starts_at.isoformat() if restriction.starts_at else None,
-        "ends_at": restriction.ends_at.isoformat() if restriction.ends_at else None,
-        "created_at": restriction.created_at.isoformat() if restriction.created_at else None,
-        "created_by": getattr(restriction.created_by, "username", None),
-    }
-
 
 class ReactionView(APIView):
     permission_classes = []
@@ -189,7 +115,7 @@ class ReactionView(APIView):
         if error:
             return api_error(error["status"], error["code"], error["detail"])
         deposit = result["deposit"]
-        rx = _build_reactions_from_instance(deposit, current_user=current_user)
+        rx = build_reactions_payload_from_instance(deposit, current_user=current_user)
         if result.get("my_reaction") is None and request.data.get("emoji_id") in (None, "", 0, "none"):
             return Response({"my_reaction": None, "reactions": rx["detail"]}, status=status.HTTP_200_OK)
         return Response({"my_reaction": rx["mine"], "reactions": rx["detail"]}, status=status.HTTP_200_OK)
@@ -214,7 +140,7 @@ class CommentCreateView(APIView):
             dep_public_key=dep_public_key,
             text_value=text_value,
             song_option=song_option,
-            author_ip=_get_request_ip(request),
+            author_ip=get_request_ip(request),
             author_user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
         if error:
@@ -228,7 +154,7 @@ class CommentCreateView(APIView):
         deposit = result["deposit"]
         comment_status = comment.status
 
-        comments_context = _build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
+        comments_context = build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
             deposit.id,
             {"items": [], "count": 0, "viewer_state": {}},
         )
@@ -307,7 +233,7 @@ class DepositRepliesView(APIView):
                 "Révèle la chanson pour voir les réponses",
             )
 
-        comments_context = _build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
+        comments_context = build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(
             deposit.id,
             {"items": [], "count": 0, "viewer_state": {}},
         )
@@ -318,7 +244,7 @@ class ClientAdminCommentListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -327,7 +253,7 @@ class ClientAdminCommentListView(APIView):
             tab=(request.query_params.get("tab") or "quarantined").strip(),
         )
         return Response(
-            {"items": [_serialize_client_admin_comment(comment) for comment in payload["items"]]},
+            {"items": [build_client_admin_comment_payload(comment) for comment in payload["items"]]},
             status=status.HTTP_200_OK,
         )
 
@@ -336,7 +262,7 @@ class ClientAdminCommentModerateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, comment_id: int):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -350,28 +276,28 @@ class ClientAdminCommentModerateView(APIView):
         )
         if error:
             return api_error(error["status"], error["code"], error["detail"])
-        return Response({"item": _serialize_client_admin_comment(result["item"])}, status=status.HTTP_200_OK)
+        return Response({"item": build_client_admin_comment_payload(result["item"])}, status=status.HTTP_200_OK)
 
 
 class ClientAdminCommentRestrictionListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
         result, _error = list_comment_restrictions(
             client_id=user.client_id,
-            show_all=_coerce_bool(request.query_params.get("all")),
+            show_all=coerce_bool(request.query_params.get("all")),
             now_dt=timezone.now(),
         )
         return Response(
-            {"items": [_serialize_comment_restriction(item) for item in result["items"]]}, status=status.HTTP_200_OK
+            {"items": [build_comment_restriction_payload(item) for item in result["items"]]}, status=status.HTTP_200_OK
         )
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -395,4 +321,4 @@ class ClientAdminCommentRestrictionListCreateView(APIView):
         )
         if error:
             return api_error(error["status"], error["code"], error["detail"])
-        return Response({"item": _serialize_comment_restriction(result["item"])}, status=status.HTTP_201_CREATED)
+        return Response({"item": build_comment_restriction_payload(result["item"])}, status=status.HTTP_201_CREATED)

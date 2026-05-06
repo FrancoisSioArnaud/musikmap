@@ -1,6 +1,6 @@
 from rest_framework import status
 
-from box_management.builders.deposit_payloads import _build_comments_context_for_deposits
+from box_management.builders.deposit_payloads import build_comments_context_for_deposits
 from box_management.domain.constants import COMMENT_REASON_DELETE_BY_AUTHOR
 from box_management.models import Comment, CommentModerationDecision
 from box_management.selectors.comments import get_comment_for_author_delete
@@ -42,7 +42,7 @@ def delete_comment_by_author(*, current_user, comment_id):
 
     comments_context = {"items": [], "count": 0, "viewer_state": {}}
     if comment.deposit_id:
-        comments_context = _build_comments_context_for_deposits(
+        comments_context = build_comments_context_for_deposits(
             [comment.deposit], viewer=current_user, include_items=True
         ).get(
             comment.deposit_id,

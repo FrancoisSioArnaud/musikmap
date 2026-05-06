@@ -21,13 +21,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from box_management.builders.deposit_payloads import (
-    _build_deposits_payload,
-    _build_song_from_instance,
-    _build_user_from_instance,
+    build_deposits_payload,
+    build_song_payload_from_instance,
+    build_user_payload_from_instance,
 )
 from box_management.models import (
     Article,
-    Box,
     BoxSession,
     Deposit,
     DiscoveredSong,
@@ -53,47 +52,33 @@ from box_management.services.boxes.box_content import (
     InvalidOlderDepositsCursor,
     get_box_content,
     get_older_deposits_page,
-    serialize_active_pinned_deposit_for_box,
 )
-from box_management.services.boxes.client_access import _coerce_bool, _get_active_client_user_or_response
+from box_management.services.boxes.client_access import coerce_bool, get_active_client_user_or_response
 from box_management.services.boxes.get_box_preview import get_box_preview
 from box_management.services.boxes.session_helpers import (
-    ensure_active_session_for_box_or_response as _ensure_active_session_for_box_or_response,
-)
-from box_management.services.boxes.session_helpers import (
-    get_active_box_session as _get_active_box_session,
-)
-from box_management.services.boxes.session_helpers import get_active_box_session_context
-from box_management.services.boxes.session_helpers import (
-    get_box_by_slug as _get_box_by_slug,
-)
-from box_management.services.boxes.session_helpers import (
-    open_box_session_for_user as _open_box_session_for_user,
-)
-from box_management.services.boxes.session_helpers import (
-    serialize_box_identity as _serialize_box_identity,
-)
-from box_management.services.boxes.session_helpers import (
-    serialize_box_session as _serialize_box_session,
-)
-from box_management.services.boxes.session_helpers import (
-    session_payload_for_box as _session_payload_for_box,
+    ensure_active_session_for_box_or_response,
+    get_active_box_session,
+    get_active_box_session_context,
+    get_box_by_slug,
+    open_box_session_for_user,
+    serialize_box_identity,
+    serialize_box_session,
+    session_payload_for_box,
 )
 from box_management.services.boxes.verify_location import verify_location_for_box
 from box_management.services.deposits.create_session_box_deposit import create_session_box_deposit
+from box_management.services.deposits.user_deposits import build_user_deposits_payload
 from box_management.services.incitations.admin_incitations import (
     create_incitation,
     get_incitation_or_none,
     list_client_incitations,
     update_incitation,
 )
-from box_management.services.pinned.create_pinned_deposit import create_pinned_deposit
 from box_management.services.pinned.pricing import (
-    build_pinned_price_steps_payload,
-    get_active_pinned_deposit_for_box,
-    get_pinned_price_step,
     get_pinned_price_steps_raw,
 )
+from box_management.services.pinned.pinned_song import build_pinned_song_payload, create_pinned_song_for_session
+from box_management.services.reveal.discovered_sessions import build_discovered_sessions_payload
 from box_management.services.reveal.reveal_song import reveal_song_for_user
 from la_boite_a_son.api_errors import api_error
 
@@ -112,13 +97,6 @@ from users.utils import (
 )
 
 User = get_user_model()
-
-
-def _get_request_ip(request):
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
 
 
 def sticker_redirect_view(request, sticker_slug):
@@ -164,7 +142,7 @@ def _serialize_share_link(link, request):
         "url": request.build_absolute_uri(f"/l/{link.slug}"),
         "expires_at": link.expires_at.isoformat() if link.expires_at else None,
         "deposit_public_key": getattr(link.deposit, "public_key", None),
-        "created_by": _build_user_from_instance(link.created_by),
+        "created_by": build_user_payload_from_instance(link.created_by),
     }
 
 
@@ -182,7 +160,7 @@ def _build_public_link_payload(link, viewer):
     if not deposit:
         return None
 
-    deposits_payload = _build_deposits_payload(
+    deposits_payload = build_deposits_payload(
         [deposit],
         viewer=viewer,
         include_user=True,
@@ -202,7 +180,7 @@ def _build_public_link_payload(link, viewer):
 
     return {
         "deposit": deposit_payload,
-        "sender": _build_user_from_instance(link.created_by),
+        "sender": build_user_payload_from_instance(link.created_by),
         "client_slug": getattr(client, "slug", None),
         "box": {
             "id": getattr(box, "id", None),
@@ -302,7 +280,7 @@ class ShareLinkPublicDetailView(APIView):
                 status.HTTP_410_GONE,
                 "LINK_EXPIRED",
                 "Ce lien a expiré.",
-                sender=_build_user_from_instance(link.created_by),
+                sender=build_user_payload_from_instance(link.created_by),
             )
 
         viewer = get_current_app_user(request)
@@ -337,55 +315,6 @@ class ShareLinkPublicDetailView(APIView):
             link.increment_open_counters(viewer)
         return Response(payload, status=status.HTTP_200_OK)
 
-
-class GetMain(APIView):
-    """
-    GET /box-management/get-main/<slug:box_url>/
-    → Retourne le dernier dépôt d'une box donnée (via son slug URL).
-
-    - 404 si la box n'existe pas
-    - [] si aucun dépôt n'est encore présent
-    - utilise _build_deposits_payload (utils.py)
-
-    Spécificité : le dépôt renvoyé est toujours sérialisé avec les infos song (hidden=False),
-    sans créer de reveal en base (mais on garde la création de DiscoveredSong pour les viewers connectés).
-    """
-
-    def get(self, request, box_url: str, *args, **kwargs):
-        box = Box.objects.filter(url=box_url).first()
-        if not box:
-            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
-
-        qs = Deposit.objects.latest_for_box(box, limit=1).prefetch_related(
-            Prefetch(
-                "reactions",
-                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                to_attr="prefetched_reactions",
-            )
-        )
-        deposits = list(qs)
-
-        viewer = get_current_app_user(request)
-        if viewer:
-            touch_last_seen(viewer)
-
-        if viewer and deposits:
-            dep = deposits[0]
-            DiscoveredSong.objects.get_or_create(
-                user=viewer,
-                deposit=dep,
-                defaults={"discovered_type": "main"},
-            )
-
-        force_ids = [deposits[0].pk] if deposits else []
-        payload = _build_deposits_payload(
-            deposits,
-            viewer=viewer,
-            include_user=True,
-            force_song_infos_for=force_ids,
-        )
-
-        return Response(payload, status=status.HTTP_200_OK)
 
 
 class EconomyConfigView(APIView):
@@ -487,12 +416,12 @@ class Location(APIView):
             current_user, guest_created = ensure_guest_user_for_request(request)
         touch_last_seen(current_user)
 
-        session = _open_box_session_for_user(current_user, box)
+        session = open_box_session_for_user(current_user, box)
         response = Response(
             {
                 "active": True,
-                "box": _serialize_box_identity(box),
-                "session": _serialize_box_session(session),
+                "box": serialize_box_identity(box),
+                "session": serialize_box_session(session),
                 "current_user": build_current_user_payload(current_user),
             },
             status=status.HTTP_200_OK,
@@ -510,7 +439,7 @@ class BoxSessionView(APIView):
         if not box_slug:
             return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
 
-        box = _get_box_by_slug(box_slug)
+        box = get_box_by_slug(box_slug)
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
@@ -518,13 +447,13 @@ class BoxSessionView(APIView):
         if current_user:
             touch_last_seen(current_user)
 
-        session = _get_active_box_session(current_user, box) if current_user else None
+        session = get_active_box_session(current_user, box) if current_user else None
         if not session:
             return Response(
-                {"active": False, "box": _serialize_box_identity(box), "session": None}, status=status.HTTP_200_OK
+                {"active": False, "box": serialize_box_identity(box), "session": None}, status=status.HTTP_200_OK
             )
 
-        return Response(_session_payload_for_box(session, box), status=status.HTTP_200_OK)
+        return Response(session_payload_for_box(session, box), status=status.HTTP_200_OK)
 
 
 class ActiveBoxSessionsView(APIView):
@@ -551,8 +480,8 @@ class ActiveBoxSessionsView(APIView):
             seen_box_ids.add(session.box_id)
             items.append(
                 {
-                    "box": _serialize_box_identity(session.box),
-                    "session": _serialize_box_session(session),
+                    "box": serialize_box_identity(session.box),
+                    "session": serialize_box_session(session),
                 }
             )
 
@@ -600,7 +529,7 @@ class ResolveProviderLinkView(APIView):
                 _provider_error_status(error_code),
                 error_code,
                 result.get("message") or "La plateforme est indisponible pour le moment. Réessaie plus tard.",
-                song=_build_song_from_instance(refreshed_song, hidden=False),
+                song=build_song_payload_from_instance(refreshed_song, hidden=False),
             )
 
         link = result.get("link")
@@ -610,7 +539,7 @@ class ResolveProviderLinkView(APIView):
                 "provider_code": provider_code,
                 "provider_url": getattr(link, "provider_url", None),
                 "provider_uri": getattr(link, "provider_uri", None),
-                "song": _build_song_from_instance(refreshed_song, hidden=False),
+                "song": build_song_payload_from_instance(refreshed_song, hidden=False),
             },
             status=status.HTTP_200_OK,
         )
@@ -646,7 +575,7 @@ class RevealSong(APIView):
 
         return Response(
             {
-                "song": _build_song_from_instance(result["song"], hidden=False),
+                "song": build_song_payload_from_instance(result["song"], hidden=False),
                 "points_balance": result["points_balance"],
             },
             status=status.HTTP_200_OK,
@@ -692,208 +621,14 @@ class ManageDiscoveredSongs(APIView):
         limit = 10 if limit <= 0 else limit
         offset = 0 if offset < 0 else offset
 
-        events = list(
-            DiscoveredSong.objects.filter(user_id=user.id)
-            .select_related("deposit", "deposit__song", "deposit__user", "deposit__box", "link_sender")
-            .prefetch_related(
-                Prefetch(
-                    "deposit__reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
-            .order_by("discovered_at", "id")
-        )
-
-        if not events:
-            return Response(
-                {"sessions": [], "limit": limit, "offset": offset, "has_more": False, "next_offset": offset},
-                status=status.HTTP_200_OK,
-            )
-
-        deposits = [ds.deposit for ds in events]
-        unique_deposits = []
-        seen_ids = set()
-        for d in deposits:
-            if d.pk not in seen_ids:
-                seen_ids.add(d.pk)
-                unique_deposits.append(d)
-
-        deposits_payload_list = _build_deposits_payload(
-            unique_deposits, viewer=user, include_user=True, include_deposit_time=False
-        )
-        deposit_payload_by_id = {dep.pk: payload for dep, payload in zip(unique_deposits, deposits_payload_list)}
-
-        def deposit_payload(ds_obj):
-            dep = ds_obj.deposit
-            base = deposit_payload_by_id.get(dep.pk, {})
-            return {
-                **base,
-                "type": ds_obj.discovered_type,
-                "context": ds_obj.context or "box",
-                "discovered_at": ds_obj.discovered_at.isoformat(),
-                "deposit_id": dep.pk,
-            }
-
-        sessions_all = []
-        consumed = [False] * len(events)
-        box_main_indices = [
-            i for i, event in enumerate(events) if (event.context or "box") == "box" and event.discovered_type == "main"
-        ]
-
-        for idx, main_index in enumerate(box_main_indices):
-            main_ds = events[main_index]
-            box = main_ds.deposit.box
-            if not box:
-                consumed[main_index] = True
-                continue
-            next_main_index = box_main_indices[idx + 1] if (idx + 1) < len(box_main_indices) else len(events)
-            deposits_list = [deposit_payload(main_ds)]
-            consumed[main_index] = True
-            for event_index in range(main_index + 1, next_main_index):
-                ds = events[event_index]
-                if (
-                    consumed[event_index]
-                    or (ds.context or "box") != "box"
-                    or ds.discovered_type != "revealed"
-                    or ds.deposit.box_id != box.id
-                ):
-                    continue
-                deposits_list.append(deposit_payload(ds))
-                consumed[event_index] = True
-            sessions_all.append(
-                {
-                    "session_id": f"box-{main_ds.id}",
-                    "session_type": "box",
-                    "box": {"id": box.id, "name": box.name, "url": box.url},
-                    "started_at": main_ds.discovered_at.isoformat(),
-                    "deposits": deposits_list,
-                }
-            )
-
-        next_box_main_pos_from = [None] * len(events)
-        next_box_main_idx = None
-        for index in range(len(events) - 1, -1, -1):
-            next_box_main_pos_from[index] = next_box_main_idx
-            event = events[index]
-            if (event.context or "box") == "box" and event.discovered_type == "main":
-                next_box_main_idx = index
-
-        orphan_counter = 0
-        index = 0
-        while index < len(events):
-            event = events[index]
-            if consumed[index]:
-                index += 1
-                continue
-            event_context = event.context or "box"
-            if event_context == "profile":
-                owner = event.deposit.user
-                owner_id = getattr(owner, "id", None)
-                deposits_list = []
-                start = event.discovered_at
-                session_indices = []
-                cursor = index
-                while cursor < len(events):
-                    current = events[cursor]
-                    current_context = current.context or "box"
-                    current_owner_id = getattr(current.deposit.user, "id", None)
-                    if current_context != "profile" or current_owner_id != owner_id:
-                        break
-                    deposits_list.append(deposit_payload(current))
-                    session_indices.append(cursor)
-                    cursor += 1
-                for consumed_index in session_indices:
-                    consumed[consumed_index] = True
-                deposits_list.sort(
-                    key=lambda deposit: (deposit.get("discovered_at") or "", deposit.get("deposit_id") or 0),
-                    reverse=True,
-                )
-                sessions_all.append(
-                    {
-                        "session_id": f"profile-{event.id}",
-                        "session_type": "profile",
-                        "profile_user": _build_user_from_instance(owner),
-                        "started_at": start.isoformat(),
-                        "deposits": deposits_list,
-                    }
-                )
-                index = cursor
-                continue
-            if event_context == "link":
-                consumed[index] = True
-                sessions_all.append(
-                    {
-                        "session_id": f"link-{event.id}",
-                        "session_type": "link",
-                        "link_sender": _build_user_from_instance(getattr(event, "link_sender", None)),
-                        "started_at": event.discovered_at.isoformat(),
-                        "deposits": [deposit_payload(event)],
-                    }
-                )
-                index += 1
-                continue
-            if event.discovered_type == "revealed":
-                box = event.deposit.box
-                if box:
-                    stop_at = (
-                        next_box_main_pos_from[index] if next_box_main_pos_from[index] is not None else len(events)
-                    )
-                    deposits_list = [deposit_payload(event)]
-                    consumed[index] = True
-                    cursor = index + 1
-                    while cursor < stop_at:
-                        current = events[cursor]
-                        if consumed[cursor] or (current.context or "box") != "box":
-                            cursor += 1
-                            continue
-                        if current.discovered_type != "revealed":
-                            if current.discovered_type == "main":
-                                break
-                            cursor += 1
-                            continue
-                        if current.deposit.box_id != box.id:
-                            cursor += 1
-                            continue
-                        deposits_list.append(deposit_payload(current))
-                        consumed[cursor] = True
-                        cursor += 1
-                    sessions_all.append(
-                        {
-                            "session_id": f"orph-{orphan_counter}",
-                            "session_type": "box",
-                            "box": {"id": box.id, "name": box.name, "url": box.url},
-                            "started_at": event.discovered_at.isoformat(),
-                            "deposits": deposits_list,
-                        }
-                    )
-                    orphan_counter += 1
-            index += 1
-
-        sessions_all.sort(key=lambda session: session["started_at"], reverse=True)
-        total_sessions = len(sessions_all)
-        slice_start = offset
-        slice_end = offset + limit
-        sessions_page = sessions_all[slice_start:slice_end]
-        has_more = slice_end < total_sessions
-        next_offset = slice_end if has_more else slice_end
-        return Response(
-            {
-                "sessions": sessions_page,
-                "limit": limit,
-                "offset": offset,
-                "has_more": has_more,
-                "next_offset": next_offset,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response(build_discovered_sessions_payload(user, limit, offset), status=status.HTTP_200_OK)
 
 
 class UserDepositsView(APIView):
     permission_classes = []
 
     def get(self, request):
-        me = _coerce_bool(request.GET.get("me"))
+        me = coerce_bool(request.GET.get("me"))
         raw_username = (request.GET.get("username") or "").strip()
         if not me and not raw_username:
             return api_error(status.HTTP_400_BAD_REQUEST, "USERNAME_REQUIRED", "Pas d'utilisateur spécifié")
@@ -924,28 +659,13 @@ class UserDepositsView(APIView):
             if not target_user:
                 return api_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "Utilisateur inexistant")
 
-        base_qs = (
-            Deposit.objects.filter(user=target_user)
-            .exclude(deposit_type="favorite")
-            .select_related("song", "box", "user")
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
-            .order_by("-deposited_at", "-id")
-        )
-
-        page_qs = list(base_qs[offset : offset + limit + 1])
-        has_more = len(page_qs) > limit
-        deposits = page_qs[:limit]
-        viewer = get_current_app_user(request)
-        items = _build_deposits_payload(deposits, viewer=viewer, include_user=False)
-        next_offset = offset + len(deposits)
         return Response(
-            {"items": items, "limit": limit, "offset": offset, "has_more": has_more, "next_offset": next_offset},
+            build_user_deposits_payload(
+                target_user=target_user,
+                viewer=get_current_app_user(request),
+                limit=limit,
+                offset=offset,
+            ),
             status=status.HTTP_200_OK,
         )
 
@@ -958,38 +678,24 @@ class PinnedSongView(APIView):
         if not box_slug:
             return None, api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant.")
 
-        box = _get_box_by_slug(box_slug)
+        box = get_box_by_slug(box_slug)
         if not box:
             return None, api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
 
         return box, None
-
-    def _serialize_active_deposit(self, deposit, viewer):
-        if not deposit:
-            return None
-        return serialize_active_pinned_deposit_for_box(deposit.box, viewer=viewer)
 
     def get(self, request):
         box, error_response = self._get_box(request)
         if error_response is not None:
             return error_response
 
-        viewer, session_error = _ensure_active_session_for_box_or_response(request, box)
+        viewer, session_error = ensure_active_session_for_box_or_response(request, box)
         if session_error is not None:
             return session_error
         if viewer:
             touch_last_seen(viewer)
 
-        active_pinned = get_active_pinned_deposit_for_box(box)
-        return Response(
-            {
-                "active_pinned_deposit": self._serialize_active_deposit(active_pinned, viewer),
-                "price_steps": build_pinned_price_steps_payload(
-                    user_points=getattr(viewer, "points", None) if viewer else None
-                ),
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response(build_pinned_song_payload(box=box, viewer=viewer), status=status.HTTP_200_OK)
 
     def post(self, request):
         current_user = get_current_app_user(request)
@@ -1007,76 +713,20 @@ class PinnedSongView(APIView):
         if error_response is not None:
             return error_response
 
-        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        _session_user, session_error = ensure_active_session_for_box_or_response(request, box)
         if session_error is not None:
             return session_error
 
-        option = request.data.get("option") or {}
-        try:
-            duration_minutes = int(request.data.get("duration_minutes"))
-        except (TypeError, ValueError):
-            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_DURATION_INVALID", "Durée invalide.")
-
-        price_step = get_pinned_price_step(duration_minutes)
-        if not price_step:
-            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_DURATION_UNAVAILABLE", "Durée non disponible.")
-
-        points_cost = int(price_step["points"])
-        if not option:
-            return api_error(status.HTTP_400_BAD_REQUEST, "PIN_SONG_REQUIRED", "Chanson manquante.")
-
-        result, error = create_pinned_deposit(
+        payload, error = create_pinned_song_for_session(
             user=current_user,
             box=box,
-            option=option,
-            duration_minutes=duration_minutes,
-            points_cost=points_cost,
+            option=request.data.get("option") or {},
+            duration_minutes=request.data.get("duration_minutes"),
         )
         if error:
-            if error.get("code") == "PIN_SLOT_OCCUPIED":
-                return api_error(
-                    error["status"],
-                    error["code"],
-                    error["detail"],
-                    active_pinned_deposit=self._serialize_active_deposit(error["active_pinned"], error["user"]),
-                    price_steps=build_pinned_price_steps_payload(user_points=error["user"].points),
-                )
-            if "payload" in error:
-                points_payload = error["payload"]
-                return api_error(
-                    error["status"],
-                    points_payload.get("code") or "INSUFFICIENT_POINTS",
-                    points_payload.get("detail") or "Pas assez de points pour effectuer cette action.",
-                    points_balance=points_payload.get("points_balance", error["user"].points),
-                    price_steps=build_pinned_price_steps_payload(user_points=error["user"].points),
-                )
-            return api_error(error["status"], error["code"], error["detail"])
-        pinned_deposit = result["deposit"]
-        action = "created"
-
-        refreshed_user = CustomUser.objects.filter(pk=current_user.pk).first() or current_user
-        pinned_deposit = (
-            Deposit.objects.select_related("song", "user", "box")
-            .prefetch_related(
-                Prefetch(
-                    "reactions",
-                    queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                    to_attr="prefetched_reactions",
-                )
-            )
-            .filter(pk=pinned_deposit.pk)
-            .first()
-        )
-
-        return Response(
-            {
-                "action": action,
-                "active_pinned_deposit": self._serialize_active_deposit(pinned_deposit, refreshed_user),
-                "price_steps": build_pinned_price_steps_payload(user_points=refreshed_user.points),
-                "points_balance": int(getattr(refreshed_user, "points", 0) or 0),
-            },
-            status=status.HTTP_200_OK,
-        )
+            extra = {key: value for key, value in error.items() if key not in {"status", "code", "detail"}}
+            return api_error(error["status"], error["code"], error["detail"], **extra)
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class PublicVisibleArticlesView(APIView):
@@ -1096,7 +746,7 @@ class PublicVisibleArticlesView(APIView):
         if box is None:
             return Response([], status=status.HTTP_200_OK)
 
-        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        _session_user, session_error = ensure_active_session_for_box_or_response(request, box)
         if session_error is not None:
             return session_error
 
@@ -1114,7 +764,7 @@ class PublicVisibleArticleDetailView(APIView):
             return api_error(error["status"], error["code"], error["detail"])
         box = result["box"]
 
-        _session_user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        _session_user, session_error = ensure_active_session_for_box_or_response(request, box)
         if session_error is not None:
             return session_error
 
@@ -1126,7 +776,7 @@ class ClientAdminArticleImportPageView(APIView):
     permission_classes = []
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -1146,7 +796,7 @@ class ClientAdminArticleListCreateView(APIView):
     permission_classes = []
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -1165,7 +815,7 @@ class ClientAdminArticleListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -1191,7 +841,7 @@ class ClientAdminArticleDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, article_id):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return None, error_response
 
@@ -1357,7 +1007,7 @@ class ClientAdminIncitationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -1372,7 +1022,7 @@ class ClientAdminIncitationListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -1385,7 +1035,7 @@ class ClientAdminIncitationListCreateView(APIView):
                 field_errors=serializer.errors,
             )
 
-        result, error = create_incitation(user, serializer, _coerce_bool(request.data.get("force_overlap")))
+        result, error = create_incitation(user, serializer, coerce_bool(request.data.get("force_overlap")))
         if error:
             overlap_qs = error["overlap_qs"]
             overlap_serializer = ClientAdminIncitationSerializer(
@@ -1415,7 +1065,7 @@ class ClientAdminIncitationDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, incitation_id):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return None, error_response
 
@@ -1466,7 +1116,7 @@ class ClientAdminIncitationDetailView(APIView):
                 field_errors=serializer.errors,
             )
 
-        result, error = update_incitation(phrase, serializer, _coerce_bool(request.data.get("force_overlap")))
+        result, error = update_incitation(phrase, serializer, coerce_bool(request.data.get("force_overlap")))
         if error:
             overlap_qs = error["overlap_qs"]
             overlap_serializer = ClientAdminIncitationSerializer(

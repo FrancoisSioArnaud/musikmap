@@ -4,10 +4,11 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 
-from box_management.builders.deposit_payloads import _build_deposits_payload
+from box_management.builders.deposit_payloads import build_deposits_payload
 from box_management.models import BoxSession, Deposit
 from box_management.services.boxes.session_helpers import get_active_box_session_context
-from box_management.services.deposits.song_creation import _build_successes, create_song_deposit
+from box_management.services.deposits.achievements import build_successes
+from box_management.services.deposits.song_creation import create_song_deposit
 from users.models import CustomUser
 from users.utils import apply_points_delta
 
@@ -17,7 +18,7 @@ SESSION_DEPOSIT_REUSE_WINDOW_SECONDS = 5
 def _serialize_revealed_deposit(deposit, *, viewer):
     if not deposit:
         return None
-    payloads = _build_deposits_payload(
+    payloads = build_deposits_payload(
         [deposit],
         viewer=viewer,
         include_user=True,
@@ -93,7 +94,7 @@ def create_session_box_deposit(*, request, box_slug, option):
                 "detail": "Une chanson a déjà été partagée pour cette session.",
             }
 
-        successes, points_to_add = _build_successes(
+        successes, points_to_add = build_successes(
             box=session.box,
             user=user,
             song=song,

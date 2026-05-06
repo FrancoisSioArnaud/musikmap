@@ -53,11 +53,11 @@ _COMMENT_DOXX_PATTERNS = [
 ]
 
 
-def _is_full_comment_user(user: CustomUser | None) -> bool:
+def is_full_comment_user(user: CustomUser | None) -> bool:
     return bool(user and getattr(user, "id", None) and not getattr(user, "is_guest", False))
 
 
-def _get_profile_picture_url(user: CustomUser | None) -> str | None:
+def get_profile_picture_url(user: CustomUser | None) -> str | None:
     if not user or not getattr(user, "profile_picture", None):
         return None
     try:
@@ -66,7 +66,7 @@ def _get_profile_picture_url(user: CustomUser | None) -> str | None:
         return None
 
 
-def _normalize_comment_text(value: str | None) -> str:
+def normalize_comment_text(value: str | None) -> str:
     value = str(value or "")
     value = value.replace("​", "").replace("‌", "").replace("‍", "")
     value = re.sub(r"\s+", " ", value).strip()
@@ -159,8 +159,8 @@ def _log_blocked_comment_attempt(
     )
 
 
-def _get_active_comment_restrictions_for_clients(user: CustomUser | None, client_ids: Iterable[int]):
-    if not _is_full_comment_user(user):
+def get_active_comment_restrictions_for_clients(user: CustomUser | None, client_ids: Iterable[int]):
+    if not is_full_comment_user(user):
         return {}
 
     clean_client_ids = [cid for cid in set(client_ids or []) if cid]
@@ -183,9 +183,9 @@ def _get_active_comment_restrictions_for_clients(user: CustomUser | None, client
 __all__ = [
     "COMMENT_MAX_LENGTH",
     "_detect_comment_pre_creation_error",
-    "_get_active_comment_restrictions_for_clients",
-    "_get_profile_picture_url",
+    "get_active_comment_restrictions_for_clients",
+    "get_profile_picture_url",
     "_log_blocked_comment_attempt",
-    "_normalize_comment_text",
+    "normalize_comment_text",
     "_score_comment_risk",
 ]

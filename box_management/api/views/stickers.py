@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from box_management.builders.sticker_payloads import serialize_client_admin_sticker
 from box_management.models import Sticker
-from box_management.services.boxes.client_access import _get_active_client_user_or_response
+from box_management.services.boxes.client_access import get_active_client_user_or_response
 from box_management.services.stickers.assignments import (
     assign_sticker_to_box,
     get_sticker_install_payload,
@@ -26,7 +26,7 @@ class ClientAdminStickerListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -73,7 +73,7 @@ class ClientAdminStickerGenerateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -96,7 +96,7 @@ class ClientAdminStickerDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -158,7 +158,7 @@ class ClientAdminStickerConfirmDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -181,7 +181,7 @@ class ClientAdminStickerInstallView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -199,7 +199,7 @@ class ClientAdminStickerAssignView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, sticker_id):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 
@@ -223,7 +223,7 @@ class ClientAdminStickerUnassignView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, sticker_id):
-        user, error_response = _get_active_client_user_or_response(request)
+        user, error_response = get_active_client_user_or_response(request)
         if error_response:
             return error_response
 

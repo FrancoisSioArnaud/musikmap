@@ -11,7 +11,7 @@ from django.utils import timezone
 from box_management.models import Box, BoxSession, Comment, Deposit, DiscoveredSong, Emoji, EmojiRight, Reaction
 from box_management.provider_services import ProviderRateLimitError, ProviderSearchError, backend_search_tracks_strict
 from box_management.services.comments.create_comment import create_comment
-from box_management.services.comments.moderation_rules import _normalize_comment_text
+from box_management.services.comments.moderation_rules import normalize_comment_text
 from box_management.services.deposits.song_creation import create_song_deposit
 from box_management.services.reactions.add_reaction import add_or_remove_reaction
 from box_management.services.reveal.reveal_song import reveal_song_for_user
@@ -451,7 +451,7 @@ def _create_comments(rng, *, box, day_deposits, users, day_index, intensity_conf
 
         user = rng.choice(commenters)
         text = rng.choice(COMMENT_TEMPLATES)
-        normalized_text = _normalize_comment_text(text)
+        normalized_text = normalize_comment_text(text)
         if Comment.objects.filter(user=user, deposit=deposit, normalized_text=normalized_text).exists():
             continue
 

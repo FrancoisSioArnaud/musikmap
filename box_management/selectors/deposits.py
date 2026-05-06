@@ -27,3 +27,19 @@ def get_deposit_with_reactions(deposit_id):
         )
         .first()
     )
+
+
+def get_user_deposits_queryset(user):
+    return (
+        Deposit.objects.filter(user=user)
+        .exclude(deposit_type="favorite")
+        .select_related("song", "box", "user")
+        .prefetch_related(
+            Prefetch(
+                "reactions",
+                queryset=Reaction.objects.select_related("emoji", "user", "deposit").order_by("created_at", "id"),
+                to_attr="prefetched_reactions",
+            )
+        )
+        .order_by("-deposited_at", "-id")
+    )

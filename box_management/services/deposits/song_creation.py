@@ -1,45 +1,16 @@
 from datetime import timedelta
 from typing import Any
 
-from django.db.models import Prefetch
 from django.utils import timezone
 
-from box_management.models import Deposit, Reaction, Song
+from box_management.models import Deposit, Song
 from box_management.provider_services import (
     get_or_create_song_from_track,
     normalize_track_payload,
     upsert_song_provider_link,
 )
 from box_management.services.deposits.accent_color import extract_accent_color_from_urls
-from box_management.services.deposits.achievements import _build_successes
 from users.models import CustomUser
-
-
-def _get_prev_head_and_older(box, limit: int = 10, exclude_deposit_ids: list[int] | None = None):
-    qs = (
-        Deposit.objects.filter(box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX)
-        .select_related("song", "user")
-        .prefetch_related(
-            Prefetch(
-                "reactions",
-                queryset=Reaction.objects.select_related("emoji", "user").order_by("created_at", "id"),
-                to_attr="prefetched_reactions",
-            )
-        )
-        .order_by("-deposited_at", "-id")
-    )
-
-    exclude_ids = [int(dep_id) for dep_id in (exclude_deposit_ids or []) if dep_id]
-    if exclude_ids:
-        qs = qs.exclude(pk__in=exclude_ids)
-
-    deposits = list(qs[: limit + 1])
-    if not deposits:
-        return None, []
-
-    prev_head = deposits[0]
-    older_deposits_qs = deposits[1:]
-    return prev_head, older_deposits_qs
 
 
 def _find_recent_duplicate_deposit(
@@ -163,4 +134,4 @@ def create_song_deposit(
     return deposit, song, True
 
 
-__all__ = ["_build_successes", "_find_recent_duplicate_deposit", "_get_prev_head_and_older", "create_song_deposit"]
+__all__ = ["create_song_deposit"]

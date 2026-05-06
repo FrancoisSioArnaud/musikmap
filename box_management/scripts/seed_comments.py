@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from box_management.models import Comment, Deposit
-from box_management.services.comments.moderation_rules import _get_profile_picture_url, _normalize_comment_text
+from box_management.services.comments.moderation_rules import get_profile_picture_url, normalize_comment_text
 
 SEED_REASON_CODE = "seed_fake_comment"
 COMMENTS_PER_USER = 5
@@ -155,7 +155,7 @@ def run():
             created_for_user = 0
 
             for idx, (deposit, comment_dt) in enumerate(zip(selected_deposits, planned_datetimes), start=1):
-                profile_picture_url = _get_profile_picture_url(user) or ""
+                profile_picture_url = get_profile_picture_url(user) or ""
 
                 comment = Comment.objects.create(
                     client=getattr(deposit.box, "client", None),
@@ -182,7 +182,7 @@ def run():
                     author_user_agent="seed_comments_script",
                 )
 
-                normalized_text = _normalize_comment_text(comment.text)
+                normalized_text = normalize_comment_text(comment.text)
                 Comment.objects.filter(pk=comment.pk).update(
                     normalized_text=normalized_text,
                     created_at=comment_dt,

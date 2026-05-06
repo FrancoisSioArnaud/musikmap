@@ -15,36 +15,7 @@ from la_boite_a_son.economy import (
 from users.models import CustomUser
 
 
-def _get_consecutive_deposit_days(user: CustomUser | None, box) -> int:
-    if not user:
-        return 0
-
-    today = localdate()
-    target = today - timedelta(days=1)
-    streak = 0
-
-    dates = Deposit.objects.filter(user=user, box=box).order_by("-deposited_at").values_list("deposited_at", flat=True)
-
-    seen_days: list = []
-    for dt in dates:
-        try:
-            d = localtime(dt).date()
-        except Exception:
-            d = timezone.localtime(dt).date()
-        if not seen_days or seen_days[-1] != d:
-            seen_days.append(d)
-
-    for d in seen_days:
-        if d == target:
-            streak += 1
-            target -= timedelta(days=1)
-        elif d < target:
-            break
-
-    return streak
-
-
-def _build_successes(
+def build_successes(
     *, box, user: CustomUser | None, song: Song, current_deposit: Deposit | None = None
 ) -> tuple[list[dict[str, Any]], int]:
     title = (getattr(song, "title", "") or "").strip()
@@ -158,4 +129,4 @@ def _build_successes(
     return list(successes.values()), points_to_add
 
 
-__all__ = ["_build_successes", "_get_consecutive_deposit_days"]
+__all__ = ["build_successes"]

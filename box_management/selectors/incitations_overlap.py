@@ -1,7 +1,7 @@
 from box_management.models import IncitationPhrase
 
 
-def _get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude_id=None):
+def get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude_id=None):
     if not client_id or not start_date or not end_date:
         return IncitationPhrase.objects.none()
 
@@ -14,7 +14,7 @@ def _get_incitation_overlap_queryset(*, client_id, start_date, end_date, exclude
     return qs
 
 
-def _build_incitation_overlap_counts(phrases):
+def build_incitation_overlap_counts(phrases):
     phrases = list(phrases or [])
     counts = {}
     for phrase in phrases:
@@ -22,4 +22,4 @@ def _build_incitation_overlap_counts(phrases):
     return counts
 
 
-__all__ = ["_build_incitation_overlap_counts", "_get_incitation_overlap_queryset"]
+__all__ = ["build_incitation_overlap_counts", "get_incitation_overlap_queryset"]
