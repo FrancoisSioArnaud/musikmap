@@ -6,10 +6,11 @@ Ces règles s’appliquent à `box_management/`.
 `box_management` porte le cœur métier de la Boîte à Chanson / Flowbox : boîtes, stickers, sessions, dépôts, chansons, articles, incitations, commentaires, réactions, épingles, points et découverte.
 
 ## Parcours Flowbox à respecter
-- Entrée typique : QR/sticker → onboarding → autorisation localisation → vérification distance → recherche LiveSearch → dépôt → Discover.
+- Entrée typique : QR/sticker → onboarding → autorisation localisation → vérification distance → Discover. Discover contient ensuite une section optionnelle de dépôt qui ouvre `SearchPanel` en drawer.
 - La session de boîte est la frontière métier principale : si l’utilisateur n’est pas dans une session active, les actions liées à une boîte doivent être refusées côté serveur.
 - La vérification de distance et l’état de session doivent être contrôlés côté backend. Le frontend peut masquer des actions, mais ne doit jamais être la source de vérité.
 - Utiliser `box.slug` comme identifiant fonctionnel privilégié dans les contrats Flowbox quand c’est possible.
+- Endpoints Flowbox actuels à conserver : `GET /box-management/box-preview/?boxSlug=<slug>`, `GET /box-management/box-content/?boxSlug=<slug>` et `POST /box-management/box-deposit/?boxSlug=<slug>`.
 - Ne pas réintroduire de comportement basé uniquement sur un état local frontend pour autoriser une action métier.
 
 ## Sessions de boîte

@@ -55,49 +55,38 @@ describe('PinnedSongSection', () => {
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
   });
 
-  test('hydrates active pinned deposit from localStorage without refreshing network', async () => {
-    const activePinnedDeposit = {
-      public_key: 'pin-1',
-      pin_expires_at: new Date(Date.now() + 60_000).toISOString(),
-      pin_duration_minutes: 60,
-      deposited_at: new Date().toISOString(),
-    };
+  test('loads active pinned deposit from the pinned-song endpoint', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        active_pinned_deposit: {
+          public_key: 'pin-1',
+          pin_expires_at: new Date(Date.now() + 60_000).toISOString(),
+          pin_duration_minutes: 60,
+          deposited_at: new Date().toISOString(),
+        },
+        price_steps: [],
+      }),
+    });
 
-    localStorage.setItem(
-      'mm_box_content',
-      JSON.stringify({
-        value: { boxSlug: 'box-a', activePinnedDeposit },
-        expiresAt: Date.now() + 60_000,
-      })
-    );
-
-    renderPinned();
+    await act(async () => {
+      renderPinned();
+    });
 
     expect(await screen.findByTestId('pinned-public-key')).toHaveTextContent('pin-1');
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/box-management/pinned-song/?boxSlug=box-a',
+      expect.any(Object)
+    );
   });
 
-  test('refreshes network when cached pinned deposit is expired', async () => {
-    localStorage.setItem(
-      'mm_box_content',
-      JSON.stringify({
-        value: {
-          boxSlug: 'box-a',
-          activePinnedDeposit: {
-            public_key: 'expired-pin',
-            pin_expires_at: new Date(Date.now() - 5_000).toISOString(),
-            pin_duration_minutes: 60,
-            deposited_at: new Date(Date.now() - 60_000).toISOString(),
-          },
-        },
-        expiresAt: Date.now() + 60_000,
-      })
-    );
-
+  test('loads pin price steps from the pinned-song endpoint before opening the drawer', async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -106,7 +95,9 @@ describe('PinnedSongSection', () => {
       }),
     });
 
-    renderPinned();
+    await act(async () => {
+      renderPinned();
+    });
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
     expect(global.fetch).toHaveBeenCalledWith(
@@ -114,11 +105,11 @@ describe('PinnedSongSection', () => {
       expect.any(Object)
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /épingler une chanson/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /épingler une chanson/i }));
     expect(await screen.findByText('Choisis une chanson à épingler')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Choisir ce morceau' }));
     expect(await screen.findByText('Choisis une durée')).toBeInTheDocument();
-    expect(screen.getByText(/100/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Épingler pour 100 points/i })).toBeInTheDocument();
   });
 
   test('shows error dialog when pin request fails', async () => {
@@ -130,10 +121,12 @@ describe('PinnedSongSection', () => {
       json: async () => ({ detail: 'Impossible d’épingler cette chanson.' }),
     });
 
-    renderPinned('box-a', { user: { id: 1, points: 500 } });
+    await act(async () => {
+      renderPinned('box-a', { user: { id: 1, points: 500 } });
+    });
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: /épingler une chanson/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /épingler une chanson/i }));
     await screen.findByText('Choisis une chanson à épingler');
     fireEvent.click(screen.getByRole('button', { name: 'Choisir ce morceau' }));
     await screen.findByText('Choisis une durée');

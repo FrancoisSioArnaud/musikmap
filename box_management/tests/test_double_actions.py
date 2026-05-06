@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,7 +16,74 @@ from box_management.models import (
     Link,
     Reaction,
 )
+from box_management.services.boxes.session_helpers import open_box_session_for_user
 from box_management.tests.base import FlowboxAPITestCase
+
+
+class BoxSessionDepositFieldTests(FlowboxAPITestCase):
+    def test_open_box_session_starts_without_deposit(self):
+        user = self.make_user(username="session-no-deposit")
+        box = self.make_box(url="session-no-deposit-box", name="Session no deposit box")
+
+        session = open_box_session_for_user(user, box)
+
+        self.assertIsNone(session.deposit_id)
+
+    def test_open_box_session_resets_existing_deposit_on_renewal(self):
+        user = self.make_user(username="session-reset-deposit")
+        box = self.make_box(url="session-reset-deposit-box", name="Session reset deposit box")
+        deposit = self.make_deposit(user=user, song=self.make_song(public_key="session-reset-song"), box=box)
+        session = BoxSession.objects.create(
+            user=user,
+            box=box,
+            deposit=deposit,
+            started_at=timezone.now() - timedelta(minutes=10),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        renewed_session = open_box_session_for_user(user, box)
+        session.refresh_from_db()
+
+        self.assertEqual(renewed_session.pk, session.pk)
+        self.assertIsNone(renewed_session.deposit_id)
+        self.assertIsNone(session.deposit_id)
+
+    def test_box_session_deposit_must_match_session_scope(self):
+        user = self.make_user(username="session-valid-user")
+        other_user = self.make_user(username="session-other-user")
+        box = self.make_box(url="session-valid-box", name="Session valid box")
+        other_box = self.make_box(url="session-other-box", name="Session other box")
+        valid_deposit = self.make_deposit(user=user, song=self.make_song(public_key="session-valid-song"), box=box)
+        pinned_deposit = self.make_deposit(
+            user=user,
+            song=self.make_song(public_key="session-pinned-song"),
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_PINNED,
+            pin_duration_minutes=10,
+            pin_points_spent=149,
+            pin_expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        other_box_deposit = self.make_deposit(
+            user=user, song=self.make_song(public_key="session-other-box-song"), box=other_box
+        )
+        other_user_deposit = self.make_deposit(
+            user=other_user, song=self.make_song(public_key="session-other-user-song"), box=box
+        )
+        session = BoxSession(
+            user=user,
+            box=box,
+            deposit=valid_deposit,
+            started_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(minutes=20),
+        )
+
+        session.full_clean()
+
+        for invalid_deposit in (pinned_deposit, other_box_deposit, other_user_deposit):
+            with self.subTest(deposit=invalid_deposit.public_key):
+                session.deposit = invalid_deposit
+                with self.assertRaises(ValidationError):
+                    session.full_clean()
 
 
 class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
@@ -24,8 +92,8 @@ class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
         box = self.make_box(url="box-dup-dep", name="Box dup dep")
         option = self.track_option(track_id="dup-track-1", title="Duplicate Track")
 
-        first = self.client.post(reverse("get-box"), {"boxSlug": box.url, "option": option}, format="json")
-        second = self.client.post(reverse("get-box"), {"boxSlug": box.url, "option": option}, format="json")
+        first = self.client.post(f'{reverse("box-deposit")}?boxSlug={box.url}', {"option": option}, format="json")
+        second = self.client.post(f'{reverse("box-deposit")}?boxSlug={box.url}', {"option": option}, format="json")
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -33,6 +101,94 @@ class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
         user.refresh_from_db()
         self.assertEqual(first.data["points_balance"], second.data["points_balance"])
         self.assertEqual(user.points, first.data["points_balance"])
+
+    def test_double_session_box_deposit_within_reuse_window_returns_existing_without_points(self):
+        user = self.auth(self.make_user(username="session-dupdep", points=0))
+        box = self.make_box(url="box-session-dup-dep", name="Box session dup dep")
+        option = self.track_option(track_id="session-dup-track", title="Session Duplicate Track")
+
+        first = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": option},
+            format="json",
+        )
+        user.refresh_from_db()
+        points_after_first = user.points
+        deposit_count_after_first = Deposit.objects.filter(
+            user=user,
+            box=box,
+            deposit_type=Deposit.DEPOSIT_TYPE_BOX,
+        ).count()
+
+        second = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": self.track_option(track_id="session-dup-track-2", title="Second ignored track")},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertFalse(first.data["already_exists"])
+        self.assertTrue(second.data["already_exists"])
+        self.assertEqual(first.data["my_deposit"]["public_key"], second.data["my_deposit"]["public_key"])
+        self.assertEqual(second.data["successes"], [])
+        self.assertEqual(first.data["points_balance"], second.data["points_balance"])
+        user.refresh_from_db()
+        self.assertEqual(user.points, points_after_first)
+        self.assertEqual(
+            Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
+            deposit_count_after_first,
+        )
+
+    def test_session_box_deposit_after_reuse_window_returns_conflict(self):
+        user = self.auth(self.make_user(username="session-old-dep", points=0))
+        box = self.make_box(url="box-session-old-dep", name="Box session old dep")
+
+        first = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": self.track_option(track_id="session-old-track", title="Session Old Track")},
+            format="json",
+        )
+        session = BoxSession.objects.get(user=user, box=box)
+        Deposit.objects.filter(pk=session.deposit_id).update(deposited_at=timezone.now() - timedelta(seconds=6))
+
+        second = self.client.post(
+            f'{reverse("box-deposit")}?boxSlug={box.url}',
+            {"option": self.track_option(track_id="session-old-track-2", title="Old conflict Track")},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assert_api_error(second, 409, "BOX_SESSION_DEPOSIT_ALREADY_EXISTS")
+        self.assertEqual(
+            Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
+            1,
+        )
+
+    def test_concurrent_session_box_deposit_retry_does_not_create_two_deposits(self):
+        user = self.auth(self.make_user(username="session-concurrent", points=0))
+        box = self.make_box(url="box-session-concurrent", name="Box session concurrent")
+
+        responses = [
+            self.client.post(
+                f'{reverse("box-deposit")}?boxSlug={box.url}',
+                {"option": self.track_option(track_id="session-concurrent-track", title="Concurrent Track")},
+                format="json",
+            ),
+            self.client.post(
+                f'{reverse("box-deposit")}?boxSlug={box.url}',
+                {"option": self.track_option(track_id="session-concurrent-track-2", title="Concurrent Track 2")},
+                format="json",
+            ),
+        ]
+
+        self.assertEqual([response.status_code for response in responses], [200, 200])
+        self.assertFalse(responses[0].data["already_exists"])
+        self.assertTrue(responses[1].data["already_exists"])
+        self.assertEqual(
+            Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
+            1,
+        )
 
     def test_double_set_favorite_within_reuse_window_reuses_same_deposit(self):
         user = self.auth(self.make_user(username="dupfav", points=0))

@@ -1,9 +1,9 @@
 // frontend/src/components/Flowbox/Discover.js
-import CheckCircleIcon from "@mui/icons-material/CheckCircleRounded";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import MusicNote from "@mui/icons-material/MusicNoteRounded";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState, useContext, useCallback } from "react";
@@ -22,6 +22,7 @@ import {
 } from "../Utils/drawerHistory";
 
 import AchievementsPanel from "./AchievementsPanel";
+import LiveSearchSection from "./discover/LiveSearchSection";
 import PinnedSongSection from "./PinnedSongSection";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
@@ -30,26 +31,99 @@ const ACHIEVEMENTS_DRAWER_PARAM = "drawer";
 const ACHIEVEMENTS_DRAWER_VALUE = "achievements";
 const ARTICLE_DRAWER_PARAM = "article";
 
+function normalizeDiscoverPayload(payload, fallbackSlug) {
+  const source = payload || {};
+  return {
+    boxSlug: source.boxSlug || source.box_slug || fallbackSlug || null,
+    loadedAt: source.loadedAt || source.loaded_at || new Date().toISOString(),
+    main: source.main || null,
+    olderDeposits: Array.isArray(source.olderDeposits || source.older_deposits)
+      ? (source.olderDeposits || source.older_deposits)
+      : [],
+    activePinnedDeposit: source.activePinnedDeposit || source.active_pinned_deposit || null,
+    myDeposit: source.myDeposit || source.my_deposit || null,
+    successes: Array.isArray(source.successes) ? source.successes : [],
+    pointsBalance: typeof (source.pointsBalance ?? source.points_balance) === "number"
+      ? (source.pointsBalance ?? source.points_balance)
+      : null,
+  };
+}
+
 export default function Discover() {
   const location = useLocation();
   const navigate = useNavigate();
   const { boxSlug } = useParams();
   const { user } = useContext(UserContext) || {};
-  const { getDiscoverSnapshot, clearBoxSession } = useContext(FlowboxSessionContext);
+  const {
+    getDiscoverSnapshot,
+    saveDiscoverSnapshot,
+    patchDiscoverSnapshot,
+    clearBoxSession,
+  } = useContext(FlowboxSessionContext);
 
   const [boxContent, setBoxContent] = useState(null);
+  const [contentLoading, setContentLoading] = useState(true);
+  const [contentError, setContentError] = useState("");
   const [openAchievements, setOpenAchievements] = useState(false);
   const [articles, setArticles] = useState([]);
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     const snap = getDiscoverSnapshot(boxSlug);
-    if (!snap || snap.boxSlug !== boxSlug) {
-      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/search`, { replace: true });
-      return;
+
+    if (snap && snap.boxSlug === boxSlug) {
+      setBoxContent(normalizeDiscoverPayload(snap, boxSlug));
+      setContentError("");
+      setContentLoading(false);
+      return () => {
+        cancelled = true;
+      };
     }
-    setBoxContent(snap);
-  }, [boxSlug, getDiscoverSnapshot, navigate]);
+
+    (async () => {
+      try {
+        setContentLoading(true);
+        setContentError("");
+
+        const response = await fetch(
+          `/box-management/box-content/?boxSlug=${encodeURIComponent(boxSlug)}`,
+          {
+            credentials: "include",
+            headers: { Accept: "application/json" },
+          }
+        );
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          if (response.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
+            clearBoxSession(boxSlug, { markExpired: true });
+            navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
+            return;
+          }
+          throw new Error(data?.detail || "Impossible de charger la découverte.");
+        }
+        if (cancelled) {return;}
+
+        const snapshot = normalizeDiscoverPayload(data, boxSlug);
+        saveDiscoverSnapshot(boxSlug, snapshot);
+        setBoxContent(snapshot);
+      } catch (error) {
+        if (!cancelled) {
+          setContentError(error?.message || "Impossible de charger la découverte.");
+          setBoxContent(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setContentLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boxSlug, clearBoxSession, getDiscoverSnapshot, navigate, saveDiscoverSnapshot]);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,8 +201,6 @@ export default function Discover() {
   }, [articles, location]);
 
   const myDeposit = boxContent?.myDeposit || null;
-  const mySong = myDeposit?.song || null;
-  const myDepositAccentColor = myDeposit?.accent_color || undefined;
 
   const mainDep = boxContent?.main || null;
   const successes = Array.isArray(boxContent?.successes)
@@ -137,11 +209,6 @@ export default function Discover() {
   const olderDeposits = Array.isArray(boxContent?.olderDeposits)
     ? boxContent.olderDeposits
     : [];
-
-  const totalPoints =
-    successes.find((s) => (s?.name || "").toLowerCase() === "total")?.points ??
-    successes.find((s) => (s?.name || "").toLowerCase() === "points_total")?.points ??
-    0;
 
   const handleOpenAchievements = useCallback(() => {
     openDrawerWithHistory({
@@ -164,6 +231,16 @@ export default function Discover() {
       setOpenAchievements(false);
     }
   }, [location, navigate]);
+
+  const handleDepositCreated = useCallback((patch) => {
+    const normalizedPatch = normalizeDiscoverPayload(patch, boxSlug);
+    patchDiscoverSnapshot?.(boxSlug, normalizedPatch);
+    setBoxContent((current) => ({
+      ...(current || normalizeDiscoverPayload({}, boxSlug)),
+      ...normalizedPatch,
+      boxSlug,
+    }));
+  }, [boxSlug, patchDiscoverSnapshot]);
 
   const handleOpenArticleDrawer = useCallback(
     (article) => {
@@ -196,6 +273,25 @@ export default function Discover() {
       setSelectedArticle(null);
     }
   }, [location, navigate, selectedArticle?.id]);
+
+  if (contentLoading) {
+    return (
+      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center", p: 3 }}>
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>Chargement de la découverte…</Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (contentError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{contentError}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -232,81 +328,6 @@ export default function Discover() {
         boxSlug={boxSlug}
       />
 
-      <Box className="my_deposit_notif">
-        <Box
-          sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}
-        >
-          <CheckCircleIcon fontSize="medium" />
-          <Typography component="h2" variant="h5">
-            Chanson déposée avec succès
-          </Typography>
-        </Box>
-
-        {mySong ? (
-          <Box
-            className={`my_deposit deposit deposit_song${
-              myDepositAccentColor ? " has_accent_color" : ""
-            }`}
-            style={
-              myDepositAccentColor
-                ? { "--deposit-accent": myDepositAccentColor }
-                : undefined
-            }
-          >
-            <Box className="img_container">
-              {mySong?.image_url ? (
-                <Box
-                  component="img"
-                  src={mySong.image_url}
-                  alt={mySong?.title || "Cover"}
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : null}
-            </Box>
-
-            <Box className="texts">
-              <Typography
-                variant="h5"
-                component="span"
-                title={mySong?.title || ""}
-                className="titre"
-              >
-                {mySong?.title || ""}
-              </Typography>
-              <Typography
-                variant="body1"
-                component="span"
-                title={mySong?.artist || ""}
-                className="artist"
-              >
-                {mySong?.artist || ""}
-              </Typography>
-            </Box>
-
-            <Box
-              className="points_container vertical"
-              style={{ margin: "0 auto" }}
-              onClick={handleOpenAchievements}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {handleOpenAchievements();}
-              }}
-            >
-              <MusicNote />
-              <Typography component="span" variant="body1">
-                +{totalPoints}
-              </Typography>
-            </Box>
-          </Box>
-        ) : null}
-      </Box>
-
       <Box className="intro">
         <Typography component="h2" variant="h1">
           Bonne écoute !
@@ -342,7 +363,23 @@ export default function Discover() {
             </Box>
           ) : null}
         </Box>
-      ) : null}
+      ) : (
+        <Box sx={{ p: 3 }}>
+          <Alert severity="info">
+            Aucune chanson à découvrir pour le moment. Reviens bientôt : les prochains
+            partages apparaîtront ici.
+          </Alert>
+        </Box>
+      )}
+
+      <LiveSearchSection
+        boxSlug={boxSlug}
+        myDeposit={myDeposit}
+        successes={successes}
+        pointsBalance={boxContent?.pointsBalance ?? null}
+        onDepositCreated={handleDepositCreated}
+        onOpenAchievements={handleOpenAchievements}
+      />
 
       {articles.length > 0 ? (
         <Box className="articles_section">

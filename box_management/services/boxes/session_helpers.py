@@ -29,6 +29,43 @@ def get_active_box_session(user, box):
     return BoxSession.objects.filter(user=user, box=box, expires_at__gt=now).order_by("-expires_at", "-id").first()
 
 
+def get_active_box_session_context(request, box_slug):
+    box_slug = (box_slug or "").strip()
+    if not box_slug:
+        return None, {
+            "status": status.HTTP_400_BAD_REQUEST,
+            "code": "BOX_SLUG_REQUIRED",
+            "detail": "boxSlug manquant.",
+        }
+
+    box = get_box_by_slug(box_slug)
+    if not box:
+        return None, {
+            "status": status.HTTP_404_NOT_FOUND,
+            "code": "BOX_NOT_FOUND",
+            "detail": "Boîte introuvable.",
+        }
+
+    current_user = get_current_app_user(request)
+    if not current_user:
+        return None, {
+            "status": status.HTTP_403_FORBIDDEN,
+            "code": "BOX_SESSION_REQUIRED",
+            "detail": "Ouvre la boîte pour continuer.",
+        }
+
+    active_session = get_active_box_session(current_user, box)
+    if not active_session:
+        return None, {
+            "status": status.HTTP_403_FORBIDDEN,
+            "code": "BOX_SESSION_REQUIRED",
+            "detail": "Ouvre la boîte pour continuer.",
+        }
+
+    touch_last_seen(current_user)
+    return {"user": current_user, "box": box, "session": active_session}, None
+
+
 def serialize_box_identity(box):
     if not box:
         return None
@@ -60,6 +97,7 @@ def open_box_session_for_user(user, box):
         defaults={
             "started_at": now,
             "expires_at": expires_at,
+            "deposit": None,
         },
     )
     return session

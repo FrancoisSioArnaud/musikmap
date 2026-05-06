@@ -10,6 +10,7 @@ from django.db import transaction
 from rest_framework.test import APIClient
 
 from box_management.models import Box, LocationPoint
+from box_management.services.seeding import activity_simulation
 
 User = get_user_model()
 
@@ -209,25 +210,23 @@ class Command(BaseCommand):
         return True
 
     def search_song(self, ctx: SeedContext, client: APIClient, query: str, retries: int = 2) -> dict[str, Any] | None:
+        if ctx.dry_run:
+            return None
+
         for attempt in range(1, retries + 2):
-            ok, data, status_code = self.api_request(
-                ctx,
-                client,
-                "post",
-                "/spotify/search",
-                payload={"search_query": query},
-                expected_statuses=(200, 429, 503),
-                action="search_song",
-            )
-            if not ok:
-                if status_code in (429, 503):
-                    if attempt <= retries + 1:
-                        sleep_s = min(attempt, 2)
-                        time.sleep(sleep_s)
-                        continue
+            try:
+                tracks = activity_simulation.backend_search_tracks_strict("spotify", query)
+            except activity_simulation.ProviderRateLimitError:
+                if attempt <= retries + 1:
+                    sleep_s = min(attempt, 2)
+                    time.sleep(sleep_s)
+                    continue
+                self.log_warning(ctx, "search_song", "Spotify rate-limit après retries")
+                return None
+            except activity_simulation.ProviderSearchError as error:
+                self.log_warning(ctx, "search_song", f"Spotify indisponible: {error}")
                 return None
 
-            tracks = data.get("tracks") if isinstance(data, dict) else None
             if tracks:
                 self.log_ok(ctx, "search_song", f"query='{query}' -> {len(tracks)} résultats")
                 return tracks[0]
@@ -243,18 +242,17 @@ class Command(BaseCommand):
             ctx,
             client,
             "post",
-            "/box-management/get-box/",
-            payload={"boxSlug": box_slug, "option": option},
+            f"/box-management/box-deposit/?boxSlug={box_slug}",
+            payload={"option": option},
             expected_statuses=(200,),
             action="deposit_song",
         )
         if not ok:
             return None
 
-        successes = data.get("successes") if isinstance(data, dict) else None
         dep_key = None
-        if isinstance(successes, list) and successes:
-            dep_key = successes[0].get("public_key")
+        if isinstance(data, dict):
+            dep_key = (data.get("my_deposit") or {}).get("public_key")
         if not dep_key:
             dep_key = (data.get("main") or {}).get("public_key") if isinstance(data, dict) else None
 
@@ -538,8 +536,14 @@ class Command(BaseCommand):
                     self.log_warning(ctx, "open_box_session", f"session non ouverte pour {user.username} / {box_slug}")
 
         songs_cache: list[dict[str, Any]] = []
+        persona_queries = [
+            f"{title} {artist}"
+            for persona in activity_simulation.PERSONAS
+            for title, artist in persona["songs"]
+        ]
+        search_queries = persona_queries or SEARCH_QUERIES
         for _user, client in clients_by_user:
-            query = ctx.rng.choice(SEARCH_QUERIES)
+            query = ctx.rng.choice(search_queries)
             song = self.search_song(ctx, client, query)
             if song:
                 songs_cache.append(song)
@@ -636,7 +640,6 @@ class Command(BaseCommand):
             _user, client = ctx.rng.choice(clients_by_user)
             if emoji_free_id:
                 self.react(ctx, client, dep_key, emoji_free_id)
-            self.react(ctx, client, dep_key, None)
 
         # Commentaires (succès + refus potentiels)
         for dep_key in deposit_keys[: min(6, len(deposit_keys))]:

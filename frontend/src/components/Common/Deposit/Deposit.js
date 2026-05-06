@@ -32,7 +32,6 @@ import {
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../../Utils/drawerHistory";
-import { getValid, setWithTTL } from "../../Utils/mmStorage";
 import { formatRelativeTime } from "../../Utils/time";
 
 import DepositComments from "./comments/DepositComments";
@@ -48,8 +47,6 @@ function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
 
-const KEY_BOX_CONTENT = "mm_box_content";
-const TTL_MINUTES = 20;
 const MIN_REVEAL_LOADING_MS = 750;
 
 function sleep(ms) {
@@ -331,53 +328,11 @@ export default function Deposit({
     });
   }, [localDep?.public_key, setDispDeposits]);
 
-  const updateStorageSnapshot = useCallback((transform) => {
-    try {
-      const snap = getValid(KEY_BOX_CONTENT);
-      if (!snap) {return;}
-
-      let changed = false;
-      const applyToDeposit = (item) => {
-        if (!item || item.public_key !== localDep?.public_key) {return item;}
-        changed = true;
-        return transform(item);
-      };
-
-      const next = { ...snap };
-
-      if (next.main) {
-        next.main = applyToDeposit(next.main);
-      }
-
-      if (next.myDeposit) {
-        next.myDeposit = applyToDeposit(next.myDeposit);
-      }
-
-      if (next.activePinnedDeposit) {
-        next.activePinnedDeposit = applyToDeposit(next.activePinnedDeposit);
-      }
-
-      if (Array.isArray(next.older)) {
-        next.older = next.older.map(applyToDeposit);
-      }
-
-      if (Array.isArray(next.olderDeposits)) {
-        next.olderDeposits = next.olderDeposits.map(applyToDeposit);
-      }
-
-      if (!changed) {return;}
-
-      next.timestamp = Date.now();
-      setWithTTL(KEY_BOX_CONTENT, next, TTL_MINUTES);
-    } catch (error) {}
-  }, [localDep?.public_key]);
-
   const handleSongResolved = useCallback((resolvedSong) => {
     if (!resolvedSong) {return;}
     setLocalDep((prev) => ({ ...(prev || {}), song: { ...(prev?.song || {}), ...resolvedSong } }));
     updateDepositCollections((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
-    updateStorageSnapshot((item) => ({ ...(item || {}), song: { ...(item?.song || {}), ...resolvedSong } }));
-  }, [updateDepositCollections, updateStorageSnapshot]);
+  }, [updateDepositCollections]);
 
   const revealDeposit = useCallback(async () => {
     let didReveal = false;
@@ -448,16 +403,6 @@ export default function Deposit({
         },
       }));
 
-      updateStorageSnapshot((item) => ({
-        ...item,
-        discovered_at: isoNow,
-        song: {
-          ...(item?.song || {}),
-          ...revealed,
-          image_url: revealed.image_url || item?.song?.image_url,
-        },
-      }));
-
       if (typeof payload?.points_balance === "number" && setUser) {
         setUser((prev) => ({ ...(prev || {}), points: payload.points_balance }));
       }
@@ -470,7 +415,7 @@ export default function Deposit({
     } finally {
       return didReveal;
     }
-  }, [context, localDep.public_key, openActionErrorDialog, setUser, updateDepositCollections, updateStorageSnapshot, viewer?.id]);
+  }, [context, localDep.public_key, openActionErrorDialog, setUser, updateDepositCollections, viewer?.id]);
 
   const handleReactionApplied = (result) => {
     const nextReactions = Array.isArray(result?.reactions)
@@ -495,11 +440,6 @@ export default function Deposit({
     }));
 
     updateDepositCollections((item) => ({
-      ...(item || {}),
-      ...nextDepPatch,
-    }));
-
-    updateStorageSnapshot((item) => ({
       ...(item || {}),
       ...nextDepPatch,
     }));

@@ -62,17 +62,51 @@ class EconomyAndPinnedPublicViewTests(FlowboxAPITestCase):
 
 
 class PublicContractViewTests(FlowboxAPITestCase):
-    def test_get_box_returns_public_box_snapshot(self):
+    def test_box_preview_returns_public_box_snapshot(self):
         client = self.make_client(name="Client public box", slug="client-public-box")
         box = self.make_box(url="box-public", name="Box public", client=client)
         song = self.make_song(public_key="public-box-song")
+        song.image_url = "https://example.com/cover.jpg"
+        song.save(update_fields=["image_url"])
         self.make_deposit(user=self.make_user(username="owner-public-box"), song=song, box=box)
 
-        response = self.client.get(reverse("get-box"), {"name": box.url})
+        response = self.client.get(reverse("box-preview"), {"boxSlug": box.url})
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                "slug",
+                "name",
+                "client_slug",
+                "deposit_count",
+                "last_deposit_date",
+                "last_deposit_song_image_url",
+                "search_incitation_text",
+            },
+        )
+        self.assertEqual(response.data["slug"], box.url)
         self.assertEqual(response.data["name"], box.name)
         self.assertEqual(response.data["deposit_count"], 1)
         self.assertEqual(response.data["client_slug"], client.slug)
+        self.assertEqual(response.data["last_deposit_song_image_url"], song.image_url)
+
+    def test_box_preview_sets_csrf_cookie(self):
+        box = self.make_box(url="box-csrf", name="Box CSRF")
+
+        response = self.client.get(reverse("box-preview"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("csrftoken", response.cookies)
+
+    def test_box_preview_requires_box_slug(self):
+        response = self.client.get(reverse("box-preview"))
+
+        self.assert_api_error(response, 400, "BOX_SLUG_REQUIRED")
+
+    def test_box_preview_returns_not_found_for_invalid_box_slug(self):
+        response = self.client.get(reverse("box-preview"), {"boxSlug": "missing-box"})
+
+        self.assert_api_error(response, 404, "BOX_NOT_FOUND")
 
     def test_get_main_returns_latest_box_deposit(self):
         box = self.make_box(url="box-main", name="Box main")
