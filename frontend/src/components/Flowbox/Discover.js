@@ -23,6 +23,7 @@ import {
 
 import AchievementsPanel from "./AchievementsPanel";
 import LiveSearchSection from "./discover/LiveSearchSection";
+import OlderDepositsSection, { DISCOVER_OLDER_DEPOSITS_LIMIT } from "./discover/OlderDepositsSection";
 import PinnedSongSection from "./PinnedSongSection";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
@@ -38,8 +39,10 @@ function normalizeDiscoverPayload(payload, fallbackSlug) {
     loadedAt: source.loadedAt || source.loaded_at || new Date().toISOString(),
     main: source.main || null,
     olderDeposits: Array.isArray(source.olderDeposits || source.older_deposits)
-      ? (source.olderDeposits || source.older_deposits)
+      ? (source.olderDeposits || source.older_deposits).slice(0, DISCOVER_OLDER_DEPOSITS_LIMIT)
       : [],
+    olderDepositsNextCursor: source.olderDepositsNextCursor ?? source.older_deposits_next_cursor ?? null,
+    olderDepositsHasMore: Boolean(source.olderDepositsHasMore ?? source.older_deposits_has_more ?? false),
     activePinnedDeposit: source.activePinnedDeposit || source.active_pinned_deposit || null,
     myDeposit: source.myDeposit || source.my_deposit || null,
     successes: Array.isArray(source.successes) ? source.successes : [],
@@ -235,6 +238,8 @@ export default function Discover() {
   const olderDeposits = Array.isArray(boxContent?.olderDeposits)
     ? boxContent.olderDeposits
     : [];
+  const olderDepositsNextCursor = boxContent?.olderDepositsNextCursor || null;
+  const olderDepositsHasMore = Boolean(boxContent?.olderDepositsHasMore);
 
   const handleOpenAchievements = useCallback(() => {
     openDrawerWithHistory({
@@ -267,6 +272,46 @@ export default function Discover() {
       boxSlug,
     }));
   }, [boxSlug, patchDiscoverSnapshot]);
+
+  const handleOlderDepositsLoaded = useCallback((payload) => {
+    const loadedDeposits = Array.isArray(payload?.older_deposits)
+      ? payload.older_deposits
+      : [];
+
+    setBoxContent((current) => {
+      const currentSnapshot = current || normalizeDiscoverPayload({}, boxSlug);
+      const existingDeposits = Array.isArray(currentSnapshot.olderDeposits)
+        ? currentSnapshot.olderDeposits
+        : [];
+      const seenKeys = new Set(existingDeposits.map((deposit) => deposit?.public_key).filter(Boolean));
+      const deduplicatedNewDeposits = loadedDeposits.filter((deposit) => {
+        const key = deposit?.public_key;
+        if (!key || seenKeys.has(key)) {return false;}
+        seenKeys.add(key);
+        return true;
+      });
+      const mergedDeposits = [...existingDeposits, ...deduplicatedNewDeposits]
+        .slice(0, DISCOVER_OLDER_DEPOSITS_LIMIT);
+      const limitReached = mergedDeposits.length >= DISCOVER_OLDER_DEPOSITS_LIMIT;
+      const paginationPatch = {
+        boxSlug,
+        olderDeposits: mergedDeposits,
+        olderDepositsNextCursor: limitReached ? null : (payload?.next_cursor || null),
+        olderDepositsHasMore: limitReached ? false : Boolean(payload?.has_more),
+      };
+
+      patchDiscoverSnapshot?.(boxSlug, paginationPatch);
+      return {
+        ...currentSnapshot,
+        ...paginationPatch,
+      };
+    });
+  }, [boxSlug, patchDiscoverSnapshot]);
+
+  const handleOlderDepositsSessionExpired = useCallback(() => {
+    clearBoxSession(boxSlug, { markExpired: true });
+    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
+  }, [boxSlug, clearBoxSession, navigate]);
 
   const handleOpenArticleDrawer = useCallback(
     (article) => {
@@ -423,35 +468,15 @@ export default function Discover() {
 
       <PinnedSongSection boxSlug={boxSlug} />
 
-      {olderDeposits.length > 0 ? (
-        <Box id="older_deposit">
-          <Box className="intro" sx={{ p: 4 }}>
-            <Typography component="h2" variant="h3" sx={{ mt: 5 }}>
-              Partages précédents
-            </Typography>
-            <Typography component="p" variant="body1">
-              Ces chansons ont été déposées plus tôt dans cette boîte. Utilise tes
-              points pour les révéler.
-            </Typography>
-          </Box>
-
-          <Box id="older_deposits_list">
-            {olderDeposits.map((d, idx) => (
-              <Deposit
-                key={d.public_key || idx}
-                dep={d}
-                user={user}
-                variant="list"
-                showPlay={true}
-                showUser={true}
-              />
-            ))}
-            <Typography component="p" variant="body1" sx={{ textAlign: "center" }}>
-              Reviens nous voir bientôt, de nouvelles chansons auront été partagées
-            </Typography>
-          </Box>
-        </Box>
-      ) : null}
+      <OlderDepositsSection
+        boxSlug={boxSlug}
+        deposits={olderDeposits}
+        nextCursor={olderDepositsNextCursor}
+        hasMore={olderDepositsHasMore}
+        onDepositsLoaded={handleOlderDepositsLoaded}
+        onSessionExpired={handleOlderDepositsSessionExpired}
+        user={user}
+      />
     </Box>
   );
 }

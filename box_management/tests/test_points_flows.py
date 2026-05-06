@@ -596,6 +596,183 @@ class BoxContentFlowTests(FlowboxAPITestCase):
         self.assertEqual(response.data["my_deposit"]["song"]["public_key"], my_deposit.song.public_key)
 
 
+    def test_box_content_limits_older_deposits_to_25_with_next_cursor(self):
+        user = self.auth(self.make_user(username="content-page-limit"))
+        box = self.make_box(url="box-content-page-limit", name="Box content page limit")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="content-page-limit-main"),
+            song=self.make_song(public_key="content-page-limit-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        for index in range(30):
+            self.make_deposit(
+                user=self.make_user(username=f"content-page-limit-owner-{index}"),
+                song=self.make_song(public_key=f"content-page-limit-song-{index}"),
+                box=box,
+                deposited_at=session.started_at - timedelta(seconds=index + 1),
+            )
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["older_deposits"]), 25)
+        self.assertTrue(response.data["older_deposits_has_more"])
+        self.assertIsNotNone(response.data["older_deposits_next_cursor"])
+
+    def test_box_content_without_more_older_deposits_returns_null_cursor(self):
+        user = self.auth(self.make_user(username="content-page-no-more"))
+        box = self.make_box(url="box-content-page-no-more", name="Box content page no more")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="content-page-no-more-main"),
+            song=self.make_song(public_key="content-page-no-more-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        for index in range(3):
+            self.make_deposit(
+                user=self.make_user(username=f"content-page-no-more-owner-{index}"),
+                song=self.make_song(public_key=f"content-page-no-more-song-{index}"),
+                box=box,
+                deposited_at=session.started_at - timedelta(seconds=index + 1),
+            )
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["older_deposits"]), 3)
+        self.assertFalse(response.data["older_deposits_has_more"])
+        self.assertIsNone(response.data["older_deposits_next_cursor"])
+
+    def test_box_older_deposits_returns_next_page_without_duplicates(self):
+        user = self.auth(self.make_user(username="older-page-next"))
+        box = self.make_box(url="older-page-next", name="Older page next")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="older-page-main"),
+            song=self.make_song(public_key="older-page-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        for index in range(30):
+            self.make_deposit(
+                user=self.make_user(username=f"older-page-owner-{index}"),
+                song=self.make_song(public_key=f"older-page-song-{index}"),
+                box=box,
+                deposited_at=session.started_at - timedelta(seconds=index + 1),
+            )
+        first = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+        first_keys = {deposit["public_key"] for deposit in first.data["older_deposits"]}
+
+        response = self.client.get(
+            reverse("box-older-deposits"),
+            {"boxSlug": box.url, "limit": 25, "cursor": first.data["older_deposits_next_cursor"]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        next_keys = [deposit["public_key"] for deposit in response.data["older_deposits"]]
+        self.assertEqual(len(next_keys), 5)
+        self.assertTrue(first_keys.isdisjoint(next_keys))
+        self.assertFalse(response.data["has_more"])
+        self.assertIsNone(response.data["next_cursor"])
+
+    def test_box_older_deposits_respects_session_started_at_stability(self):
+        user = self.auth(self.make_user(username="older-page-stable"))
+        box = self.make_box(url="older-page-stable", name="Older page stable")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="older-page-stable-main"),
+            song=self.make_song(public_key="older-page-stable-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        for index in range(30):
+            self.make_deposit(
+                user=self.make_user(username=f"older-page-stable-owner-{index}"),
+                song=self.make_song(public_key=f"older-page-stable-song-{index}"),
+                box=box,
+                deposited_at=session.started_at - timedelta(seconds=index + 1),
+            )
+        later = self.make_deposit(
+            user=self.make_user(username="older-page-stable-later"),
+            song=self.make_song(public_key="older-page-stable-later"),
+            box=box,
+            deposited_at=session.started_at + timedelta(seconds=1),
+        )
+
+        first = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+        response = self.client.get(
+            reverse("box-older-deposits"),
+            {"boxSlug": box.url, "limit": 25, "cursor": first.data["older_deposits_next_cursor"]},
+        )
+
+        returned_keys = [first.data["main"]["public_key"]]
+        returned_keys += [deposit["public_key"] for deposit in first.data["older_deposits"]]
+        returned_keys += [deposit["public_key"] for deposit in response.data["older_deposits"]]
+        self.assertNotIn(later.public_key, returned_keys)
+
+    def test_box_older_deposits_invalid_cursor_returns_api_error(self):
+        user = self.auth(self.make_user(username="older-page-invalid"))
+        box = self.make_box(url="older-page-invalid", name="Older page invalid")
+
+        response = self.client.get(
+            reverse("box-older-deposits"),
+            {"boxSlug": box.url, "limit": 25, "cursor": "bad-cursor"},
+        )
+
+        self.assert_api_error(response, 400, "INVALID_CURSOR")
+
+    def test_box_older_deposits_without_active_session_returns_session_required(self):
+        user = self.auth(self.make_user(username="older-page-no-session"))
+        box = self.make_box(url="older-page-no-session", name="Older page no session")
+        BoxSession.objects.filter(user=user, box=box).delete()
+
+        response = self.client.get(reverse("box-older-deposits"), {"boxSlug": box.url, "limit": 25})
+
+        self.assert_api_error(response, 403, "BOX_SESSION_REQUIRED")
+
+    def test_box_older_deposits_caps_limit_to_25(self):
+        user = self.auth(self.make_user(username="older-page-cap"))
+        box = self.make_box(url="older-page-cap", name="Older page cap")
+        session = BoxSession.objects.get(user=user, box=box)
+        session.started_at = timezone.now()
+        session.expires_at = session.started_at + timedelta(minutes=20)
+        session.save(update_fields=["started_at", "expires_at"])
+        self.make_deposit(
+            user=self.make_user(username="older-page-cap-main"),
+            song=self.make_song(public_key="older-page-cap-main"),
+            box=box,
+            deposited_at=session.started_at,
+        )
+        for index in range(30):
+            self.make_deposit(
+                user=self.make_user(username=f"older-page-cap-owner-{index}"),
+                song=self.make_song(public_key=f"older-page-cap-song-{index}"),
+                box=box,
+                deposited_at=session.started_at - timedelta(seconds=index + 1),
+            )
+
+        response = self.client.get(reverse("box-older-deposits"), {"boxSlug": box.url, "limit": 100})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["older_deposits"]), 25)
+        self.assertTrue(response.data["has_more"])
+
+
 class BoxDepositFlowTests(FlowboxAPITestCase):
     def test_box_deposit_creates_session_deposit_and_returns_points_payload(self):
         user = self.auth(self.make_user(username="box-deposit-create", points=0))

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -92,6 +92,8 @@ function mockFetch({
   articles = [],
   depositResponse = null,
   depositStatus = 200,
+  olderDepositsResponse = null,
+  olderDepositsStatus = 200,
 }) {
   global.fetch = jest.fn(async (url) => {
     if (String(url).includes('/box-management/box-content/')) {
@@ -118,6 +120,14 @@ function mockFetch({
       };
     }
 
+    if (String(url).includes('/box-management/box-older-deposits/')) {
+      return {
+        ok: olderDepositsStatus >= 200 && olderDepositsStatus < 300,
+        status: olderDepositsStatus,
+        json: async () => olderDepositsResponse,
+      };
+    }
+
     throw new Error(`Unexpected fetch ${url}`);
   });
 }
@@ -127,9 +137,25 @@ function expectNodeBefore(first, second) {
 }
 
 describe('Discover', () => {
+  let intersectionObservers = [];
+
   beforeEach(() => {
     jest.clearAllMocks();
+    intersectionObservers = [];
+    delete window.IntersectionObserver;
   });
+
+  function mockIntersectionObserver() {
+    window.IntersectionObserver = jest.fn((callback) => {
+      const observer = {
+        observe: jest.fn(),
+        disconnect: jest.fn(),
+        trigger: (isIntersecting = true) => callback([{ isIntersecting }]),
+      };
+      intersectionObservers.push(observer);
+      return observer;
+    });
+  }
 
   test('loads box-content when no local snapshot exists and does not redirect to search', async () => {
     mockFetch({
@@ -137,6 +163,8 @@ describe('Discover', () => {
         boxSlug: 'box-a',
         main: { public_key: 'main-1' },
         older_deposits: [{ public_key: 'older-1' }],
+        older_deposits_next_cursor: '2026-05-06T20:00:00.000000+00:00|123',
+        older_deposits_has_more: true,
         active_pinned_deposit: { public_key: 'pin-1' },
         my_deposit: null,
       },
@@ -157,6 +185,8 @@ describe('Discover', () => {
         boxSlug: 'box-a',
         main: { public_key: 'main-1' },
         olderDeposits: [{ public_key: 'older-1' }],
+        olderDepositsNextCursor: '2026-05-06T20:00:00.000000+00:00|123',
+        olderDepositsHasMore: true,
         activePinnedDeposit: { public_key: 'pin-1' },
         myDeposit: null,
         successes: [],
@@ -292,6 +322,168 @@ describe('Discover', () => {
       activePinnedDeposit: null,
     });
     expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/box-management/box-content/'))).toHaveLength(1);
+  });
+
+
+  test('scroll loads older deposits next page, appends without duplicates and patches snapshot', async () => {
+    mockIntersectionObserver();
+    const patchDiscoverSnapshot = jest.fn();
+    mockFetch({
+      boxContent: {
+        boxSlug: 'box-a',
+        main: { public_key: 'main-1' },
+        older_deposits: [{ public_key: 'older-1' }, { public_key: 'older-duplicate' }],
+        older_deposits_next_cursor: '2026-05-06T20:00:00.000000+00:00|123',
+        older_deposits_has_more: true,
+        active_pinned_deposit: null,
+        my_deposit: null,
+      },
+      olderDepositsResponse: {
+        older_deposits: [{ public_key: 'older-duplicate' }, { public_key: 'older-2' }],
+        next_cursor: '2026-05-06T19:30:00.000000+00:00|122',
+        has_more: true,
+      },
+    });
+
+    renderDiscover({ patchDiscoverSnapshot });
+
+    expect(await screen.findByText('older-1')).toBeInTheDocument();
+    expect(screen.getByText('older-duplicate')).toBeInTheDocument();
+
+    await waitFor(() => expect(intersectionObservers).toHaveLength(1));
+    await act(async () => {
+      intersectionObservers[0].trigger(true);
+    });
+
+    await waitFor(() => expect(screen.getByText('older-2')).toBeInTheDocument());
+    expect(screen.getAllByText('older-duplicate')).toHaveLength(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/box-management/box-older-deposits/?boxSlug=box-a&limit=25&cursor=2026-05-06T20%3A00%3A00.000000%2B00%3A00%7C123',
+      expect.any(Object)
+    );
+    expect(patchDiscoverSnapshot).toHaveBeenCalledWith('box-a', expect.objectContaining({
+      olderDeposits: [{ public_key: 'older-1' }, { public_key: 'older-duplicate' }, { public_key: 'older-2' }],
+      olderDepositsNextCursor: '2026-05-06T19:30:00.000000+00:00|122',
+      olderDepositsHasMore: true,
+    }));
+    const patchedSnapshot = patchDiscoverSnapshot.mock.calls[0][1];
+    expect(patchedSnapshot).not.toHaveProperty('main');
+    expect(patchedSnapshot).not.toHaveProperty('myDeposit');
+    expect(patchedSnapshot).not.toHaveProperty('activePinnedDeposit');
+  });
+
+  test('shows normal end message when older deposits have no more pages', async () => {
+    mockFetch({
+      boxContent: {
+        boxSlug: 'box-a',
+        main: { public_key: 'main-1' },
+        older_deposits: [{ public_key: 'older-1' }],
+        older_deposits_next_cursor: null,
+        older_deposits_has_more: false,
+        active_pinned_deposit: null,
+        my_deposit: null,
+      },
+    });
+
+    renderDiscover();
+
+    expect(await screen.findByText('Tu as vu toutes les chansons disponibles dans cette boîte.')).toBeInTheDocument();
+  });
+
+  test('falls back to Voir plus when IntersectionObserver is unavailable', async () => {
+    const patchDiscoverSnapshot = jest.fn();
+    mockFetch({
+      boxContent: {
+        boxSlug: 'box-a',
+        main: { public_key: 'main-1' },
+        older_deposits: [{ public_key: 'older-1' }],
+        older_deposits_next_cursor: '2026-05-06T20:00:00.000000+00:00|123',
+        older_deposits_has_more: true,
+        active_pinned_deposit: null,
+        my_deposit: null,
+      },
+      olderDepositsResponse: {
+        older_deposits: [{ public_key: 'older-2' }],
+        next_cursor: null,
+        has_more: false,
+      },
+    });
+
+    renderDiscover({ patchDiscoverSnapshot });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Voir plus' }));
+
+    expect(await screen.findByText('older-2')).toBeInTheDocument();
+    expect(patchDiscoverSnapshot).toHaveBeenCalledWith('box-a', expect.objectContaining({
+      olderDepositsHasMore: false,
+    }));
+  });
+
+  test('stops at 100 older deposits and shows the session display limit message', async () => {
+    mockIntersectionObserver();
+    const initialOlderDeposits = Array.from({ length: 99 }, (_, index) => ({ public_key: `older-${index + 1}` }));
+    const patchDiscoverSnapshot = jest.fn();
+    mockFetch({
+      boxContent: {
+        boxSlug: 'box-a',
+        main: { public_key: 'main-1' },
+        older_deposits: initialOlderDeposits,
+        older_deposits_next_cursor: '2026-05-06T20:00:00.000000+00:00|123',
+        older_deposits_has_more: true,
+        active_pinned_deposit: null,
+        my_deposit: null,
+      },
+      olderDepositsResponse: {
+        older_deposits: [{ public_key: 'older-100' }, { public_key: 'older-101' }],
+        next_cursor: '2026-05-06T19:00:00.000000+00:00|100',
+        has_more: true,
+      },
+    });
+
+    renderDiscover({ patchDiscoverSnapshot });
+
+    expect(await screen.findByText('older-99')).toBeInTheDocument();
+    await waitFor(() => expect(intersectionObservers).toHaveLength(1));
+    await act(async () => {
+      intersectionObservers[0].trigger(true);
+    });
+
+    expect(await screen.findByText('older-100')).toBeInTheDocument();
+    expect(screen.queryByText('older-101')).not.toBeInTheDocument();
+    expect(await screen.findByText('Tu as atteint la limite de chansons affichées pour cette session.')).toBeInTheDocument();
+    const patch = patchDiscoverSnapshot.mock.calls[0][1];
+    expect(patch.olderDeposits).toHaveLength(100);
+    expect(patch.olderDepositsHasMore).toBe(false);
+    expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/box-management/box-older-deposits/'))).toHaveLength(1);
+  });
+
+  test('redirects to closed when older deposits pagination requires a session', async () => {
+    mockIntersectionObserver();
+    const clearBoxSession = jest.fn();
+    mockFetch({
+      boxContent: {
+        boxSlug: 'box-a',
+        main: { public_key: 'main-1' },
+        older_deposits: [{ public_key: 'older-1' }],
+        older_deposits_next_cursor: '2026-05-06T20:00:00.000000+00:00|123',
+        older_deposits_has_more: true,
+        active_pinned_deposit: null,
+        my_deposit: null,
+      },
+      olderDepositsStatus: 403,
+      olderDepositsResponse: { code: 'BOX_SESSION_REQUIRED', detail: 'Session requise.' },
+    });
+
+    renderDiscover({ clearBoxSession });
+
+    expect(await screen.findByText('older-1')).toBeInTheDocument();
+    await waitFor(() => expect(intersectionObservers).toHaveLength(1));
+    await act(async () => {
+      intersectionObservers[0].trigger(true);
+    });
+
+    expect(await screen.findByText('Closed route')).toBeInTheDocument();
+    expect(clearBoxSession).toHaveBeenCalledWith('box-a', { markExpired: true });
   });
 
   test('renders MyDeposit only through LiveSearchSection post-deposit state', async () => {
