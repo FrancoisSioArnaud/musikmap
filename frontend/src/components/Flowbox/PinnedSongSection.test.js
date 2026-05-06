@@ -68,7 +68,7 @@ describe('PinnedSongSection', () => {
     };
 
     localStorage.setItem(
-      'mm_box_content',
+      'mm_flowbox_box::box-a',
       JSON.stringify({
         value: { boxSlug: 'box-a', activePinnedDeposit },
         expiresAt: Date.now() + 60_000,
@@ -83,7 +83,7 @@ describe('PinnedSongSection', () => {
 
   test('refreshes network when cached pinned deposit is expired', async () => {
     localStorage.setItem(
-      'mm_box_content',
+      'mm_flowbox_box::box-a',
       JSON.stringify({
         value: {
           boxSlug: 'box-a',

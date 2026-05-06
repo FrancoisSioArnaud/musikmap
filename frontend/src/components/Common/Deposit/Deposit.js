@@ -48,7 +48,7 @@ function SlideDownTransition(props) {
   return <Slide {...props} direction="down" />;
 }
 
-const KEY_BOX_CONTENT = "mm_box_content";
+const getBoxContentKey = (boxSlug) => `mm_flowbox_box::${boxSlug}`;
 const TTL_MINUTES = 20;
 const MIN_REVEAL_LOADING_MS = 750;
 
@@ -333,7 +333,10 @@ export default function Deposit({
 
   const updateStorageSnapshot = useCallback((transform) => {
     try {
-      const snap = getValid(KEY_BOX_CONTENT);
+      const routeMatch = location?.pathname?.match(/^\/flowbox\/([^/]+)/);
+      const boxSlug = routeMatch?.[1] || localDep?.box?.slug || localDep?.box_slug || "";
+      if (!boxSlug) {return;}
+      const snap = getValid(getBoxContentKey(boxSlug));
       if (!snap) {return;}
 
       let changed = false;

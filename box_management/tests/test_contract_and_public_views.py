@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
 
-from box_management.models import Deposit, Link
+from box_management.models import Article, Deposit, Link
 from box_management.tests.base import FlowboxAPITestCase
 from la_boite_a_son.economy import build_economy_payload
 
@@ -68,11 +68,26 @@ class PublicContractViewTests(FlowboxAPITestCase):
         song = self.make_song(public_key="public-box-song")
         self.make_deposit(user=self.make_user(username="owner-public-box"), song=song, box=box)
 
-        response = self.client.get(reverse("get-box"), {"name": box.url})
+        response = self.client.get(reverse("box-bootstrap"), {"name": box.url})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["name"], box.name)
         self.assertEqual(response.data["deposit_count"], 1)
         self.assertEqual(response.data["client_slug"], client.slug)
+
+    def test_box_content_returns_visible_articles(self):
+        self.auth(self.make_user(username="viewer-box-content", points=0))
+        client = self.make_client(name="Client box content", slug="client-box-content")
+        box = self.make_box(url="box-content-articles", name="Box content articles", client=client)
+        Article.objects.create(client=client, title="Article visible", short_text="Résumé", status="published")
+        song = self.make_song(public_key="box-content-song")
+        self.make_deposit(user=self.make_user(username="owner-box-content"), song=song, box=box)
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["box_slug"], box.url)
+        self.assertEqual(response.data["articles"][0]["title"], "Article visible")
+        self.assertIsNotNone(response.data["main"])
 
     def test_get_main_returns_latest_box_deposit(self):
         box = self.make_box(url="box-main", name="Box main")

@@ -421,27 +421,102 @@ class GetBox(APIView):
             return api_error(error["status"], error["code"], error["detail"])
         return Response(data, status=status.HTTP_200_OK)
 
+class BoxContentView(APIView):
+    def get(self, request, format=None):
+        box_slug = (request.query_params.get("boxSlug") or "").strip()
+        if not box_slug:
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
+        box = _get_box_by_slug(box_slug)
+        if not box:
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable")
+        user, session_error = _ensure_active_session_for_box_or_response(request, box)
+        if session_error is not None:
+            return session_error
+
+        deposits = list(Deposit.objects.filter(box=box, deposit_type="box").order_by("-deposited_at", "-id")[:16])
+        main = deposits[0] if deposits else None
+        older = deposits[1:] if len(deposits) > 1 else []
+        force_ids = [main.pk] if main else []
+        serialized_main = _build_deposits_payload([main], viewer=user, include_user=True, force_song_infos_for=force_ids)[0] if main else None
+        serialized_older = _build_deposits_payload(older, viewer=user, include_user=True) if older else []
+        articles_result, articles_error = get_visible_articles(box_slug=box_slug, limit=5)
+        if articles_error:
+            return api_error(articles_error["status"], articles_error["code"], articles_error["detail"])
+        articles = PublicVisibleArticleSerializer(articles_result["items"], many=True).data
+        my_deposit = None
+        session = _get_active_box_session(user, box)
+        if session and session.deposit_id:
+            session_deposit = Deposit.objects.filter(pk=session.deposit_id).first()
+            if session_deposit is not None:
+                my_payload = _build_deposits_payload(
+                    [session_deposit],
+                    viewer=user,
+                    include_user=True,
+                    force_song_infos_for=[session.deposit_id],
+                )
+                my_deposit = my_payload[0] if my_payload else None
+                serialized_older = [d for d in serialized_older if d.get("id") != session.deposit_id]
+            else:
+                session.deposit_id = None
+                session.save(update_fields=["deposit", "updated_at"])
+        if main is not None:
+            DiscoveredSong.objects.get_or_create(user=user, deposit=main, defaults={"discovered_type": "main"})
+
+        return Response({
+            "box_slug": box_slug,
+            "box": _serialize_box_identity(box),
+            "main": serialized_main,
+            "articles": articles,
+            "active_pinned_deposit": _serialize_active_pinned_deposit_for_box(box, user),
+            "older_deposits": serialized_older,
+            "my_deposit": my_deposit,
+            "current_user": build_current_user_payload(user),
+            "timestamp": timezone.now().isoformat(),
+        }, status=status.HTTP_200_OK)
+
+
+class BoxDepositsView(APIView):
     def post(self, request, format=None):
         option = request.data.get("option") or {}
         box_slug = (request.data.get("boxSlug") or "").strip()
         if not box_slug:
             return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
-
         box = _get_box_by_slug(box_slug)
         if not box:
             return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable")
-
         user, session_error = _ensure_active_session_for_box_or_response(request, box)
         if session_error is not None:
             return session_error
-
         try:
-            response_payload = create_box_deposit_payload(request=request, user=user, box=box, option=option)
+            with transaction.atomic():
+                box_session = (
+                    BoxSession.objects.select_for_update()
+                    .filter(user=user, box=box, expires_at__gt=timezone.now())
+                    .order_by("-expires_at", "-id")
+                    .first()
+                )
+                if box_session and box_session.deposit_id:
+                    session_deposit_exists = Deposit.objects.filter(pk=box_session.deposit_id).exists()
+                    if session_deposit_exists:
+                        return api_error(
+                            status.HTTP_403_FORBIDDEN,
+                            "BOX_DEPOSIT_ALREADY_EXISTS",
+                            "Tu as déjà déposé une chanson.",
+                        )
+                    box_session.deposit_id = None
+                    box_session.save(update_fields=["deposit", "updated_at"])
+                payload = create_box_deposit_payload(
+                    request=request, user=user, box=box, option=option, box_session=box_session
+                )
         except ValueError:
             return api_error(status.HTTP_400_BAD_REQUEST, "INVALID_DEPOSIT_OPTION", "Le dépôt demandé est invalide.")
-
-        response_payload["active_pinned_deposit"] = _serialize_active_pinned_deposit_for_box(box, user)
-        return Response(response_payload, status=status.HTTP_200_OK)
+        return Response({
+            "my_deposit": payload.get("my_deposit"),
+            "successes": payload.get("successes") or [],
+            "points_awarded": sum(int(item.get("points", 0) or 0) for item in (payload.get("successes") or [])),
+            "points_balance": payload.get("points_balance"),
+            "current_user": payload.get("current_user"),
+        }, status=status.HTTP_200_OK)
 
 
 class Location(APIView):

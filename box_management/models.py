@@ -111,6 +111,13 @@ class BoxSession(models.Model):
         on_delete=models.CASCADE,
         related_name="sessions",
     )
+    deposit = models.ForeignKey(
+        "Deposit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="session_deposits",
+    )
     started_at = models.DateTimeField(db_index=True)
     expires_at = models.DateTimeField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

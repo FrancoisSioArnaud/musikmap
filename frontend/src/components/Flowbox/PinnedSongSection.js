@@ -73,7 +73,7 @@ function buildPinnedDateLabel(dep) {
   return "Épinglée à l’instant";
 }
 
-const KEY_BOX_CONTENT = "mm_box_content";
+const getBoxContentKey = (boxSlug) => `mm_flowbox_box::${boxSlug}`;
 const TTL_MINUTES = 120;
 const PINNED_SONG_DRAWER_PARAM = "flowboxDrawer";
 const PINNED_SONG_DRAWER_VALUE = "pinned-song";
@@ -105,11 +105,11 @@ export default function PinnedSongSection({ boxSlug }) {
 
   const updateBoxContentStorage = useCallback((nextActivePinnedDeposit) => {
     try {
-      const snap = getValid(KEY_BOX_CONTENT);
+      const snap = getValid(getBoxContentKey(boxSlug));
       if (!snap || snap.boxSlug !== boxSlug) {return;}
 
       setWithTTL(
-        KEY_BOX_CONTENT,
+        getBoxContentKey(boxSlug),
         {
           ...snap,
           timestamp: Date.now(),
@@ -122,7 +122,7 @@ export default function PinnedSongSection({ boxSlug }) {
 
   const hydratePinnedFromStorage = useCallback(() => {
     try {
-      const snap = getValid(KEY_BOX_CONTENT);
+      const snap = getValid(getBoxContentKey(boxSlug));
       if (!snap || snap.boxSlug !== boxSlug) {
         return { hydrated: false, shouldRefresh: true };
       }

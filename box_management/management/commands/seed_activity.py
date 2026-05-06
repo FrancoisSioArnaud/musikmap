@@ -243,7 +243,7 @@ class Command(BaseCommand):
             ctx,
             client,
             "post",
-            "/box-management/get-box/",
+            "/box-management/box-deposits/",
             payload={"boxSlug": box_slug, "option": option},
             expected_statuses=(200,),
             action="deposit_song",

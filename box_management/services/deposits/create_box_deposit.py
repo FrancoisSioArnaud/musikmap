@@ -11,7 +11,7 @@ from users.models import CustomUser
 from users.utils import apply_points_delta, build_current_user_payload
 
 
-def create_box_deposit_payload(*, request, user, box, option):
+def create_box_deposit_payload(*, request, user, box, option, box_session=None):
     prev_head, older_list = _get_prev_head_and_older(box, limit=15)
     points_balance = None
 
@@ -31,6 +31,9 @@ def create_box_deposit_payload(*, request, user, box, option):
             prev_head, older_list = _get_prev_head_and_older(box, limit=15, exclude_deposit_ids=[deposit.pk])
             successes = []
             points_balance = int(user.points or 0)
+            if box_session is not None and box_session.deposit_id is None:
+                box_session.deposit = deposit
+                box_session.save(update_fields=["deposit", "updated_at"])
         else:
             successes, points_to_add = _build_successes(box=box, user=user, song=song, current_deposit=deposit)
 
@@ -47,6 +50,9 @@ def create_box_deposit_payload(*, request, user, box, option):
             ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add, lock_user=False)
             if ok_points:
                 points_balance = points_payload.get("points_balance")
+            if box_session is not None:
+                box_session.deposit = deposit
+                box_session.save(update_fields=["deposit", "updated_at"])
 
     reveal_ids = [prev_head.pk] if prev_head else []
     deposits_to_serialize = ([prev_head] if prev_head else []) + list(older_list or [])
@@ -58,6 +64,9 @@ def create_box_deposit_payload(*, request, user, box, option):
     )
 
     return {
+        "my_deposit": _build_deposits_payload(
+            [deposit], viewer=user, include_user=True, force_song_infos_for=[deposit.pk]
+        )[0],
         "main": serialized[0] if serialized else None,
         "older_deposits": serialized[1:] if len(serialized) > 1 else [],
         "successes": successes,
