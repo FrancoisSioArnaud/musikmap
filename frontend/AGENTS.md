@@ -46,18 +46,25 @@ Adapter les noms au test réellement concerné.
 - Toute recherche de chansons à publier doit passer par `frontend/src/components/Common/Search/SearchPanel.js`.
 - Les pages et fonctionnalités doivent importer `SearchPanel`, jamais `SearchBar` directement.
 - `SearchBar` est un détail interne de `Common/Search`.
-- `SearchPanel` doit être rendu soit dans une page, soit dans un `Drawer` MUI fullscreen slide-in depuis la droite.
+- `SearchPanel` doit être rendu soit dans une page explicitement prévue pour une recherche globale, soit dans un `Drawer` MUI fullscreen slide-in depuis la droite.
+- Dans le flow Flowbox, la recherche de chanson à déposer doit être ouverte depuis Discover dans un drawer piloté par l’URL. Ne pas créer une page `LiveSearch`.
 - Pour les recherches ouvertes depuis un drawer ou une modale, respecter la navigation par URL si le retour navigateur doit restaurer l’état précédent.
 - Les recherches personnalisées doivent respecter les providers connectés, `last_platform`, les logos providers et les états de connexion existants.
 - Garder un micro-loader si les résultats viennent du cache afin d’éviter une UI qui saute brutalement.
 
 ## Flowbox et stockage local
-- Le flow principal est : Onboarding → EnableLocation → LiveSearch → Discover.
+- Le flow principal est : Onboarding → EnableLocation → Discover.
+- Ne pas réintroduire une page `LiveSearch` ni une route `/flowbox/:boxSlug/search` pour le dépôt de chanson dans une boîte.
+- Discover est la page centrale in-box : elle charge son snapshot via `GET /box-management/box-content/?boxSlug=<slug>` quand une session active existe et que le snapshot local est absent.
+- La recherche de chanson à déposer dans une boîte est une section optionnelle de Discover. Elle doit ouvrir `SearchPanel` dans un drawer, pas naviguer vers une page dédiée.
+- L’état de la section de dépôt est dérivé de `myDeposit` : sans `myDeposit`, afficher l’appel à l’action ; avec `myDeposit`, afficher la confirmation de dépôt.
+- Après `POST /box-management/box-deposit/?boxSlug=<slug>`, patcher le snapshot local avec `myDeposit`, `successes` et `pointsBalance` sans recharger `box-content`.
+- `POST box-deposit` ne renvoie pas `current_user`; mettre à jour les points du user courant depuis `points_balance` si présent.
 - Ne pas autoriser visuellement une action que le backend refusera par session expirée sans afficher un message clair.
 - Préférer les données de session Flowbox sous la clé `mm_flowbox_box::${boxSlug}` pour les nouveaux comportements.
 - Ne pas réintroduire d’usage de `mm_box_content` dans du nouveau code si le chantier vise sa suppression.
 - `mm_current_box` ne doit rester qu’un cache léger d’entrée de flow si encore nécessaire.
-- Nettoyer les états de scroll Discover quand un nouveau dépôt doit réinitialiser la découverte.
+- Nettoyer les états de scroll Discover quand un nouveau snapshot de session doit réinitialiser la découverte.
 - Le header de session doit rester cohérent : nom de boîte, compte à rebours, seuils visuels et explication au clic.
 
 ## Composants Deposit, commentaires et réactions
