@@ -49,6 +49,32 @@ function normalizeDiscoverPayload(payload, fallbackSlug) {
   };
 }
 
+function hasOwn(source, key) {
+  return Object.prototype.hasOwnProperty.call(source, key);
+}
+
+function normalizeDiscoverPatch(patch, fallbackSlug) {
+  const source = patch || {};
+  const normalized = {
+    boxSlug: source.boxSlug || source.box_slug || fallbackSlug || null,
+  };
+
+  if (hasOwn(source, "myDeposit") || hasOwn(source, "my_deposit")) {
+    normalized.myDeposit = source.myDeposit ?? source.my_deposit ?? null;
+  }
+
+  if (hasOwn(source, "successes")) {
+    normalized.successes = Array.isArray(source.successes) ? source.successes : [];
+  }
+
+  if (hasOwn(source, "pointsBalance") || hasOwn(source, "points_balance")) {
+    const pointsBalance = source.pointsBalance ?? source.points_balance;
+    normalized.pointsBalance = typeof pointsBalance === "number" ? pointsBalance : null;
+  }
+
+  return normalized;
+}
+
 export default function Discover() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -233,7 +259,7 @@ export default function Discover() {
   }, [location, navigate]);
 
   const handleDepositCreated = useCallback((patch) => {
-    const normalizedPatch = normalizeDiscoverPayload(patch, boxSlug);
+    const normalizedPatch = normalizeDiscoverPatch(patch, boxSlug);
     patchDiscoverSnapshot?.(boxSlug, normalizedPatch);
     setBoxContent((current) => ({
       ...(current || normalizeDiscoverPayload({}, boxSlug)),

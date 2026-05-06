@@ -243,8 +243,8 @@ describe('Discover', () => {
       boxContent: {
         boxSlug: 'box-a',
         main: { public_key: 'main-1' },
-        older_deposits: [],
-        active_pinned_deposit: null,
+        older_deposits: [{ public_key: 'older-1' }],
+        active_pinned_deposit: { public_key: 'pin-1' },
         my_deposit: null,
       },
       depositResponse: {
@@ -262,11 +262,15 @@ describe('Discover', () => {
     renderDiscover({ patchDiscoverSnapshot });
 
     expect(await screen.findByTestId('deposit-main')).toHaveTextContent('main-1');
+    expect(await screen.findByText('older-1')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Posted song' }));
 
     expect(await screen.findByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(screen.getByText('Posted song')).toBeInTheDocument();
+    expect(screen.getByTestId('deposit-main')).toHaveTextContent('main-1');
+    expect(screen.getByText('older-1')).toBeInTheDocument();
+    expect(screen.queryByText(/Aucune chanson à découvrir/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
 
     expect(patchDiscoverSnapshot).toHaveBeenCalledWith(
@@ -278,6 +282,15 @@ describe('Discover', () => {
         pointsBalance: 125,
       })
     );
+    const patchedSnapshot = patchDiscoverSnapshot.mock.calls[0][1];
+    expect(patchedSnapshot).not.toHaveProperty('main');
+    expect(patchedSnapshot).not.toHaveProperty('olderDeposits');
+    expect(patchedSnapshot).not.toHaveProperty('activePinnedDeposit');
+    expect(patchedSnapshot).not.toMatchObject({
+      main: null,
+      olderDeposits: [],
+      activePinnedDeposit: null,
+    });
     expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/box-management/box-content/'))).toHaveLength(1);
   });
 
