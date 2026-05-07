@@ -271,7 +271,7 @@ export default function LiveSearchSection({
         <Box
           ref={liveSearchSlotRef}
           className="liveSearch_slot"
-        /*  style={isLiveSearchFixed && liveSearchHeight > 0 ? { minHeight: liveSearchHeight } : undefined}*/
+          style={isLiveSearchFixed && liveSearchHeight > 0 ? { minHeight: liveSearchHeight } : undefined}
         >
           <Box
             ref={liveSearchCardRef}
