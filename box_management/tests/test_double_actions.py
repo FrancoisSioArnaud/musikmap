@@ -28,6 +28,24 @@ class BoxSessionDepositFieldTests(FlowboxAPITestCase):
         session = open_box_session_for_user(user, box)
 
         self.assertIsNone(session.deposit_id)
+        self.assertEqual(session.deposit_points_earned, 0)
+        self.assertIsNone(session.deposit_points_balance_after)
+        self.assertEqual(session.deposit_successes, [])
+
+    def test_box_session_deposit_snapshot_defaults(self):
+        user = self.make_user(username="session-snapshot-defaults")
+        box = self.make_box(url="session-snapshot-defaults", name="Session snapshot defaults")
+
+        session = BoxSession.objects.create(
+            user=user,
+            box=box,
+            started_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(minutes=20),
+        )
+
+        self.assertEqual(session.deposit_points_earned, 0)
+        self.assertIsNone(session.deposit_points_balance_after)
+        self.assertEqual(session.deposit_successes, [])
 
     def test_open_box_session_resets_existing_deposit_on_renewal(self):
         user = self.make_user(username="session-reset-deposit")
@@ -37,6 +55,9 @@ class BoxSessionDepositFieldTests(FlowboxAPITestCase):
             user=user,
             box=box,
             deposit=deposit,
+            deposit_points_earned=42,
+            deposit_points_balance_after=142,
+            deposit_successes=[{"name": "Total", "points": 42}],
             started_at=timezone.now() - timedelta(minutes=10),
             expires_at=timezone.now() + timedelta(minutes=10),
         )
@@ -46,7 +67,13 @@ class BoxSessionDepositFieldTests(FlowboxAPITestCase):
 
         self.assertEqual(renewed_session.pk, session.pk)
         self.assertIsNone(renewed_session.deposit_id)
+        self.assertEqual(renewed_session.deposit_points_earned, 0)
+        self.assertIsNone(renewed_session.deposit_points_balance_after)
+        self.assertEqual(renewed_session.deposit_successes, [])
         self.assertIsNone(session.deposit_id)
+        self.assertEqual(session.deposit_points_earned, 0)
+        self.assertIsNone(session.deposit_points_balance_after)
+        self.assertEqual(session.deposit_successes, [])
 
     def test_box_session_deposit_must_match_session_scope(self):
         user = self.make_user(username="session-valid-user")
@@ -131,8 +158,9 @@ class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
         self.assertFalse(first.data["already_exists"])
         self.assertTrue(second.data["already_exists"])
         self.assertEqual(first.data["my_deposit"]["public_key"], second.data["my_deposit"]["public_key"])
-        self.assertEqual(second.data["successes"], [])
+        self.assertEqual(first.data["successes"], second.data["successes"])
         self.assertEqual(first.data["points_balance"], second.data["points_balance"])
+        self.assertEqual(first.data["deposit_points_earned"], second.data["deposit_points_earned"])
         user.refresh_from_db()
         self.assertEqual(user.points, points_after_first)
         self.assertEqual(
@@ -160,6 +188,10 @@ class DepositAndFavoriteDoubleActionTests(FlowboxAPITestCase):
 
         self.assertEqual(first.status_code, 200)
         self.assert_api_error(second, 409, "BOX_SESSION_DEPOSIT_ALREADY_EXISTS")
+        self.assertEqual(second.data["my_deposit"]["public_key"], first.data["my_deposit"]["public_key"])
+        self.assertEqual(second.data["successes"], first.data["successes"])
+        self.assertEqual(second.data["points_balance"], first.data["points_balance"])
+        self.assertEqual(second.data["deposit_points_earned"], first.data["deposit_points_earned"])
         self.assertEqual(
             Deposit.objects.filter(user=user, box=box, deposit_type=Deposit.DEPOSIT_TYPE_BOX).count(),
             1,

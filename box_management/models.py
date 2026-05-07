@@ -118,6 +118,9 @@ class BoxSession(models.Model):
         blank=True,
         related_name="box_sessions_as_session_deposit",
     )
+    deposit_points_earned = models.PositiveIntegerField(default=0)
+    deposit_points_balance_after = models.PositiveIntegerField(null=True, blank=True)
+    deposit_successes = models.JSONField(default=list, blank=True)
     started_at = models.DateTimeField(db_index=True)
     expires_at = models.DateTimeField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

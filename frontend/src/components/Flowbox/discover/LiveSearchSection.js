@@ -28,7 +28,12 @@ function normalizeDepositResponse(data) {
     myDeposit: data?.my_deposit || null,
     successes: Array.isArray(data?.successes) ? data.successes : [],
     pointsBalance: typeof data?.points_balance === "number" ? data.points_balance : null,
+    depositPointsEarned: typeof data?.deposit_points_earned === "number" ? data.deposit_points_earned : 0,
   };
+}
+
+function hasDepositResyncPayload(data) {
+  return Boolean(data?.my_deposit);
 }
 
 function buildErrorMessage(data) {
@@ -41,6 +46,7 @@ export default function LiveSearchSection({
   myDeposit,
   successes = [],
   pointsBalance = null,
+  depositPointsEarned = 0,
   onDepositCreated,
   onOpenAchievements,
 }) {
@@ -135,6 +141,23 @@ export default function LiveSearchSection({
       const data = (await response.json().catch(() => null)) || {};
 
       if (!response.ok) {
+        if (
+          response.status === 409 &&
+          data?.code === "BOX_SESSION_DEPOSIT_ALREADY_EXISTS" &&
+          hasDepositResyncPayload(data)
+        ) {
+          const normalized = normalizeDepositResponse(data);
+          onDepositCreated?.(normalized);
+
+          if (typeof normalized.pointsBalance === "number" && setUser) {
+            setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
+          }
+
+          setDepositFlowState({ requestKey, status: "success", errorMessage: null });
+          closeDrawer();
+          return;
+        }
+
         const handled = handleDepositError(data, response);
         if (!handled) {
           setDepositFlowState({
@@ -170,6 +193,7 @@ export default function LiveSearchSection({
         deposit={myDeposit}
         successes={successes}
         pointsBalance={pointsBalance}
+        depositPointsEarned={depositPointsEarned}
         onOpenAchievements={onOpenAchievements}
       />
     );

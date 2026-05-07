@@ -9,7 +9,11 @@ import { FlowboxSessionContext } from './runtime/FlowboxSessionContext';
 
 jest.mock('../Common/Deposit', () => ({
   __esModule: true,
-  default: ({ dep, variant }) => <div data-testid={`deposit-${variant}`}>{dep?.public_key || ''}</div>,
+  default: ({ dep, variant }) => (
+    <div data-testid={String(dep?.public_key || '').includes('main') ? 'deposit-main' : `deposit-${variant}`}>
+      {dep?.public_key || ''}
+    </div>
+  ),
 }));
 
 jest.mock('../Common/Search/SearchPanel', () => ({
@@ -191,6 +195,7 @@ describe('Discover', () => {
         myDeposit: null,
         successes: [],
         pointsBalance: null,
+        depositPointsEarned: 0,
       })
     );
   });
@@ -208,6 +213,7 @@ describe('Discover', () => {
         myDeposit: null,
         successes: [],
         pointsBalance: null,
+        depositPointsEarned: 0,
       })),
     });
 
@@ -284,6 +290,7 @@ describe('Discover', () => {
         },
         successes: [{ name: 'total', points: 25 }],
         points_balance: 125,
+        deposit_points_earned: 25,
         already_exists: false,
       },
     });
@@ -310,6 +317,7 @@ describe('Discover', () => {
         myDeposit: expect.objectContaining({ public_key: 'my-deposit-1' }),
         successes: [{ name: 'total', points: 25 }],
         pointsBalance: 125,
+        depositPointsEarned: 25,
       })
     );
     const patchedSnapshot = patchDiscoverSnapshot.mock.calls[0][1];
@@ -499,6 +507,7 @@ describe('Discover', () => {
         },
         successes: [],
         points_balance: 500,
+        deposit_points_earned: 48,
       },
       articles: [{ id: 1, title: 'Article vivant' }],
     });
@@ -511,6 +520,7 @@ describe('Discover', () => {
 
     expect(within(myDepositSection).getByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(within(myDepositSection).getByText('Déjà déposée')).toBeInTheDocument();
+    expect(within(myDepositSection).getByText('+48')).toBeInTheDocument();
     expectNodeBefore(mainDeposit, myDepositSection);
     expectNodeBefore(myDepositSection, article);
     expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();

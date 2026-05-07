@@ -85,6 +85,9 @@ def open_box_session_for_user(user, box):
             "started_at": now,
             "expires_at": expires_at,
             "deposit": None,
+            "deposit_points_earned": 0,
+            "deposit_points_balance_after": None,
+            "deposit_successes": [],
         },
     )
     return session

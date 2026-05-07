@@ -14,12 +14,18 @@ const deposit = {
 
 describe('MyDeposit', () => {
   test('renders deposited song confirmation details', () => {
-    render(<MyDeposit deposit={deposit} successes={[{ name: 'Total', points: 42 }]} pointsBalance={5060} />);
+    render(<MyDeposit deposit={deposit} successes={[{ name: 'Total', points: 42 }]} pointsBalance={5060} depositPointsEarned={84} />);
 
     expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(screen.getByText('La chanson')).toBeInTheDocument();
     expect(screen.getByText('Une artiste')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'La chanson' })).toHaveAttribute('src', deposit.song.image_url);
+    expect(screen.getByText('+84')).toBeInTheDocument();
+  });
+
+  test('falls back to total success points when stored points are not positive', () => {
+    render(<MyDeposit deposit={deposit} successes={[{ name: 'Total', points: 42 }]} depositPointsEarned={0} />);
+
     expect(screen.getByText('+42')).toBeInTheDocument();
   });
 

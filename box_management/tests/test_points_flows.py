@@ -587,13 +587,40 @@ class BoxContentFlowTests(FlowboxAPITestCase):
             deposited_at=session.started_at + timedelta(minutes=1),
         )
         session.deposit = my_deposit
-        session.save(update_fields=["started_at", "expires_at", "deposit"])
+        session.deposit_points_earned = 33
+        session.deposit_points_balance_after = 133
+        session.deposit_successes = [{"name": "Total", "points": 33}]
+        session.save(
+            update_fields=[
+                "started_at",
+                "expires_at",
+                "deposit",
+                "deposit_points_earned",
+                "deposit_points_balance_after",
+                "deposit_successes",
+            ]
+        )
 
         response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["my_deposit"]["public_key"], my_deposit.public_key)
         self.assertEqual(response.data["my_deposit"]["song"]["public_key"], my_deposit.song.public_key)
+        self.assertEqual(response.data["successes"], session.deposit_successes)
+        self.assertEqual(response.data["points_balance"], session.deposit_points_balance_after)
+        self.assertEqual(response.data["deposit_points_earned"], session.deposit_points_earned)
+
+    def test_box_content_returns_empty_session_deposit_snapshot_without_deposit(self):
+        user = self.auth(self.make_user(username="content-empty-snapshot"))
+        box = self.make_box(url="box-content-empty-snapshot", name="Box content empty snapshot")
+
+        response = self.client.get(reverse("box-content"), {"boxSlug": box.url})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["my_deposit"])
+        self.assertEqual(response.data["successes"], [])
+        self.assertIsNone(response.data["points_balance"])
+        self.assertEqual(response.data["deposit_points_earned"], 0)
 
 
     def test_box_content_limits_older_deposits_to_25_with_next_cursor(self):
@@ -812,9 +839,14 @@ class BoxDepositFlowTests(FlowboxAPITestCase):
         self.assertIsInstance(response.data["successes"], list)
         self.assertTrue(response.data["successes"])
         self.assertEqual(response.data["points_balance"], expected)
+        self.assertEqual(response.data["deposit_points_earned"], expected)
         self.assertEqual(user.points, expected)
         self.assertFalse(response.data["already_exists"])
         self.assertNotIn("current_user", response.data)
+        session.refresh_from_db()
+        self.assertEqual(session.deposit_points_earned, expected)
+        self.assertEqual(session.deposit_points_balance_after, expected)
+        self.assertEqual(session.deposit_successes, response.data["successes"])
 
     def test_box_deposit_without_active_session_returns_session_required(self):
         user = self.auth(self.make_user(username="box-deposit-no-session", points=0))
