@@ -278,7 +278,7 @@ export default function LiveSearchSection({
             className={`liveSearch${isLiveSearchFixed ? " fixed" : ""}`}
           >
             <Typography component="h3" variant="h5">
-              Ajoute une chanson à la boîte et gagne pleins de points
+              Ajoute une chanson à la boîte, gagne des points et découvre d'autres chansons
             </Typography>
 
             {errorMessage ? (
