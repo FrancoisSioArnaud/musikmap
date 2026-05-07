@@ -401,10 +401,10 @@ export default function Discover() {
 
       <Box className="intro">
         <Typography component="h2" variant="h1">
-          Bonne écoute !
+          Découvre les chansons déposées par les personnes précédentes
         </Typography>
         <Typography component="span" variant="body1">
-          Découvre la chanson déposée par le passant·e précédent
+          La dernière t\u2019est offerte
         </Typography>
       </Box>
 
