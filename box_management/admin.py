@@ -80,6 +80,8 @@ class BoxSessionAdmin(admin.ModelAdmin):
         "user",
         "box",
         "deposit",
+        "deposit_points_earned",
+        "deposit_points_balance_after",
         "state_label",
         "started_at",
         "expires_at",
@@ -98,6 +100,7 @@ class BoxSessionAdmin(admin.ModelAdmin):
     readonly_fields = (
         "state_label",
         "remaining_seconds_admin",
+        "deposit_successes",
         "created_at",
         "updated_at",
     )

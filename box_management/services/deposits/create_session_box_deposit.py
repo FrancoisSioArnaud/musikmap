@@ -27,12 +27,23 @@ def _serialize_revealed_deposit(deposit, *, viewer):
     return payloads[0] if payloads else None
 
 
-def _already_exists_payload(*, deposit, user):
+def _extract_total_points(successes):
+    for success in successes or []:
+        if str(success.get("name", "")).lower() == "total":
+            try:
+                return int(success.get("points") or 0)
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def _session_deposit_payload(*, session, user, already_exists):
     return {
-        "my_deposit": _serialize_revealed_deposit(deposit, viewer=user),
-        "successes": [],
-        "points_balance": int(user.points or 0),
-        "already_exists": True,
+        "my_deposit": _serialize_revealed_deposit(session.deposit, viewer=user),
+        "successes": session.deposit_successes if isinstance(session.deposit_successes, list) else [],
+        "points_balance": session.deposit_points_balance_after,
+        "deposit_points_earned": int(session.deposit_points_earned or 0),
+        "already_exists": already_exists,
     }
 
 
@@ -65,11 +76,12 @@ def create_session_box_deposit(*, request, box_slug, option):
 
         if session.deposit_id:
             if _session_deposit_is_reusable(session.deposit):
-                return _already_exists_payload(deposit=session.deposit, user=user), None
+                return _session_deposit_payload(session=session, user=user, already_exists=True), None
             return None, {
                 "status": status.HTTP_409_CONFLICT,
                 "code": "BOX_SESSION_DEPOSIT_ALREADY_EXISTS",
-                "detail": "Une chanson a déjà été partagée pour cette session.",
+                "detail": "Tu as déjà partagé une chanson dans cette session.",
+                "extra": _session_deposit_payload(session=session, user=user, already_exists=True),
             }
 
         try:
@@ -102,13 +114,26 @@ def create_session_box_deposit(*, request, box_slug, option):
         )
         ok_points, points_payload, _points_code = apply_points_delta(user, points_to_add, lock_user=False)
         points_balance = points_payload.get("points_balance") if ok_points else int(user.points or 0)
+        total_points = _extract_total_points(successes)
 
         session.deposit = deposit
-        session.save(update_fields=["deposit", "updated_at"])
+        session.deposit_points_earned = total_points
+        session.deposit_points_balance_after = points_balance
+        session.deposit_successes = successes
+        session.save(
+            update_fields=[
+                "deposit",
+                "deposit_points_earned",
+                "deposit_points_balance_after",
+                "deposit_successes",
+                "updated_at",
+            ]
+        )
 
         return {
             "my_deposit": _serialize_revealed_deposit(deposit, viewer=user),
             "successes": successes,
             "points_balance": points_balance,
+            "deposit_points_earned": total_points,
             "already_exists": False,
         }, None

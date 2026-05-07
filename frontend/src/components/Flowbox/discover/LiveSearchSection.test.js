@@ -115,6 +115,7 @@ describe('LiveSearchSection', () => {
       my_deposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
       successes: [{ name: 'total', points: 42 }],
       points_balance: 5060,
+      deposit_points_earned: 42,
       already_exists: false,
     }));
 
@@ -128,6 +129,7 @@ describe('LiveSearchSection', () => {
         myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
         successes: [{ name: 'total', points: 42 }],
         pointsBalance: 5060,
+        depositPointsEarned: 42,
       });
     });
 
@@ -189,6 +191,39 @@ describe('LiveSearchSection', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
     expect(await screen.findAllByText('Tu as déjà partagé une chanson dans cette session.')).toHaveLength(2);
+  });
+
+  test('resynchronizes UI from a deposit already exists conflict payload', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse(
+      {
+        status: 409,
+        code: 'BOX_SESSION_DEPOSIT_ALREADY_EXISTS',
+        detail: 'Tu as déjà partagé une chanson dans cette session.',
+        my_deposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
+        successes: [{ name: 'Total', points: 31 }],
+        points_balance: 151,
+        deposit_points_earned: 31,
+      },
+      { ok: false, status: 409 }
+    ));
+
+    const { onDepositCreated, setUser } = renderLiveSearchSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
+
+    await waitFor(() => {
+      expect(onDepositCreated).toHaveBeenCalledWith({
+        myDeposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
+        successes: [{ name: 'Total', points: 31 }],
+        pointsBalance: 151,
+        depositPointsEarned: 31,
+      });
+    });
+    expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 151 });
+    await waitFor(() => {
+      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+    });
   });
 
   test('shows a MUI error surface for network errors', async () => {

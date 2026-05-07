@@ -376,7 +376,8 @@ class BoxDepositView(APIView):
             option=request.data.get("option") or {},
         )
         if error:
-            return api_error(error["status"], error["code"], error["detail"])
+            extra = error.get("extra") or {}
+            return api_error(error["status"], error["code"], error["detail"], **extra)
         return Response(payload, status=status.HTTP_200_OK)
 
 

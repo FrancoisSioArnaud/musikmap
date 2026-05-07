@@ -22,10 +22,19 @@ function getTotalPoints(successes) {
   return toStrictlyPositivePoints(total?.points);
 }
 
-export default function MyDeposit({ deposit, successes = [], pointsBalance = null, onOpenAchievements }) {
+export default function MyDeposit({
+  deposit,
+  successes = [],
+  pointsBalance = null,
+  depositPointsEarned = 0,
+  onOpenAchievements,
+}) {
   const song = deposit?.song || null;
   const accentColor = deposit?.accent_color || undefined;
-  const totalPoints = useMemo(() => getTotalPoints(successes), [successes]);
+  const totalPoints = useMemo(() => {
+    const storedPoints = toStrictlyPositivePoints(depositPointsEarned);
+    return storedPoints > 0 ? storedPoints : getTotalPoints(successes);
+  }, [depositPointsEarned, successes]);
   const canOpenAchievements = totalPoints > 0 && typeof onOpenAchievements === "function";
 
   if (!deposit) {return null;}

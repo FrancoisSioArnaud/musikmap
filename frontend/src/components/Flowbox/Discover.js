@@ -1,5 +1,4 @@
 // frontend/src/components/Flowbox/Discover.js
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -49,6 +48,9 @@ function normalizeDiscoverPayload(payload, fallbackSlug) {
     pointsBalance: typeof (source.pointsBalance ?? source.points_balance) === "number"
       ? (source.pointsBalance ?? source.points_balance)
       : null,
+    depositPointsEarned: typeof (source.depositPointsEarned ?? source.deposit_points_earned) === "number"
+      ? (source.depositPointsEarned ?? source.deposit_points_earned)
+      : 0,
   };
 }
 
@@ -73,6 +75,11 @@ function normalizeDiscoverPatch(patch, fallbackSlug) {
   if (hasOwn(source, "pointsBalance") || hasOwn(source, "points_balance")) {
     const pointsBalance = source.pointsBalance ?? source.points_balance;
     normalized.pointsBalance = typeof pointsBalance === "number" ? pointsBalance : null;
+  }
+
+  if (hasOwn(source, "depositPointsEarned") || hasOwn(source, "deposit_points_earned")) {
+    const depositPointsEarned = source.depositPointsEarned ?? source.deposit_points_earned;
+    normalized.depositPointsEarned = typeof depositPointsEarned === "number" ? depositPointsEarned : 0;
   }
 
   return normalized;
@@ -426,6 +433,7 @@ export default function Discover() {
         myDeposit={myDeposit}
         successes={successes}
         pointsBalance={boxContent?.pointsBalance ?? null}
+        depositPointsEarned={boxContent?.depositPointsEarned ?? 0}
         onDepositCreated={handleDepositCreated}
         onOpenAchievements={handleOpenAchievements}
       />

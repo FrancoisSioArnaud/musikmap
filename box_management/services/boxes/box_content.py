@@ -161,4 +161,11 @@ def get_box_content(request, box_slug):
         "older_deposits_has_more": older_page["has_more"],
         "active_pinned_deposit": serialize_active_pinned_deposit_for_box(box, viewer=user),
         "my_deposit": _serialize_one_deposit(session.deposit, viewer=user, force_revealed=True),
+        "successes": (
+            session.deposit_successes
+            if session.deposit_id and isinstance(session.deposit_successes, list)
+            else []
+        ),
+        "points_balance": session.deposit_points_balance_after if session.deposit_id else None,
+        "deposit_points_earned": int(session.deposit_points_earned or 0) if session.deposit_id else 0,
     }, None
