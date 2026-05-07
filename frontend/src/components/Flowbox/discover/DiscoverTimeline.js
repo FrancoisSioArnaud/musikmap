@@ -336,109 +336,107 @@ export default function DiscoverTimeline({
         boxSlug={boxSlug}
       />
 
-      <Box className="discover_timeline">
-        <Box className="discover_timeline_list">
-          {timelineItems.map((item) => {
-            if (item.type === "pinned") {
-              return (
-                <Box
-                  key={item.key}
-                  className="discover_timeline_item discover_timeline_item--pinned"
-                >
-                  <PinnedSongSection
-                    boxSlug={boxSlug}
-                    initialPinnedDeposit={activePinnedDeposit}
-                  />
-                </Box>
-              );
-            }
-
-            if (item.type === "article") {
-              return (
-                <Box
-                  key={item.key}
-                  className="discover_timeline_item discover_timeline_item--article"
-                >
-                  <ArticleCard
-                    article={item.article}
-                    onOpenDrawer={() => handleOpenArticleDrawer(item.article)}
-                  />
-                </Box>
-              );
-            }
-
+    <Box className="discover_timeline">
+        {timelineItems.map((item) => {
+          if (item.type === "pinned") {
             return (
               <Box
                 key={item.key}
-                className="discover_timeline_item discover_timeline_item--deposit"
+                className="discover_timeline_item discover_timeline_item--pinned"
               >
-                <Deposit
-                  dep={item.deposit}
-                  user={user}
-                  showPlay={true}
-                  showUser={true}
+                <PinnedSongSection
+                  boxSlug={boxSlug}
+                  initialPinnedDeposit={activePinnedDeposit}
                 />
               </Box>
             );
-          })}
+          }
 
-          <Box ref={sentinelRef} sx={{ minHeight: 24 }} aria-hidden="true" />
+          if (item.type === "article") {
+            return (
+              <Box
+                key={item.key}
+                className="discover_timeline_item discover_timeline_item--article"
+              >
+                <ArticleCard
+                  article={item.article}
+                  onOpenDrawer={() => handleOpenArticleDrawer(item.article)}
+                />
+              </Box>
+            );
+          }
 
-          {loading ? (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, py: 2 }}>
-              <CircularProgress size={18} />
-              <Typography component="span" variant="body2">
-                Chargement de chansons précédentes…
-              </Typography>
-            </Box>
-          ) : null}
-
-          {loadError ? (
-            <Alert severity="warning" sx={{ mx: 2, my: 2 }}>
-              {loadError}
-            </Alert>
-          ) : null}
-
-          {observerUnavailable && canLoadMore ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-              <Button variant="outlined" onClick={loadNextPage} disabled={loading}>
-                Voir plus
-              </Button>
-            </Box>
-          ) : null}
-
-          {!loading && deposits.length > 0 && limitReached ? (
-            <Typography component="p" variant="body1" sx={{ textAlign: "center", p: 2 }}>
-              {LIMIT_MESSAGE}
-            </Typography>
-          ) : null}
-
-          {!loading && deposits.length > 0 && !limitReached && !hasMore ? (
-            <Typography component="p" variant="body1" sx={{ textAlign: "center", p: 2 }}>
-              {END_MESSAGE}
-            </Typography>
-          ) : null}
-
-          {!loading && canLoadMore && !observerUnavailable ? (
+          return (
             <Box
-              sx={{
-                py: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 1,
-                color: "text.primary",
-                opacity: 0.72,
-              }}
+              key={item.key}
+              className="discover_timeline_item discover_timeline_item--deposit"
             >
-              <KeyboardArrowDownIcon aria-hidden="true" />
-              <Typography component="span" variant="body1">
-                D’autres chansons arrivent en scrollant
-              </Typography>
-              <KeyboardArrowDownIcon aria-hidden="true" />
+              <Deposit
+                dep={item.deposit}
+                user={user}
+                showPlay={true}
+                showUser={true}
+              />
             </Box>
-          ) : null}
-        </Box>
+          );
+        })}
+
+        <Box ref={sentinelRef} sx={{ minHeight: 24 }} aria-hidden="true" />
+
+        {loading ? (
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, py: 2 }}>
+            <CircularProgress size={18} />
+            <Typography component="span" variant="body2">
+              Chargement de chansons précédentes…
+            </Typography>
+          </Box>
+        ) : null}
+
+        {loadError ? (
+          <Alert severity="warning" sx={{ mx: 2, my: 2 }}>
+            {loadError}
+          </Alert>
+        ) : null}
+
+        {observerUnavailable && canLoadMore ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+            <Button variant="outlined" onClick={loadNextPage} disabled={loading}>
+              Voir plus
+            </Button>
+          </Box>
+        ) : null}
+
+        {!loading && deposits.length > 0 && limitReached ? (
+          <Typography component="p" variant="body1" sx={{ textAlign: "center", p: 2 }}>
+            {LIMIT_MESSAGE}
+          </Typography>
+        ) : null}
+
+        {!loading && deposits.length > 0 && !limitReached && !hasMore ? (
+          <Typography component="p" variant="body1" sx={{ textAlign: "center", p: 2 }}>
+            {END_MESSAGE}
+          </Typography>
+        ) : null}
+
+        {!loading && canLoadMore && !observerUnavailable ? (
+          <Box
+            sx={{
+              py: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              color: "text.primary",
+              opacity: 0.72,
+            }}
+          >
+            <KeyboardArrowDownIcon aria-hidden="true" />
+            <Typography component="span" variant="body1">
+              D’autres chansons arrivent en scrollant
+            </Typography>
+            <KeyboardArrowDownIcon aria-hidden="true" />
+          </Box>
+        ) : null}
       </Box>
     </>
   );
