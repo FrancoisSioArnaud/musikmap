@@ -44,10 +44,9 @@
 }
 
 .liveSearch_slot {
-    position: relative;
-    min-height: 184px;
-    height: auto;
-    transition: all 0.3s;
+  position: relative;
+  height: auto;
+  transition: all 0.3s;
 }
 
 .liveSearch.fixed {
