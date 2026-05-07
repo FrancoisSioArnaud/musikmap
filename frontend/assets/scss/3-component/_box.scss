@@ -38,4 +38,24 @@
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
   gap: 12px;
+  background: var(--mm-color-surface);
+  gap: 12px;
+  transition: all 0.3s;
+}
+
+.liveSearch_slot {
+    position: relative;
+    min-height: 184px;
+    height: auto;
+    transition: all 0.3s;
+}
+
+.liveSearch.fixed {
+    position: fixed;
+    top: 64px;
+    left: 0px;
+    right: 0;
+    z-index: 200;
+    margin: 0;
+    border-radius: 0;
 }
