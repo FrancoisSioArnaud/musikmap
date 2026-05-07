@@ -340,44 +340,29 @@ export default function DiscoverTimeline({
         {timelineItems.map((item) => {
           if (item.type === "pinned") {
             return (
-              <Box
-                key={item.key}
-                className="discover_timeline_item discover_timeline_item--pinned"
-              >
-                <PinnedSongSection
-                  boxSlug={boxSlug}
-                  initialPinnedDeposit={activePinnedDeposit}
-                />
-              </Box>
+              <PinnedSongSection
+                boxSlug={boxSlug}
+                initialPinnedDeposit={activePinnedDeposit}
+              />
             );
           }
 
           if (item.type === "article") {
             return (
-              <Box
-                key={item.key}
-                className="discover_timeline_item discover_timeline_item--article"
-              >
-                <ArticleCard
-                  article={item.article}
-                  onOpenDrawer={() => handleOpenArticleDrawer(item.article)}
-                />
-              </Box>
+              <ArticleCard
+                article={item.article}
+                onOpenDrawer={() => handleOpenArticleDrawer(item.article)}
+              />
             );
           }
 
           return (
-            <Box
-              key={item.key}
-              className="discover_timeline_item discover_timeline_item--deposit"
-            >
-              <Deposit
-                dep={item.deposit}
-                user={user}
-                showPlay={true}
-                showUser={true}
-              />
-            </Box>
+            <Deposit
+              dep={item.deposit}
+              user={user}
+              showPlay={true}
+              showUser={true}
+            />
           );
         })}
 
