@@ -207,7 +207,7 @@ export default function LiveSearchSection({
   }
 
   return (
-    <Box component="section" sx={{ p: 3 }}>
+    <Box component="section" sx={{ p: "20px" }}>
       <Typography component="h3" variant="h3" sx={{ mb: 2 }}>
         Partage une chanson pour gagner des points et découvrir plus de chansons
       </Typography>
