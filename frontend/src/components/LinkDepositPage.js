@@ -175,7 +175,6 @@ export default function LinkDepositPage() {
         <Deposit
           dep={deposit}
           user={user}
-          variant="main"
           showDate={false}
           showUser={true}
           fitContainer={true}

@@ -9,8 +9,8 @@ import { FlowboxSessionContext } from './runtime/FlowboxSessionContext';
 
 jest.mock('../Common/Deposit', () => ({
   __esModule: true,
-  default: ({ dep, variant }) => (
-    <div data-testid={String(dep?.public_key || '').includes('main') ? 'deposit-main' : `deposit-${variant}`}>
+  default: ({ dep }) => (
+    <div data-testid={String(dep?.public_key || '').includes('main') ? 'deposit-main' : `deposit-${dep?.public_key || 'empty'}`}>
       {dep?.public_key || ''}
     </div>
   ),

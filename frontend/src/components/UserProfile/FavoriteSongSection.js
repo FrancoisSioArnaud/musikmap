@@ -341,7 +341,6 @@ export default function FavoriteSongSection({
             <Deposit
               dep={favoriteDeposit}
               user={user}
-              variant="list"
               showUser={false}
               showDate={false}
               fitContainer

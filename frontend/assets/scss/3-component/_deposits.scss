@@ -173,6 +173,11 @@
   display: flex;
   overflow: hidden;
   background-color: var(--mm-color-primary-light);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
 
   --deposit-reveal-settle-delay: 600ms;
   --deposit-reveal-settle-duration: 340ms;
@@ -201,23 +206,9 @@
   background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
 }
 
-.deposit_main .deposit_song {
-  flex-direction: column;
-  gap: 16px;
 
-  //  background : var(--mm-color-primary-dark);
-  padding: 36px;
-  padding-bottom: 32px;
-}
 
-.deposit_list .deposit_song,
-.my_deposit.deposit_song {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-}
+
 
 
 
@@ -237,7 +228,7 @@
   transition: margin 1s;
 }
 
-.deposit_list .deposit_song:not(.is_hidden) .cover_media{
+.deposit_song:not(.is_hidden) .cover_media{
   margin:16px;
 }
 
@@ -269,12 +260,8 @@
   filter: blur(6px);
 }
 
-.deposit_main .cover_media {
-  width: 66%;
-  margin: auto;
-}
 
-.deposit_list .cover_media {
+.deposit .cover_media {
   width: 33%;
 }
 
@@ -287,14 +274,8 @@
   //  color : var(--mm-color-black);
 }
 
-.deposit_main .texts {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
 
-.deposit_list .texts {
+.deposit .texts {
   text-align: left;
 }
 
@@ -306,18 +287,14 @@
   min-width: 0;
 }
 
-.deposit_main .interact {
-  align-items: center;
-  gap: 12px;
-}
 
-.deposit_list .interact {
+.deposit .interact {
   justify-content: left;
 }
 
-.deposit_list .texts .titre,
-.deposit_list .texts .artist,
-.deposit_list .interact button.play {
+.deposit .texts .titre,
+.deposit .texts .artist,
+.deposit .interact button.play {
   opacity: 0;
   transform-origin: left center;
   transform: scale(0.88);
@@ -325,15 +302,15 @@
   will-change: transform, opacity;
 }
 
-.deposit_list .texts .titre {
+.deposit .texts .titre {
   animation-delay: 0ms;
 }
 
-.deposit_list .texts .artist {
+.deposit .texts .artist {
   animation-delay: 200ms;
 }
 
-.deposit_list .interact button.play {
+.deposit .interact button.play {
   animation-delay: 400ms;
 }
 
@@ -357,7 +334,7 @@
   width: 100%;
 }
 
-.deposit_list .decouvrir {
+.deposit .decouvrir {
   display: flex;
   flex-direction: inherit;
   padding: 8px 12px;
@@ -366,7 +343,7 @@
   height: auto;
 }
 
-.deposit_list .points_container {
+.deposit .points_container {
   margin: 0;
 }
 
@@ -411,9 +388,6 @@
   top: var(--emoji-target-top);
 }
 
-.deposit_main .emojis .emoji {
-  font-size: 4rem;
-}
 
 @keyframes emojiFloat {
   0% {
