@@ -8,7 +8,6 @@ import Typography from "@mui/material/Typography";
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-
 import Deposit from "../Common/Deposit";
 import { UserContext } from "../UserContext";
 import {
@@ -97,17 +96,16 @@ export default function Discover() {
   const [openAchievements, setOpenAchievements] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
     const snap = getDiscoverSnapshot(boxSlug);
 
     if (snap && snap.boxSlug === boxSlug) {
       setBoxContent(normalizeDiscoverPayload(snap, boxSlug));
       setContentError("");
       setContentLoading(false);
-      return () => {
-        cancelled = true;
-      };
+      return undefined;
     }
+
+    let cancelled = false;
 
     (async () => {
       try {
@@ -249,7 +247,6 @@ export default function Discover() {
           </Button>
         </Box>
       </Drawer>
-
 
       <Box className="intro">
         <Typography component="h2" variant="h1">
