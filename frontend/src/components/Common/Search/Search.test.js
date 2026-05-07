@@ -128,7 +128,7 @@ describe('Search', () => {
     expect(screen.queryByText('Muse Song')).not.toBeInTheDocument();
 
     await act(async () => {
-      jest.advanceTimersByTime(60);
+      jest.advanceTimersByTime(160);
     });
 
     expect(screen.getByTestId('songlist-loading')).toHaveTextContent('idle');
@@ -161,7 +161,7 @@ describe('Search', () => {
     expect(screen.getByTestId('songlist-loading')).toHaveTextContent('loading');
 
     await act(async () => {
-      jest.advanceTimersByTime(60);
+      jest.advanceTimersByTime(160);
     });
 
     expect(screen.getByTestId('songlist-loading')).toHaveTextContent('idle');

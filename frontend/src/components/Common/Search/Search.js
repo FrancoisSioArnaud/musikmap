@@ -17,7 +17,7 @@ import SongList from "./SongList";
 
 const SERVER_SEARCH_PROVIDER_CODE = "spotify";
 const SEARCH_DEBOUNCE_MS = 550;
-const CACHE_LOADING_MS = 50;
+const CACHE_LOADING_MS = 150;
 
 function normalizeSearchValue(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
