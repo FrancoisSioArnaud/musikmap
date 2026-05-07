@@ -411,28 +411,6 @@ export default function Discover() {
       {mainDep ? (
         <Box sx={{ margin: "0 20px" }}>
           <Deposit dep={mainDep} user={user} variant="list" showPlay={true} showUser={true} />
-
-          {olderDeposits.length > 0 ? (
-            <Box
-              sx={{
-                mt: "26px",
-                width: "100%",
-                minHeight: 48,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 1,
-                color: "text.primary",
-                opacity: 0.72,
-              }}
-            >
-              <KeyboardArrowDownIcon aria-hidden="true" />
-              <Typography component="span" variant="body1">
-                Découvrir plus de chansons
-              </Typography>
-              <KeyboardArrowDownIcon aria-hidden="true" />
-            </Box>
-          ) : null}
         </Box>
       ) : (
         <Box sx={{ p: 3 }}>
