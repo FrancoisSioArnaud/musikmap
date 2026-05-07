@@ -1,9 +1,17 @@
-import SendIcon from "@mui/icons-material/SendRounded";
+import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
+import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import Button from "@mui/material/Button";
 import React from "react";
 
 export default function DepositLink({ canShare, isSharing, onShare }) {
   if (!canShare) {return null;}
+
+  const isApplePlatform =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod|Macintosh|MacIntel|MacPPC|Mac68K/.test(
+      navigator.platform || navigator.userAgent || ""
+    );
+  const ShareIcon = isApplePlatform ? IosShareRoundedIcon : ShareRoundedIcon;
 
   return (
     <Button
@@ -14,7 +22,7 @@ export default function DepositLink({ canShare, isSharing, onShare }) {
       title="Partager"
       disabled={isSharing}
     >
-      <SendIcon />
+      <ShareIcon />
     </Button>
   );
 }
