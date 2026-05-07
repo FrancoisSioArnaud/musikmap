@@ -18,10 +18,13 @@ jest.mock('../Common/Deposit', () => ({
 
 jest.mock('../Common/Search/SearchPanel', () => ({
   __esModule: true,
-  default: ({ onSelectSong }) => (
+  default: ({ onDepositVisualComplete, onSelectSong }) => (
     <button
       type="button"
-      onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
+      onClick={async () => {
+        await onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1');
+        onDepositVisualComplete?.('request-1');
+      }}
     >
       Choisir Posted song
     </button>
@@ -151,6 +154,7 @@ describe('Discover', () => {
     jest.clearAllMocks();
     intersectionObservers = [];
     delete window.IntersectionObserver;
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   function mockIntersectionObserver() {
@@ -244,7 +248,7 @@ describe('Discover', () => {
 
     const mainDeposit = await screen.findByTestId('deposit-main');
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
+      name: /Ajoute une chanson/i,
       level: 3,
     });
     const article = await screen.findByTestId('article-card');
@@ -269,7 +273,7 @@ describe('Discover', () => {
 
     const emptyState = await screen.findByText(/Aucune chanson à découvrir/i);
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
+      name: /Ajoute une chanson/i,
       level: 3,
     });
     const article = await screen.findByTestId('article-card');

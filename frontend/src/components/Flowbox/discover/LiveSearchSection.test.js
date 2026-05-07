@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,27 @@ import { FlowboxSessionContext } from '../runtime/FlowboxSessionContext';
 import LiveSearchSection from './LiveSearchSection';
 
 let mockLatestSearchPanelProps = null;
+let mockScrollIntoView = null;
+
+function getLiveSearchCard() {
+  return screen.getByRole('button', { name: 'Partager une chanson' }).closest('.liveSearch');
+}
+
+function mockLiveSearchRects({ getSlotTop = () => 24, cardHeight = 96 } = {}) {
+  jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getBoundingClientRect() {
+    const slotTop = getSlotTop();
+
+    if (this.classList?.contains('liveSearch_slot')) {
+      return { top: slotTop, bottom: slotTop + cardHeight, height: cardHeight, left: 0, right: 320, width: 320 };
+    }
+
+    if (this.classList?.contains('liveSearch')) {
+      return { top: slotTop, bottom: slotTop + cardHeight, height: cardHeight, left: 0, right: 320, width: 320 };
+    }
+
+    return { top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 };
+  });
+}
 
 jest.mock('../../Common/Search/SearchPanel', () => ({
   __esModule: true,
@@ -102,16 +123,64 @@ describe('LiveSearchSection', () => {
     jest.clearAllMocks();
     mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
+    mockScrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Partage une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 3 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
     expect(screen.getByTestId('location-search')).toHaveTextContent('drawer=live-search');
+  });
+
+  test('adds the fixed class before deposit when the live search slot scrolls under the header', async () => {
+    let slotTop = 24;
+    mockLiveSearchRects({ getSlotTop: () => slotTop });
+
+    renderLiveSearchSection();
+
+    expect(screen.getByRole('button', { name: 'Partager une chanson' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getLiveSearchCard()).not.toHaveClass('fixed');
+    });
+
+    slotTop = -1;
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => {
+      expect(getLiveSearchCard()).toHaveClass('fixed');
+    });
+    expect(getLiveSearchCard().parentElement).toHaveStyle({ minHeight: '96px' });
+  });
+
+  test('removes the fixed class before deposit when scrolling back above the live search slot', async () => {
+    let slotTop = -1;
+    mockLiveSearchRects({ getSlotTop: () => slotTop });
+
+    renderLiveSearchSection();
+
+    await waitFor(() => {
+      expect(getLiveSearchCard()).toHaveClass('fixed');
+    });
+
+    slotTop = 24;
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => {
+      expect(getLiveSearchCard()).not.toHaveClass('fixed');
+    });
   });
 
   test('browser back closes the URL-driven drawer', async () => {
@@ -167,6 +236,7 @@ describe('LiveSearchSection', () => {
     expect(onDepositCreated).not.toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
     expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
+    expect(mockScrollIntoView).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
@@ -184,6 +254,7 @@ describe('LiveSearchSection', () => {
     await waitFor(() => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
+    expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   test('renders MyDeposit after deposit and does not allow opening search', () => {
@@ -195,6 +266,7 @@ describe('LiveSearchSection', () => {
     expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(screen.getByText('Déjà déposée')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
+    expect(document.querySelector('.liveSearch.fixed')).not.toBeInTheDocument();
   });
 
   test('redirects to closed when the box session is required', async () => {
