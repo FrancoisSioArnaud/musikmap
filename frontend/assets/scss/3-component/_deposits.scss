@@ -60,6 +60,11 @@
 
 .discover_timeline {
   background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 26px;
+  padding-bottom: 32px;
 }
 
 
@@ -76,15 +81,6 @@
 
 .favorite_song_section .deposit_card, .pinned_song_section .deposit_card{
   border: solid 3px var(--mm-color-white);
-}
-
-
-.discover_timeline_list {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  padding: 26px;
-  padding-bottom: 32px;
 }
 
 .discover_timeline_item {
