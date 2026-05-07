@@ -40,6 +40,21 @@ class ClientAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_display = ("name", "slug", "background_picture", "created_at", "updated_at")
     search_fields = ("name", "slug")
     ordering = ("name",)
+    fieldsets = (
+        (
+            "Identité",
+            {
+                "fields": (
+                    "name",
+                    "slug",
+                )
+            },
+        ),
+        (
+            "Visuel",
+            {"fields": ("background_picture",)},
+        ),
+    )
 
 
 @admin.register(Box)
@@ -48,10 +63,31 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     Class goal: This class represents a Music Box used in the admin interface to import/export data.
     """
 
-    list_display = ("name", "description", "url", "image_url", "client")
+    list_display = ("name", "url", "client", "description", "image_url")
     list_filter = ("client",)
     search_fields = ("name", "description", "url", "client__name")
     autocomplete_fields = ("client",)
+    fieldsets = (
+        (
+            "Identité",
+            {
+                "fields": (
+                    "name",
+                    "url",
+                    "client",
+                )
+            },
+        ),
+        (
+            "Présentation",
+            {
+                "fields": (
+                    "description",
+                    "image_url",
+                )
+            },
+        ),
+    )
 
 
 class BoxSessionStateFilter(admin.SimpleListFilter):
@@ -79,17 +115,23 @@ class BoxSessionAdmin(admin.ModelAdmin):
         "id",
         "user",
         "box",
+        "state_label",
+        "remaining_seconds_admin",
+        "started_at",
+        "expires_at",
         "deposit",
         "deposit_points_earned",
         "deposit_points_balance_after",
-        "state_label",
-        "started_at",
-        "expires_at",
-        "remaining_seconds_admin",
         "created_at",
         "updated_at",
     )
-    list_filter = (BoxSessionStateFilter, "box", "started_at", "expires_at", "created_at")
+    list_filter = (
+        BoxSessionStateFilter,
+        "box",
+        "started_at",
+        "expires_at",
+        "created_at",
+    )
     search_fields = (
         "user__username",
         "user__email",
@@ -106,6 +148,41 @@ class BoxSessionAdmin(admin.ModelAdmin):
     )
     ordering = ("-expires_at", "-id")
     date_hierarchy = "started_at"
+    fieldsets = (
+        (
+            "Session",
+            {
+                "fields": (
+                    "user",
+                    "box",
+                    "state_label",
+                    "remaining_seconds_admin",
+                    "started_at",
+                    "expires_at",
+                )
+            },
+        ),
+        (
+            "Dépôt de session",
+            {
+                "fields": (
+                    "deposit",
+                    "deposit_points_earned",
+                    "deposit_points_balance_after",
+                    "deposit_successes",
+                )
+            },
+        ),
+        (
+            "Dates techniques",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -130,9 +207,9 @@ class ArticleAdmin(admin.ModelAdmin):
         "visibility_state_admin",
         "display_date_window_admin",
         "display_time_window_admin",
+        "published_at",
         "created_at",
         "updated_at",
-        "published_at",
     )
     list_filter = (
         "status",
@@ -161,16 +238,23 @@ class ArticleAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (
-            None,
+            "Identité",
             {
                 "fields": (
                     "client",
                     "author",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Contenu",
+            {
+                "fields": (
                     "title",
                     "link",
                     "short_text",
                     "cover_image",
-                    "status",
                 )
             },
         ),
@@ -189,9 +273,9 @@ class ArticleAdmin(admin.ModelAdmin):
             "Dates",
             {
                 "fields": (
+                    "published_at",
                     "created_at",
                     "updated_at",
-                    "published_at",
                 )
             },
         ),
@@ -223,6 +307,25 @@ class LocationPointAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_display = ("box", "latitude", "longitude", "dist_location")
     search_fields = ("box__name",)
     autocomplete_fields = ("box",)
+    fieldsets = (
+        (
+            "Box",
+            {"fields": ("box",)},
+        ),
+        (
+            "Coordonnées",
+            {
+                "fields": (
+                    "latitude",
+                    "longitude",
+                )
+            },
+        ),
+        (
+            "Rayon",
+            {"fields": ("dist_location",)},
+        ),
+    )
 
 
 @admin.register(Deposit)
@@ -233,7 +336,7 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     and create graphs.
     """
 
-    list_display = ("id", "public_key", "song", "box", "deposited_at", "user")
+    list_display = ("id", "public_key", "song", "user", "box", "deposited_at")
     list_filter = ("box", "song", "user")
     search_fields = (
         "id",
@@ -247,6 +350,41 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     ordering = ("-deposited_at",)
     readonly_fields = ("public_key",)
     autocomplete_fields = ("song", "box", "user")
+    fieldsets = (
+        (
+            "Identité",
+            {
+                "fields": (
+                    "public_key",
+                    "deposit_type",
+                )
+            },
+        ),
+        (
+            "Relations",
+            {
+                "fields": (
+                    "song",
+                    "user",
+                    "box",
+                )
+            },
+        ),
+        (
+            "Pin / type spécial",
+            {
+                "fields": (
+                    "pin_expires_at",
+                    "pin_duration_minutes",
+                    "pin_points_spent",
+                )
+            },
+        ),
+        (
+            "Métadonnées",
+            {"fields": ("deposited_at",)},
+        ),
+    )
 
     def export_deposits_global(self, request, queryset):
         response = HttpResponse(content_type="text/csv")
@@ -262,7 +400,13 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             .annotate(count=Count("id"))
         )
         for deposit in deposits_month:
-            writer.writerow([deposit["box__name"], deposit["period"].strftime("%Y-%m"), deposit["count"]])
+            writer.writerow(
+                [
+                    deposit["box__name"],
+                    deposit["period"].strftime("%Y-%m"),
+                    deposit["count"],
+                ]
+            )
 
         deposits_week = (
             Deposit.objects.values("box__name")
@@ -271,7 +415,13 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             .annotate(count=Count("id"))
         )
         for deposit in deposits_week:
-            writer.writerow([deposit["box__name"], deposit["period"].strftime("%Y-%W"), deposit["count"]])
+            writer.writerow(
+                [
+                    deposit["box__name"],
+                    deposit["period"].strftime("%Y-%W"),
+                    deposit["count"],
+                ]
+            )
 
         deposits_day = (
             Deposit.objects.values("box__name")
@@ -280,7 +430,13 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             .annotate(count=Count("id"))
         )
         for deposit in deposits_day:
-            writer.writerow([deposit["box__name"], deposit["period"].strftime("%Y-%m-%d"), deposit["count"]])
+            writer.writerow(
+                [
+                    deposit["box__name"],
+                    deposit["period"].strftime("%Y-%m-%d"),
+                    deposit["count"],
+                ]
+            )
 
         return response
 
@@ -288,7 +444,9 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
     def export_deposits_distribution(self, request, queryset):
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="deposits_distribution_by_box.csv"'
+        response["Content-Disposition"] = (
+            'attachment; filename="deposits_distribution_by_box.csv"'
+        )
 
         writer = csv.writer(response)
         writer.writerow(["Box", "Week", "Day", "Number of Deposits"])
@@ -315,7 +473,9 @@ class DepositAdmin(ImportExportModelAdmin, admin.ModelAdmin):
 
         return response
 
-    export_deposits_distribution.short_description = "Export deposits distribution as CSV"
+    export_deposits_distribution.short_description = (
+        "Export deposits distribution as CSV"
+    )
 
     def export_active_users_csv(self, request, queryset):
         response = HttpResponse(content_type="text/csv")
@@ -401,18 +561,52 @@ class SongAdmin(admin.ModelAdmin):
         "artist",
         "public_key",
         "isrc",
+        "duration",
+        "n_deposits",
         "accent_color",
         "image_url_small",
-        "n_deposits",
-        "duration",
     )
     search_fields = ("title", "public_key", "isrc")
     ordering = ("title", "public_key")
+    fieldsets = (
+        (
+            "Identité",
+            {
+                "fields": (
+                    "title",
+                    "artists_json",
+                    "public_key",
+                    "isrc",
+                )
+            },
+        ),
+        (
+            "Médias",
+            {
+                "fields": (
+                    "image_url",
+                    "image_url_small",
+                    "accent_color",
+                )
+            },
+        ),
+        (
+            "Métadonnées",
+            {"fields": ("duration",)},
+        ),
+    )
 
 
 @admin.register(DiscoveredSong)
 class DiscoveredSongAdmin(admin.ModelAdmin):
-    list_display = ("user", "deposit", "discovered_type", "discovered_at", "context", "link_sender")
+    list_display = (
+        "user",
+        "deposit",
+        "context",
+        "discovered_type",
+        "link_sender",
+        "discovered_at",
+    )
     list_filter = ("discovered_type", "context", "discovered_at")
     search_fields = (
         "user__username",
@@ -420,6 +614,23 @@ class DiscoveredSongAdmin(admin.ModelAdmin):
         "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit")
+    fieldsets = (
+        (
+            "Découverte",
+            {
+                "fields": (
+                    "user",
+                    "deposit",
+                    "context",
+                    "discovered_type",
+                )
+            },
+        ),
+        (
+            "Lien / profil",
+            {"fields": ("link_sender",)},
+        ),
+    )
 
 
 @admin.register(Emoji)
@@ -450,6 +661,21 @@ class ReactionAdmin(admin.ModelAdmin):
         "deposit__box__name",
     )
     autocomplete_fields = ("user", "deposit", "emoji")
+    fieldsets = (
+        (
+            "Relation",
+            {
+                "fields": (
+                    "user",
+                    "deposit",
+                )
+            },
+        ),
+        (
+            "Réaction",
+            {"fields": ("emoji",)},
+        ),
+    )
 
 
 @admin.register(Comment)
@@ -458,14 +684,14 @@ class CommentAdmin(admin.ModelAdmin):
         "id",
         "status",
         "reason_code",
+        "risk_score",
+        "reports_count",
         "client",
         "deposit_public_key",
         "deposit_deleted",
         "deposit_owner_username",
         "user",
         "author_email",
-        "reports_count",
-        "risk_score",
         "created_at",
     )
     list_filter = (
@@ -513,6 +739,75 @@ class CommentAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+    fieldsets = (
+        (
+            "Modération",
+            {
+                "fields": (
+                    "status",
+                    "reason_code",
+                    "reports_count",
+                    "risk_score",
+                    "risk_flags",
+                )
+            },
+        ),
+        (
+            "Cible",
+            {
+                "fields": (
+                    "client",
+                    "deposit",
+                    "reply_deposit",
+                    "deposit_public_key",
+                    "deposit_box_name",
+                    "deposit_box_url",
+                    "deposit_deleted",
+                    "deposit_owner_user_id",
+                    "deposit_owner_username",
+                )
+            },
+        ),
+        (
+            "Auteur",
+            {
+                "fields": (
+                    "user",
+                    "author_username",
+                    "author_display_name",
+                    "author_email",
+                    "author_avatar_url",
+                )
+            },
+        ),
+        (
+            "Contenu",
+            {
+                "fields": (
+                    "text",
+                    "normalized_text",
+                )
+            },
+        ),
+        (
+            "Traces techniques",
+            {
+                "fields": (
+                    "author_ip",
+                    "author_user_agent",
+                )
+            },
+        ),
+        (
+            "Dates",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
 
 
 @admin.register(CommentReport)
@@ -539,6 +834,32 @@ class CommentReportAdmin(admin.ModelAdmin):
     ordering = ("-created_at", "-id")
     autocomplete_fields = ("comment", "reporter")
     readonly_fields = ("reporter_username", "reporter_email", "created_at")
+    fieldsets = (
+        (
+            "Signalement",
+            {
+                "fields": (
+                    "comment",
+                    "reason_code",
+                    "free_text",
+                )
+            },
+        ),
+        (
+            "Reporter",
+            {
+                "fields": (
+                    "reporter",
+                    "reporter_username",
+                    "reporter_email",
+                )
+            },
+        ),
+        (
+            "Date",
+            {"fields": ("created_at",)},
+        ),
+    )
 
 
 @admin.register(CommentModerationDecision)
@@ -565,6 +886,27 @@ class CommentModerationDecisionAdmin(admin.ModelAdmin):
     ordering = ("-created_at", "-id")
     autocomplete_fields = ("comment", "acted_by")
     readonly_fields = ("created_at",)
+    fieldsets = (
+        (
+            "Décision",
+            {
+                "fields": (
+                    "comment",
+                    "decision_code",
+                    "reason_code",
+                    "internal_note",
+                )
+            },
+        ),
+        (
+            "Admin",
+            {"fields": ("acted_by",)},
+        ),
+        (
+            "Date",
+            {"fields": ("created_at",)},
+        ),
+    )
 
 
 @admin.register(CommentUserRestriction)
@@ -572,9 +914,9 @@ class CommentUserRestrictionAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "restriction_type",
+        "reason_code",
         "client",
         "user",
-        "reason_code",
         "starts_at",
         "ends_at",
         "created_by",
@@ -593,6 +935,45 @@ class CommentUserRestrictionAdmin(admin.ModelAdmin):
     ordering = ("-created_at", "-id")
     autocomplete_fields = ("client", "user", "created_by")
     readonly_fields = ("created_at",)
+    fieldsets = (
+        (
+            "Restriction",
+            {
+                "fields": (
+                    "restriction_type",
+                    "reason_code",
+                    "internal_note",
+                )
+            },
+        ),
+        (
+            "Cible",
+            {
+                "fields": (
+                    "client",
+                    "user",
+                )
+            },
+        ),
+        (
+            "Période",
+            {
+                "fields": (
+                    "starts_at",
+                    "ends_at",
+                )
+            },
+        ),
+        (
+            "Création",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                )
+            },
+        ),
+    )
 
 
 @admin.register(CommentAttemptLog)
@@ -628,6 +1009,52 @@ class CommentAttemptLogAdmin(admin.ModelAdmin):
         "author_user_agent",
         "created_at",
     )
+    fieldsets = (
+        (
+            "Blocage",
+            {
+                "fields": (
+                    "reason_code",
+                    "meta",
+                )
+            },
+        ),
+        (
+            "Cible",
+            {
+                "fields": (
+                    "client",
+                    "deposit",
+                    "deposit_public_key",
+                    "target_owner_user_id",
+                    "target_owner_username",
+                )
+            },
+        ),
+        (
+            "Auteur",
+            {
+                "fields": (
+                    "user",
+                    "author_ip",
+                    "author_user_agent",
+                )
+            },
+        ),
+        (
+            "Contenu",
+            {
+                "fields": (
+                    "text",
+                    "normalized_text",
+                )
+            },
+        ),
+        (
+            "Date",
+            {"fields": ("created_at",)},
+        ),
+    )
 
 
 @admin.register(Link)
@@ -636,15 +1063,53 @@ class LinkAdmin(admin.ModelAdmin):
         "slug",
         "deposit",
         "created_by",
-        "expires_at",
         "deposit_deleted",
         "anonymous_view_count",
+        "expires_at",
         "created_at",
     )
     list_filter = ("deposit_deleted", "created_at", "expires_at")
     search_fields = ("slug", "deposit__public_key", "created_by__username")
     autocomplete_fields = ("deposit", "created_by", "opened_by_users")
     readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Identité",
+            {"fields": ("slug",)},
+        ),
+        (
+            "Cible",
+            {
+                "fields": (
+                    "deposit",
+                    "deposit_deleted",
+                )
+            },
+        ),
+        (
+            "Créateur / ouvertures",
+            {
+                "fields": (
+                    "created_by",
+                    "opened_by_users",
+                    "anonymous_view_count",
+                )
+            },
+        ),
+        (
+            "Expiration",
+            {"fields": ("expires_at",)},
+        ),
+        (
+            "Dates",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
 
 
 class StickerBatchCreateForm(forms.Form):
@@ -666,10 +1131,10 @@ class StickerAdmin(admin.ModelAdmin):
     change_list_template = "admin/box_management/sticker/change_list.html"
     list_display = (
         "slug",
-        "client",
-        "box",
         "status",
         "is_active",
+        "client",
+        "box",
         "sticker_path",
         "flowbox_path",
         "qr_generated_at",
@@ -691,19 +1156,54 @@ class StickerAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    fields = (
-        "client",
-        "slug",
-        "box",
-        "is_active",
-        "status",
-        "sticker_path",
-        "flowbox_path",
-        "qr_generated_at",
-        "downloaded_at",
-        "assigned_at",
-        "created_at",
-        "updated_at",
+    fieldsets = (
+        (
+            "Identité",
+            {
+                "fields": (
+                    "slug",
+                    "status",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Affectation",
+            {
+                "fields": (
+                    "client",
+                    "box",
+                )
+            },
+        ),
+        (
+            "URLs",
+            {
+                "fields": (
+                    "sticker_path",
+                    "flowbox_path",
+                )
+            },
+        ),
+        (
+            "Cycle de vie",
+            {
+                "fields": (
+                    "qr_generated_at",
+                    "downloaded_at",
+                    "assigned_at",
+                )
+            },
+        ),
+        (
+            "Dates",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
     )
 
     def get_urls(self):
@@ -719,7 +1219,9 @@ class StickerAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context["sticker_batch_create_url"] = reverse("admin:box_management_sticker_batch_create")
+        extra_context["sticker_batch_create_url"] = reverse(
+            "admin:box_management_sticker_batch_create"
+        )
         return super().changelist_view(request, extra_context=extra_context)
 
     def batch_create_view(self, request):
