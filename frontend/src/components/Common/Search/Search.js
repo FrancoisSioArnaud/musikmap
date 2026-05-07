@@ -64,6 +64,9 @@ export default function Search({
       return undefined;
     }
 
+    setSearchError("");
+    setIsSearching(true);
+
     const effectiveProvider = provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? provider : "server";
     const cacheKey = `${effectiveProvider}::${normalizedQueryKey}`;
 
@@ -71,8 +74,6 @@ export default function Search({
       let cancelled = false;
 
       const applyCachedResults = async () => {
-        setSearchError("");
-        setIsSearching(true);
         await sleep(CACHE_LOADING_MS);
         if (cancelled) {
           return;
@@ -92,8 +93,6 @@ export default function Search({
     const timer = setTimeout(() => {
       const doFetch = async () => {
         try {
-          setSearchError("");
-          setIsSearching(true);
           let nextResults = [];
           let shouldFallbackToServer = provider === NO_PERSONALIZED_RESULTS_PROVIDER;
 

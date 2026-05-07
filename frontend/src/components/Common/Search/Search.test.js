@@ -11,7 +11,7 @@ jest.mock('./SongList', () => ({
     <div>
       <div data-testid="songlist-loading">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="songlist-items">{items.map((item) => item.title).join(',')}</div>
-      <div data-testid="songlist-empty">{emptyContent}</div>
+      {!isLoading ? <div data-testid="songlist-empty">{emptyContent}</div> : null}
     </div>
   ),
 }));
@@ -47,6 +47,33 @@ describe('Search', () => {
   afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
+  });
+
+
+  test('shows loader immediately for a non-empty query but keeps the network debounce', async () => {
+    mockSearchTracksViaBackend.mockResolvedValueOnce([{ title: 'Immediate Song' }]);
+
+    renderSearch({ provider: 'none', searchValue: 'Radiohead' });
+
+    expect(screen.getByTestId('songlist-loading')).toHaveTextContent('loading');
+    expect(mockSearchTracksViaBackend).not.toHaveBeenCalled();
+    expect(screen.queryByText('Aucun résultat.')).not.toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(540);
+    });
+
+    expect(mockSearchTracksViaBackend).not.toHaveBeenCalled();
+    expect(screen.getByTestId('songlist-loading')).toHaveTextContent('loading');
+
+    await act(async () => {
+      jest.advanceTimersByTime(20);
+      await Promise.resolve();
+    });
+
+    expect(mockSearchTracksViaBackend).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Immediate Song')).toBeInTheDocument();
+    expect(screen.getByTestId('songlist-loading')).toHaveTextContent('idle');
   });
 
   test('shows inline error alert instead of empty state when backend search fails', async () => {

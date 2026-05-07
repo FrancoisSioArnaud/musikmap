@@ -36,6 +36,7 @@ export default function SearchPanel({
   const { user } = useContext(UserContext) || {};
 
   const [searchValue, setSearchValue] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(() => resolveInitialSelectedProvider(user));
 
   const connectedPersonalizedProviderCodes = useMemo(
@@ -67,6 +68,8 @@ export default function SearchPanel({
 
   const hasSearchValue = Boolean(String(searchValue || "").trim());
   const shouldShowIncitation = !hasSearchValue && Boolean(String(searchIncitationText || "").trim());
+  const shouldShowRecentlyPlayed =
+    !hasSearchValue && !isSearchFocused && selectedProvider !== NO_PERSONALIZED_RESULTS_PROVIDER;
 
   return (
     <Box
@@ -85,6 +88,8 @@ export default function SearchPanel({
           inputRef={inputRef}
           value={searchValue}
           onChange={(event) => setSearchValue(event.target.value)}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
           selectedProviderCode={selectedProvider}
           connectedProviderCodes={connectedPersonalizedProviderCodes}
           onSelectProvider={handleSelectProvider}
@@ -132,7 +137,7 @@ export default function SearchPanel({
 
         <RecentlyPlayed
           provider={selectedProvider}
-          visible={!hasSearchValue}
+          visible={shouldShowRecentlyPlayed}
           onSelectSong={onSelectSong}
           actionLabel={actionLabel}
           depositFlowState={depositFlowState}
