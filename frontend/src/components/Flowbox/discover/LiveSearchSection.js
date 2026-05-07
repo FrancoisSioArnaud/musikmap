@@ -277,7 +277,7 @@ export default function LiveSearchSection({
             ref={liveSearchCardRef}
             className={`liveSearch${isLiveSearchFixed ? " fixed" : ""}`}
           >
-            <Typography component="h3" variant="h4">
+            <Typography component="h3" variant="h5">
               Ajoute une chanson à la boîte et gagne pleins de points
             </Typography>
 
