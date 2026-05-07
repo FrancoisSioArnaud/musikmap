@@ -14,7 +14,7 @@ export default function SearchBar({
   connectedProviderCodes,
   onSelectProvider,
   onConnectProvider,
-  placeholder = "Chercher une chanson ou un artiste",
+  placeholder = "Chercher une chanson ou artiste",
   className = "searchfield",
   sx,
 }) {
