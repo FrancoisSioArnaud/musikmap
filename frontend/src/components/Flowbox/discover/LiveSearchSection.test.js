@@ -7,16 +7,33 @@ import { FlowboxSessionContext } from '../runtime/FlowboxSessionContext';
 
 import LiveSearchSection from './LiveSearchSection';
 
+let mockLatestSearchPanelProps = null;
+
 jest.mock('../../Common/Search/SearchPanel', () => ({
   __esModule: true,
-  default: ({ onSelectSong }) => (
-    <button
-      type="button"
-      onClick={() => onSelectSong({ id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
-    >
-      Choisir Search song
-    </button>
-  ),
+  default: (props) => {
+    mockLatestSearchPanelProps = props;
+    return (
+      <div>
+        <div data-testid="deposit-flow-status">{props.depositFlowState?.status || 'missing'}</div>
+        <div data-testid="deposit-visual-callback">
+          {typeof props.onDepositVisualComplete === 'function' ? 'enabled' : 'disabled'}
+        </div>
+        <button
+          type="button"
+          onClick={() => props.onSelectSong({ id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
+        >
+          Choisir Search song
+        </button>
+        <button
+          type="button"
+          onClick={() => props.onDepositVisualComplete?.('request-1')}
+        >
+          Terminer animation
+        </button>
+      </div>
+    );
+  },
 }));
 
 jest.mock('../../Security/TokensUtils', () => ({
@@ -83,6 +100,7 @@ function mockJsonResponse(body, init = {}) {
 describe('LiveSearchSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
   });
 
@@ -110,7 +128,7 @@ describe('LiveSearchSection', () => {
     expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
   });
 
-  test('posts selected song, normalizes response, updates user points and closes drawer', async () => {
+  test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
     global.fetch.mockResolvedValueOnce(mockJsonResponse({
       my_deposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
       successes: [{ name: 'total', points: 42 }],
@@ -122,7 +140,35 @@ describe('LiveSearchSection', () => {
     const { onDepositCreated, setUser } = renderLiveSearchSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    expect(await screen.findByTestId('deposit-visual-callback')).toHaveTextContent('enabled');
+
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/box-management/box-deposit/?boxSlug=box-a',
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'same-origin',
+          body: JSON.stringify({ option: { id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' } }),
+        })
+      );
+    });
+    const [depositUrl, depositInit] = global.fetch.mock.calls[0];
+    expect(String(depositUrl)).not.toContain(['get', 'box'].join('-'));
+    expect(JSON.parse(depositInit.body)).toEqual({
+      option: { id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deposit-flow-status')).toHaveTextContent('success');
+    });
+    expect(mockLatestSearchPanelProps.onDepositVisualComplete).toEqual(expect.any(Function));
+    expect(onDepositCreated).not.toHaveBeenCalled();
+    expect(setUser).not.toHaveBeenCalled();
+    expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
     await waitFor(() => {
       expect(onDepositCreated).toHaveBeenCalledWith({
@@ -133,19 +179,6 @@ describe('LiveSearchSection', () => {
       });
     });
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/box-management/box-deposit/?boxSlug=box-a',
-      expect.objectContaining({
-        method: 'POST',
-        credentials: 'same-origin',
-        body: JSON.stringify({ option: { id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' } }),
-      })
-    );
-    const [depositUrl, depositInit] = global.fetch.mock.calls[0];
-    expect(String(depositUrl)).not.toContain(['get', 'box'].join('-'));
-    expect(JSON.parse(depositInit.body)).toEqual({
-      option: { id: 'track-1', name: 'Search song', artist: 'Artist', image_url: 'cover.jpg' },
-    });
     expect(setUser).toHaveBeenCalledWith(expect.any(Function));
     expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
     await waitFor(() => {
@@ -193,7 +226,7 @@ describe('LiveSearchSection', () => {
     expect(await screen.findAllByText('Tu as déjà partagé une chanson dans cette session.')).toHaveLength(2);
   });
 
-  test('resynchronizes UI from a deposit already exists conflict payload', async () => {
+  test('resynchronizes UI from a deposit already exists conflict payload after visual completion', async () => {
     global.fetch.mockResolvedValueOnce(mockJsonResponse(
       {
         status: 409,
@@ -211,6 +244,15 @@ describe('LiveSearchSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deposit-flow-status')).toHaveTextContent('success');
+    });
+    expect(onDepositCreated).not.toHaveBeenCalled();
+    expect(setUser).not.toHaveBeenCalled();
+    expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
     await waitFor(() => {
       expect(onDepositCreated).toHaveBeenCalledWith({

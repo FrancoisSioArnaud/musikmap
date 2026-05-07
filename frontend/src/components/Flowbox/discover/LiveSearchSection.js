@@ -64,6 +64,7 @@ export default function LiveSearchSection({
   });
   const searchInputRef = useRef(null);
   const isPostingRef = useRef(false);
+  const pendingDepositResultRef = useRef(null);
 
   const hasDeposit = Boolean(myDeposit);
 
@@ -98,6 +99,7 @@ export default function LiveSearchSection({
 
   const openDrawer = useCallback(() => {
     if (hasDeposit) {return;}
+    pendingDepositResultRef.current = null;
     setErrorMessage("");
     openDrawerWithHistory({
       navigate,
@@ -106,6 +108,23 @@ export default function LiveSearchSection({
       value: LIVE_SEARCH_DRAWER_VALUE,
     });
   }, [hasDeposit, location, navigate]);
+
+  const handleDepositVisualComplete = useCallback((requestKey = null) => {
+    const pendingDepositResult = pendingDepositResultRef.current;
+    if (!pendingDepositResult) {return;}
+    if (pendingDepositResult.requestKey !== requestKey) {return;}
+
+    const normalized = pendingDepositResult.normalized;
+    onDepositCreated?.(normalized);
+
+    if (typeof normalized.pointsBalance === "number" && setUser) {
+      setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
+    }
+
+    pendingDepositResultRef.current = null;
+    isPostingRef.current = false;
+    closeDrawer();
+  }, [closeDrawer, onDepositCreated, setUser]);
 
   const handleDepositError = useCallback((data, response) => {
     if (response?.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
@@ -147,18 +166,13 @@ export default function LiveSearchSection({
           hasDepositResyncPayload(data)
         ) {
           const normalized = normalizeDepositResponse(data);
-          onDepositCreated?.(normalized);
-
-          if (typeof normalized.pointsBalance === "number" && setUser) {
-            setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
-          }
-
+          pendingDepositResultRef.current = { requestKey, normalized };
           setDepositFlowState({ requestKey, status: "success", errorMessage: null });
-          closeDrawer();
           return;
         }
 
         const handled = handleDepositError(data, response);
+        isPostingRef.current = false;
         if (!handled) {
           setDepositFlowState({
             requestKey,
@@ -170,22 +184,15 @@ export default function LiveSearchSection({
       }
 
       const normalized = normalizeDepositResponse(data);
-      onDepositCreated?.(normalized);
-
-      if (typeof normalized.pointsBalance === "number" && setUser) {
-        setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
-      }
-
+      pendingDepositResultRef.current = { requestKey, normalized };
       setDepositFlowState({ requestKey, status: "success", errorMessage: null });
-      closeDrawer();
     } catch (error) {
       const message = error?.message || DEFAULT_ERROR_MESSAGE;
       setErrorMessage(message);
       setDepositFlowState({ requestKey, status: "error", errorMessage: message });
-    } finally {
       isPostingRef.current = false;
     }
-  }, [boxSlug, closeDrawer, handleDepositError, hasDeposit, onDepositCreated, setUser]);
+  }, [boxSlug, handleDepositError, hasDeposit]);
 
   if (hasDeposit) {
     return (
@@ -247,6 +254,7 @@ export default function LiveSearchSection({
               onSelectSong={handleSongSelected}
               actionLabel="Partager"
               depositFlowState={depositFlowState}
+              onDepositVisualComplete={handleDepositVisualComplete}
               rootSx={{ flex: 1, minHeight: 0 }}
               searchBarWrapperSx={{ px: 5, pb: 2 }}
               contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}

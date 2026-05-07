@@ -8,6 +8,8 @@ export default function SearchBar({
   inputRef,
   value,
   onChange,
+  onFocus,
+  onBlur,
   selectedProviderCode,
   connectedProviderCodes,
   onSelectProvider,
@@ -25,6 +27,8 @@ export default function SearchBar({
       value={value}
       className={className}
       onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
       inputProps={{ inputMode: "search" }}
       InputProps={{
         endAdornment: (
