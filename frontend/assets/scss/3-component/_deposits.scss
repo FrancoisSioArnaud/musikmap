@@ -58,19 +58,19 @@
   gap: 16px;
 }
 
-#older_deposit{
+.discover_timeline {
   background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 26px 0;
+  padding-bottom: 32px;
 }
 
-#older_deposits_list>.deposit::after {
-  content: "...";
-  transform: rotate(90deg) translate(0, -15px);
-  padding: 16px;
-  line-height: 0;
-  font-size: 26px;
-  color: var(--mm-color-divider);
-  padding-right: 16px;
+.discover_timeline .deposit, .discover_timeline .article{
+  margin: 0 20px;
 }
+
 
 .deposit_card {
   display: flex;
@@ -87,17 +87,6 @@
   border: solid 3px var(--mm-color-white);
 }
 
-
-#older_deposits_list {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  padding: 26px;
-  padding-bottom: 32px;
-}
-
-#older_deposits_list .deposit_card {
-}
 
 .deposit .deposit_infos {
   display: flex;
@@ -426,7 +415,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
 }
 
 .pinned_song_container,
