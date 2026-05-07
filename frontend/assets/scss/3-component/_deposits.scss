@@ -67,13 +67,6 @@
   padding-bottom: 32px;
 }
 
-.discover_timeline .deposit::after, .discover_timeline .article::after {
-    content: "...";
-    font-size: 26px;
-    opacity: 0.2;
-    transform: rotate(90deg) translateY(-18px);
-}
-
 .discover_timeline .deposit, .discover_timeline .article{
   margin: 0 20px;
 }
