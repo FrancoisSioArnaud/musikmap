@@ -58,19 +58,10 @@
   gap: 16px;
 }
 
-#older_deposit{
+.discover_timeline {
   background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
 }
 
-#older_deposits_list>.deposit::after {
-  content: "...";
-  transform: rotate(90deg) translate(0, -15px);
-  padding: 16px;
-  line-height: 0;
-  font-size: 26px;
-  color: var(--mm-color-divider);
-  padding-right: 16px;
-}
 
 .deposit_card {
   display: flex;
@@ -88,7 +79,7 @@
 }
 
 
-#older_deposits_list {
+.discover_timeline_list {
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -96,7 +87,18 @@
   padding-bottom: 32px;
 }
 
-#older_deposits_list .deposit_card {
+.discover_timeline_item {
+  width: 100%;
+}
+
+.discover_timeline_item--deposit,
+.discover_timeline_item--pinned,
+.discover_timeline_item--article {
+  display: block;
+}
+
+.discover_timeline_item--article .article {
+  width: 100%;
 }
 
 .deposit .deposit_infos {

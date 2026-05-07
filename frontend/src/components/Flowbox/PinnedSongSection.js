@@ -75,15 +75,16 @@ function buildPinnedDateLabel(dep) {
 const PINNED_SONG_DRAWER_PARAM = "flowboxDrawer";
 const PINNED_SONG_DRAWER_VALUE = "pinned-song";
 
-export default function PinnedSongSection({ boxSlug }) {
+export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useContext(UserContext) || {};
 
-  const [loading, setLoading] = useState(true);
+  const hasInitialPinnedDepositProp = initialPinnedDeposit !== undefined;
+  const [loading, setLoading] = useState(!hasInitialPinnedDepositProp);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerStep, setDrawerStep] = useState("search");
-  const [activePinnedDeposit, setActivePinnedDeposit] = useState(null);
+  const [activePinnedDeposit, setActivePinnedDeposit] = useState(initialPinnedDeposit || null);
   const [priceSteps, setPriceSteps] = useState([]);
   const [selectedSong, setSelectedSong] = useState(null);
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
@@ -130,8 +131,8 @@ export default function PinnedSongSection({ boxSlug }) {
   }, [boxSlug]);
 
   useEffect(() => {
-    refreshPinnedSection();
-  }, [refreshPinnedSection]);
+    refreshPinnedSection({ preserveLoadedState: hasInitialPinnedDepositProp });
+  }, [hasInitialPinnedDepositProp, refreshPinnedSection]);
 
   useEffect(() => {
     const shouldOpenDrawer = matchesDrawerSearch(

@@ -711,19 +711,10 @@ input[type="search"] {
 }
 
 textarea,
-.articles_list,
 .comments_drawer_modal .comments_list,
 .reaction_summary_modal .reactions_list,
 .success_container {
   -webkit-overflow-scrolling: touch;
-}
-
-.articles_list {
-  overscroll-behavior-x: contain;
-}
-
-.articles_list::-webkit-scrollbar {
-  display: none;
 }
 
 .article {

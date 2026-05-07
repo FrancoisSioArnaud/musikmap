@@ -140,6 +140,10 @@ function expectNodeBefore(first, second) {
   expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 }
 
+function buildOlderDeposits(count, prefix = 'older') {
+  return Array.from({ length: count }, (_, index) => ({ public_key: `${prefix}-${index + 1}` }));
+}
+
 describe('Discover', () => {
   let intersectionObservers = [];
 
@@ -229,7 +233,7 @@ describe('Discover', () => {
       boxContent: {
         boxSlug: 'box-a',
         main: { public_key: 'main-1' },
-        older_deposits: [],
+        older_deposits: buildOlderDeposits(7),
         active_pinned_deposit: null,
         my_deposit: null,
       },
@@ -254,7 +258,7 @@ describe('Discover', () => {
       boxContent: {
         boxSlug: 'box-a',
         main: null,
-        older_deposits: [],
+        older_deposits: buildOlderDeposits(7),
         active_pinned_deposit: null,
         my_deposit: null,
       },
@@ -499,7 +503,7 @@ describe('Discover', () => {
       boxContent: {
         boxSlug: 'box-a',
         main: { public_key: 'main-1' },
-        older_deposits: [],
+        older_deposits: buildOlderDeposits(7),
         active_pinned_deposit: null,
         my_deposit: {
           public_key: 'my-deposit-1',

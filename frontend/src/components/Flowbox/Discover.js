@@ -9,27 +9,21 @@ import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 
-import ArticleCard from "../Common/Article/ArticleCard";
-import ArticleDrawer from "../Common/Article/ArticleDrawer";
 import Deposit from "../Common/Deposit";
 import { UserContext } from "../UserContext";
 import {
   closeDrawerWithHistory,
-  getDrawerParamValue,
   matchesDrawerSearch,
   openDrawerWithHistory,
 } from "../Utils/drawerHistory";
 
 import AchievementsPanel from "./AchievementsPanel";
+import DiscoverTimeline from "./discover/DiscoverTimeline";
 import LiveSearchSection from "./discover/LiveSearchSection";
-import OlderDepositsSection, { DISCOVER_OLDER_DEPOSITS_LIMIT } from "./discover/OlderDepositsSection";
-import PinnedSongSection from "./PinnedSongSection";
 import { FlowboxSessionContext } from "./runtime/FlowboxSessionContext";
 
-const MAX_VISIBLE_ARTICLES = 5;
 const ACHIEVEMENTS_DRAWER_PARAM = "drawer";
 const ACHIEVEMENTS_DRAWER_VALUE = "achievements";
-const ARTICLE_DRAWER_PARAM = "article";
 
 function normalizeDiscoverPayload(payload, fallbackSlug) {
   const source = payload || {};
@@ -38,7 +32,7 @@ function normalizeDiscoverPayload(payload, fallbackSlug) {
     loadedAt: source.loadedAt || source.loaded_at || new Date().toISOString(),
     main: source.main || null,
     olderDeposits: Array.isArray(source.olderDeposits || source.older_deposits)
-      ? (source.olderDeposits || source.older_deposits).slice(0, DISCOVER_OLDER_DEPOSITS_LIMIT)
+      ? (source.olderDeposits || source.older_deposits)
       : [],
     olderDepositsNextCursor: source.olderDepositsNextCursor ?? source.older_deposits_next_cursor ?? null,
     olderDepositsHasMore: Boolean(source.olderDepositsHasMore ?? source.older_deposits_has_more ?? false),
@@ -101,8 +95,6 @@ export default function Discover() {
   const [contentLoading, setContentLoading] = useState(true);
   const [contentError, setContentError] = useState("");
   const [openAchievements, setOpenAchievements] = useState(false);
-  const [articles, setArticles] = useState([]);
-  const [selectedArticle, setSelectedArticle] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,45 +154,6 @@ export default function Discover() {
   }, [boxSlug, clearBoxSession, getDiscoverSnapshot, navigate, saveDiscoverSnapshot]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const url = `/box-management/articles/visible/?boxSlug=${encodeURIComponent(
-          boxSlug
-        )}&limit=${MAX_VISIBLE_ARTICLES}`;
-
-        const res = await fetch(url, {
-          credentials: "include",
-          headers: { Accept: "application/json" },
-        });
-
-        const data = await res.json().catch(() => []);
-
-        if (!res.ok) {
-          if (res.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
-            clearBoxSession(boxSlug, { markExpired: true });
-            navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
-            return;
-          }
-          throw new Error(data?.detail || "Impossible de charger les articles.");
-        }
-        if (cancelled) {return;}
-
-        setArticles(Array.isArray(data) ? data : []);
-      } catch {
-        if (!cancelled) {
-          setArticles([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [boxSlug, clearBoxSession, navigate]);
-
-  useEffect(() => {
     const shouldOpenAchievements = matchesDrawerSearch(
       location,
       ACHIEVEMENTS_DRAWER_PARAM,
@@ -212,42 +165,12 @@ export default function Discover() {
     );
   }, [location]);
 
-  useEffect(() => {
-    const articleIdFromSearch = getDrawerParamValue(location, ARTICLE_DRAWER_PARAM);
-
-    if (!articleIdFromSearch) {
-      setSelectedArticle((prev) => (prev ? null : prev));
-      return;
-    }
-
-    const nextArticle = articles.find(
-      (article) => String(article?.id || "") === String(articleIdFromSearch)
-    );
-
-    if (!nextArticle) {
-      return;
-    }
-
-    setSelectedArticle((prev) => {
-      if (String(prev?.id || "") === String(nextArticle.id || "")) {
-        return prev;
-      }
-      return nextArticle;
-    });
-  }, [articles, location]);
-
   const myDeposit = boxContent?.myDeposit || null;
 
   const mainDep = boxContent?.main || null;
   const successes = Array.isArray(boxContent?.successes)
     ? boxContent.successes
     : [];
-  const olderDeposits = Array.isArray(boxContent?.olderDeposits)
-    ? boxContent.olderDeposits
-    : [];
-  const olderDepositsNextCursor = boxContent?.olderDepositsNextCursor || null;
-  const olderDepositsHasMore = Boolean(boxContent?.olderDepositsHasMore);
-
   const handleOpenAchievements = useCallback(() => {
     openDrawerWithHistory({
       navigate,
@@ -279,78 +202,6 @@ export default function Discover() {
       boxSlug,
     }));
   }, [boxSlug, patchDiscoverSnapshot]);
-
-  const handleOlderDepositsLoaded = useCallback((payload) => {
-    const loadedDeposits = Array.isArray(payload?.older_deposits)
-      ? payload.older_deposits
-      : [];
-
-    setBoxContent((current) => {
-      const currentSnapshot = current || normalizeDiscoverPayload({}, boxSlug);
-      const existingDeposits = Array.isArray(currentSnapshot.olderDeposits)
-        ? currentSnapshot.olderDeposits
-        : [];
-      const seenKeys = new Set(existingDeposits.map((deposit) => deposit?.public_key).filter(Boolean));
-      const deduplicatedNewDeposits = loadedDeposits.filter((deposit) => {
-        const key = deposit?.public_key;
-        if (!key || seenKeys.has(key)) {return false;}
-        seenKeys.add(key);
-        return true;
-      });
-      const mergedDeposits = [...existingDeposits, ...deduplicatedNewDeposits]
-        .slice(0, DISCOVER_OLDER_DEPOSITS_LIMIT);
-      const limitReached = mergedDeposits.length >= DISCOVER_OLDER_DEPOSITS_LIMIT;
-      const paginationPatch = {
-        boxSlug,
-        olderDeposits: mergedDeposits,
-        olderDepositsNextCursor: limitReached ? null : (payload?.next_cursor || null),
-        olderDepositsHasMore: limitReached ? false : Boolean(payload?.has_more),
-      };
-
-      patchDiscoverSnapshot?.(boxSlug, paginationPatch);
-      return {
-        ...currentSnapshot,
-        ...paginationPatch,
-      };
-    });
-  }, [boxSlug, patchDiscoverSnapshot]);
-
-  const handleOlderDepositsSessionExpired = useCallback(() => {
-    clearBoxSession(boxSlug, { markExpired: true });
-    navigate(`/flowbox/${encodeURIComponent(boxSlug)}/closed`, { replace: true });
-  }, [boxSlug, clearBoxSession, navigate]);
-
-  const handleOpenArticleDrawer = useCallback(
-    (article) => {
-      if (!article?.id) {return;}
-      setSelectedArticle(article);
-      openDrawerWithHistory({
-        navigate,
-        location,
-        param: ARTICLE_DRAWER_PARAM,
-        value: article.id,
-      });
-    },
-    [location, navigate]
-  );
-
-  const handleCloseArticleDrawer = useCallback(() => {
-    const articleId =
-      selectedArticle?.id ||
-      getDrawerParamValue(location, ARTICLE_DRAWER_PARAM) ||
-      "";
-
-    if (
-      !closeDrawerWithHistory({
-        navigate,
-        location,
-        param: ARTICLE_DRAWER_PARAM,
-        value: articleId,
-      })
-    ) {
-      setSelectedArticle(null);
-    }
-  }, [location, navigate, selectedArticle?.id]);
 
   if (contentLoading) {
     return (
@@ -399,12 +250,6 @@ export default function Discover() {
         </Box>
       </Drawer>
 
-      <ArticleDrawer
-        article={selectedArticle}
-        open={!!selectedArticle}
-        onClose={handleCloseArticleDrawer}
-        boxSlug={boxSlug}
-      />
 
       <Box className="intro">
         <Typography component="h2" variant="h1">
@@ -438,29 +283,12 @@ export default function Discover() {
         onOpenAchievements={handleOpenAchievements}
       />
 
-      {articles.length > 0 ? (
-        <Box className="articles_section">
-          <Box className="articles_list">
-            {articles.map((article, idx) => (
-              <ArticleCard
-                key={article?.id || `${article?.link || article?.title || "article"}-${idx}`}
-                article={article}
-                onOpenDrawer={handleOpenArticleDrawer}
-              />
-            ))}
-          </Box>
-        </Box>
-      ) : null}
-
-      <PinnedSongSection boxSlug={boxSlug} />
-
-      <OlderDepositsSection
+      <DiscoverTimeline
         boxSlug={boxSlug}
-        deposits={olderDeposits}
-        nextCursor={olderDepositsNextCursor}
-        hasMore={olderDepositsHasMore}
-        onDepositsLoaded={handleOlderDepositsLoaded}
-        onSessionExpired={handleOlderDepositsSessionExpired}
+        initialDeposits={boxContent?.olderDeposits}
+        initialNextCursor={boxContent?.olderDepositsNextCursor}
+        initialHasMore={boxContent?.olderDepositsHasMore}
+        activePinnedDeposit={boxContent?.activePinnedDeposit}
         user={user}
       />
     </Box>
