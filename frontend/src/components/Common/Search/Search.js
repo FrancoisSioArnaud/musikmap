@@ -40,6 +40,7 @@ export default function Search({
 }) {
   const { user, setUser } = useContext(UserContext) || {};
   const [results, setResults] = useState([]);
+  const [resultsCacheKey, setResultsCacheKey] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const latestUserRef = useRef(user);
@@ -56,19 +57,21 @@ export default function Search({
 
   const normalizedQuery = useMemo(() => normalizeSearchValue(searchValue), [searchValue]);
   const normalizedQueryKey = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
+  const effectiveProvider = provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? provider : "server";
+  const currentCacheKey = normalizedQuery ? `${effectiveProvider}::${normalizedQueryKey}` : null;
 
   useEffect(() => {
     if (!normalizedQuery) {
       setIsSearching(false);
       setSearchError("");
+      setResultsCacheKey(null);
       return undefined;
     }
 
     setSearchError("");
     setIsSearching(true);
 
-    const effectiveProvider = provider && provider !== NO_PERSONALIZED_RESULTS_PROVIDER ? provider : "server";
-    const cacheKey = `${effectiveProvider}::${normalizedQueryKey}`;
+    const cacheKey = currentCacheKey;
 
     if (cacheRef.current.has(cacheKey)) {
       let cancelled = false;
@@ -79,6 +82,7 @@ export default function Search({
           return;
         }
         setResults(cacheRef.current.get(cacheKey) || []);
+        setResultsCacheKey(cacheKey);
         setIsSearching(false);
       };
 
@@ -130,11 +134,13 @@ export default function Search({
             const safeResults = Array.isArray(nextResults) ? nextResults : [];
             cacheRef.current.set(cacheKey, safeResults);
             setResults(safeResults);
+            setResultsCacheKey(cacheKey);
             setSearchError("");
           }
         } catch (error) {
           if (!controller.signal.aborted && error?.name !== "AbortError") {
             setResults([]);
+            setResultsCacheKey(cacheKey);
             setSearchError("Oops, une erreur s’est produite. Réessaie dans un instant.");
           }
         } finally {
@@ -151,7 +157,9 @@ export default function Search({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [connection?.access_token, connection?.connected, normalizedQuery, normalizedQueryKey, provider, setUser]);
+  }, [connection?.access_token, connection?.connected, currentCacheKey, normalizedQuery, provider, setUser]);
+
+  const shouldShowLoading = isSearching || Boolean(normalizedQuery && resultsCacheKey !== currentCacheKey);
 
   if (!visible) {
     return null;
@@ -160,7 +168,7 @@ export default function Search({
   return (
     <SongList
       items={results}
-      isLoading={isSearching}
+      isLoading={shouldShowLoading}
       depositFlowState={depositFlowState}
       onSelectSong={onSelectSong}
       onDepositVisualComplete={onDepositVisualComplete}
