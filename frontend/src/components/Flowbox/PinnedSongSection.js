@@ -410,7 +410,6 @@ export default function PinnedSongSection({ boxSlug }) {
           <Deposit
             dep={activePinnedDeposit}
             user={user}
-            variant="list"
             showUser={true}
             showDate={true}
             fitContainer

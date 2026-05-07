@@ -213,7 +213,6 @@ export default function Deposit({
   user: viewer,
   setDispDeposits,
   cost,
-  variant = "list",
   showDate = true,
   showUser = true,
   fitContainer: _fitContainer = true,
@@ -245,7 +244,7 @@ export default function Deposit({
   const user = localDep?.user || {};
   const comments = localDep?.comments || { items: [], count: 0, viewer_state: {} };
   const accentColor = localDep?.accent_color || undefined;
-  const rootClassName = `deposit deposit_${variant}`;
+  const rootClassName = "deposit";
 
 
   const isRevealed = useMemo(
@@ -741,7 +740,6 @@ export default function Deposit({
           {depositInfosBlock}
 
           <DepositSong
-            variant={variant}
             song={song}
             accentColor={accentColor}
             isRevealed={isRevealed}

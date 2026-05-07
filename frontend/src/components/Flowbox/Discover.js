@@ -417,7 +417,7 @@ export default function Discover() {
 
       {mainDep ? (
         <Box sx={{ margin: "0 20px" }}>
-          <Deposit dep={mainDep} user={user} variant="list" showPlay={true} showUser={true} />
+          <Deposit dep={mainDep} user={user} showPlay={true} showUser={true} />
         </Box>
       ) : (
         <Box sx={{ p: 3 }}>

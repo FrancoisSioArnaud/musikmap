@@ -107,7 +107,6 @@ export default function OlderDepositsSection({
             key={deposit.public_key || idx}
             dep={deposit}
             user={user}
-            variant="list"
             showPlay={true}
             showUser={true}
           />

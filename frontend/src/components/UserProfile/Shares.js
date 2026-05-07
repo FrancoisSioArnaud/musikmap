@@ -149,7 +149,6 @@ export default function Shares({ username, me = false, user, autoLoad }) {
             dep={it}
             user={user}
             setDispDeposits={setItems}
-            variant="list"
             fitContainer={true}
             showUser={false}
             context="profile"

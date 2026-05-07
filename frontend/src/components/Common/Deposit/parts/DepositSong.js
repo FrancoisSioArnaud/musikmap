@@ -62,7 +62,6 @@ function getPlaySongKey(currentSong) {
 }
 
 export default function DepositSong({
-  variant = "list",
   song,
   accentColor,
   isRevealed,
@@ -269,7 +268,7 @@ export default function DepositSong({
       <Box className="interact">
         {isRevealed ? (
           <Box className="texts">
-            <Typography component="span" className="titre" variant={variant === "main" ? "h4" : "h5"}>
+            <Typography component="span" className="titre" variant="h5">
               {song?.title}
             </Typography>
             <Typography component="span" className="artist" variant="body1">
@@ -282,7 +281,7 @@ export default function DepositSong({
           <PlayModal open={playOpen} song={playSong} onClose={closePlay} onSongResolved={onSongResolved}>
             <Button
               variant="depositInteract"
-              className={variant === "main" ? "play playMain" : "play playSecondary"}
+              className="play playSecondary"
               size="large"
               onClick={() => openPlayFor(song)}
               startIcon={<PlayArrowIcon />}

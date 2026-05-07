@@ -223,29 +223,23 @@ export default function Library() {
 
             <Box sx={{ display: "grid", gap: 4 }}>
               {Array.isArray(sess?.deposits) &&
-                sess.deposits.map((d, idx) => {
-                  const t = (d?.type || "").toLowerCase();
-                  const isMain = t === "main";
-
-                  return (
-                    <Deposit
-                      key={`${sess.session_id}-${idx}`}
-                      dep={d}
-                      user={user}
-                      variant={sessionType === "link" ? "main" : (isMain ? "main" : "list")}
-                      showDate={false}
-                      showUser={true}
-                      fitContainer={true}
-                      context={
-                        sessionType === "profile"
-                          ? "profile"
-                          : sessionType === "link"
-                            ? "link"
-                            : "box"
-                      }
-                    />
-                  );
-                })}
+                sess.deposits.map((d, idx) => (
+                  <Deposit
+                    key={`${sess.session_id}-${idx}`}
+                    dep={d}
+                    user={user}
+                    showDate={false}
+                    showUser={true}
+                    fitContainer={true}
+                    context={
+                      sessionType === "profile"
+                        ? "profile"
+                        : sessionType === "link"
+                          ? "link"
+                          : "box"
+                    }
+                  />
+                ))}
             </Box>
           </Box>
         );
