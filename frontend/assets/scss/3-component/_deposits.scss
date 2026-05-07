@@ -63,8 +63,12 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding: 26px;
+  padding: 26px 0;
   padding-bottom: 32px;
+}
+
+.discover_timeline .deposit, .discover_timeline .article{
+  padding: 0 20px;
 }
 
 
@@ -83,10 +87,6 @@
   border: solid 3px var(--mm-color-white);
 }
 
-
-.discover_timeline_item--article .article {
-  width: 100%;
-}
 
 .deposit .deposit_infos {
   display: flex;
