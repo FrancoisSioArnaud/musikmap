@@ -411,7 +411,7 @@ export default function Discover() {
           Découvre les chansons déposées par les personnes précédentes
         </Typography>
         <Typography component="span" variant="body1">
-          La dernière t\u2019est offerte
+          La dernière t'est offerte
         </Typography>
       </Box>
 
