@@ -18,13 +18,21 @@ jest.mock('../Common/Deposit', () => ({
 
 jest.mock('../Common/Search/SearchPanel', () => ({
   __esModule: true,
-  default: ({ onSelectSong }) => (
-    <button
-      type="button"
-      onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
-    >
-      Choisir Posted song
-    </button>
+  default: ({ onSelectSong, onDepositVisualComplete }) => (
+    <div>
+      <button
+        type="button"
+        onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
+      >
+        Choisir Posted song
+      </button>
+      <button
+        type="button"
+        onClick={() => onDepositVisualComplete?.('request-1')}
+      >
+        Terminer animation
+      </button>
+    </div>
   ),
 }));
 
@@ -151,6 +159,21 @@ describe('Discover', () => {
     jest.clearAllMocks();
     intersectionObservers = [];
     delete window.IntersectionObserver;
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+    window.requestAnimationFrame = jest.fn((callback) => {
+      callback();
+      return 1;
+    });
+    Element.prototype.scrollIntoView = jest.fn();
   });
 
   function mockIntersectionObserver() {
@@ -244,7 +267,7 @@ describe('Discover', () => {
 
     const mainDeposit = await screen.findByTestId('deposit-main');
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
+      name: /Ajoute une chanson à la boîte/i,
       level: 3,
     });
     const article = await screen.findByTestId('article-card');
@@ -269,7 +292,7 @@ describe('Discover', () => {
 
     const emptyState = await screen.findByText(/Aucune chanson à découvrir/i);
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
+      name: /Ajoute une chanson à la boîte/i,
       level: 3,
     });
     const article = await screen.findByTestId('article-card');
@@ -306,6 +329,13 @@ describe('Discover', () => {
     expect(await screen.findByText('older-1')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Posted song' }));
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/box-management/box-deposit/?boxSlug=box-a',
+        expect.any(Object)
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
     expect(await screen.findByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(screen.getByText('Posted song')).toBeInTheDocument();

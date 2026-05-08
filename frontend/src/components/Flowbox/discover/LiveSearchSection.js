@@ -62,11 +62,83 @@ export default function LiveSearchSection({
     status: "idle",
     errorMessage: null,
   });
+  const [isLiveSearchFixed, setIsLiveSearchFixed] = useState(false);
+  const [liveSearchHeight, setLiveSearchHeight] = useState(0);
+  const sectionAnchorRef = useRef(null);
+  const liveSearchSlotRef = useRef(null);
+  const liveSearchCardRef = useRef(null);
   const searchInputRef = useRef(null);
   const isPostingRef = useRef(false);
   const pendingDepositResultRef = useRef(null);
+  const pendingScrollToSectionRef = useRef(false);
 
   const hasDeposit = Boolean(myDeposit);
+
+  const updateLiveSearchFixedState = useCallback(() => {
+    if (hasDeposit) {
+      setIsLiveSearchFixed(false);
+      setLiveSearchHeight(0);
+      return;
+    }
+
+    const slot = liveSearchSlotRef.current;
+    if (!slot) {
+      setIsLiveSearchFixed(false);
+      setLiveSearchHeight(0);
+      return;
+    }
+
+    const mobileMediaQuery = window.matchMedia?.("(max-width: 768px)");
+    const isMobile = mobileMediaQuery?.matches === true;
+    if (!isMobile) {
+      setIsLiveSearchFixed(false);
+      setLiveSearchHeight(0);
+      return;
+    }
+
+    const rect = slot.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const shouldFix = rect.bottom > viewportHeight;
+    const measuredHeight = liveSearchCardRef.current?.offsetHeight || 0;
+
+    setIsLiveSearchFixed((current) => (current === shouldFix ? current : shouldFix));
+    setLiveSearchHeight((current) => {
+      const nextHeight = shouldFix && measuredHeight ? measuredHeight : 0;
+      return current === nextHeight ? current : nextHeight;
+    });
+  }, [hasDeposit]);
+
+  useEffect(() => {
+    updateLiveSearchFixedState();
+
+    window.addEventListener("scroll", updateLiveSearchFixedState, { passive: true });
+    window.addEventListener("resize", updateLiveSearchFixedState);
+
+    return () => {
+      window.removeEventListener("scroll", updateLiveSearchFixedState);
+      window.removeEventListener("resize", updateLiveSearchFixedState);
+    };
+  }, [updateLiveSearchFixedState]);
+
+  useEffect(() => {
+    if (!hasDeposit) {return;}
+    setIsLiveSearchFixed(false);
+    setLiveSearchHeight(0);
+  }, [hasDeposit]);
+
+  useEffect(() => {
+    if (drawerOpen) {return;}
+    if (!pendingScrollToSectionRef.current) {return;}
+
+    pendingScrollToSectionRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      sectionAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [drawerOpen]);
 
   useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
@@ -123,6 +195,7 @@ export default function LiveSearchSection({
 
     pendingDepositResultRef.current = null;
     isPostingRef.current = false;
+    pendingScrollToSectionRef.current = true;
     closeDrawer();
   }, [closeDrawer, onDepositCreated, setUser]);
 
@@ -194,74 +267,83 @@ export default function LiveSearchSection({
     }
   }, [boxSlug, handleDepositError, hasDeposit]);
 
-  if (hasDeposit) {
-    return (
-      <MyDeposit
-        deposit={myDeposit}
-        successes={successes}
-        pointsBalance={pointsBalance}
-        depositPointsEarned={depositPointsEarned}
-        onOpenAchievements={onOpenAchievements}
-      />
-    );
-  }
-
   return (
-    <Box className="liveSearch">
-      <Typography component="h3" variant="h4">
-        Ajoute une chanson à la boîte et gagne pleins de points
-      </Typography>
-
-      {errorMessage ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {errorMessage}
-        </Alert>
-      ) : null}
-
-      <Button variant="contained" onClick={openDrawer}>
-        Partager une chanson
-      </Button>
-
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={() => closeDrawer()}
-        PaperProps={{
-          sx: {
-            width: "100vw",
-            maxWidth: "100vw",
-            height: "100vh",
-            overflow: "hidden",
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          <Box sx={{ p: 5, pb: 2 }}>
-            <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-              Choisis une chanson à partager
+    <Box ref={sectionAnchorRef} className="liveSearch_section_anchor">
+      {hasDeposit ? (
+        <MyDeposit
+          deposit={myDeposit}
+          successes={successes}
+          pointsBalance={pointsBalance}
+          depositPointsEarned={depositPointsEarned}
+          onOpenAchievements={onOpenAchievements}
+        />
+      ) : (
+        <Box
+          ref={liveSearchSlotRef}
+          className="liveSearch_slot"
+          style={isLiveSearchFixed && liveSearchHeight ? { minHeight: liveSearchHeight } : undefined}
+        >
+          <Box
+            ref={liveSearchCardRef}
+            className={`liveSearch${isLiveSearchFixed ? " fixed" : ""}`}
+          >
+            <Typography component="h3" variant="h4">
+              Ajoute une chanson à la boîte et gagne pleins de points
             </Typography>
+
+            {errorMessage ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {errorMessage}
+              </Alert>
+            ) : null}
+
+            <Button variant="contained" onClick={openDrawer}>
+              Partager une chanson
+            </Button>
+
+            <Drawer
+              anchor="right"
+              open={drawerOpen}
+              onClose={() => closeDrawer()}
+              PaperProps={{
+                sx: {
+                  width: "100vw",
+                  maxWidth: "100vw",
+                  height: "100vh",
+                  overflow: "hidden",
+                },
+              }}
+            >
+              <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <Box sx={{ p: 5, pb: 2 }}>
+                  <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                    Choisis une chanson à partager
+                  </Typography>
+                </Box>
+
+                {errorMessage ? (
+                  <Alert severity="error" sx={{ mx: 5, mb: 2 }}>
+                    {errorMessage}
+                  </Alert>
+                ) : null}
+
+                {drawerOpen ? (
+                  <SearchPanel
+                    inputRef={searchInputRef}
+                    onSelectSong={handleSongSelected}
+                    actionLabel="Partager"
+                    depositFlowState={depositFlowState}
+                    onDepositVisualComplete={handleDepositVisualComplete}
+                    rootSx={{ flex: 1, minHeight: 0 }}
+                    searchBarWrapperSx={{ px: 5, pb: 2 }}
+                    contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
+                  />
+                ) : null}
+              </Box>
+            </Drawer>
           </Box>
-
-          {errorMessage ? (
-            <Alert severity="error" sx={{ mx: 5, mb: 2 }}>
-              {errorMessage}
-            </Alert>
-          ) : null}
-
-          {drawerOpen ? (
-            <SearchPanel
-              inputRef={searchInputRef}
-              onSelectSong={handleSongSelected}
-              actionLabel="Partager"
-              depositFlowState={depositFlowState}
-              onDepositVisualComplete={handleDepositVisualComplete}
-              rootSx={{ flex: 1, minHeight: 0 }}
-              searchBarWrapperSx={{ px: 5, pb: 2 }}
-              contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
-            />
-          ) : null}
         </Box>
-      </Drawer>
+      )}
     </Box>
   );
 }

@@ -97,21 +97,112 @@ function mockJsonResponse(body, init = {}) {
   };
 }
 
+function mockMatchMedia(matches) {
+  window.matchMedia = jest.fn().mockImplementation((query) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+}
+
+function setViewportHeight(height) {
+  Object.defineProperty(window, 'innerHeight', { configurable: true, writable: true, value: height });
+}
+
+function mockLiveSearchSlotRect(bottom) {
+  const liveSearch = document.querySelector('.liveSearch');
+  const slot = document.querySelector('.liveSearch_slot');
+
+  Object.defineProperty(liveSearch, 'offsetHeight', { configurable: true, value: 184 });
+  slot.getBoundingClientRect = jest.fn(() => ({
+    bottom,
+    height: 184,
+    left: 0,
+    right: 0,
+    top: bottom - 184,
+    width: 320,
+    x: 0,
+    y: bottom - 184,
+    toJSON: () => ({}),
+  }));
+
+  return liveSearch;
+}
+
 describe('LiveSearchSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
+    window.requestAnimationFrame = jest.fn((callback) => {
+      callback();
+      return 1;
+    });
+    Element.prototype.scrollIntoView = jest.fn();
+    mockMatchMedia(false);
+    setViewportHeight(700);
   });
 
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Partage une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Partager une chanson' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson à la boîte/i, level: 3 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
     expect(screen.getByTestId('location-search')).toHaveTextContent('drawer=live-search');
+  });
+
+  test('adds the fixed class on mobile before deposit when the LiveSearch slot bottom exceeds the viewport', async () => {
+    mockMatchMedia(true);
+    setViewportHeight(600);
+    renderLiveSearchSection();
+    const liveSearch = mockLiveSearchSlotRect(760);
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(liveSearch).toHaveClass('fixed');
+    });
+  });
+
+  test('removes the fixed class on mobile before deposit when the LiveSearch slot is fully visible', async () => {
+    mockMatchMedia(true);
+    setViewportHeight(600);
+    renderLiveSearchSection();
+    const liveSearch = mockLiveSearchSlotRect(760);
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(liveSearch).toHaveClass('fixed');
+    });
+
+    mockLiveSearchSlotRect(600);
+    fireEvent.resize(window);
+
+    await waitFor(() => {
+      expect(liveSearch).not.toHaveClass('fixed');
+    });
+  });
+
+  test('does not add the fixed class on desktop before deposit even when the slot bottom exceeds the viewport', async () => {
+    mockMatchMedia(false);
+    setViewportHeight(600);
+    renderLiveSearchSection();
+    const liveSearch = mockLiveSearchSlotRect(760);
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(liveSearch).not.toHaveClass('fixed');
+    });
   });
 
   test('browser back closes the URL-driven drawer', async () => {
@@ -128,7 +219,7 @@ describe('LiveSearchSection', () => {
     expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
   });
 
-  test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
+  test('posts selected song, waits for the visual completion, updates user points, closes drawer and scrolls to the section', async () => {
     global.fetch.mockResolvedValueOnce(mockJsonResponse({
       my_deposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
       successes: [{ name: 'total', points: 42 }],
@@ -184,6 +275,12 @@ describe('LiveSearchSection', () => {
     await waitFor(() => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
   });
 
   test('renders MyDeposit after deposit and does not allow opening search', () => {
@@ -195,6 +292,7 @@ describe('LiveSearchSection', () => {
     expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
     expect(screen.getByText('Déjà déposée')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
+    expect(document.querySelector('.liveSearch.fixed')).not.toBeInTheDocument();
   });
 
   test('redirects to closed when the box session is required', async () => {
