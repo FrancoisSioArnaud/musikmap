@@ -314,7 +314,7 @@ export default function LiveSearchSection({
         style={liveSearchStyle}
       >
         <Typography component="h3" variant="h4">
-          Ajoute une chanson à la boîte et gagne pleins de points
+          Ajoute une chanson à la boîte pour gagner des points et révéler plus de chansons
         </Typography>
 
         {errorMessage ? (
