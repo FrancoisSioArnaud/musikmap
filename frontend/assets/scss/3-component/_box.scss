@@ -34,12 +34,16 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    gap: 6px;
+    padding: 16px 20px 6px 20px;
+    gap: 12px;
     z-index: 200;
     background: var(--mm-color-surface);
 }
 
 .liveSearch.fixed {
     position: fixed;
+}
+
+.liveSearchPlaceholder{
+  margin: 26px 0;
 }
