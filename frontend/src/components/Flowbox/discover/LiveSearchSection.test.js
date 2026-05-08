@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
@@ -102,12 +102,13 @@ describe('LiveSearchSection', () => {
     jest.clearAllMocks();
     mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
+    HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Partage une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 3 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
@@ -126,6 +127,78 @@ describe('LiveSearchSection', () => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
+  });
+
+
+  test('fixes LiveSearch below the measured header only before deposit API success', async () => {
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      my_deposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
+      successes: [],
+      points_balance: 120,
+      deposit_points_earned: 0,
+    }));
+
+    const header = document.createElement('header');
+    document.body.appendChild(header);
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      if (this === header) {
+        return { top: 0, height: 72, bottom: 72, left: 0, right: 0, width: 320, x: 0, y: 0, toJSON: () => {} };
+      }
+      if (this.classList?.contains('liveSearch')) {
+        return { top: 72, height: 144, bottom: 216, left: 0, right: 0, width: 320, x: 0, y: 72, toJSON: () => {} };
+      }
+      if (this.querySelector?.('.liveSearch')) {
+        return { top: 64, height: 144, bottom: 208, left: 0, right: 0, width: 320, x: 0, y: 64, toJSON: () => {} };
+      }
+      return originalGetBoundingClientRect.call(this);
+    };
+
+    try {
+      const { container } = renderLiveSearchSection();
+      const liveSearch = container.querySelector('.liveSearch');
+      expect(liveSearch).not.toHaveClass('fixed');
+
+      await act(async () => {
+        fireEvent.scroll(window);
+      });
+
+      await waitFor(() => {
+        expect(liveSearch).toHaveClass('fixed');
+      });
+      expect(liveSearch).toHaveStyle({ top: '72px' });
+      expect(liveSearch.parentElement).toHaveStyle({ height: '144px' });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('deposit-flow-status')).toHaveTextContent('success');
+      });
+      await waitFor(() => {
+        expect(liveSearch).not.toHaveClass('fixed');
+      });
+      expect(liveSearch.parentElement).not.toHaveStyle({ height: '144px' });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      header.remove();
+    }
+  });
+
+  test('scrolls the LiveSearch placeholder into view when the search drawer closes', async () => {
+    renderLiveSearchSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Retour navigateur'));
+
+    await waitFor(() => {
+      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
   });
 
   test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
