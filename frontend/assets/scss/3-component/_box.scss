@@ -28,3 +28,18 @@
 .info_box.icon_container {
   padding: 16px;
 }
+
+
+.liveSearch {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 6px;
+    z-index: 200;
+    background: var(--mm-color-surface);
+}
+
+.liveSearch.fixed {
+    position: fixed;
+}
