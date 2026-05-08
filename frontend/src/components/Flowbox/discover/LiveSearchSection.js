@@ -270,8 +270,8 @@ export default function LiveSearchSection({
       ref={liveSearchRef}
       className={["liveSearch", isLiveSearchFixed ? "fixed" : ""].filter(Boolean).join(" ")}
     >
-      <Typography component="h3" variant="h4">
-        Partage une chanson pour gagner des points
+      <Typography component="h3" variant="h5">
+        Partage une chanson, gagne des points et découvre plus de chansons
       </Typography>
 
       {errorMessage ? (
