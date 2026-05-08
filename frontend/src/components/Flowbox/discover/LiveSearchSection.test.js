@@ -102,12 +102,15 @@ describe('LiveSearchSection', () => {
     jest.clearAllMocks();
     mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
+    Element.prototype.scrollIntoView = jest.fn();
+    window.requestAnimationFrame = window.requestAnimationFrame || ((callback) => setTimeout(callback, 0));
+    window.cancelAnimationFrame = window.cancelAnimationFrame || ((id) => clearTimeout(id));
   });
 
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Partage une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 3 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
@@ -266,6 +269,64 @@ describe('LiveSearchSection', () => {
     await waitFor(() => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
+  });
+
+
+  test('fixes LiveSearch under the measured header only before deposit', async () => {
+    const header = document.createElement('header');
+    header.getBoundingClientRect = jest.fn(() => ({ height: 64, top: 0, bottom: 64 }));
+    document.body.appendChild(header);
+
+    const { container } = renderLiveSearchSection();
+    const liveSearch = container.querySelector('.liveSearch');
+    const placeholder = liveSearch.parentElement;
+    liveSearch.getBoundingClientRect = jest.fn(() => ({ height: 120, top: 64, bottom: 184 }));
+    placeholder.getBoundingClientRect = jest.fn(() => ({ top: 60, bottom: 180 }));
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(liveSearch).toHaveClass('fixed');
+    });
+    expect(liveSearch).toHaveStyle({ top: '64px' });
+    expect(placeholder).toHaveStyle({ height: '120px' });
+
+    header.remove();
+  });
+
+  test('removes fixed mode after the deposit API succeeds', async () => {
+    const header = document.createElement('header');
+    header.getBoundingClientRect = jest.fn(() => ({ height: 64, top: 0, bottom: 64 }));
+    document.body.appendChild(header);
+
+    global.fetch.mockResolvedValueOnce(mockJsonResponse({
+      my_deposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
+      successes: [],
+      points_balance: 5060,
+      deposit_points_earned: 0,
+    }));
+
+    const { container } = renderLiveSearchSection();
+    const liveSearch = container.querySelector('.liveSearch');
+    const placeholder = liveSearch.parentElement;
+    liveSearch.getBoundingClientRect = jest.fn(() => ({ height: 120, top: 64, bottom: 184 }));
+    placeholder.getBoundingClientRect = jest.fn(() => ({ top: 60, bottom: 180 }));
+
+    fireEvent.scroll(window);
+    await waitFor(() => {
+      expect(liveSearch).toHaveClass('fixed');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deposit-flow-status')).toHaveTextContent('success');
+    });
+    expect(liveSearch).not.toHaveClass('fixed');
+    expect(placeholder).not.toHaveStyle({ height: '120px' });
+
+    header.remove();
   });
 
   test('shows a MUI error surface for network errors', async () => {
