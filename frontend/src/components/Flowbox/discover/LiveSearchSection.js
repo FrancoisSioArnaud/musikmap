@@ -313,7 +313,7 @@ export default function LiveSearchSection({
         className={liveSearchClassName}
         style={liveSearchStyle}
       >
-        <Typography component="h3" variant="h4">
+        <Typography component="h5" variant="h5">
           Ajoute une chanson à la boîte pour gagner des points et révéler plus de chansons
         </Typography>
 
