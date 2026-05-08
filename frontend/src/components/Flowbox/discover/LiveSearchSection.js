@@ -307,7 +307,7 @@ export default function LiveSearchSection({
   }
 
   return (
-    <Box ref={placeholderRef} sx={placeholderSx}>
+    <Box ref={placeholderRef} sx={placeholderSx} className"liveSearchPlaceholder">
       <Box
         ref={liveSearchRef}
         className={liveSearchClassName}
