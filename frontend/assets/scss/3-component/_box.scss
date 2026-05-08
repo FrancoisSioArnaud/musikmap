@@ -40,12 +40,15 @@
   background: var(--mm-color-surface);
   transition: all 0.2s;
   top: 0px;
+  box-shadow: rgba(0, 0, 0, 0.0) 0px 4px 8px -4px;
+
 }
 
 
 
 .liveSearch.fixed {
-    position: fixed;
+  position: fixed;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 8px -4px;
 }
 
 .liveSearchPlaceholder{
