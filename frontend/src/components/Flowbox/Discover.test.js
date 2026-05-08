@@ -18,14 +18,24 @@ jest.mock('../Common/Deposit', () => ({
 
 jest.mock('../Common/Search/SearchPanel', () => ({
   __esModule: true,
-  default: ({ onSelectSong }) => (
-    <button
-      type="button"
-      onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
-    >
-      Choisir Posted song
-    </button>
-  ),
+  default: ({ depositFlowState, onDepositVisualComplete, onSelectSong }) => {
+    const React = require('react');
+
+    React.useEffect(() => {
+      if (depositFlowState?.status === 'success') {
+        onDepositVisualComplete?.(depositFlowState.requestKey);
+      }
+    }, [depositFlowState, onDepositVisualComplete]);
+
+    return (
+      <button
+        type="button"
+        onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
+      >
+        Choisir Posted song
+      </button>
+    );
+  },
 }));
 
 jest.mock('../Security/TokensUtils', () => ({

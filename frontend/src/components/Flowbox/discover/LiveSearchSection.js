@@ -57,16 +57,25 @@ export default function LiveSearchSection({
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isDepositConfirmed, setIsDepositConfirmed] = useState(false);
+  const [isLiveSearchFixed, setIsLiveSearchFixed] = useState(false);
   const [depositFlowState, setDepositFlowState] = useState({
     requestKey: null,
     status: "idle",
     errorMessage: null,
   });
   const searchInputRef = useRef(null);
+  const liveSearchRef = useRef(null);
   const isPostingRef = useRef(false);
   const pendingDepositResultRef = useRef(null);
 
   const hasDeposit = Boolean(myDeposit);
+  const isPreDeposit = !hasDeposit && !isDepositConfirmed;
+
+  useEffect(() => {
+    setIsDepositConfirmed(false);
+    setIsLiveSearchFixed(false);
+  }, [boxSlug]);
 
   useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
@@ -77,7 +86,48 @@ export default function LiveSearchSection({
     setDrawerOpen((prev) => (prev === shouldOpenDrawer ? prev : shouldOpenDrawer));
   }, [hasDeposit, location]);
 
+  useEffect(() => {
+    if (!isPreDeposit) {
+      setIsLiveSearchFixed(false);
+      return undefined;
+    }
+
+    const updateLiveSearchFixed = () => {
+      const node = liveSearchRef.current;
+
+      if (!node) {
+        setIsLiveSearchFixed(false);
+        return;
+      }
+
+      const rect = node.getBoundingClientRect();
+      const isFullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+
+      setIsLiveSearchFixed(isFullyVisible);
+    };
+
+    updateLiveSearchFixed();
+
+    window.addEventListener("scroll", updateLiveSearchFixed, { passive: true });
+    window.addEventListener("resize", updateLiveSearchFixed);
+
+    return () => {
+      window.removeEventListener("scroll", updateLiveSearchFixed);
+      window.removeEventListener("resize", updateLiveSearchFixed);
+    };
+  }, [isPreDeposit]);
+
+  const scrollToLiveSearch = useCallback(() => {
+    requestAnimationFrame(() => {
+      liveSearchRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, []);
+
   const closeDrawer = useCallback((options = {}) => {
+    const shouldScrollToLiveSearch = isPreDeposit && options?.scrollToLiveSearch !== false;
     const closedByHistory = closeDrawerWithHistory({
       navigate,
       location,
@@ -89,7 +139,11 @@ export default function LiveSearchSection({
     if (!closedByHistory) {
       setDrawerOpen(false);
     }
-  }, [location, navigate]);
+
+    if (shouldScrollToLiveSearch) {
+      scrollToLiveSearch();
+    }
+  }, [isPreDeposit, location, navigate, scrollToLiveSearch]);
 
   useEffect(() => {
     if (!hasDeposit) {return;}
@@ -98,7 +152,7 @@ export default function LiveSearchSection({
   }, [closeDrawer, hasDeposit, location]);
 
   const openDrawer = useCallback(() => {
-    if (hasDeposit) {return;}
+    if (hasDeposit || isDepositConfirmed) {return;}
     pendingDepositResultRef.current = null;
     setErrorMessage("");
     openDrawerWithHistory({
@@ -107,7 +161,7 @@ export default function LiveSearchSection({
       param: LIVE_SEARCH_DRAWER_PARAM,
       value: LIVE_SEARCH_DRAWER_VALUE,
     });
-  }, [hasDeposit, location, navigate]);
+  }, [hasDeposit, isDepositConfirmed, location, navigate]);
 
   const handleDepositVisualComplete = useCallback((requestKey = null) => {
     const pendingDepositResult = pendingDepositResultRef.current;
@@ -115,6 +169,7 @@ export default function LiveSearchSection({
     if (pendingDepositResult.requestKey !== requestKey) {return;}
 
     const normalized = pendingDepositResult.normalized;
+    setIsLiveSearchFixed(false);
     onDepositCreated?.(normalized);
 
     if (typeof normalized.pointsBalance === "number" && setUser) {
@@ -123,7 +178,7 @@ export default function LiveSearchSection({
 
     pendingDepositResultRef.current = null;
     isPostingRef.current = false;
-    closeDrawer();
+    closeDrawer({ scrollToLiveSearch: false });
   }, [closeDrawer, onDepositCreated, setUser]);
 
   const handleDepositError = useCallback((data, response) => {
@@ -138,7 +193,7 @@ export default function LiveSearchSection({
   }, [boxSlug, clearBoxSession, navigate]);
 
   const handleSongSelected = useCallback(async (option, requestKey = null) => {
-    if (hasDeposit || isPostingRef.current) {return;}
+    if (!isPreDeposit || isPostingRef.current) {return;}
     isPostingRef.current = true;
     setErrorMessage("");
     setDepositFlowState({ requestKey, status: "pending", errorMessage: null });
@@ -166,6 +221,8 @@ export default function LiveSearchSection({
           hasDepositResyncPayload(data)
         ) {
           const normalized = normalizeDepositResponse(data);
+          setIsDepositConfirmed(true);
+          setIsLiveSearchFixed(false);
           pendingDepositResultRef.current = { requestKey, normalized };
           setDepositFlowState({ requestKey, status: "success", errorMessage: null });
           return;
@@ -184,6 +241,8 @@ export default function LiveSearchSection({
       }
 
       const normalized = normalizeDepositResponse(data);
+      setIsDepositConfirmed(true);
+      setIsLiveSearchFixed(false);
       pendingDepositResultRef.current = { requestKey, normalized };
       setDepositFlowState({ requestKey, status: "success", errorMessage: null });
     } catch (error) {
@@ -192,7 +251,7 @@ export default function LiveSearchSection({
       setDepositFlowState({ requestKey, status: "error", errorMessage: message });
       isPostingRef.current = false;
     }
-  }, [boxSlug, handleDepositError, hasDeposit]);
+  }, [boxSlug, handleDepositError, isPreDeposit]);
 
   if (hasDeposit) {
     return (
@@ -207,9 +266,12 @@ export default function LiveSearchSection({
   }
 
   return (
-    <Box className="liveSearch">
+    <Box
+      ref={liveSearchRef}
+      className={["liveSearch", isLiveSearchFixed ? "fixed" : ""].filter(Boolean).join(" ")}
+    >
       <Typography component="h3" variant="h4">
-        Ajoute une chanson à la boîte et gagne pleins de points
+        Partage une chanson pour gagner des points
       </Typography>
 
       {errorMessage ? (

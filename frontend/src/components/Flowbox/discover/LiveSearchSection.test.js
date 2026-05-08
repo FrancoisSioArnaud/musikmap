@@ -102,6 +102,9 @@ describe('LiveSearchSection', () => {
     jest.clearAllMocks();
     mockLatestSearchPanelProps = null;
     global.fetch = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    global.requestAnimationFrame = (callback) => callback();
+    window.requestAnimationFrame = global.requestAnimationFrame;
   });
 
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
@@ -126,6 +129,53 @@ describe('LiveSearchSection', () => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
+  });
+
+
+
+  test('toggles the fixed class only while the pre-deposit LiveSearch is fully visible', async () => {
+    renderLiveSearchSection();
+
+    const liveSearchSection = screen.getByRole('heading', {
+      name: /Partage une chanson pour gagner des points/i,
+      level: 3,
+    }).closest('.liveSearch');
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 });
+
+    liveSearchSection.getBoundingClientRect = jest.fn(() => ({ top: -1, bottom: 120 }));
+    fireEvent.scroll(window);
+    await waitFor(() => expect(liveSearchSection).not.toHaveClass('fixed'));
+
+    liveSearchSection.getBoundingClientRect = jest.fn(() => ({ top: 10, bottom: 120 }));
+    fireEvent.scroll(window);
+    await waitFor(() => expect(liveSearchSection).toHaveClass('fixed'));
+
+    liveSearchSection.getBoundingClientRect = jest.fn(() => ({ top: 10, bottom: 201 }));
+    fireEvent.resize(window);
+    await waitFor(() => expect(liveSearchSection).not.toHaveClass('fixed'));
+  });
+
+  test('scrolls back to LiveSearch when closing the drawer before deposit', async () => {
+    renderLiveSearchSection();
+
+    const liveSearchSection = screen.getByRole('heading', {
+      name: /Partage une chanson pour gagner des points/i,
+      level: 3,
+    }).closest('.liveSearch');
+    const scrollIntoView = jest.fn();
+    liveSearchSection.scrollIntoView = scrollIntoView;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+
+    fireEvent.click(document.querySelector('.MuiBackdrop-root'));
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
   });
 
   test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
@@ -163,6 +213,7 @@ describe('LiveSearchSection', () => {
     await waitFor(() => {
       expect(screen.getByTestId('deposit-flow-status')).toHaveTextContent('success');
     });
+    expect(document.querySelector('.liveSearch')).not.toHaveClass('fixed');
     expect(mockLatestSearchPanelProps.onDepositVisualComplete).toEqual(expect.any(Function));
     expect(onDepositCreated).not.toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
