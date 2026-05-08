@@ -63,10 +63,71 @@ export default function LiveSearchSection({
     errorMessage: null,
   });
   const searchInputRef = useRef(null);
+  const sectionRef = useRef(null);
   const isPostingRef = useRef(false);
   const pendingDepositResultRef = useRef(null);
+  const pendingScrollToSectionRef = useRef(false);
+  const [isFixed, setIsFixed] = useState(false);
 
   const hasDeposit = Boolean(myDeposit);
+
+  const updateFixedState = useCallback(() => {
+    if (hasDeposit) {
+      setIsFixed(false);
+      return;
+    }
+
+    const section = sectionRef.current;
+    if (!section) {
+      setIsFixed(false);
+      return;
+    }
+
+    const isMobile = typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 768px)").matches
+      : false;
+    if (!isMobile) {
+      setIsFixed(false);
+      return;
+    }
+
+    const rect = section.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+    setIsFixed(rect.bottom > viewportHeight);
+  }, [hasDeposit]);
+
+  useEffect(() => {
+    updateFixedState();
+
+    window.addEventListener("scroll", updateFixedState);
+    window.addEventListener("resize", updateFixedState);
+
+    return () => {
+      window.removeEventListener("scroll", updateFixedState);
+      window.removeEventListener("resize", updateFixedState);
+    };
+  }, [updateFixedState]);
+
+  useEffect(() => {
+    if (hasDeposit) {
+      setIsFixed(false);
+    }
+  }, [hasDeposit]);
+
+  useEffect(() => {
+    if (drawerOpen) {return;}
+    if (!pendingScrollToSectionRef.current) {return;}
+
+    pendingScrollToSectionRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      sectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [drawerOpen]);
 
   useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
@@ -123,6 +184,7 @@ export default function LiveSearchSection({
 
     pendingDepositResultRef.current = null;
     isPostingRef.current = false;
+    pendingScrollToSectionRef.current = true;
     closeDrawer();
   }, [closeDrawer, onDepositCreated, setUser]);
 
@@ -196,18 +258,20 @@ export default function LiveSearchSection({
 
   if (hasDeposit) {
     return (
-      <MyDeposit
-        deposit={myDeposit}
-        successes={successes}
-        pointsBalance={pointsBalance}
-        depositPointsEarned={depositPointsEarned}
-        onOpenAchievements={onOpenAchievements}
-      />
+      <Box ref={sectionRef} className="liveSearch_anchor">
+        <MyDeposit
+          deposit={myDeposit}
+          successes={successes}
+          pointsBalance={pointsBalance}
+          depositPointsEarned={depositPointsEarned}
+          onOpenAchievements={onOpenAchievements}
+        />
+      </Box>
     );
   }
 
   return (
-    <Box className="liveSearch">
+    <Box ref={sectionRef} className={`liveSearch${isFixed ? " fixed" : ""}`}>
       <Typography component="h3" variant="h4">
         Ajoute une chanson à la boîte et gagne pleins de points
       </Typography>
