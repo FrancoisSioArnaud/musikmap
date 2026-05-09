@@ -252,9 +252,6 @@ export default function Discover() {
         <Typography component="h2" variant="h1">
           Découvre les chansons déposées par les personnes précédentes
         </Typography>
-        <Typography component="span" variant="body1">
-          La dernière t'est offerte
-        </Typography>
       </Box>
 
       {mainDep ? (
