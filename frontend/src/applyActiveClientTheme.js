@@ -67,5 +67,6 @@ export function applyActiveClientTheme(clientSlug) {
 
   root.style.setProperty("--mm-border-default", theme.border.default);
   root.style.setProperty("--mm-shadow-high", theme.shadow.high);
+  root.style.setProperty("--mm-shadow-card", theme.shadow.card);
   return theme;
 }
