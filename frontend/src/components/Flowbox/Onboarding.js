@@ -40,24 +40,24 @@ function getDeviceOs() {
 }
 
 function getPermissionDialogContent(os) {
-  const title = "Autorise la localisation pour continuer";
+  const title = "Localisation refusée";
   if (os === "ios") {
     return {
       title,
-      content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, puis va dans Confidentialité et sécurité > Service de localisation et active-la.\nSi besoin, autorise aussi la localisation pour les sites dans Safari.\nEnsuite, reviens ici et recommence.",
+      content: "Tu as refusé de partager ta localisation. Cette boîte est liée à un lieu précis : on doit vérifier que tu es sur place pour l’ouvrir.\nOuvre ton application Réglages, va dans Safari ou dans les réglages de ce site, puis autorise la localisation.",
     };
   }
 
   if (os === "android") {
     return {
       title,
-      content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, puis va dans Localisation et active-la.\nSi besoin, autorise aussi la localisation pour Chrome ou ton navigateur dans les autorisations des applications.\nEnsuite, reviens ici et recommence.",
+      content: "Tu as refusé de partager ta localisation. Cette boîte est liée à un lieu précis : on doit vérifier que tu es sur place pour l’ouvrir.\nOuvre ton application Réglages, va dans les autorisations du navigateur, puis autorise la localisation pour ce site.",
     };
   }
 
   return {
     title,
-    content: "Tu as refusé de partager ta localisation.\nOn ne peut pas vérifier que tu es près de la boîte tant que la localisation n’est pas activée.\nOuvre ton application Réglages, active la localisation, puis autorise-la aussi pour ton navigateur si nécessaire.\nEnsuite, reviens ici et recommence.",
+    content: "Tu as refusé de partager ta localisation. Cette boîte est liée à un lieu précis : on doit vérifier que tu es sur place pour l’ouvrir.",
   };
 }
 
@@ -242,7 +242,10 @@ export default function Onboarding() {
 
           <Box className="container">
             <Typography variant="h3" component="h1" className="intro_small">
-              Découvre les chansons déposées ici par d'autres passants
+              Découvre les chansons laissées ici
+            </Typography>
+            <Typography variant="body1" component="p" sx={{ textAlign: "center", mb: 2 }}>
+              Cette boîte contient les morceaux déposés par les personnes passées avant toi. Ouvre-la pour écouter, déposer ta chanson et révéler la suite.
             </Typography>
 
             {pageError ? (
@@ -275,7 +278,7 @@ export default function Onboarding() {
         </DialogContent>
         <DialogActions>
           <Button variant="light" onClick={() => setSettingsDialogOpen(false)}>
-            Fermer
+            J’ai compris
           </Button>
         </DialogActions>
       </Dialog>
@@ -286,10 +289,10 @@ export default function Onboarding() {
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Tu es trop loin</DialogTitle>
+        <DialogTitle>Tu n’es pas assez près de la boîte</DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Rapproche-toi de la boîte pour l’ouvrir.
+            Rapproche-toi du lieu où se trouve la boîte, puis réessaie.
           </Typography>
         </DialogContent>
         <DialogActions>

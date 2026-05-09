@@ -302,7 +302,7 @@ export default function DepositSong({
             sx={{ touchAction: "none" }}
             startIcon={isRevealLoading ? <CircularProgress size={18} thickness={5} color="inherit" /> : null}
           >
-            {isRevealLoading ? "Révélation..." : "Maintiens pour révéler la chanson"}
+            {isRevealLoading ? "Révélation en cours..." : "Maintiens pour révéler"}
             <Box className="points_container" sx={{ ml: "12px" }}>
               <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
                 {revealCost}

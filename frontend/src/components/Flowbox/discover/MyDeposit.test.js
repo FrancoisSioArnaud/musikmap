@@ -16,7 +16,7 @@ describe('MyDeposit', () => {
   test('renders deposited song confirmation details', () => {
     render(<MyDeposit deposit={deposit} successes={[{ name: 'Total', points: 42 }]} pointsBalance={5060} depositPointsEarned={84} />);
 
-    expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
+    expect(screen.getByText('Ta chanson est dans la boîte')).toBeInTheDocument();
     expect(screen.getByText('La chanson')).toBeInTheDocument();
     expect(screen.getByText('Une artiste')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'La chanson' })).toHaveAttribute('src', deposit.song.image_url);
@@ -32,7 +32,7 @@ describe('MyDeposit', () => {
   test('does not render points when successes are empty after refresh', () => {
     render(<MyDeposit deposit={deposit} successes={[]} />);
 
-    expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
+    expect(screen.getByText('Ta chanson est dans la boîte')).toBeInTheDocument();
     expect(screen.queryByText('+0')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /points gagnés/i })).not.toBeInTheDocument();
   });

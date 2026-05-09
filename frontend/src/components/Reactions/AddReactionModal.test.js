@@ -57,8 +57,8 @@ describe('AddReactionModal', () => {
 
     const emojiButton = await screen.findByRole('button', { name: /🔥/i });
     fireEvent.click(emojiButton);
-    fireEvent.click(await screen.findByRole('button', { name: 'Débloquer' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Obtenir' }));
 
-    expect(await screen.findByText('Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.')).toBeInTheDocument();
+    expect(await screen.findByText('Tu n’as pas assez de points pour obtenir cet émoji. Dépose une chanson pour gagner des points.')).toBeInTheDocument();
   });
 });

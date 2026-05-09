@@ -3,8 +3,8 @@ export const AUTH_RETURN_STORAGE_KEY = "mm_auth_return_context";
 export const AUTH_BENEFITS = [
   "Retrouve toutes tes découvertes dans ta librairie.",
   "Commente et participe aux échanges.",
-  "Débloque plus de réactions et personnalise ton compte.",
-  "Épingle des chansons aux boîtes et à ton profil.",
+  "Obtiens plus de réactions et personnalise ton compte.",
+  "Mets des chansons en avant dans les boîtes et sur ton profil.",
 ];
 
 const AUTH_COPY = {
@@ -21,16 +21,16 @@ const AUTH_COPY = {
     description: "Connecte-toi ou crée ton compte pour réagir à cette découverte.",
   },
   unlock_reaction: {
-    title: "Débloque plus de réactions",
-    description: "Connecte-toi ou crée ton compte pour débloquer et utiliser plus de réactions.",
+    title: "Obtiens plus de réactions",
+    description: "Connecte-toi ou crée ton compte pour obtenir et utiliser plus de réactions.",
   },
   favorite_song: {
     title: "Attache ta chanson de cœur",
     description: "Connecte-toi ou crée ton compte pour ajouter une chanson à ton profil.",
   },
   pinned_song: {
-    title: "Épingle une chanson à la boîte",
-    description: "Connecte-toi ou crée ton compte pour épingler une chanson à cette boîte.",
+    title: "Mets une chanson en avant",
+    description: "Connecte-toi ou crée ton compte pour mettre une chanson en avant dans cette boîte.",
   },
   share_song: {
     title: "Partage la découverte",

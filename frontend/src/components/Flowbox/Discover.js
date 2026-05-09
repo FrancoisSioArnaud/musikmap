@@ -250,7 +250,7 @@ export default function Discover() {
 
       <Box className="intro">
         <Typography component="h2" variant="h1">
-          Découvre les chansons déposées par les personnes précédentes
+          Les chansons de cette boîte
         </Typography>
       </Box>
 
@@ -261,8 +261,8 @@ export default function Discover() {
       ) : (
         <Box sx={{ p: 3 }}>
           <Alert severity="info">
-            Aucune chanson à découvrir pour le moment. Reviens bientôt : les prochains
-            partages apparaîtront ici.
+            Aucune chanson à découvrir pour le moment. Reviens bientôt : les prochaines
+            chansons déposées apparaîtront ici.
           </Alert>
         </Box>
       )}

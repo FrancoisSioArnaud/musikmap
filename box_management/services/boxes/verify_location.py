@@ -35,5 +35,5 @@ def verify_location_for_box(*, box_slug, latitude, longitude):
     return None, {
         "status": status.HTTP_403_FORBIDDEN,
         "code": "OUTSIDE_ALLOWED_BOX_RANGE",
-        "detail": "Rapproche-toi de la boîte pour l’ouvrir.",
+        "detail": "Rapproche-toi du lieu où se trouve la boîte, puis réessaie.",
     }

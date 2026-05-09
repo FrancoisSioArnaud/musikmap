@@ -18,7 +18,7 @@ import AuthModal from "../../../Auth/AuthModal";
 import { getCookie } from "../../../Security/TokensUtils";
 import { UserContext } from "../../../UserContext";
 
-const EMOJI_POINTS_MESSAGE = "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.";
+const EMOJI_POINTS_MESSAGE = "Tu n’as pas assez de points pour obtenir cet émoji. Dépose une chanson pour gagner des points.";
 
 export default function DepositReactions({
   open,
@@ -195,7 +195,7 @@ export default function DepositReactions({
 
         setInlineAlert({
           severity: "error",
-          message: data?.detail || "Impossible de débloquer cet emoji.",
+          message: data?.detail || "Impossible d’obtenir cet emoji.",
           retryAction: "retry_unlock",
         });
         return;
@@ -205,7 +205,7 @@ export default function DepositReactions({
     } catch (error) {
       setInlineAlert({
         severity: "error",
-        message: "Impossible de débloquer cet emoji.",
+        message: "Impossible d’obtenir cet emoji.",
         retryAction: "retry_unlock",
       });
     } finally {
@@ -255,7 +255,7 @@ export default function DepositReactions({
         if (data?.code === "EMOJI_NOT_UNLOCKED") {
           setInlineAlert({
             severity: "warning",
-            message: data?.detail || "Tu n’as pas débloqué cet emoji.",
+            message: data?.detail || "Tu n’as pas encore cet emoji.",
             retryAction: "",
           });
         } else {
@@ -410,7 +410,7 @@ export default function DepositReactions({
                                 disabled={submittingPurchase || submittingReaction}
                                 onClick={() => unlockEmoji(emoji)}
                               >
-                                Débloquer
+                                Obtenir
                               </Button>
                             </Box>
                           ) : null}

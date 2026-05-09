@@ -45,7 +45,7 @@ export default function ArticleCard({ article, onOpenDrawer }) {
     if (domainLabel) {return domainLabel;}
 
     const clientSlug = String(article?.client_slug || "").trim();
-    return clientSlug ? `À lire, par ${clientSlug}` : "À lire";
+    return clientSlug ? `À lire autour de cette boîte, par ${clientSlug}` : "À lire autour de cette boîte";
   }, [domainLabel, article?.client_slug]);
 
   const domainClassName = domainLabel ? "domain" : "no_domain";

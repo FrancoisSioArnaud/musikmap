@@ -80,7 +80,7 @@ def create_session_box_deposit(*, request, box_slug, option):
             return None, {
                 "status": status.HTTP_409_CONFLICT,
                 "code": "BOX_SESSION_DEPOSIT_ALREADY_EXISTS",
-                "detail": "Tu as déjà partagé une chanson dans cette session.",
+                "detail": "Tu as déjà déposé une chanson dans cette session.",
                 "extra": _session_deposit_payload(session=session, user=user, already_exists=True),
             }
 
@@ -103,7 +103,7 @@ def create_session_box_deposit(*, request, box_slug, option):
             return None, {
                 "status": status.HTTP_409_CONFLICT,
                 "code": "BOX_SESSION_DEPOSIT_ALREADY_EXISTS",
-                "detail": "Une chanson a déjà été partagée pour cette session.",
+                "detail": "Une chanson a déjà été déposée pour cette session.",
             }
 
         successes, points_to_add = build_successes(

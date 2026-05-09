@@ -146,23 +146,23 @@ describe('LiveSearchSection', () => {
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 5 })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    expect(screen.getByRole('heading', { name: /Dépose ta chanson/i, level: 5 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
 
-    expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+    expect(await screen.findByText('Choisis la chanson à déposer')).toBeInTheDocument();
     expect(screen.getByTestId('location-search')).toHaveTextContent('drawer=live-search');
   });
 
   test('browser back closes the URL-driven drawer', async () => {
     renderLiveSearchSection({});
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
-    expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
+    expect(await screen.findByText('Choisis la chanson à déposer')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Retour navigateur'));
 
     await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+      expect(screen.queryByText('Choisis la chanson à déposer')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('location-search')).toBeEmptyDOMElement();
   });
@@ -207,7 +207,7 @@ describe('LiveSearchSection', () => {
       expect(liveSearch).toHaveStyle({ top: '72px' });
       expect(liveSearch.parentElement).toHaveStyle({ height: '144px' });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
       fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
       await waitFor(() => {
@@ -226,13 +226,13 @@ describe('LiveSearchSection', () => {
   test('does not scroll when the search drawer closes without a successful deposit', async () => {
     renderLiveSearchSection();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
-    expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
+    expect(await screen.findByText('Choisis la chanson à déposer')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Retour navigateur'));
 
     await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+      expect(screen.queryByText('Choisis la chanson à déposer')).not.toBeInTheDocument();
     });
     expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
@@ -248,7 +248,7 @@ describe('LiveSearchSection', () => {
 
     const { onDepositCreated, setUser } = renderLiveSearchSection({}, { syncDepositState: true });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
     expect(await screen.findByTestId('deposit-visual-callback')).toHaveTextContent('enabled');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
@@ -275,7 +275,7 @@ describe('LiveSearchSection', () => {
     expect(mockLatestSearchPanelProps.onDepositVisualComplete).toEqual(expect.any(Function));
     expect(onDepositCreated).not.toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
-    expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
+    expect(screen.getByText('Choisis la chanson à déposer')).toBeInTheDocument();
 
     jest.useFakeTimers();
 
@@ -283,7 +283,7 @@ describe('LiveSearchSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
       await waitFor(() => {
-        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+        expect(screen.queryByText('Choisis la chanson à déposer')).not.toBeInTheDocument();
       });
 
       const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
@@ -338,9 +338,9 @@ describe('LiveSearchSection', () => {
       successes: [],
     });
 
-    expect(screen.getByText('Chanson déposée avec succès')).toBeInTheDocument();
+    expect(screen.getByText('Ta chanson est dans la boîte')).toBeInTheDocument();
     expect(screen.getByText('Déjà déposée')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Déposer une chanson' })).not.toBeInTheDocument();
   });
 
   test('redirects to closed when the box session is required', async () => {
@@ -351,7 +351,7 @@ describe('LiveSearchSection', () => {
 
     const { clearBoxSession } = renderLiveSearchSection();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
     expect(await screen.findByText('Closed route')).toBeInTheDocument();
@@ -366,10 +366,10 @@ describe('LiveSearchSection', () => {
 
     renderLiveSearchSection();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
-    expect(await screen.findAllByText('Tu as déjà partagé une chanson dans cette session.')).toHaveLength(2);
+    expect(await screen.findAllByText('Tu as déjà déposé une chanson dans cette session.')).toHaveLength(2);
   });
 
   test('resynchronizes UI from a deposit already exists conflict payload after visual completion', async () => {
@@ -377,7 +377,7 @@ describe('LiveSearchSection', () => {
       {
         status: 409,
         code: 'BOX_SESSION_DEPOSIT_ALREADY_EXISTS',
-        detail: 'Tu as déjà partagé une chanson dans cette session.',
+        detail: 'Tu as déjà déposé une chanson dans cette session.',
         my_deposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
         successes: [{ name: 'Total', points: 31 }],
         points_balance: 151,
@@ -388,7 +388,7 @@ describe('LiveSearchSection', () => {
 
     const { onDepositCreated, setUser } = renderLiveSearchSection({}, { syncDepositState: true });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
     await waitFor(() => {
@@ -396,7 +396,7 @@ describe('LiveSearchSection', () => {
     });
     expect(onDepositCreated).not.toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
-    expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
+    expect(screen.getByText('Choisis la chanson à déposer')).toBeInTheDocument();
 
     jest.useFakeTimers();
 
@@ -404,7 +404,7 @@ describe('LiveSearchSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
 
       await waitFor(() => {
-        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+        expect(screen.queryByText('Choisis la chanson à déposer')).not.toBeInTheDocument();
       });
 
       const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
@@ -446,7 +446,7 @@ describe('LiveSearchSection', () => {
 
     renderLiveSearchSection();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
 
     expect(await screen.findAllByText('Réseau indisponible.')).toHaveLength(2);

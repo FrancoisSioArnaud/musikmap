@@ -106,7 +106,7 @@ describe('Onboarding Flowbox entry', () => {
   test('navigates to Discover after verify-location succeeds and never to search', async () => {
     const { saveVerifiedSession, markFlowboxVisited, setUser } = renderOnboarding();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Commencer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la boîte' }));
 
     expect(await screen.findByText('Discover route')).toBeInTheDocument();
     expect(screen.queryByText('Search route')).not.toBeInTheDocument();

@@ -706,7 +706,7 @@ class PinnedSongView(APIView):
             return api_error(
                 status.HTTP_403_FORBIDDEN,
                 "ACCOUNT_COMPLETION_REQUIRED",
-                "Finalise d’abord ton compte pour épingler une chanson.",
+                "Finalise d’abord ton compte pour mettre une chanson en avant.",
             )
         touch_last_seen(current_user)
 
@@ -993,7 +993,7 @@ class PurchaseEmojiView(APIView):
                 if payload_points.get("code") == "INSUFFICIENT_POINTS":
                     payload_points = {
                         **payload_points,
-                        "detail": "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.",
+                        "detail": "Tu n’as pas assez de points pour obtenir cet émoji. Dépose une chanson pour gagner des points.",
                     }
                 return Response(payload_points, status=code_points)
 

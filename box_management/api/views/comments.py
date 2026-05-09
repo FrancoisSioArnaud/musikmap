@@ -230,7 +230,7 @@ class DepositRepliesView(APIView):
             return api_error(
                 status.HTTP_403_FORBIDDEN,
                 "DEPOSIT_NOT_REVEALED",
-                "Révèle la chanson pour voir les réponses",
+                "Tu pourras répondre une fois le morceau révélé.",
             )
 
         comments_context = build_comments_context_for_deposits([deposit], viewer=current_user, include_items=True).get(

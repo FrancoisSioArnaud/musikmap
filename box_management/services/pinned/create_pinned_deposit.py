@@ -21,7 +21,7 @@ def create_pinned_deposit(*, user, box, option, duration_minutes, points_cost):
                 return None, {
                     "status": status.HTTP_409_CONFLICT,
                     "code": "PIN_SLOT_OCCUPIED",
-                    "detail": "Une chanson est déjà épinglée pour le moment.",
+                    "detail": "Une chanson est déjà mise en avant pour le moment.",
                     "active_pinned": active_pinned,
                     "user": user,
                 }
@@ -46,11 +46,11 @@ def create_pinned_deposit(*, user, box, option, duration_minutes, points_cost):
         return None, {
             "status": status.HTTP_400_BAD_REQUEST,
             "code": "PIN_CREATION_INVALID",
-            "detail": "Impossible d’épingler cette chanson avec les paramètres fournis.",
+            "detail": "Impossible de mettre cette chanson en avant avec les paramètres fournis.",
         }
     except Exception:
         return None, {
             "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
             "code": "PIN_CREATION_FAILED",
-            "detail": "Impossible d’épingler cette chanson pour le moment.",
+            "detail": "Impossible de mettre cette chanson en avant pour le moment.",
         }

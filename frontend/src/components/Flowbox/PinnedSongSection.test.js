@@ -105,11 +105,11 @@ describe('PinnedSongSection', () => {
       expect.any(Object)
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: /épingler une chanson/i }));
-    expect(await screen.findByText('Choisis une chanson à épingler')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /mettre une chanson en avant/i }));
+    expect(await screen.findByText('Choisis la chanson à mettre en avant')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Choisir ce morceau' }));
     expect(await screen.findByText('Choisis une durée')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Épingler pour 100 points/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Mettre en avant pour 100 points/i })).toBeInTheDocument();
   });
 
   test('shows error dialog when pin request fails', async () => {
@@ -118,7 +118,7 @@ describe('PinnedSongSection', () => {
       json: async () => ({ active_pinned_deposit: null, price_steps: [{ minutes: 15, points: 100, is_affordable: true }] }),
     }).mockResolvedValueOnce({
       ok: false,
-      json: async () => ({ detail: 'Impossible d’épingler cette chanson.' }),
+      json: async () => ({ detail: 'Impossible de mettre cette chanson en avant.' }),
     });
 
     await act(async () => {
@@ -126,12 +126,12 @@ describe('PinnedSongSection', () => {
     });
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
-    fireEvent.click(await screen.findByRole('button', { name: /épingler une chanson/i }));
-    await screen.findByText('Choisis une chanson à épingler');
+    fireEvent.click(await screen.findByRole('button', { name: /mettre une chanson en avant/i }));
+    await screen.findByText('Choisis la chanson à mettre en avant');
     fireEvent.click(screen.getByRole('button', { name: 'Choisir ce morceau' }));
     await screen.findByText('Choisis une durée');
-    fireEvent.click(screen.getByRole('button', { name: /Épingler pour 100 points/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Mettre en avant pour 100 points/i }));
 
-    expect(await screen.findByText('Impossible d’épingler cette chanson.')).toBeInTheDocument();
+    expect(await screen.findByText('Impossible de mettre cette chanson en avant.')).toBeInTheDocument();
   });
 });

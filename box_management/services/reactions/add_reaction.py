@@ -21,7 +21,7 @@ def add_or_remove_reaction(*, user, dep_public_key, emoji_id):
         return None, {
             "status": status.HTTP_403_FORBIDDEN,
             "code": "DEPOSIT_NOT_REVEALED",
-            "detail": "Écoute la chanson avant de réagir",
+            "detail": "Tu pourras réagir une fois le morceau révélé.",
         }
 
     if emoji_id in (None, "", 0, "none"):
@@ -40,7 +40,7 @@ def add_or_remove_reaction(*, user, dep_public_key, emoji_id):
             return None, {
                 "status": status.HTTP_403_FORBIDDEN,
                 "code": "EMOJI_NOT_UNLOCKED",
-                "detail": "Emoji non débloqué",
+                "detail": "Emoji non disponible",
             }
         Reaction.objects.filter(user=locked_user, deposit=deposit).delete()
         Reaction.objects.create(user=locked_user, deposit=deposit, emoji=emoji)

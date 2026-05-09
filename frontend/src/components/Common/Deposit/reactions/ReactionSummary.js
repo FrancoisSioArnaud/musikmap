@@ -86,7 +86,7 @@ export default function ReactionSummary({
 
       if (!res.ok) {
         if (data?.code === "EMOJI_NOT_UNLOCKED") {
-          setInlineAlert({ severity: "warning", message: data?.detail || "Tu n’as pas débloqué cet emoji." });
+          setInlineAlert({ severity: "warning", message: data?.detail || "Tu n’as pas encore cet emoji." });
         } else {
           setInlineAlert({ severity: "error", message: data?.detail || "Oops, impossible d’appliquer ta réaction." });
         }
