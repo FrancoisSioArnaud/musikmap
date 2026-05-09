@@ -13,9 +13,9 @@
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
   background-color: white;
-  box-shadow: none;
   text-align: center;
   z-index: 100;
+  box-shadow: var(--mm-shadow-card);
 }
 
 .info_box svg {
