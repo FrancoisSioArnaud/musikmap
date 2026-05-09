@@ -23,7 +23,8 @@ const LIVE_SEARCH_DRAWER_VALUE = "live-search";
 const DEFAULT_ERROR_MESSAGE = "Impossible de partager cette chanson pour le moment.";
 const ALREADY_EXISTS_MESSAGE = "Tu as déjà partagé une chanson dans cette session.";
 const HEADER_SELECTOR = ".MuiAppBar-root, header";
-const POST_DEPOSIT_MOUNT_DELAY_MS = 350;
+const POST_DEPOSIT_SCROLL_IDLE_MS = 160;
+const POST_DEPOSIT_NO_SCROLL_FALLBACK_MS = 1000;
 
 function getHeaderOffset() {
   if (typeof document === "undefined") {return 0;}
@@ -194,25 +195,77 @@ export default function LiveSearchSection({
     if (!pendingScrollBeforeMountRef.current) {return undefined;}
     if (!pendingDepositMountRef.current) {return undefined;}
 
-    let timeoutId = null;
+    let scrollIdleTimeoutId = null;
+    let noScrollFallbackTimeoutId = null;
+    let hasAppliedDeposit = false;
+
+    const clearPendingTimers = () => {
+      if (scrollIdleTimeoutId !== null) {
+        window.clearTimeout(scrollIdleTimeoutId);
+        scrollIdleTimeoutId = null;
+      }
+      if (noScrollFallbackTimeoutId !== null) {
+        window.clearTimeout(noScrollFallbackTimeoutId);
+        noScrollFallbackTimeoutId = null;
+      }
+    };
+
+    const removeScrollListeners = () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scrollend", handleScrollEnd);
+      document.removeEventListener("scrollend", handleScrollEnd);
+    };
+
+    const finishScrollThenMount = () => {
+      if (hasAppliedDeposit) {return;}
+
+      hasAppliedDeposit = true;
+      removeScrollListeners();
+      clearPendingTimers();
+      applyPendingDepositMount();
+    };
+
+    const scheduleScrollIdleMount = () => {
+      if (scrollIdleTimeoutId !== null) {
+        window.clearTimeout(scrollIdleTimeoutId);
+      }
+      scrollIdleTimeoutId = window.setTimeout(finishScrollThenMount, POST_DEPOSIT_SCROLL_IDLE_MS);
+    };
+
+    function handleScroll() {
+      if (noScrollFallbackTimeoutId !== null) {
+        window.clearTimeout(noScrollFallbackTimeoutId);
+        noScrollFallbackTimeoutId = null;
+      }
+      scheduleScrollIdleMount();
+    }
+
+    function handleScrollEnd() {
+      finishScrollThenMount();
+    }
+
     const frameId = window.requestAnimationFrame(() => {
       if (!postDepositAnchorRef.current) {return;}
+
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("scrollend", handleScrollEnd);
+      document.addEventListener("scrollend", handleScrollEnd);
 
       postDepositAnchorRef.current.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
 
-      timeoutId = window.setTimeout(() => {
-        applyPendingDepositMount();
-      }, POST_DEPOSIT_MOUNT_DELAY_MS);
+      noScrollFallbackTimeoutId = window.setTimeout(
+        finishScrollThenMount,
+        POST_DEPOSIT_NO_SCROLL_FALLBACK_MS
+      );
     });
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
+      removeScrollListeners();
+      clearPendingTimers();
     };
   }, [applyPendingDepositMount, drawerOpen, postDepositMountStep]);
 

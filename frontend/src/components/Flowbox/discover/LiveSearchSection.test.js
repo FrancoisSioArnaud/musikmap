@@ -308,6 +308,13 @@ describe('LiveSearchSection', () => {
         jest.advanceTimersByTime(500);
       });
 
+      expect(onDepositCreated).not.toHaveBeenCalled();
+      expect(setUser).not.toHaveBeenCalled();
+
+      act(() => {
+        window.dispatchEvent(new Event('scrollend'));
+      });
+
       await waitFor(() => {
         expect(onDepositCreated).toHaveBeenCalledWith({
           myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
@@ -411,6 +418,12 @@ describe('LiveSearchSection', () => {
 
       act(() => {
         jest.advanceTimersByTime(500);
+      });
+
+      expect(onDepositCreated).not.toHaveBeenCalled();
+
+      act(() => {
+        window.dispatchEvent(new Event('scrollend'));
       });
 
       await waitFor(() => {
