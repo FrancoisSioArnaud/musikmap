@@ -108,7 +108,7 @@ describe('LiveSearchSection', () => {
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 5 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
@@ -190,14 +190,16 @@ describe('LiveSearchSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Retour navigateur'));
 
     await waitFor(() => {
-      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
-        behavior: 'smooth',
-        block: 'center',
-      });
+      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+    });
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
     });
   });
 
@@ -256,6 +258,10 @@ describe('LiveSearchSection', () => {
     expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
     await waitFor(() => {
       expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
+    });
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
     });
   });
 

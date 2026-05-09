@@ -146,7 +146,7 @@ export default function LiveSearchSection({
     setIsFixed((previousFixed) => (previousFixed ? false : previousFixed));
   }, [isPreDeposit]);
 
-  const scrollToPlaceholder = useCallback(() => {
+  const scrollToLiveSearch = useCallback(() => {
     placeholderRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "center",
@@ -155,10 +155,10 @@ export default function LiveSearchSection({
 
   useEffect(() => {
     if (previousDrawerOpenRef.current && !drawerOpen) {
-      scrollToPlaceholder();
+      scrollToLiveSearch();
     }
     previousDrawerOpenRef.current = drawerOpen;
-  }, [drawerOpen, scrollToPlaceholder]);
+  }, [drawerOpen, scrollToLiveSearch]);
 
   useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
@@ -181,9 +181,7 @@ export default function LiveSearchSection({
     if (!closedByHistory) {
       setDrawerOpen(false);
     }
-
-    scrollToPlaceholder();
-  }, [location, navigate, scrollToPlaceholder]);
+  }, [location, navigate]);
 
   useEffect(() => {
     if (!hasDeposit) {return;}
