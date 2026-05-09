@@ -78,6 +78,8 @@ export default function LiveSearchSection({
   const isPostingRef = useRef(false);
   const pendingDepositResultRef = useRef(null);
   const previousDrawerOpenRef = useRef(false);
+  const myDepositRef = useRef(null);
+  const pendingScrollToMyDepositRef = useRef(false);
 
   const hasDeposit = Boolean(myDeposit);
   const isPreDeposit = !hasDeposit && depositFlowState.status !== "success";
@@ -154,11 +156,37 @@ export default function LiveSearchSection({
   }, []);
 
   useEffect(() => {
-    if (previousDrawerOpenRef.current && !drawerOpen) {
-      scrollToPlaceholder();
+    const wasOpen = previousDrawerOpenRef.current;
+    const isNowClosed = !drawerOpen;
+
+    if (wasOpen && isNowClosed) {
+      if (!pendingScrollToMyDepositRef.current) {
+        scrollToPlaceholder();
+      }
     }
+
     previousDrawerOpenRef.current = drawerOpen;
   }, [drawerOpen, scrollToPlaceholder]);
+
+  useEffect(() => {
+    if (!hasDeposit || drawerOpen || !pendingScrollToMyDepositRef.current) {
+      return undefined;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (!myDepositRef.current) {return;}
+
+      myDepositRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      pendingScrollToMyDepositRef.current = false;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [hasDeposit, drawerOpen]);
 
   useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
@@ -170,6 +198,8 @@ export default function LiveSearchSection({
   }, [hasDeposit, location]);
 
   const closeDrawer = useCallback((options = {}) => {
+    const shouldScrollToPlaceholder = options.scrollToPlaceholder !== false;
+
     const closedByHistory = closeDrawerWithHistory({
       navigate,
       location,
@@ -182,13 +212,18 @@ export default function LiveSearchSection({
       setDrawerOpen(false);
     }
 
-    scrollToPlaceholder();
+    if (shouldScrollToPlaceholder) {
+      scrollToPlaceholder();
+    }
   }, [location, navigate, scrollToPlaceholder]);
 
   useEffect(() => {
     if (!hasDeposit) {return;}
     if (!matchesDrawerSearch(location, LIVE_SEARCH_DRAWER_PARAM, LIVE_SEARCH_DRAWER_VALUE)) {return;}
-    closeDrawer({ replace: true });
+    closeDrawer({
+      replace: true,
+      scrollToPlaceholder: !pendingScrollToMyDepositRef.current,
+    });
   }, [closeDrawer, hasDeposit, location]);
 
   const openDrawer = useCallback(() => {
@@ -215,9 +250,10 @@ export default function LiveSearchSection({
       setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
     }
 
+    pendingScrollToMyDepositRef.current = true;
     pendingDepositResultRef.current = null;
     isPostingRef.current = false;
-    closeDrawer();
+    closeDrawer({ scrollToPlaceholder: false });
   }, [closeDrawer, onDepositCreated, setUser]);
 
   const handleDepositError = useCallback((data, response) => {
@@ -296,13 +332,15 @@ export default function LiveSearchSection({
 
   if (hasDeposit) {
     return (
-      <MyDeposit
-        deposit={myDeposit}
-        successes={successes}
-        pointsBalance={pointsBalance}
-        depositPointsEarned={depositPointsEarned}
-        onOpenAchievements={onOpenAchievements}
-      />
+      <Box ref={myDepositRef} className="myDepositScrollTarget" data-testid="my-deposit-scroll-target">
+        <MyDeposit
+          deposit={myDeposit}
+          successes={successes}
+          pointsBalance={pointsBalance}
+          depositPointsEarned={depositPointsEarned}
+          onOpenAchievements={onOpenAchievements}
+        />
+      </Box>
     );
   }
 
