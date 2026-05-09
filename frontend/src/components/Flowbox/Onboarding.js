@@ -242,7 +242,7 @@ export default function Onboarding() {
 
           <Box className="container">
             <Typography variant="h4" component="h1" className="intro_small">
-              Dépose une chanson puis découvre celle déposée par le passant précédent
+              Découvre les chansons déposées ici par d'autres passants
             </Typography>
 
             {pageError ? (
@@ -252,7 +252,7 @@ export default function Onboarding() {
             ) : null}
 
             <Button variant="contained" size="large" fullWidth onClick={handleStart} disabled={geoLoading}>
-              Commencer
+              Ouvrir la boîte
             </Button>
           </Box>
         </Box>
