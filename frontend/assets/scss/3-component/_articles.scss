@@ -6,7 +6,7 @@
   border: var(--mm-border-default);
   border-radius: var(--mm-radius-xl);
   background-color: var(--mm-color-surface);
-  box-shadow: none;
+  box-shadow: var(--mm-shadow-card);
 }
 
 .article .content {
