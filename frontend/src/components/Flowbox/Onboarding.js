@@ -241,7 +241,7 @@ export default function Onboarding() {
           </Box>
 
           <Box className="container">
-            <Typography variant="h4" component="h1" className="intro_small">
+            <Typography variant="h3" component="h1" className="intro_small">
               Découvre les chansons déposées ici par d'autres passants
             </Typography>
 
