@@ -57,19 +57,19 @@ function formatRemainingTime(remainingMs) {
 }
 
 function buildPinnedDateLabel(dep) {
-  if (!dep?.deposited_at) {return "Épinglée";}
+  if (!dep?.deposited_at) {return "Mise en avant";}
   const depositedAt = new Date(dep.deposited_at).getTime();
-  if (!depositedAt) {return "Épinglée";}
+  if (!depositedAt) {return "Mise en avant";}
 
   const diffMs = Math.max(0, Date.now() - depositedAt);
   const totalMinutes = Math.floor(diffMs / 60000);
   const totalHours = Math.floor(totalMinutes / 60);
   const days = Math.floor(totalHours / 24);
 
-  if (days > 0) {return `Épinglée il y a ${days} j`;}
-  if (totalHours > 0) {return `Épinglée il y a ${totalHours} h`;}
-  if (totalMinutes > 0) {return `Épinglée il y a ${totalMinutes} min`;}
-  return "Épinglée à l’instant";
+  if (days > 0) {return `Mise en avant il y a ${days} j`;}
+  if (totalHours > 0) {return `Mise en avant il y a ${totalHours} h`;}
+  if (totalMinutes > 0) {return `Mise en avant il y a ${totalMinutes} min`;}
+  return "Mise en avant à l’instant";
 }
 
 const PINNED_SONG_DRAWER_PARAM = "flowboxDrawer";
@@ -117,7 +117,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.detail || "Impossible de charger la chanson épinglée.");
+        throw new Error(data?.detail || "Impossible de charger la chanson mise en avant.");
       }
 
       const nextActivePinnedDeposit = data?.active_pinned_deposit || null;
@@ -278,7 +278,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
         }
         setErrorDialog({
           open: true,
-          message: data?.detail || "Impossible d’épingler cette chanson.",
+          message: data?.detail || "Impossible de mettre cette chanson en avant.",
         });
         return;
       }
@@ -293,7 +293,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
     } catch {
       setErrorDialog({
         open: true,
-        message: "Impossible d’épingler cette chanson.",
+        message: "Impossible de mettre cette chanson en avant.",
       });
     } finally {
       setPosting(false);
@@ -353,7 +353,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
       return (
         <>
           <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-            Crée ton compte pour pouvoir épingler une chanson.
+            Crée ton compte pour pouvoir mettre une chanson en avant.
           </Typography>
           <Button
             variant="contained"
@@ -378,10 +378,10 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
     return (
       <>
         <Typography variant="body1" sx={{ textAlign: "center", mb: 2 }}>
-          Aucune chanson épinglée pour le moment
+          Aucune chanson mise en avant pour le moment.
         </Typography>
         <Button variant="light" onClick={openSearchDrawer}>
-          Épingler une chanson
+          Mettre une chanson en avant
         </Button>
       </>
     );
@@ -401,9 +401,9 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
             pb: 1,
           }}
         >
-          <Typography variant="h4">Épinglée ici</Typography>
+          <Typography variant="h4">Chanson mise en avant</Typography>
           <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-            La chanson épinglée reste visible pour tous les passants ouvrant cette boîte pendant un temps donné.
+            Une chanson mise en avant reste visible pour toutes les personnes qui ouvrent cette boîte pendant un temps limité.
           </Typography>
         </Box>
 
@@ -441,7 +441,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
               <>
                 <Box sx={{ p: 5, pb: 2 }}>
                   <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                    Choisis une chanson à épingler
+                    Choisis la chanson à mettre en avant
                   </Typography>
                 </Box>
 
@@ -481,7 +481,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
                     Choisis une durée
                   </Typography>
                   <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-                    Choisis pendant combien de temps ta chanson sera épinglée à la boîte.
+                    Choisis combien de temps elle restera visible.
                   </Typography>
 
                   <Box className="my_deposit deposit_card deposit_song" sx={{ width: "100%", boxSizing: "border-box" }}>
@@ -571,7 +571,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
               {drawerStep === "duration"
                 ? posting
                   ? "Validation..."
-                  : `Épingler pour ${selectedPrice} points`
+                  : `Mettre en avant pour ${selectedPrice} points`
                 : "Fermer"}
             </Button>
           </Box>
@@ -582,7 +582,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
         open={errorDialog.open}
         onClose={() => setErrorDialog({ open: false, message: "" })}
       >
-        <DialogTitle>Impossible d’épingler la chanson</DialogTitle>
+        <DialogTitle>Impossible de mettre la chanson en avant</DialogTitle>
         <DialogContent>
           <Alert severity="error">{errorDialog.message}</Alert>
         </DialogContent>

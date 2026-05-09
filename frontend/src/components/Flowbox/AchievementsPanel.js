@@ -24,8 +24,8 @@ export default function AchievementsPanel({ successes = [] }) {
   return (
     <Box sx={{ display: "grid", gap: 0, p: "76px 0" }}>
       <Box className="intro_small">
-        <Typography variant="h1">Détail de tes points</Typography>
-        <Typography variant="body1">Tu gagnes des points selon la chanson que tu déposes</Typography>
+        <Typography variant="h1">Points gagnés avec ton dépôt</Typography>
+        <Typography variant="body1">Chaque dépôt rapporte des points. Des bonus s’ajoutent quand ta chanson est nouvelle dans cette boîte ou sur le réseau.</Typography>
 
         <Box
           className="points_container points_container_big"

@@ -21,10 +21,10 @@ export default function ClosedBoxPage() {
         <Box sx={{ display: "grid", gap: 1, justifyItems: "center" }}>
           <LockIcon fontSize="large" />
           <Typography component="h1" variant="h3">
-            Ton temps dans la boîte est terminé
+            La boîte est refermée
           </Typography>
           <Typography component="p" variant="body1">
-            {`La boîte ${boxName} s’est refermée. Pour y entrer à nouveau, scanne une boîte près de toi.`}
+            Ton temps d’exploration est terminé. Pour rouvrir cette boîte, scanne à nouveau son QR code sur place.
           </Typography>
         </Box>
 
@@ -33,7 +33,7 @@ export default function ClosedBoxPage() {
         </Button>
 
         <Button variant="light" component={Link} to="/profile" startIcon={<PersonIcon />}>
-          Aller sur mon profil
+          Voir mon profil
         </Button>
       </Box>
     </Box>
