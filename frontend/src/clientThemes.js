@@ -52,7 +52,7 @@ export const CLIENT_THEMES = {
       md: "16px",
       lg: "24px",
       xl: "32px",
-      button: "999px",
+      button: "18px",
       round: "999px",
     },
     border:{
