@@ -20,8 +20,8 @@ import MyDeposit from "./MyDeposit";
 
 const LIVE_SEARCH_DRAWER_PARAM = "drawer";
 const LIVE_SEARCH_DRAWER_VALUE = "live-search";
-const DEFAULT_ERROR_MESSAGE = "Impossible de partager cette chanson pour le moment.";
-const ALREADY_EXISTS_MESSAGE = "Tu as déjà partagé une chanson dans cette session.";
+const DEFAULT_ERROR_MESSAGE = "Impossible de déposer cette chanson pour le moment.";
+const ALREADY_EXISTS_MESSAGE = "Tu as déjà déposé une chanson dans cette session.";
 const HEADER_SELECTOR = ".MuiAppBar-root, header";
 const POST_DEPOSIT_SCROLL_IDLE_MS = 160;
 const POST_DEPOSIT_NO_SCROLL_FALLBACK_MS = 1000;
@@ -400,7 +400,11 @@ export default function LiveSearchSection({
             style={liveSearchStyle}
           >
             <Typography component="h5" variant="h5">
-              Ajoute une chanson à la boîte pour gagner des points et révéler plus de chansons
+              Dépose ta chanson dans la boîte
+            </Typography>
+
+            <Typography variant="body1">
+              Tu gagnes des points. Ils servent à révéler les chansons cachées.
             </Typography>
 
             {errorMessage ? (
@@ -410,7 +414,7 @@ export default function LiveSearchSection({
             ) : null}
 
             <Button variant="contained" onClick={openDrawer}>
-              Partager une chanson
+              Déposer une chanson
             </Button>
 
             <Drawer
@@ -429,7 +433,7 @@ export default function LiveSearchSection({
               <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
                 <Box sx={{ p: 5, pb: 2 }}>
                   <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                    Choisis une chanson à partager
+                    Choisis la chanson à déposer
                   </Typography>
                 </Box>
 
@@ -443,7 +447,8 @@ export default function LiveSearchSection({
                   <SearchPanel
                     inputRef={searchInputRef}
                     onSelectSong={handleSongSelected}
-                    actionLabel="Partager"
+                    actionLabel="Déposer"
+                    placeholder="Chercher une chanson ou un artiste"
                     depositFlowState={depositFlowState}
                     onDepositVisualComplete={handleDepositVisualComplete}
                     rootSx={{ flex: 1, minHeight: 0 }}

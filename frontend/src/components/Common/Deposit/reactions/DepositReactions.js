@@ -18,7 +18,7 @@ import AuthModal from "../../../Auth/AuthModal";
 import { getCookie } from "../../../Security/TokensUtils";
 import { UserContext } from "../../../UserContext";
 
-const EMOJI_POINTS_MESSAGE = "Tu n’as assez de points pour débloquer cet émoji. Les dépôts te font gagner des points.";
+const EMOJI_POINTS_MESSAGE = "Tu n’as pas assez de points pour révéler cet émoji. Les dépôts te font gagner des points.";
 
 export default function DepositReactions({
   open,
@@ -195,7 +195,7 @@ export default function DepositReactions({
 
         setInlineAlert({
           severity: "error",
-          message: data?.detail || "Impossible de débloquer cet emoji.",
+          message: data?.detail || "Impossible de révéler cet emoji.",
           retryAction: "retry_unlock",
         });
         return;
@@ -205,7 +205,7 @@ export default function DepositReactions({
     } catch (error) {
       setInlineAlert({
         severity: "error",
-        message: "Impossible de débloquer cet emoji.",
+        message: "Impossible de révéler cet emoji.",
         retryAction: "retry_unlock",
       });
     } finally {

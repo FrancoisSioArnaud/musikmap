@@ -133,9 +133,9 @@ export default function MenuAppBar() {
   const helperText = useMemo(() => {
     if (!activeSession) {return "";}
     if (remainingMs <= ERROR_THRESHOLD_MS) {
-      return `Tu as accès à tout le contenu de la boîte pendant encore ${formatLongRemaining(remainingMs)}.`;
+      return "La boîte se referme bientôt. Termine ton dépôt ou révèle les chansons qui t’intéressent.";
     }
-    return `Tu as accès à tout le contenu de la boîte pendant ${formatLongRemaining(remainingMs)}.`;
+    return `Tu peux explorer cette boîte encore ${formatLongRemaining(remainingMs)}.`;
   }, [activeSession, remainingMs]);
 
   return (

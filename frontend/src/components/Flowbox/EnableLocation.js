@@ -36,11 +36,11 @@ export default function EnableLocation({
       >
         <Box sx={{ display: "grid", gap: "16px", textAlign: "center" }}>
           <Typography variant="h3" component="h1">
-            Ouvre la boîte grâce à ta localisation
+            Vérifie que tu es près de la boîte
           </Typography>
 
           <Typography variant="body1">
-            Pour éviter la triche, la boîte s’ouvre seulement si tu es sur place.
+            Cette boîte est liée à un lieu précis. On utilise ta position uniquement pour vérifier que tu es sur place.
           </Typography>
 
           <Button
@@ -57,7 +57,7 @@ export default function EnableLocation({
                 Vérification...
               </Box>
             ) : (
-              "Autoriser"
+              "Autoriser la localisation"
             )}
           </Button>
         </Box>

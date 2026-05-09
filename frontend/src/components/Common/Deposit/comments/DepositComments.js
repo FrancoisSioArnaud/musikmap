@@ -123,9 +123,10 @@ export default function DepositComments({
             songRequired={false}
             drawerAnchor="right"
             searchDrawerTitle="Attacher une chanson"
+            attachSongLabel="Attacher une chanson"
             songActionLabel="Choisir"
-            textLabel="Répondre"
-            textPlaceholder="Répondre"
+            textLabel="Répondre à cette chanson"
+            textPlaceholder="Répondre à cette chanson"
             onBlockedInteraction={() => setIsConsecutiveReplyDialogOpen(true)}
             onSubmit={async (payload) => {
               setSubmitting(true);
@@ -168,9 +169,9 @@ export default function DepositComments({
       </Box>
 
       <Dialog open={isConsecutiveReplyDialogOpen} onClose={closeConsecutiveReplyDialog}>
-        <DialogTitle>Réponse indisponible</DialogTitle>
+        <DialogTitle>Tu as déjà répondu</DialogTitle>
         <DialogContent>
-          <Typography>Tu ne peux pas envoyer deux réponses d’affilé</Typography>
+          <Typography>Attends que quelqu’un réponde avant d’écrire à nouveau.</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeConsecutiveReplyDialog} variant="contained">J’ai compris</Button>

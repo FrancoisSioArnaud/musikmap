@@ -40,7 +40,7 @@ function getDeviceOs() {
 }
 
 function getPermissionDialogContent(os) {
-  const title = "Autorise la localisation pour continuer";
+  const title = "Localisation refusée";
   if (os === "ios") {
     return {
       title,
@@ -242,7 +242,7 @@ export default function Onboarding() {
 
           <Box className="container">
             <Typography variant="h3" component="h1" className="intro_small">
-              Découvre les chansons déposées ici par d'autres passants
+              Découvre les chansons laissées ici
             </Typography>
 
             {pageError ? (
@@ -286,10 +286,10 @@ export default function Onboarding() {
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Tu es trop loin</DialogTitle>
+        <DialogTitle>Tu n’es pas assez près de la boîte</DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Rapproche-toi de la boîte pour l’ouvrir.
+            Rapproche-toi du lieu où se trouve la boîte, puis réessaie.
           </Typography>
         </DialogContent>
         <DialogActions>

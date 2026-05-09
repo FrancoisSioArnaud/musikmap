@@ -369,7 +369,7 @@ export default function Deposit({
 
       if (!res.ok) {
         if (payload?.code === "INSUFFICIENT_POINTS") {
-          openActionErrorDialog("Pas assez de points", payload?.detail || "Tu n’as pas assez de points pour effectuer cette action.");
+          openActionErrorDialog("Pas assez de points", payload?.detail || "Dépose une chanson pour gagner des points et révéler ce morceau.");
         } else if (payload?.detail) {
           openActionErrorDialog("Impossible de révéler la chanson", payload.detail);
         } else {
@@ -463,7 +463,7 @@ export default function Deposit({
   const toggleCommentsInline = useCallback((event) => {
     event?.stopPropagation?.();
     if (!isRevealed) {
-      openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses", event);
+      openActionErrorDialog("Révèle d’abord cette chanson", "Tu pourras réagir une fois le morceau révélé.", event);
       return;
     }
     setCommentsOpen((prev) => !prev);
@@ -512,7 +512,7 @@ export default function Deposit({
         blurActiveElement();
         setCommentsOpen(true);
       } else {
-        openActionErrorDialog("Réponses indisponibles", "Révèle la chanson pour voir les réponses");
+        openActionErrorDialog("Révèle d’abord cette chanson", "Tu pourras réagir une fois le morceau révélé.");
       }
       return;
     }
@@ -891,9 +891,9 @@ export default function Deposit({
         open={reactionRevealPromptOpen}
         onClose={() => setReactionRevealPromptOpen(false)}
       >
-        <DialogTitle>Réaction indisponible</DialogTitle>
+        <DialogTitle>Révèle d’abord cette chanson</DialogTitle>
         <DialogContent>
-          <Typography variant="body1">Écoute la chanson avant de réagir.</Typography>
+          <Typography variant="body1">Tu pourras réagir une fois le morceau révélé.</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>

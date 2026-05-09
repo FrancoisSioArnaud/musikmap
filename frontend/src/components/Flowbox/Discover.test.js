@@ -18,10 +18,13 @@ jest.mock('../Common/Deposit', () => ({
 
 jest.mock('../Common/Search/SearchPanel', () => ({
   __esModule: true,
-  default: ({ onSelectSong }) => (
+  default: ({ onSelectSong, onDepositVisualComplete }) => (
     <button
       type="button"
-      onClick={() => onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1')}
+      onClick={async () => {
+        await onSelectSong({ id: 'track-1', name: 'Posted song', artist: 'Artist', image_url: 'cover.jpg' }, 'request-1');
+        onDepositVisualComplete?.('request-1');
+      }}
     >
       Choisir Posted song
     </button>
@@ -150,6 +153,7 @@ describe('Discover', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     intersectionObservers = [];
+    HTMLElement.prototype.scrollIntoView = jest.fn();
     delete window.IntersectionObserver;
   });
 
@@ -244,8 +248,8 @@ describe('Discover', () => {
 
     const mainDeposit = await screen.findByTestId('deposit-main');
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
-      level: 3,
+      name: /Dépose ta chanson dans la boîte/i,
+      level: 5,
     });
     const article = await screen.findByTestId('article-card');
 
@@ -269,8 +273,8 @@ describe('Discover', () => {
 
     const emptyState = await screen.findByText(/Aucune chanson à découvrir/i);
     const liveSearchHeading = screen.getByRole('heading', {
-      name: /Partage une chanson pour gagner des points/i,
-      level: 3,
+      name: /Dépose ta chanson dans la boîte/i,
+      level: 5,
     });
     const article = await screen.findByTestId('article-card');
 
@@ -304,15 +308,25 @@ describe('Discover', () => {
 
     expect(await screen.findByTestId('deposit-main')).toHaveTextContent('main-1');
     expect(await screen.findByText('older-1')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Choisir Posted song' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Déposer une chanson' }));
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'Choisir Posted song' }));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/box-management/box-deposit/'),
+      expect.any(Object),
+    ));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    });
 
-    expect(await screen.findByText('Chanson déposée avec succès')).toBeInTheDocument();
+    expect(await screen.findByText('Ta chanson est dans la boîte')).toBeInTheDocument();
     expect(screen.getByText('Posted song')).toBeInTheDocument();
     expect(screen.getByTestId('deposit-main')).toHaveTextContent('main-1');
     expect(screen.getByText('older-1')).toBeInTheDocument();
     expect(screen.queryByText(/Aucune chanson à découvrir/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Déposer une chanson' })).not.toBeInTheDocument();
 
     expect(patchDiscoverSnapshot).toHaveBeenCalledWith(
       'box-a',
@@ -522,12 +536,12 @@ describe('Discover', () => {
     const myDepositSection = screen.getByTestId('my-deposit');
     const article = await screen.findByTestId('article-card');
 
-    expect(within(myDepositSection).getByText('Chanson déposée avec succès')).toBeInTheDocument();
+    expect(within(myDepositSection).getByText('Ta chanson est dans la boîte')).toBeInTheDocument();
     expect(within(myDepositSection).getByText('Déjà déposée')).toBeInTheDocument();
     expect(within(myDepositSection).getByText('+48')).toBeInTheDocument();
     expectNodeBefore(mainDeposit, myDepositSection);
     expectNodeBefore(myDepositSection, article);
-    expect(screen.queryByRole('button', { name: 'Partager une chanson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Déposer une chanson' })).not.toBeInTheDocument();
   });
 
   test('redirects to closed when box-content requires a session', async () => {

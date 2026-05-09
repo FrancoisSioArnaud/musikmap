@@ -57,7 +57,7 @@ export default function MyDeposit({
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
         <CheckCircleIcon fontSize="medium" />
         <Typography id={MY_DEPOSIT_TITLE_ID} component="h2" variant="h5">
-          Chanson déposée avec succès
+          Ta chanson est dans la boîte
         </Typography>
       </Box>
 
@@ -99,7 +99,7 @@ export default function MyDeposit({
               role={canOpenAchievements ? "button" : undefined}
               tabIndex={canOpenAchievements ? 0 : undefined}
               onKeyDown={handlePointsKeyDown}
-              aria-label={canOpenAchievements ? `Voir les réussites, ${totalPoints} points gagnés` : undefined}
+              aria-label={canOpenAchievements ? `Voir le détail, ${totalPoints} points gagnés` : undefined}
               data-points-balance={pointsBalance ?? undefined}
             >
               <MusicNote />

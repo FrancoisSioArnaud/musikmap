@@ -77,8 +77,8 @@ def build_successes(
         bonus = nb_consecutive_days * int(NB_POINTS_CONSECUTIVE_DAYS_BOX)
         points_to_add += bonus
         successes["consecutive_days"] = {
-            "name": "Amour fou",
-            "desc": f"{nb_consecutive_days + 1} jours consécutifs avec cette boite",
+            "name": "Série en cours",
+            "desc": "Tu es revenu déposer plusieurs jours de suite.",
             "points": bonus,
             "emoji": "🔥",
         }
@@ -86,8 +86,8 @@ def build_successes(
     if user and not has_user_deposit_in_box:
         points_to_add += int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX)
         successes["first_user_deposit_box"] = {
-            "name": "Explorateur·ice",
-            "desc": "C’est ta première chanson dans cette boîte",
+            "name": "Première fois ici",
+            "desc": "C’est ton premier dépôt dans cette boîte.",
             "points": int(NB_POINTS_FIRST_DEPOSIT_USER_ON_BOX),
             "emoji": "🔍",
         }
@@ -99,8 +99,8 @@ def build_successes(
     if is_first_song_in_box:
         points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX)
         successes["first_song_deposit"] = {
-            "name": "Far West",
-            "desc": "Cette chanson n’a jamais été déposée dans cette boîte",
+            "name": "Nouvelle dans cette boîte",
+            "desc": "Cette chanson n’avait jamais été déposée dans cette boîte.",
             "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_BOX),
             "emoji": "🤠",
         }
@@ -112,15 +112,15 @@ def build_successes(
     if is_first_song_global:
         points_to_add += int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL)
         successes["first_song_deposit_global"] = {
-            "name": "Preums",
-            "desc": "Cette chanson n'a jamais été déposée sur le réseau",
+            "name": "Nouvelle sur le réseau",
+            "desc": "Cette chanson n’avait jamais été déposée sur le réseau.",
             "points": int(NB_POINTS_FIRST_SONG_DEPOSIT_GLOBAL),
             "emoji": "🥇",
         }
 
     successes["default_deposit"] = {
-        "name": "Pépite",
-        "desc": "Tu as partagé·e une chanson",
+        "name": "Dépôt validé",
+        "desc": "Tu as déposé une chanson.",
         "points": int(NB_POINTS_ADD_SONG),
         "emoji": "💎",
     }
