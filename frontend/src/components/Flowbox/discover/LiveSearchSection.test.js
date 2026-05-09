@@ -223,7 +223,7 @@ describe('LiveSearchSection', () => {
     }
   });
 
-  test('scrolls the LiveSearch placeholder into view when the search drawer closes', async () => {
+  test('does not scroll when the search drawer closes without a successful deposit', async () => {
     renderLiveSearchSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
@@ -232,11 +232,9 @@ describe('LiveSearchSection', () => {
     fireEvent.click(screen.getByText('Retour navigateur'));
 
     await waitFor(() => {
-      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
-        behavior: 'smooth',
-        block: 'center',
-      });
+      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
   test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
