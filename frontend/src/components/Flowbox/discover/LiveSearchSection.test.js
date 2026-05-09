@@ -51,6 +51,33 @@ function LocationProbe() {
   );
 }
 
+function StatefulLiveSearchSection({ onDepositCreated, initialProps }) {
+  const [depositState, setDepositState] = React.useState({
+    myDeposit: initialProps.myDeposit ?? null,
+    successes: initialProps.successes ?? [],
+    pointsBalance: initialProps.pointsBalance ?? null,
+    depositPointsEarned: initialProps.depositPointsEarned ?? 0,
+  });
+
+  const handleDepositCreated = React.useCallback((normalized) => {
+    setDepositState({
+      myDeposit: normalized.myDeposit,
+      successes: normalized.successes,
+      pointsBalance: normalized.pointsBalance,
+      depositPointsEarned: normalized.depositPointsEarned,
+    });
+    onDepositCreated(normalized);
+  }, [onDepositCreated]);
+
+  return (
+    <LiveSearchSection
+      {...initialProps}
+      {...depositState}
+      onDepositCreated={handleDepositCreated}
+    />
+  );
+}
+
 function renderLiveSearchSection(props = {}, options = {}) {
   const setUser = jest.fn();
   const clearBoxSession = jest.fn();
@@ -59,6 +86,26 @@ function renderLiveSearchSection(props = {}, options = {}) {
   const flowboxContextValue = { clearBoxSession, ...(options.flowboxContext || {}) };
   const initialEntries = options.initialEntries || ['/flowbox/box-a/discover'];
   const initialIndex = options.initialIndex ?? initialEntries.length - 1;
+  const liveSearchProps = {
+    boxSlug: 'box-a',
+    myDeposit: null,
+    successes: [],
+    pointsBalance: null,
+    depositPointsEarned: 0,
+    ...props,
+  };
+
+  const element = options.syncDepositState ? (
+    <StatefulLiveSearchSection
+      initialProps={liveSearchProps}
+      onDepositCreated={onDepositCreated}
+    />
+  ) : (
+    <LiveSearchSection
+      {...liveSearchProps}
+      onDepositCreated={onDepositCreated}
+    />
+  );
 
   const rendered = render(
     <MemoryRouter initialEntries={initialEntries} initialIndex={initialIndex}>
@@ -68,16 +115,7 @@ function renderLiveSearchSection(props = {}, options = {}) {
           <Routes>
             <Route
               path="/flowbox/:boxSlug/discover"
-              element={(
-                <LiveSearchSection
-                  boxSlug="box-a"
-                  myDeposit={null}
-                  successes={[]}
-                  pointsBalance={null}
-                  onDepositCreated={onDepositCreated}
-                  {...props}
-                />
-              )}
+              element={element}
             />
             <Route path="/flowbox/:boxSlug/closed" element={<div>Closed route</div>} />
           </Routes>
@@ -108,7 +146,7 @@ describe('LiveSearchSection', () => {
   test('shows a share CTA before deposit and opens the SearchPanel drawer through the URL', async () => {
     renderLiveSearchSection();
 
-    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ajoute une chanson/i, level: 5 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
 
     expect(await screen.findByText('Choisis une chanson à partager')).toBeInTheDocument();
@@ -185,7 +223,7 @@ describe('LiveSearchSection', () => {
     }
   });
 
-  test('scrolls the LiveSearch placeholder into view when the search drawer closes', async () => {
+  test('does not scroll when the search drawer closes without a successful deposit', async () => {
     renderLiveSearchSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
@@ -194,11 +232,9 @@ describe('LiveSearchSection', () => {
     fireEvent.click(screen.getByText('Retour navigateur'));
 
     await waitFor(() => {
-      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
-        behavior: 'smooth',
-        block: 'center',
-      });
+      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
     });
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
   test('posts selected song, waits for the visual completion, updates user points and closes drawer', async () => {
@@ -210,7 +246,7 @@ describe('LiveSearchSection', () => {
       already_exists: false,
     }));
 
-    const { onDepositCreated, setUser } = renderLiveSearchSection();
+    const { onDepositCreated, setUser } = renderLiveSearchSection({}, { syncDepositState: true });
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     expect(await screen.findByTestId('deposit-visual-callback')).toHaveTextContent('enabled');
@@ -241,22 +277,59 @@ describe('LiveSearchSection', () => {
     expect(setUser).not.toHaveBeenCalled();
     expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+    jest.useFakeTimers();
 
-    await waitFor(() => {
-      expect(onDepositCreated).toHaveBeenCalledWith({
-        myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
-        successes: [{ name: 'total', points: 42 }],
-        pointsBalance: 5060,
-        depositPointsEarned: 42,
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
       });
-    });
 
-    expect(setUser).toHaveBeenCalledWith(expect.any(Function));
-    expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
-    await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
-    });
+      const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
+
+      act(() => {
+        jest.advanceTimersByTime(20);
+      });
+
+      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'center',
+      });
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(postDepositTarget);
+      expect(onDepositCreated).not.toHaveBeenCalled();
+      expect(setUser).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('my-deposit-scroll-target')).not.toBeInTheDocument();
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).not.toContain(
+        document.querySelector('.liveSearchPlaceholder')
+      );
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(onDepositCreated).not.toHaveBeenCalled();
+      expect(setUser).not.toHaveBeenCalled();
+
+      act(() => {
+        window.dispatchEvent(new Event('scrollend'));
+      });
+
+      await waitFor(() => {
+        expect(onDepositCreated).toHaveBeenCalledWith({
+          myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
+          successes: [{ name: 'total', points: 42 }],
+          pointsBalance: 5060,
+          depositPointsEarned: 42,
+        });
+      });
+
+      expect(setUser).toHaveBeenCalledWith(expect.any(Function));
+      expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
+      expect(await screen.findByTestId('my-deposit-scroll-target')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('renders MyDeposit after deposit and does not allow opening search', () => {
@@ -313,7 +386,7 @@ describe('LiveSearchSection', () => {
       { ok: false, status: 409 }
     ));
 
-    const { onDepositCreated, setUser } = renderLiveSearchSection();
+    const { onDepositCreated, setUser } = renderLiveSearchSection({}, { syncDepositState: true });
 
     fireEvent.click(screen.getByRole('button', { name: 'Partager une chanson' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Choisir Search song' }));
@@ -325,20 +398,47 @@ describe('LiveSearchSection', () => {
     expect(setUser).not.toHaveBeenCalled();
     expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+    jest.useFakeTimers();
 
-    await waitFor(() => {
-      expect(onDepositCreated).toHaveBeenCalledWith({
-        myDeposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
-        successes: [{ name: 'Total', points: 31 }],
-        pointsBalance: 151,
-        depositPointsEarned: 31,
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
       });
-    });
-    expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 151 });
-    await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
-    });
+
+      const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
+
+      act(() => {
+        jest.advanceTimersByTime(20);
+      });
+
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(postDepositTarget);
+      expect(onDepositCreated).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(onDepositCreated).not.toHaveBeenCalled();
+
+      act(() => {
+        window.dispatchEvent(new Event('scrollend'));
+      });
+
+      await waitFor(() => {
+        expect(onDepositCreated).toHaveBeenCalledWith({
+          myDeposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
+          successes: [{ name: 'Total', points: 31 }],
+          pointsBalance: 151,
+          depositPointsEarned: 31,
+        });
+      });
+      expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 151 });
+      expect(await screen.findByTestId('my-deposit-scroll-target')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('shows a MUI error surface for network errors', async () => {
