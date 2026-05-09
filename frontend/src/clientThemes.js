@@ -60,7 +60,8 @@ export const CLIENT_THEMES = {
       paper: "1px solid #e6f0ea",
     },
     shadow: {
-      high: "rgba(0, 0, 0, 0.2) 0px 5px 3px",
+      high: "0px 5px 3px rgba(0 0 0 / 20%)",
+      card: "0px 4px 8px -4px rgba(0 0 0 / 20%)",
     },
     padding:{
       pageSide: "26px",
