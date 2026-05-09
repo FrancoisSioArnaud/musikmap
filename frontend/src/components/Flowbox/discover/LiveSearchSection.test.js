@@ -277,34 +277,52 @@ describe('LiveSearchSection', () => {
     expect(setUser).not.toHaveBeenCalled();
     expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+    jest.useFakeTimers();
 
-    await waitFor(() => {
-      expect(onDepositCreated).toHaveBeenCalledWith({
-        myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
-        successes: [{ name: 'total', points: 42 }],
-        pointsBalance: 5060,
-        depositPointsEarned: 42,
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
       });
-    });
 
-    expect(setUser).toHaveBeenCalledWith(expect.any(Function));
-    expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
-    await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
-    });
+      const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
 
-    const myDepositTarget = await screen.findByTestId('my-deposit-scroll-target');
-    await waitFor(() => {
+      act(() => {
+        jest.advanceTimersByTime(20);
+      });
+
       expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
         behavior: 'smooth',
         block: 'center',
       });
-      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(myDepositTarget);
-    });
-    expect(HTMLElement.prototype.scrollIntoView.mock.contexts).not.toContain(
-      document.querySelector('.liveSearchPlaceholder')
-    );
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(postDepositTarget);
+      expect(onDepositCreated).not.toHaveBeenCalled();
+      expect(setUser).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('my-deposit-scroll-target')).not.toBeInTheDocument();
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).not.toContain(
+        document.querySelector('.liveSearchPlaceholder')
+      );
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      await waitFor(() => {
+        expect(onDepositCreated).toHaveBeenCalledWith({
+          myDeposit: { public_key: 'dep-1', song: { title: 'Search song', artist: 'Artist' } },
+          successes: [{ name: 'total', points: 42 }],
+          pointsBalance: 5060,
+          depositPointsEarned: 42,
+        });
+      });
+
+      expect(setUser).toHaveBeenCalledWith(expect.any(Function));
+      expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 5060 });
+      expect(await screen.findByTestId('my-deposit-scroll-target')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('renders MyDeposit after deposit and does not allow opening search', () => {
@@ -373,24 +391,41 @@ describe('LiveSearchSection', () => {
     expect(setUser).not.toHaveBeenCalled();
     expect(screen.getByText('Choisis une chanson à partager')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+    jest.useFakeTimers();
 
-    await waitFor(() => {
-      expect(onDepositCreated).toHaveBeenCalledWith({
-        myDeposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
-        successes: [{ name: 'Total', points: 31 }],
-        pointsBalance: 151,
-        depositPointsEarned: 31,
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Terminer animation' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
       });
-    });
-    expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 151 });
-    await waitFor(() => {
-      expect(screen.queryByText('Choisis une chanson à partager')).not.toBeInTheDocument();
-    });
-    const myDepositTarget = await screen.findByTestId('my-deposit-scroll-target');
-    await waitFor(() => {
-      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(myDepositTarget);
-    });
+
+      const postDepositTarget = screen.getByTestId('post-deposit-scroll-target');
+
+      act(() => {
+        jest.advanceTimersByTime(20);
+      });
+
+      expect(HTMLElement.prototype.scrollIntoView.mock.contexts).toContain(postDepositTarget);
+      expect(onDepositCreated).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      await waitFor(() => {
+        expect(onDepositCreated).toHaveBeenCalledWith({
+          myDeposit: { public_key: 'dep-existing', song: { title: 'Existing song', artist: 'Artist' } },
+          successes: [{ name: 'Total', points: 31 }],
+          pointsBalance: 151,
+          depositPointsEarned: 31,
+        });
+      });
+      expect(setUser.mock.calls[0][0]({ id: 1, points: 120 })).toEqual({ id: 1, points: 151 });
+      expect(await screen.findByTestId('my-deposit-scroll-target')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('shows a MUI error surface for network errors', async () => {

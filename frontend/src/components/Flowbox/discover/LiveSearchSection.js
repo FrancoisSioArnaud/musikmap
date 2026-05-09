@@ -23,6 +23,7 @@ const LIVE_SEARCH_DRAWER_VALUE = "live-search";
 const DEFAULT_ERROR_MESSAGE = "Impossible de partager cette chanson pour le moment.";
 const ALREADY_EXISTS_MESSAGE = "Tu as déjà partagé une chanson dans cette session.";
 const HEADER_SELECTOR = ".MuiAppBar-root, header";
+const POST_DEPOSIT_MOUNT_DELAY_MS = 350;
 
 function getHeaderOffset() {
   if (typeof document === "undefined") {return 0;}
@@ -72,13 +73,15 @@ export default function LiveSearchSection({
   const [isFixed, setIsFixed] = useState(false);
   const [liveSearchHeight, setLiveSearchHeight] = useState(0);
   const [headerOffset, setHeaderOffset] = useState(0);
+  const [postDepositMountStep, setPostDepositMountStep] = useState("idle");
   const placeholderRef = useRef(null);
   const liveSearchRef = useRef(null);
   const searchInputRef = useRef(null);
   const isPostingRef = useRef(false);
   const pendingDepositResultRef = useRef(null);
-  const myDepositRef = useRef(null);
-  const pendingScrollToMyDepositRef = useRef(false);
+  const postDepositAnchorRef = useRef(null);
+  const pendingDepositMountRef = useRef(null);
+  const pendingScrollBeforeMountRef = useRef(false);
 
   const hasDeposit = Boolean(myDeposit);
   const isPreDeposit = !hasDeposit && depositFlowState.status !== "success";
@@ -148,26 +151,6 @@ export default function LiveSearchSection({
   }, [isPreDeposit]);
 
   useEffect(() => {
-    if (!hasDeposit || drawerOpen || !pendingScrollToMyDepositRef.current) {
-      return undefined;
-    }
-
-    const frameId = window.requestAnimationFrame(() => {
-      if (!myDepositRef.current) {return;}
-
-      myDepositRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      pendingScrollToMyDepositRef.current = false;
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [hasDeposit, drawerOpen]);
-
-  useEffect(() => {
     const shouldOpenDrawer = !hasDeposit && matchesDrawerSearch(
       location,
       LIVE_SEARCH_DRAWER_PARAM,
@@ -189,6 +172,49 @@ export default function LiveSearchSection({
       setDrawerOpen(false);
     }
   }, [location, navigate]);
+
+  const applyPendingDepositMount = useCallback(() => {
+    const normalized = pendingDepositMountRef.current;
+    if (!normalized) {return;}
+
+    onDepositCreated?.(normalized);
+
+    if (typeof normalized.pointsBalance === "number" && setUser) {
+      setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
+    }
+
+    pendingDepositMountRef.current = null;
+    pendingScrollBeforeMountRef.current = false;
+    setPostDepositMountStep("idle");
+  }, [onDepositCreated, setUser]);
+
+  useEffect(() => {
+    if (drawerOpen) {return undefined;}
+    if (postDepositMountStep !== "scrolling-before-mount") {return undefined;}
+    if (!pendingScrollBeforeMountRef.current) {return undefined;}
+    if (!pendingDepositMountRef.current) {return undefined;}
+
+    let timeoutId = null;
+    const frameId = window.requestAnimationFrame(() => {
+      if (!postDepositAnchorRef.current) {return;}
+
+      postDepositAnchorRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      timeoutId = window.setTimeout(() => {
+        applyPendingDepositMount();
+      }, POST_DEPOSIT_MOUNT_DELAY_MS);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [applyPendingDepositMount, drawerOpen, postDepositMountStep]);
 
   useEffect(() => {
     if (!hasDeposit) {return;}
@@ -214,17 +240,14 @@ export default function LiveSearchSection({
     if (pendingDepositResult.requestKey !== requestKey) {return;}
 
     const normalized = pendingDepositResult.normalized;
-    onDepositCreated?.(normalized);
 
-    if (typeof normalized.pointsBalance === "number" && setUser) {
-      setUser((prev) => ({ ...(prev || {}), points: normalized.pointsBalance }));
-    }
-
-    pendingScrollToMyDepositRef.current = true;
+    pendingDepositMountRef.current = normalized;
+    pendingScrollBeforeMountRef.current = true;
     pendingDepositResultRef.current = null;
     isPostingRef.current = false;
+    setPostDepositMountStep("scrolling-before-mount");
     closeDrawer();
-  }, [closeDrawer, onDepositCreated, setUser]);
+  }, [closeDrawer]);
 
   const handleDepositError = useCallback((data, response) => {
     if (response?.status === 403 && data?.code === "BOX_SESSION_REQUIRED") {
@@ -300,82 +323,86 @@ export default function LiveSearchSection({
   const liveSearchClassName = `liveSearch${isFixed ? " fixed" : ""}`;
   const liveSearchStyle = isFixed ? { top: `${headerOffset}px` } : undefined;
 
-  if (hasDeposit) {
-    return (
-      <Box ref={myDepositRef} className="myDepositScrollTarget" data-testid="my-deposit-scroll-target">
-        <MyDeposit
-          deposit={myDeposit}
-          successes={successes}
-          pointsBalance={pointsBalance}
-          depositPointsEarned={depositPointsEarned}
-          onOpenAchievements={onOpenAchievements}
-        />
-      </Box>
-    );
-  }
-
   return (
-    <Box ref={placeholderRef} sx={placeholderSx} className="liveSearchPlaceholder">
-      <Box
-        ref={liveSearchRef}
-        className={liveSearchClassName}
-        style={liveSearchStyle}
-      >
-        <Typography component="h5" variant="h5">
-          Ajoute une chanson à la boîte pour gagner des points et révéler plus de chansons
-        </Typography>
-
-        {errorMessage ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {errorMessage}
-          </Alert>
-        ) : null}
-
-        <Button variant="contained" onClick={openDrawer}>
-          Partager une chanson
-        </Button>
-
-        <Drawer
-          anchor="right"
-          open={drawerOpen}
-          onClose={() => closeDrawer()}
-          PaperProps={{
-            sx: {
-              width: "100vw",
-              maxWidth: "100vw",
-              height: "100vh",
-              overflow: "hidden",
-            },
-          }}
-        >
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <Box sx={{ p: 5, pb: 2 }}>
-              <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
-                Choisis une chanson à partager
-              </Typography>
-            </Box>
+    <Box
+      ref={postDepositAnchorRef}
+      className={hasDeposit ? "myDepositScrollTarget" : "liveSearchScrollTarget"}
+      data-testid="post-deposit-scroll-target"
+    >
+      {hasDeposit ? (
+        <Box data-testid="my-deposit-scroll-target">
+          <MyDeposit
+            deposit={myDeposit}
+            successes={successes}
+            pointsBalance={pointsBalance}
+            depositPointsEarned={depositPointsEarned}
+            onOpenAchievements={onOpenAchievements}
+          />
+        </Box>
+      ) : (
+        <Box ref={placeholderRef} sx={placeholderSx} className="liveSearchPlaceholder">
+          <Box
+            ref={liveSearchRef}
+            className={liveSearchClassName}
+            style={liveSearchStyle}
+          >
+            <Typography component="h5" variant="h5">
+              Ajoute une chanson à la boîte pour gagner des points et révéler plus de chansons
+            </Typography>
 
             {errorMessage ? (
-              <Alert severity="error" sx={{ mx: 5, mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {errorMessage}
               </Alert>
             ) : null}
 
-            {drawerOpen ? (
-              <SearchPanel
-                inputRef={searchInputRef}
-                onSelectSong={handleSongSelected}
-                actionLabel="Partager"
-                depositFlowState={depositFlowState}
-                onDepositVisualComplete={handleDepositVisualComplete}
-                rootSx={{ flex: 1, minHeight: 0 }}
-                searchBarWrapperSx={{ px: 5, pb: 2 }}
-                contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
-              />
-            ) : null}
+            <Button variant="contained" onClick={openDrawer}>
+              Partager une chanson
+            </Button>
+
+            <Drawer
+              anchor="right"
+              open={drawerOpen}
+              onClose={() => closeDrawer()}
+              PaperProps={{
+                sx: {
+                  width: "100vw",
+                  maxWidth: "100vw",
+                  height: "100vh",
+                  overflow: "hidden",
+                },
+              }}
+            >
+              <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <Box sx={{ p: 5, pb: 2 }}>
+                  <Typography component="h2" variant="h3" sx={{ mb: 3 }}>
+                    Choisis une chanson à partager
+                  </Typography>
+                </Box>
+
+                {errorMessage ? (
+                  <Alert severity="error" sx={{ mx: 5, mb: 2 }}>
+                    {errorMessage}
+                  </Alert>
+                ) : null}
+
+                {drawerOpen ? (
+                  <SearchPanel
+                    inputRef={searchInputRef}
+                    onSelectSong={handleSongSelected}
+                    actionLabel="Partager"
+                    depositFlowState={depositFlowState}
+                    onDepositVisualComplete={handleDepositVisualComplete}
+                    rootSx={{ flex: 1, minHeight: 0 }}
+                    searchBarWrapperSx={{ px: 5, pb: 2 }}
+                    contentSx={{ overflowX: "hidden", overflowY: "scroll", flex: 1, pb: "96px" }}
+                  />
+                ) : null}
+              </Box>
+            </Drawer>
           </Box>
-        </Drawer>
-      </Box>
+        </Box>
+      )}
     </Box>
   );
 }
