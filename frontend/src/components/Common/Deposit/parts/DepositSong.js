@@ -291,7 +291,7 @@ export default function DepositSong({
           </PlayModal>
         ) : (
           <Button
-            variant="depositInteract"
+            variant="light"
             className="decouvrir"
             disabled={isRevealLoading}
             onPointerDown={beginRevealHold}
