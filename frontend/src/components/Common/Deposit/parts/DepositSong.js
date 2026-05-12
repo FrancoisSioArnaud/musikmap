@@ -295,7 +295,7 @@ export default function DepositSong({
             className="decouvrir"
             disabled={isRevealLoading}
             disableRipple
-            style={{ backgroundColor: 'transparent' }} >
+            style={{ backgroundColor: 'transparent' }}
             onPointerDown={beginRevealHold}
             onPointerUp={endRevealHold}
             onPointerCancel={endRevealHold}
