@@ -305,7 +305,7 @@ export function buildMuiTheme(clientTheme) {
               p: "6px 26px",
               borderRadius: 0,
               height: 48,
-              backgroundColor: clientTheme.colors.white,
+              backgroundColor: "none",
               color: clientTheme.colors.primary,
               fontWeight: 700,
               border: "none",
