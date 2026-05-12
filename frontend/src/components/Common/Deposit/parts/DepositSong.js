@@ -294,6 +294,7 @@ export default function DepositSong({
             variant="light"
             className="decouvrir"
             disabled={isRevealLoading}
+            disableRipple
             onPointerDown={beginRevealHold}
             onPointerUp={endRevealHold}
             onPointerCancel={endRevealHold}
