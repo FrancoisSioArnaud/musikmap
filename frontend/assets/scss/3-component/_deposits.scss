@@ -313,7 +313,7 @@
   height: auto;
   flex-wrap: wrap;
   justify-content: center;
-  row-gap: 6px;
+  row-gap: 12px;
   width: 100%;
 }
 
@@ -326,7 +326,6 @@
 .deposit .decouvrir {
   display: flex;
   flex-direction: inherit;
-  padding: 8px 12px;
   width: auto;
   min-width: auto;
   height: auto;
