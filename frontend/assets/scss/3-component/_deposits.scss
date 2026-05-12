@@ -186,7 +186,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: rgb(0 0 0 / 30%);
+  background-color: rgb(0 0 0 / 12%);
   transform-origin: left center;
   transform: scaleX(var(--deposit-reveal-progress, 0));
 }
