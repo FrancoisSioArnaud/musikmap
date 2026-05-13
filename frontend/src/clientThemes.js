@@ -6,13 +6,13 @@ export const CLIENT_THEMES = {
   default: {
     slug: "default",
     fonts: {
-      h1: 'Exo2, Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
-      h3: 'Exo2, Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
-      h4: 'Exo2, Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
-      h5: 'Exo2, Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
-      subtitle1: 'Exo2, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      body1: 'Exo2, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      body2: 'Exo2, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h1: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h3: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h4: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h5: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      subtitle1: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body1: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body2: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     },
     colors: {
       black: "#000000",

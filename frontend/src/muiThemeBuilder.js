@@ -95,12 +95,15 @@ export function buildMuiTheme(clientTheme) {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          "html, body, #root": {
+          "html, body, #root, #app": {
             minHeight: "100%",
             backgroundColor: clientTheme.colors.appBg,
             color: clientTheme.colors.text,
+            fontFamily: clientTheme.fonts.body1,
           },
-          body: {},
+          body: {
+            fontFamily: clientTheme.fonts.body1,
+          },
           a: {},
         },
       },

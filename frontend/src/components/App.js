@@ -1,3 +1,4 @@
+import CssBaseline from "@mui/material/CssBaseline";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
@@ -165,6 +166,7 @@ export default function App() {
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
         <Router>
           <UserContext.Provider value={providerValue}>
             <FlowboxSessionProvider>

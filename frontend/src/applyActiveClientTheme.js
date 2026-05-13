@@ -16,7 +16,7 @@ export function applyActiveClientTheme(clientSlug) {
   root.style.setProperty("--mm-font-h4", theme.fonts.h4);
   root.style.setProperty("--mm-font-h5", theme.fonts.h5);
   root.style.setProperty("--mm-font-subtitle1", theme.fonts.subtitle1);
-  root.style.setProperty("--mm-font-bodY1", theme.fonts.body1);
+  root.style.setProperty("--mm-font-body1", theme.fonts.body1);
   root.style.setProperty("--mm-font-body2", theme.fonts.body2);
 
   // radius
