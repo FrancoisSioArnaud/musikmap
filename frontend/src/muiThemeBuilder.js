@@ -415,12 +415,12 @@ export function buildMuiTheme(clientTheme) {
 
             "& input::placeholder": {
               color: clientTheme.colors.text,
-              opacity: 1,
+              opacity: clientTheme.opacity.lightText,
             },
 
             "& textarea::placeholder": {
               color: clientTheme.colors.text,
-              opacity: 1,
+              opacity: clientTheme.opacity.lightText,
             },
           },
 
