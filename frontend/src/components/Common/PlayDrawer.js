@@ -7,11 +7,11 @@ import Drawer from "@mui/material/Drawer";
 import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
-import { closeDrawerWithHistory, matchesDrawerSearch, openDrawerWithHistory } from "../Utils/drawerHistory";
+import { closeDrawerWithHistory, getDrawerParamValue, matchesDrawerSearch, openDrawerWithHistory } from "../Utils/drawerHistory";
 
 const logoByPlatform = {
   spotify: "/static/images/spotify_logo.svg",
@@ -30,15 +30,17 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
   const [resolvingProvider, setResolvingProvider] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false);
+  const hadMatchingUrlRef = useRef(false);
 
   const drawerValue = useMemo(() => getSongKey(song), [song]);
+  const currentPlayParam = getDrawerParamValue(location, "play");
   const isOpenFromUrl = drawerValue ? matchesDrawerSearch(location, "play", drawerValue) : false;
 
   useEffect(() => {
-    if (open && drawerValue && !isOpenFromUrl) {
+    if (open && drawerValue && !isOpenFromUrl && !currentPlayParam && !hadMatchingUrlRef.current) {
       openDrawerWithHistory({ navigate, location, param: "play", value: drawerValue });
     }
-  }, [drawerValue, isOpenFromUrl, location, navigate, open]);
+  }, [currentPlayParam, drawerValue, isOpenFromUrl, location, navigate, open]);
 
   useEffect(() => {
     if (!open && isOpenFromUrl) {
@@ -47,7 +49,14 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
   }, [drawerValue, isOpenFromUrl, location, navigate, open]);
 
   useEffect(() => {
+    if (isOpenFromUrl) {
+      hadMatchingUrlRef.current = true;
+    }
+  }, [isOpenFromUrl]);
+
+  useEffect(() => {
     if (!open) {
+      hadMatchingUrlRef.current = false;
       setResolvingProvider("");
       setErrorMessage("");
     }
@@ -74,11 +83,14 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
   };
 
   useEffect(() => {
-    if (!open) {return;}
-    if (drawerValue && !isOpenFromUrl) {
+    if (!open || !drawerValue || isOpenFromUrl) {return;}
+
+    const isDifferentPlayDrawerOpen = Boolean(currentPlayParam) && currentPlayParam !== drawerValue;
+    if (hadMatchingUrlRef.current || isDifferentPlayDrawerOpen) {
+      hadMatchingUrlRef.current = false;
       onClose?.();
     }
-  }, [drawerValue, isOpenFromUrl, onClose, open]);
+  }, [currentPlayParam, drawerValue, isOpenFromUrl, onClose, open]);
 
   const safeText = () => `${song?.title ?? ""} ${artistText}`.trim();
 
