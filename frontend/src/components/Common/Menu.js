@@ -243,7 +243,7 @@ export default function MenuAppBar() {
               }}
             >
               <Box sx={{ minHeight: 0, overflow: "hidden" }}>
-                <Typography variant="body2" sx={{ color: "text.primary", pd:"6px" }}>
+                <Typography variant="body2" sx={{ color: "text.primary", pb:"6px" }}>
                   {helperText}
                 </Typography>
               </Box>
