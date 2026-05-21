@@ -237,7 +237,7 @@ export default function MenuAppBar() {
                 </Typography>
               </Box>
             ) : null}
-            <Box sx={{ width: "100%", height: 4, backgroundColor: "divider" }}>
+            <Box sx={{ width: "100%", height: 4, backgroundColor: "divider", position:"absolute", bottom:"0" }}>
               <Box
                 sx={{
                   width: `${progressPercent}%`,
