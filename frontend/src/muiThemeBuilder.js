@@ -112,7 +112,6 @@ export function buildMuiTheme(clientTheme) {
         styleOverrides: {
           root: {
             backgroundColor: clientTheme.colors.appBarBg,
-            borderBottom: clientTheme.colors.appBarBorder,
             boxShadow: "none",
             height: "56px",
           },
