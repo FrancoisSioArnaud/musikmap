@@ -211,7 +211,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
                 fullWidth
                 onClick={action.onClick}
                 disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
-                startIcon={action.iconOnly ? null : (resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: 24, height: 24, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 24, color: "var(--mm-color-black)" }} />))}
+                startIcon={action.iconOnly ? null : (resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: "auto", height: 24, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 24, color: "var(--mm-color-black)" }} />))}
                 sx={{
                   justifyContent: action.iconOnly ? "center" : "flex-start",
                   minHeight: 52,
