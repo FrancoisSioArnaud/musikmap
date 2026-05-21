@@ -212,6 +212,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
                 onClick={action.onClick}
                 disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
                 startIcon={resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: 26, height: 26, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 26 }} />)}
+                sx={{ justifyContent: "flex-start", minHeight: 52, textTransform: "none" }}
               >
                 {action.label}
               </Button>
