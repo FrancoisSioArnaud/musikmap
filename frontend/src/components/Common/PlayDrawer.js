@@ -203,16 +203,15 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
         <Box sx={{ width: "100%", maxWidth: 720, mx: "auto", display: "flex", flexDirection: "column", gap: 2, minHeight: 0, flex: 1 }}>
           <Typography variant="h3" component="h3">Écouter dans</Typography>
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-          <Stack spacing={1.25} sx={{ overflowY: "auto", pb: 1 }}>
+          <Stack sx={{ overflowY: "auto", pb: 1, gap: "6px"}}>
             {actions.map((action) => (
               <Button
                 key={action.key}
-                variant="outlined"
+                variant="light"
                 fullWidth
                 onClick={action.onClick}
                 disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
-                startIcon={resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: 24, height: 24, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 24 }} />)}
-                sx={{ justifyContent: "flex-start", minHeight: 52, textTransform: "none" }}
+                startIcon={resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: 26, height: 26, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 26 }} />)}
               >
                 {action.label}
               </Button>
