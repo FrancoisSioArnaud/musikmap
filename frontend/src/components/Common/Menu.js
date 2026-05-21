@@ -15,8 +15,6 @@ import { Link } from "react-router-dom";
 import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext";
 import { UserContext } from "../UserContext";
 
-const COMPACT_HEADER_HEIGHT = 56;
-const EXPANDED_HEADER_HEIGHT = 96;
 const WARNING_THRESHOLD_MS = 3 * 60 * 1000;
 const ERROR_THRESHOLD_MS = 60 * 1000;
 const EXTEND_DURATION_MS = 3000;
@@ -134,14 +132,13 @@ export default function MenuAppBar() {
     <AppBar
       position="fixed"
       sx={{
-        height: `${isExpanded ? EXPANDED_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT}px`,
-        minHeight: `${isExpanded ? EXPANDED_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT}px`,
+        height: "auto",
+        minHeight: 0,
         overflow: "hidden",
-        transition: "height 220ms ease, min-height 220ms ease",
       }}
     >
       <Box onClick={handleHeaderClick} sx={{ cursor: activeSession ? "pointer" : "default" }}>
-        <Toolbar sx={{ minHeight: `${COMPACT_HEADER_HEIGHT}px !important` }}>
+        <Toolbar sx={{ minHeight: "56px !important" }}>
           <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 1, pl: 1, pr: 0 }}>
             {activeSession ? (
               <>
@@ -232,21 +229,24 @@ export default function MenuAppBar() {
           <>
             <Box
               sx={{
+                display: "grid",
+                gridTemplateRows: isExpanded ? "1fr" : "0fr",
                 px: 3,
                 pr: 12,
                 pb: isExpanded ? 1 : 0,
-                maxHeight: isExpanded ? 40 : 0,
                 opacity: isExpanded ? 1 : 0,
                 transform: isExpanded ? "translateY(0)" : "translateY(-4px)",
                 overflow: "hidden",
                 pointerEvents: isExpanded ? "auto" : "none",
                 transition:
-                  "max-height 220ms ease, opacity 180ms ease, transform 220ms ease, padding-bottom 220ms ease",
+                  "grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease, padding-bottom 220ms ease",
               }}
             >
-              <Typography variant="body2" sx={{ color: "text.primary" }}>
-                {helperText}
-              </Typography>
+              <Box sx={{ minHeight: 0, overflow: "hidden" }}>
+                <Typography variant="body2" sx={{ color: "text.primary" }}>
+                  {helperText}
+                </Typography>
+              </Box>
             </Box>
             <Box sx={{ width: "100%", height: 4, backgroundColor: "divider", position: "absolute", bottom: 0, left: 0 }}>
               <Box
