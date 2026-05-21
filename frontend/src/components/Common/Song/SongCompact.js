@@ -5,7 +5,7 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import React, { useMemo, useState } from "react";
 
-import PlayModal from "../PlayModal";
+import PlayDrawer from "../PlayDrawer";
 
 function getArtistText(song) {
   if (song?.artist) {return song.artist;}
@@ -92,7 +92,7 @@ export default function SongCompact({
       </Box>
 
       {playButton === "icon" ? (
-        <PlayModal
+        <PlayDrawer
           open={playOpen}
           song={song}
           onClose={() => setPlayOpen(false)}
@@ -106,7 +106,7 @@ export default function SongCompact({
           >
             <PlayArrowIcon sx={{ color: "white" }} />
           </IconButton>
-        </PlayModal>
+       </PlayDrawer>
       ) : null}
     </Box>
   );
