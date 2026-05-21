@@ -14,9 +14,9 @@ import { getCookie } from "../Security/TokensUtils";
 import { closeDrawerWithHistory, matchesDrawerSearch, openDrawerWithHistory } from "../Utils/drawerHistory";
 
 const logoByPlatform = {
-  spotify: "/static/images/spotify_logo_icon.svg",
-  deezer: "/static/images/deezer_logo_icon.svg",
-  youtube: "/static/images/youtube_logo_icon.svg",
+  spotify: "/static/images/spotify_logo.svg",
+  deezer: "/static/images/deezer_logo.svg",
+  youtube: "/static/images/youtube_logo.svg",
 };
 
 function getSongKey(song) {
@@ -212,7 +212,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
                 onClick={action.onClick}
                 disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
                 startIcon={resolvingProvider === action.key ? <CircularProgress size={18} /> : (action.icon ? <Box component="img" src={action.icon} alt={action.label} sx={{ width: 26, height: 26, display: "block" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 26 }} />)}
-                sx={{ justifyContent: "flex-start", minHeight: 52, textTransform: "none" }}
+                sx={{ justifyContent: "flex-start", minHeight: 52, textTransform: "none", color:"" }}
               >
                 {action.label}
               </Button>
