@@ -52,9 +52,9 @@ function LayoutWithHeader() {
       <main
         style={{
           flex: 1,
-          minHeight: "calc(100vh - var(--mm-app-header-height, 56px))",
+          minHeight: "100vh",
           width: "100vw",
-          padding: "var(--mm-app-header-height, 56px) 0 0 0",
+          padding: "56px 0 0 0",
         }}
       >
         <Outlet />
