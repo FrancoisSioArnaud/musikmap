@@ -223,7 +223,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
                   resolvingProvider === action.key ? (
                     <CircularProgress size={22} />
                   ) : (
-                    <Box component="img" src={action.icon} alt={action.label} sx={{ width: 28, height: 28, display: "block" }} />
+                    <Box component="img" src={action.icon} alt={action.label} sx={{ width: "auto", height: 28, display: "block" }} />
                   )
                 ) : action.label}
               </Button>
