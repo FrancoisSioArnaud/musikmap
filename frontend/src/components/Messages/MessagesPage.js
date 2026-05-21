@@ -175,7 +175,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <Box sx={{ p: 2, pb: 8 }}>
+    <Box sx={{ }}>
       {loading ? (
         <CircularProgress />
       ) : (
