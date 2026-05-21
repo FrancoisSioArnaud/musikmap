@@ -63,7 +63,7 @@ export default function MenuAppBar() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setNow(Date.now());
-    }, 250);
+    }, 1000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -243,7 +243,7 @@ export default function MenuAppBar() {
                   width: `${progressPercent}%`,
                   height: "100%",
                   backgroundColor: tone.bg,
-                  transition: "width 240ms linear, background-color 200ms ease",
+                  transition: "width 950ms linear, background-color 200ms ease",
                 }}
               />
             </Box>
