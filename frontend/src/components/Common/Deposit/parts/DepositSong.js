@@ -6,7 +6,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import PlayModal from "../../PlayModal";
+import PlayDrawer from "../../PlayDrawer";
 
 const HOLD_TO_REVEAL_MS = 1200;
 
@@ -278,7 +278,7 @@ export default function DepositSong({
         ) : null}
 
         {isRevealed ? (
-          <PlayModal open={playOpen} song={playSong} onClose={closePlay} onSongResolved={onSongResolved}>
+          <PlayDrawer open={playOpen} song={playSong} onClose={closePlay} onSongResolved={onSongResolved}>
             <Button
               variant="depositInteract"
               className="play playSecondary"
@@ -288,7 +288,7 @@ export default function DepositSong({
             >
               Écouter
             </Button>
-          </PlayModal>
+         </PlayDrawer>
         ) : (
           <Button
             variant="light"
