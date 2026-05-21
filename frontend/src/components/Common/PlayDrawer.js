@@ -201,7 +201,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
         }}
       >
         <Box sx={{ width: "100%", maxWidth: 720, mx: "auto", display: "flex", flexDirection: "column", gap: 2, minHeight: 0, flex: 1 }}>
-          <Typography variant="h3" component="h3">Écouter dans</Typography>
+          <Typography variant="h3" component="h3" sx={{ mb:"16px" }}>Écouter dans</Typography>
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
           <Stack sx={{ overflowY: "auto", pb: 1, gap:"6px"}}>
             {actions.map((action) => (
