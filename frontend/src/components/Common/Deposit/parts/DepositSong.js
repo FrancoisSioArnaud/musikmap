@@ -70,12 +70,14 @@ export default function DepositSong({
   onRevealRequest,
   onSongResolved,
   revealCost,
+  revealNudgeToken,
 }) {
   const [playOpen, setPlayOpen] = useState(false);
   const [playSong, setPlaySong] = useState(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHoldingReveal, setIsHoldingReveal] = useState(false);
   const [isRevealLoading, setIsRevealLoading] = useState(false);
+  const [isRevealNudging, setIsRevealNudging] = useState(false);
   const revealHoldFrameRef = useRef(null);
   const revealHoldStartRef = useRef(null);
   const revealHoldTriggeredRef = useRef(false);
@@ -181,6 +183,27 @@ export default function DepositSong({
     }
   }, [isRevealed, resetRevealHold]);
 
+  useEffect(() => {
+    if (!revealNudgeToken) {
+      return undefined;
+    }
+
+    setIsRevealNudging(false);
+
+    const startTimer = window.setTimeout(() => {
+      setIsRevealNudging(true);
+    }, 0);
+
+    const endTimer = window.setTimeout(() => {
+      setIsRevealNudging(false);
+    }, 520);
+
+    return () => {
+      window.clearTimeout(startTimer);
+      window.clearTimeout(endTimer);
+    };
+  }, [revealNudgeToken]);
+
   const renderFloatingReactions = () => {
     if (!floatingEmojiItems.length) {return null;}
 
@@ -256,7 +279,7 @@ export default function DepositSong({
 
   return (
     <Box
-      className={`deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
+      className={`deposit_song${accentColor ? " has_accent_color" : ""}${isRevealed ? "" : " is_hidden"}${!isRevealed && isRevealNudging ? " is_reveal_nudging" : ""}${isHoldingReveal ? " is_reveal_holding" : ""}${isRevealLoading ? " is_reveal_loading" : ""}`}
       style={{
         ...(accentColor ? { "--deposit-accent": accentColor } : {}),
         ...(isRevealed ? {} : { "--deposit-reveal-progress": holdProgress }),

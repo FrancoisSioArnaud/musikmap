@@ -15,7 +15,7 @@ import Slide from "@mui/material/Slide";
 import Snackbar from "@mui/material/Snackbar";
 import SnackbarContent from "@mui/material/SnackbarContent";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -266,13 +266,30 @@ export default function Deposit({
   const [shareSnack, setShareSnack] = useState({ open: false, message: "" });
   const [isSharing, setIsSharing] = useState(false);
   const [authModalConfig, setAuthModalConfig] = useState(null);
-  const [reactionRevealPromptOpen, setReactionRevealPromptOpen] = useState(false);
+  const [revealNudgeToken, setRevealNudgeToken] = useState(0);
+  const revealNudgeCooldownRef = useRef(0);
   const [actionErrorDialog, setActionErrorDialog] = useState({ open: false, title: "Erreur", message: "" });
 
   const openActionErrorDialog = useCallback((title, message, event = null) => {
     blurEventTarget(event);
     blurActiveElement();
     setActionErrorDialog({ open: true, title, message });
+  }, []);
+
+  const nudgeRevealButton = useCallback((event = null) => {
+    event?.stopPropagation?.();
+
+    blurEventTarget(event);
+    blurActiveElement();
+
+    const now = Date.now();
+
+    if (now - revealNudgeCooldownRef.current < 600) {
+      return;
+    }
+
+    revealNudgeCooldownRef.current = now;
+    setRevealNudgeToken((value) => value + 1);
   }, []);
 
   const myReactionEmoji = localDep?.my_reaction?.emoji || null;
@@ -463,11 +480,11 @@ export default function Deposit({
   const toggleCommentsInline = useCallback((event) => {
     event?.stopPropagation?.();
     if (!isRevealed) {
-      openActionErrorDialog("Révèle d’abord cette chanson", "Tu pourras réagir une fois le morceau révélé.", event);
+      nudgeRevealButton(event);
       return;
     }
     setCommentsOpen((prev) => !prev);
-  }, [isRevealed, openActionErrorDialog]);
+  }, [isRevealed, nudgeRevealButton]);
 
   const openReactionSummaryDrawer = useCallback((event) => {
     event?.stopPropagation?.();
@@ -512,7 +529,7 @@ export default function Deposit({
         blurActiveElement();
         setCommentsOpen(true);
       } else {
-        openActionErrorDialog("Révèle d’abord cette chanson", "Tu pourras réagir une fois le morceau révélé.");
+        nudgeRevealButton();
       }
       return;
     }
@@ -524,10 +541,15 @@ export default function Deposit({
     });
 
     if (reactionAction) {
+      if (!isRevealed) {
+        nudgeRevealButton();
+        return;
+      }
+
       blurActiveElement();
       setAddReactionOpen(true);
     }
-  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, isRevealed, openActionErrorDialog]);
+  }, [viewer?.id, viewer?.is_guest, localDep?.public_key, location, isRevealed, nudgeRevealButton]);
 
   const showShareFeedback = useCallback((message) => {
     setShareSnack({ open: true, message });
@@ -643,13 +665,12 @@ export default function Deposit({
         <Box className="deposit_action_group reactions_group">
           <Button
             variant="depositInteract"
-            className="deposit_action_button addreaction_button addreaction_icon_button"
+            className={`deposit_action_button addreaction_button addreaction_icon_button${!isRevealed ? " requires_reveal" : ""}`}
+            aria-disabled={!isRevealed}
             onClick={(event) => {
               event.stopPropagation();
               if (!isRevealed) {
-                blurEventTarget(event);
-                blurActiveElement();
-                setReactionRevealPromptOpen(true);
+                nudgeRevealButton(event);
                 return;
               }
               if (!viewer?.id) {
@@ -706,7 +727,8 @@ export default function Deposit({
         {showCommentAction ? (
           <Button
             variant="depositInteract"
-            className="deposit_action_button comments_button"
+            className={`deposit_action_button comments_button${!isRevealed ? " requires_reveal" : ""}`}
+            aria-disabled={!isRevealed}
             onClick={toggleCommentsInline}
             startIcon={<ModeCommentOutlinedIcon />}
             endIcon={
@@ -748,6 +770,7 @@ export default function Deposit({
             onRevealRequest={revealDeposit}
             onSongResolved={handleSongResolved}
             revealCost={revealCost}
+            revealNudgeToken={revealNudgeToken}
           />
 
           {footerSlot}
@@ -887,18 +910,6 @@ export default function Deposit({
         </DialogActions>
       </Dialog>
 
-      <Dialog
-        open={reactionRevealPromptOpen}
-        onClose={() => setReactionRevealPromptOpen(false)}
-      >
-        <DialogTitle>Révèle d’abord cette chanson</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">Tu pourras réagir une fois le morceau révélé.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReactionRevealPromptOpen(false)}>Compris</Button>
-        </DialogActions>
-      </Dialog>
     </>
   );
 }
