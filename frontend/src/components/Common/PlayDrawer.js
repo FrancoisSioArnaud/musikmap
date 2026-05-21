@@ -197,6 +197,7 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
             maxHeight: "80vh",
             overflow: "hidden",
             p: "26px 20px 20px 20px",
+            zIndex:1000,
           },
         }}
       >
