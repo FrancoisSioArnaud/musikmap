@@ -14,9 +14,9 @@ import { getCookie } from "../Security/TokensUtils";
 import { closeDrawerWithHistory, matchesDrawerSearch, openDrawerWithHistory } from "../Utils/drawerHistory";
 
 const logoByPlatform = {
-  spotify: "/static/images/spotify_logo_icon.svg",
-  deezer: "/static/images/deezer_logo_icon.svg",
-  youtube: "/static/images/youtube_logo_icon.svg",
+  spotify: "/static/images/spotify_logo.svg",
+  deezer: "/static/images/deezer_logo.svg",
+  youtube: "/static/images/youtube_logo.svg",
 };
 
 function getSongKey(song) {
@@ -203,11 +203,11 @@ export default function PlayDrawer({ open, song, onClose, onSongResolved, childr
         <Box sx={{ width: "100%", maxWidth: 720, mx: "auto", display: "flex", flexDirection: "column", gap: 2, minHeight: 0, flex: 1 }}>
           <Typography variant="h3" component="h3">Écouter dans</Typography>
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-          <Stack spacing={1.25} sx={{ overflowY: "auto", pb: 1 }}>
+          <Stack sx={{ overflowY: "auto", pb: 1, gap:"6px"}}>
             {actions.map((action) => (
               <Button
                 key={action.key}
-                variant="outlined"
+                variant="light"
                 fullWidth
                 onClick={action.onClick}
                 disabled={Boolean(resolvingProvider) && resolvingProvider !== action.key}
