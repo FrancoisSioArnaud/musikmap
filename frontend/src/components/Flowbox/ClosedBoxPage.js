@@ -16,7 +16,7 @@ export default function ClosedBoxPage() {
   const boxName = runtime?.box?.name || "cette boîte";
 
   return (
-    <Box sx={{ minHeight: "calc(100vh - var(--mm-app-header-height, 56px))", display: "grid", placeItems: "center", p: 4 }}>
+    <Box sx={{ minHeight: "calc(100vh - 56px)", display: "grid", placeItems: "center", p: 4 }}>
       <Box sx={{ width: "100%", maxWidth: 520, textAlign: "center", display: "grid", gap: 3 }}>
         <Box sx={{ display: "grid", gap: 1, justifyItems: "center" }}>
           <LockIcon fontSize="large" />

@@ -117,10 +117,6 @@ export default function App() {
   }, [currentClient]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--mm-app-header-height", "56px");
-  }, []);
-
-  useEffect(() => {
     checkUserStatus(
       setUser,
       setIsAuthenticated,

@@ -16,7 +16,7 @@ import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext"
 import { UserContext } from "../UserContext";
 
 const COMPACT_HEADER_HEIGHT = 56;
-const EXPANDED_HEADER_HEIGHT = 86;
+const EXPANDED_HEADER_HEIGHT = 96;
 const WARNING_THRESHOLD_MS = 3 * 60 * 1000;
 const ERROR_THRESHOLD_MS = 60 * 1000;
 const EXTEND_DURATION_MS = 3000;
@@ -99,14 +99,6 @@ export default function MenuAppBar() {
   const isExpanded = Boolean(activeSession) && (isLastMinute || manualExpandedUntil > now);
 
   useEffect(() => {
-    const nextHeight = isExpanded ? EXPANDED_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT;
-    document.documentElement.style.setProperty("--mm-app-header-height", `${nextHeight}px`);
-    return () => {
-      document.documentElement.style.setProperty("--mm-app-header-height", `${COMPACT_HEADER_HEIGHT}px`);
-    };
-  }, [isExpanded]);
-
-  useEffect(() => {
     if (!headerSlug || !activeSession) {return;}
     if (uiHintsBySlug?.[headerSlug]?.enterHintPending) {
       setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
@@ -139,7 +131,15 @@ export default function MenuAppBar() {
   }, [activeSession, remainingMs]);
 
   return (
-    <AppBar position="fixed" sx={{ minHeight: `var(--mm-app-header-height, ${COMPACT_HEADER_HEIGHT}px)` }}>
+    <AppBar
+      position="fixed"
+      sx={{
+        height: `${isExpanded ? EXPANDED_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT}px`,
+        minHeight: `${isExpanded ? EXPANDED_HEADER_HEIGHT : COMPACT_HEADER_HEIGHT}px`,
+        overflow: "hidden",
+        transition: "height 220ms ease, min-height 220ms ease",
+      }}
+    >
       <Box onClick={handleHeaderClick} sx={{ cursor: activeSession ? "pointer" : "default" }}>
         <Toolbar sx={{ minHeight: `${COMPACT_HEADER_HEIGHT}px !important` }}>
           <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 1, pl: 1, pr: 0 }}>
@@ -230,14 +230,25 @@ export default function MenuAppBar() {
 
         {activeSession ? (
           <>
-            {isExpanded ? (
-              <Box sx={{ px: 3, pb: 1.5, pr: 12 }}>
-                <Typography variant="body2" sx={{ color: "text.primary" }}>
-                  {helperText}
-                </Typography>
-              </Box>
-            ) : null}
-            <Box sx={{ width: "100%", height: 4, backgroundColor: "divider", position:"absolute", bottom:"0" }}>
+            <Box
+              sx={{
+                px: 3,
+                pr: 12,
+                pb: isExpanded ? 1 : 0,
+                maxHeight: isExpanded ? 40 : 0,
+                opacity: isExpanded ? 1 : 0,
+                transform: isExpanded ? "translateY(0)" : "translateY(-4px)",
+                overflow: "hidden",
+                pointerEvents: isExpanded ? "auto" : "none",
+                transition:
+                  "max-height 220ms ease, opacity 180ms ease, transform 220ms ease, padding-bottom 220ms ease",
+              }}
+            >
+              <Typography variant="body2" sx={{ color: "text.primary" }}>
+                {helperText}
+              </Typography>
+            </Box>
+            <Box sx={{ width: "100%", height: 4, backgroundColor: "divider", position: "absolute", bottom: 0, left: 0 }}>
               <Box
                 sx={{
                   width: `${progressPercent}%`,
