@@ -1,4 +1,5 @@
-from django.db.models import Q
+from django.db.models import Max, Q
+from django.db.models.functions import Coalesce
 
 from private_messages.models import ChatThread
 
@@ -20,5 +21,6 @@ def list_threads_for_user(user_id):
     return (
         ChatThread.objects.select_related("user_a", "user_b", "initiator")
         .filter(Q(user_a_id=user_id) | Q(user_b_id=user_id))
-        .order_by("-updated_at", "-id")
+        .annotate(activity_at=Coalesce(Max("messages__created_at"), "created_at"))
+        .order_by("-activity_at", "-id")
     )

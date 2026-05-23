@@ -136,6 +136,49 @@ class MessagingFlowTests(APITestCase):
         self.assertEqual(sender_after_expired.data["conversations"], [])
         self.assertEqual(sender_after_expired.data["sent_requests"], [])
 
+    def test_summary_sorts_by_last_message_or_created_at_not_updated_at(self):
+        first_thread_id = self.start_thread()
+        first_thread = ChatThread.objects.get(pk=first_thread_id)
+
+        other_receiver = CustomUser.objects.create_user(username="charlie", password="pass1234")
+        second_response = self.client.post(
+            reverse("messages-thread-start"),
+            {"target_user_id": other_receiver.id, "song": song_option(), "text": "hello second"},
+            format="json",
+        )
+        self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+        second_thread_id = second_response.data["thread_id"]
+
+        self.client.force_authenticate(self.receiver)
+        self.client.post(reverse("messages-thread-reply", kwargs={"thread_id": first_thread_id}), {"text": "new"}, format="json")
+
+        self.client.force_authenticate(self.sender)
+        self.client.get(reverse("messages-thread-by-username", kwargs={"username": "charlie"}))
+
+        summary = self.client.get(reverse("messages-summary"))
+        self.assertEqual(summary.status_code, status.HTTP_200_OK)
+        conversation_ids = [item["thread_id"] for item in summary.data["conversations"]]
+        sent_ids = [item["thread_id"] for item in summary.data["sent_requests"]]
+        self.assertEqual(conversation_ids, [first_thread_id])
+        self.assertEqual(sent_ids, [second_thread_id])
+
+        sender_two = CustomUser.objects.create_user(username="dave", password="pass1234")
+        self.client.force_authenticate(sender_two)
+        third_response = self.client.post(
+            reverse("messages-thread-start"),
+            {"target_user_id": self.receiver.id, "song": song_option(), "text": "hello third"},
+            format="json",
+        )
+        self.assertEqual(third_response.status_code, status.HTTP_201_CREATED)
+        third_thread_id = third_response.data["thread_id"]
+
+        self.client.force_authenticate(self.receiver)
+        received_summary = self.client.get(reverse("messages-summary"))
+        self.assertEqual(received_summary.status_code, status.HTTP_200_OK)
+        received_ids = [item["thread_id"] for item in received_summary.data["received_requests"]]
+        self.assertEqual(received_ids, [third_thread_id])
+        self.assertEqual([item["thread_id"] for item in received_summary.data["conversations"]], [first_thread_id])
+
     def test_thread_payload_flags_from_user_pov(self):
         thread_id = self.start_thread()
 
@@ -217,3 +260,11 @@ class MessagingPublicRoutesTests(APITestCase):
     def test_old_thread_detail_route_is_not_publicly_available(self):
         response = self.client.get("/messages/thread/1")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_summary_rejects_guest_with_create_account_wording(self):
+        guest = CustomUser.objects.create_user(username="guestmsg", password="pass1234", is_guest=True)
+        self.client.force_authenticate(guest)
+        response = self.client.get(reverse("messages-summary"))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("code"), "ACCOUNT_COMPLETION_REQUIRED")
+        self.assertEqual(response.data.get("detail"), "Crée ton compte pour accéder aux messages.")

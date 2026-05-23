@@ -31,7 +31,11 @@ def _get_authenticated_non_guest_user(request):
     if not user:
         return None, api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
     if getattr(user, "is_guest", False):
-        return None, api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "ACCOUNT_COMPLETION_REQUIRED",
+            "Crée ton compte pour accéder aux messages.",
+        )
     touch_last_seen(user)
     return user, None
 
