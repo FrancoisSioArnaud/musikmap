@@ -1,13 +1,12 @@
 from datetime import timedelta
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils import timezone
 from django.utils.timezone import localdate
 from rest_framework import status
 
 from box_management.domain.constants import (
     COMMENT_COOLDOWN_SECONDS,
-    COMMENT_REASON_ALREADY_COMMENTED,
     COMMENT_REASON_EMPTY,
     COMMENT_REASON_RATE_LIMIT,
     COMMENT_REASON_RESTRICTED,
@@ -157,8 +156,6 @@ def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, 
                 author_ip=author_ip,
                 author_user_agent=(author_user_agent or "")[:255],
             )
-    except IntegrityError:
-        return None, {"reason_code": COMMENT_REASON_ALREADY_COMMENTED, "status": status.HTTP_400_BAD_REQUEST}
     except ValueError:
         return None, {
             "status": status.HTTP_400_BAD_REQUEST,
