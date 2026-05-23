@@ -88,18 +88,16 @@ export default function Library() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [fetchSessions, hasMore]);
 
-  if (!sessions.length && !hasMore && !loading) {
-    return (
-      <Box sx={{ p: 2 }}>
+  return (
+    <Box sx={{ display: "grid", gap: "56px", p: "26px 20px" }}>
+      <Typography variant="body1">
+        Retrouve ici les chansons que tu as découvertes dans les boîtes, sur des profils ou via des liens.
+      </Typography>
+      {!sessions.length && !hasMore && !loading ? (
         <Typography>
           Vous n&apos;avez pas encore découvert de chansons.
         </Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ display: "grid", gap: "56px", p: "26px 20px" }}>
+      ) : null}
       {sessions.map((sess) => {
         const sessionType =
           sess?.session_type === "profile"

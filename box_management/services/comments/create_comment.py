@@ -8,7 +8,6 @@ from rest_framework import status
 from box_management.domain.constants import (
     COMMENT_COOLDOWN_SECONDS,
     COMMENT_REASON_ALREADY_COMMENTED,
-    COMMENT_REASON_CONSECUTIVE_BLOCKED,
     COMMENT_REASON_EMPTY,
     COMMENT_REASON_RATE_LIMIT,
     COMMENT_REASON_RESTRICTED,
@@ -27,13 +26,6 @@ from box_management.services.comments.moderation_rules import (
     _score_comment_risk,
 )
 from box_management.services.deposits.song_creation import create_song_deposit
-
-
-def _is_consecutive_comment_blocked(*, deposit, user):
-    last_visible_comment = (
-        Comment.objects.filter(deposit=deposit, status=Comment.STATUS_PUBLISHED).order_by("-created_at", "-id").first()
-    )
-    return bool(last_visible_comment and last_visible_comment.user_id == user.id)
 
 
 def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, author_user_agent):
@@ -106,19 +98,6 @@ def create_comment(*, user, dep_public_key, text_value, song_option, author_ip, 
                 "reason_code": COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED,
                 "status": status.HTTP_403_FORBIDDEN,
             }
-
-    if _is_consecutive_comment_blocked(deposit=deposit, user=user):
-        _log_blocked_comment_attempt(
-            client=client,
-            deposit=deposit,
-            user=user,
-            text=text_value,
-            normalized_text=normalized_text,
-            reason_code=COMMENT_REASON_CONSECUTIVE_BLOCKED,
-            author_ip=author_ip,
-            author_user_agent=author_user_agent,
-        )
-        return None, {"reason_code": COMMENT_REASON_CONSECUTIVE_BLOCKED, "status": status.HTTP_400_BAD_REQUEST}
 
     recent_cutoff = timezone.now() - timedelta(seconds=COMMENT_COOLDOWN_SECONDS)
     if Comment.objects.filter(user=user, created_at__gte=recent_cutoff).exists():

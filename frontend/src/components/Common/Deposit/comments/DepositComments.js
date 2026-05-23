@@ -1,10 +1,5 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 
@@ -29,7 +24,6 @@ export default function DepositComments({
   const [error, setError] = useState("");
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [isConsecutiveReplyDialogOpen, setIsConsecutiveReplyDialogOpen] = useState(false);
 
   useEffect(() => {
     setContext(comments || EMPTY_CONTEXT);
@@ -41,10 +35,6 @@ export default function DepositComments({
   const isFullUser = Boolean(viewer?.id && !viewer?.is_guest);
   const canPost = Boolean(isFullUser && viewerState?.can_post);
   const notice = typeof viewerState?.notice === "string" ? viewerState.notice : "";
-  const isConsecutiveReplyBlocked = Boolean(
-    isFullUser && !canPost && notice.toLowerCase().includes("deux réponses"),
-  );
-  const inlineNotice = isConsecutiveReplyBlocked ? "" : notice;
 
   useEffect(() => {
     if (!open || hasLoaded || loadingReplies || !depPublicKey || !isParentRevealed) {return;}
@@ -77,11 +67,6 @@ export default function DepositComments({
 
   if (!open) {return null;}
 
-  const closeConsecutiveReplyDialog = () => {
-    document.activeElement?.blur?.();
-    setIsConsecutiveReplyDialogOpen(false);
-  };
-
   return (
     <Box sx={{ width:"100%" }}>
       <Box className="comments_list">
@@ -108,7 +93,7 @@ export default function DepositComments({
           ))
           : null}
 
-        {inlineNotice ? <Typography variant="body2" sx={{ mb: 1 }}>{inlineNotice}</Typography> : null}
+        {notice ? <Typography variant="body2" sx={{ mb: 1 }}>{notice}</Typography> : null}
         {error ? <Typography variant="body2" color="error" sx={{ mb: 1 }}>{error}</Typography> : null}
 
         <Box className="composer_container">
@@ -117,8 +102,7 @@ export default function DepositComments({
             target={{ depPublicKey }}
             viewer={viewer}
             loading={submitting}
-            canSubmit={canPost || isConsecutiveReplyBlocked}
-            blockReason={isConsecutiveReplyBlocked ? "consecutive_reply" : ""}
+            canSubmit={canPost}
             maxTextLength={100}
             songRequired={false}
             drawerAnchor="right"
@@ -127,7 +111,6 @@ export default function DepositComments({
             songActionLabel="Choisir"
             textLabel="Répondre à cette chanson"
             textPlaceholder="Répondre à cette chanson"
-            onBlockedInteraction={() => setIsConsecutiveReplyDialogOpen(true)}
             onSubmit={async (payload) => {
               setSubmitting(true);
               setError("");
@@ -168,15 +151,6 @@ export default function DepositComments({
         </Box>
       </Box>
 
-      <Dialog open={isConsecutiveReplyDialogOpen} onClose={closeConsecutiveReplyDialog}>
-        <DialogTitle>Tu as déjà répondu</DialogTitle>
-        <DialogContent>
-          <Typography>Attends que quelqu’un réponde avant d’écrire à nouveau.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeConsecutiveReplyDialog} variant="contained">J’ai compris</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

@@ -1,5 +1,7 @@
 import Alert from "@mui/material/Alert";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
@@ -12,21 +14,33 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { startAuthPageFlow } from "../Auth/AuthFlow";
 import UserInline from "../Common/UserInline";
 import { UserContext } from "../UserContext";
 import { closeDrawerWithHistory, getDrawerParamValue, openDrawerWithHistory } from "../Utils/drawerHistory";
 import { formatRelativeTime } from "../Utils/time";
+
 import Conversation from "./Conversation";
 
 const normalize = (value) => (value || "").trim().toLowerCase();
 
 function getItemsForTab(summary, tab) {
-  return tab === "invitations"
-    ? summary?.received_requests || []
-    : summary?.conversations || [];
+  if (tab !== "invitations") {
+    return summary?.conversations || [];
+  }
+
+  const received = (summary?.received_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "received",
+  }));
+  const sent = (summary?.sent_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "sent",
+  }));
+  return [...received, ...sent];
 }
 
-function MessageRow({ item, active, onClick }) {
+function MessageRow({ item, active, onClick, showInvitationStatus = false }) {
   const preview = item?.last_message?.text_preview || "";
 
   return (
@@ -40,7 +54,21 @@ function MessageRow({ item, active, onClick }) {
       <Typography variant="caption">
         {formatRelativeTime(item?.last_message?.created_at || item?.updated_at)}
       </Typography>
+      {showInvitationStatus ? (
+        <Typography variant="caption" sx={{ ml: 1, opacity: "var(--mm-opacity-light-text)" }}>
+          {item?.invitation_kind === "sent" ? "Envoyée · En attente de réponse" : "À répondre"}
+        </Typography>
+      ) : null}
     </ListItemButton>
+  );
+}
+
+function TabLabelWithBadge({ label, count }) {
+  if (!count) {return label;}
+  return (
+    <Badge color="primary" badgeContent={count}>
+      <Box component="span" sx={{ pr: 1 }}>{label}</Box>
+    </Badge>
   );
 }
 
@@ -52,6 +80,7 @@ export default function MessagesPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [summary, setSummary] = useState({
     received_requests: [],
+    sent_requests: [],
     conversations: [],
     unread_conversations_count: 0,
     pending_invitations_count: 0,
@@ -61,8 +90,13 @@ export default function MessagesPage() {
   const [error, setError] = useState("");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const selectedThreadUsername = getDrawerParamValue(location, "thread");
+  const isGuest = Boolean(user?.is_guest);
+  const hasAccountAccess = Boolean(user?.id) && !isGuest;
 
   const loadSummary = useCallback(async () => {
+    if (!hasAccountAccess) {
+      return;
+    }
     const res = await fetch("/messages/summary", { credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
 
@@ -71,10 +105,18 @@ export default function MessagesPage() {
     }
 
     setSummary(data);
-  }, []);
+  }, [hasAccountAccess]);
 
   useEffect(() => {
     let mounted = true;
+
+    if (!hasAccountAccess) {
+      setLoading(false);
+      setError("");
+      return () => {
+        mounted = false;
+      };
+    }
 
     setLoading(true);
     loadSummary()
@@ -84,17 +126,17 @@ export default function MessagesPage() {
     return () => {
       mounted = false;
     };
-  }, [loadSummary]);
+  }, [hasAccountAccess, loadSummary]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (hasAccountAccess && document.visibilityState === "visible") {
         loadSummary().catch(() => {});
       }
     }, 12000);
 
     return () => window.clearInterval(id);
-  }, [loadSummary]);
+  }, [hasAccountAccess, loadSummary]);
 
   useEffect(() => {
     if (!isMobile) {
@@ -113,8 +155,11 @@ export default function MessagesPage() {
     const inInvitations = (summary?.received_requests || []).some(
       (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
     );
+    const inSentInvitations = (summary?.sent_requests || []).some(
+      (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
+    );
 
-    setActiveTab(inInvitations ? "invitations" : "conversations");
+    setActiveTab(inInvitations || inSentInvitations ? "invitations" : "conversations");
   }, [selectedThreadUsername, summary]);
 
   const displayedItems = useMemo(
@@ -174,6 +219,47 @@ export default function MessagesPage() {
     );
   }
 
+  if (isGuest) {
+    return (
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Typography variant="h3">Crée ton compte pour accéder aux messages.</Typography>
+        <Typography>
+          Les messages sont réservés aux utilisateurs ayant un compte pour que les autres utilisateurs sachent à qui ils parlent.
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="contained"
+            onClick={() =>
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "register",
+                authContext: "account",
+                mergeGuest: true,
+              })
+            }
+          >
+            Créer mon compte
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "login",
+                authContext: "account",
+                mergeGuest: true,
+              })
+            }
+          >
+            Me connecter
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ }}>
       {loading ? (
@@ -188,8 +274,24 @@ export default function MessagesPage() {
         >
           <Box>
             <Tabs value={activeTab} onChange={(_, n) => setActiveTab(n)}>
-              <Tab value="conversations" label="Conversations" />
-              <Tab value="invitations" label="Invitations" />
+              <Tab
+                value="conversations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Conversations"
+                    count={summary?.unread_conversations_count || 0}
+                  />
+                )}
+              />
+              <Tab
+                value="invitations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Invitations"
+                    count={summary?.pending_invitations_count || 0}
+                  />
+                )}
+              />
             </Tabs>
 
             <List>
@@ -201,6 +303,7 @@ export default function MessagesPage() {
                     normalize(item?.other_user?.username) ===
                     normalize(selectedThreadUsername)
                   }
+                  showInvitationStatus={activeTab === "invitations"}
                   onClick={() => handleSelectItem(item)}
                 />
               ))}

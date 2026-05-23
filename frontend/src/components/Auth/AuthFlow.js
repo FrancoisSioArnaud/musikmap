@@ -1,4 +1,5 @@
 export const AUTH_RETURN_STORAGE_KEY = "mm_auth_return_context";
+export const AUTH_RETURN_CONTEXT_TTL_MS = 15 * 60 * 1000;
 
 export const AUTH_BENEFITS = [
   "Retrouve toutes tes découvertes dans ta librairie.",
@@ -77,7 +78,13 @@ export function getAuthReturnContext() {
   try {
     const raw = window.sessionStorage.getItem(AUTH_RETURN_STORAGE_KEY);
     if (!raw) {return null;}
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed?.savedAt) || 0;
+    if (!savedAt || Date.now() - savedAt > AUTH_RETURN_CONTEXT_TTL_MS) {
+      clearAuthReturnContext();
+      return null;
+    }
+    return parsed;
   } catch (error) {
     return null;
   }
@@ -148,9 +155,18 @@ export function consumeAuthAction({
 } = {}) {
   const stored = getAuthReturnContext();
   if (!stored || !stored.action) {return null;}
-  if (stored.returnTo && currentPath && stored.returnTo !== currentPath) {return null;}
-  if (actionType && stored.action.type !== actionType) {return null;}
-  if (typeof matcher === "function" && !matcher(stored.action.payload || {})) {return null;}
+  if (stored.returnTo && currentPath && stored.returnTo !== currentPath) {
+    clearAuthReturnContext();
+    return null;
+  }
+  if (actionType && stored.action.type !== actionType) {
+    clearAuthReturnContext();
+    return null;
+  }
+  if (typeof matcher === "function" && !matcher(stored.action.payload || {})) {
+    clearAuthReturnContext();
+    return null;
+  }
   clearAuthReturnContext();
   return stored.action;
 }

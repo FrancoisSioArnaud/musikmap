@@ -111,10 +111,14 @@ class MessagingFlowTests(APITestCase):
         self.client.force_authenticate(self.sender)
         sender_summary = self.client.get(reverse("messages-summary"))
         self.assertEqual(len(sender_summary.data["conversations"]), 0)
+        self.assertEqual(len(sender_summary.data["sent_requests"]), 1)
+        self.assertEqual(sender_summary.data["pending_invitations_count"], 0)
 
         self.client.force_authenticate(self.receiver)
         receiver_summary = self.client.get(reverse("messages-summary"))
         self.assertEqual(len(receiver_summary.data["received_requests"]), 1)
+        self.assertEqual(len(receiver_summary.data["sent_requests"]), 0)
+        self.assertEqual(receiver_summary.data["pending_invitations_count"], 1)
 
         thread.status = ChatThread.STATUS_REFUSED
         thread.refused_at = timezone.now()
@@ -123,12 +127,76 @@ class MessagingFlowTests(APITestCase):
         self.client.force_authenticate(self.sender)
         sender_after_refused = self.client.get(reverse("messages-summary"))
         self.assertEqual(sender_after_refused.data["conversations"], [])
+        self.assertEqual(sender_after_refused.data["sent_requests"], [])
 
         thread.status = ChatThread.STATUS_EXPIRED
         thread.expired_at = timezone.now()
         thread.save(update_fields=["status", "expired_at", "updated_at"])
         sender_after_expired = self.client.get(reverse("messages-summary"))
         self.assertEqual(sender_after_expired.data["conversations"], [])
+        self.assertEqual(sender_after_expired.data["sent_requests"], [])
+
+    def test_summary_sorts_by_last_message_or_created_at_not_updated_at(self):
+        first_thread_id = self.start_thread()
+        first_thread = ChatThread.objects.get(pk=first_thread_id)
+
+        other_receiver = CustomUser.objects.create_user(username="charlie", password="pass1234")
+        second_response = self.client.post(
+            reverse("messages-thread-start"),
+            {"target_user_id": other_receiver.id, "song": song_option(), "text": "hello second"},
+            format="json",
+        )
+        self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+        second_thread_id = second_response.data["thread_id"]
+
+        self.client.force_authenticate(self.receiver)
+        self.client.post(reverse("messages-thread-reply", kwargs={"thread_id": first_thread_id}), {"text": "new"}, format="json")
+
+        self.client.force_authenticate(self.sender)
+        self.client.get(reverse("messages-thread-by-username", kwargs={"username": "charlie"}))
+
+        summary = self.client.get(reverse("messages-summary"))
+        self.assertEqual(summary.status_code, status.HTTP_200_OK)
+        conversation_ids = [item["thread_id"] for item in summary.data["conversations"]]
+        sent_ids = [item["thread_id"] for item in summary.data["sent_requests"]]
+        self.assertEqual(conversation_ids, [first_thread_id])
+        self.assertEqual(sent_ids, [second_thread_id])
+
+        sender_two = CustomUser.objects.create_user(username="dave", password="pass1234")
+        self.client.force_authenticate(sender_two)
+        third_response = self.client.post(
+            reverse("messages-thread-start"),
+            {"target_user_id": self.receiver.id, "song": song_option(), "text": "hello third"},
+            format="json",
+        )
+        self.assertEqual(third_response.status_code, status.HTTP_201_CREATED)
+        third_thread_id = third_response.data["thread_id"]
+
+        self.client.force_authenticate(self.receiver)
+        received_summary = self.client.get(reverse("messages-summary"))
+        self.assertEqual(received_summary.status_code, status.HTTP_200_OK)
+        received_ids = [item["thread_id"] for item in received_summary.data["received_requests"]]
+        self.assertEqual(received_ids, [third_thread_id])
+        self.assertEqual([item["thread_id"] for item in received_summary.data["conversations"]], [first_thread_id])
+
+    def test_thread_payload_flags_from_user_pov(self):
+        thread_id = self.start_thread()
+
+        self.client.force_authenticate(self.sender)
+        sender_detail = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "bob"}))
+        self.assertEqual(sender_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(sender_detail.data["thread_id"], thread_id)
+        self.assertTrue(sender_detail.data["is_pending"])
+        self.assertTrue(sender_detail.data["is_pending_sent"])
+        self.assertFalse(sender_detail.data["is_pending_received"])
+
+        self.client.force_authenticate(self.receiver)
+        receiver_detail = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "alice"}))
+        self.assertEqual(receiver_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(receiver_detail.data["thread_id"], thread_id)
+        self.assertTrue(receiver_detail.data["is_pending"])
+        self.assertFalse(receiver_detail.data["is_pending_sent"])
+        self.assertTrue(receiver_detail.data["is_pending_received"])
 
 
     def test_status_lookup_by_username_is_case_insensitive(self):
@@ -192,3 +260,11 @@ class MessagingPublicRoutesTests(APITestCase):
     def test_old_thread_detail_route_is_not_publicly_available(self):
         response = self.client.get("/messages/thread/1")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_summary_rejects_guest_with_create_account_wording(self):
+        guest = CustomUser.objects.create_user(username="guestmsg", password="pass1234", is_guest=True)
+        self.client.force_authenticate(guest)
+        response = self.client.get(reverse("messages-summary"))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("code"), "ACCOUNT_COMPLETION_REQUIRED")
+        self.assertEqual(response.data.get("detail"), "Crée ton compte pour accéder aux messages.")

@@ -85,11 +85,11 @@ def _build_comment_viewer_state(
         }
 
     return {
-        "can_post": not has_consecutive_block,
+        "can_post": True,
         "has_spent_right": False,
         "status": None,
         "comment_id": None,
-        "notice": "Tu ne peux pas envoyer deux réponses d'affilé" if has_consecutive_block else None,
+        "notice": None,
         "restriction": restriction_payload,
     }
 

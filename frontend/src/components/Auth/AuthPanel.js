@@ -29,9 +29,29 @@ import {
   saveAuthReturnContext,
 } from "./AuthFlow";
 
+const REQUEST_TIMEOUT_MS = 15000;
+
+function isAbortError(error) {
+  return error?.name === "AbortError";
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function normalizeFieldErrors(payload, fallbackMessage) {
-  if (payload?.field_errors && typeof payload.field_errors === "object") {
-    return payload.field_errors;
+  const source =
+    (payload?.field_errors && typeof payload.field_errors === "object" && payload.field_errors) ||
+    (payload?.errors && typeof payload.errors === "object" && payload.errors) ||
+    null;
+  if (source) {
+    return source;
   }
   if (payload?.detail) {
     return { global: [payload.detail] };
@@ -81,13 +101,30 @@ export default function AuthPanel({
   const [registerErrors, setRegisterErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const registerUsernameError = registerErrors?.username?.[0] || "";
+  const registerEmailError = registerErrors?.email?.[0] || "";
+  const registerPassword1Error = registerErrors?.password1?.[0] || "";
+  const registerPassword2Error = registerErrors?.password2?.[0] || "";
+  const registerGlobalError = registerErrors?.global?.[0] || "";
 
   const copy = useMemo(() => getAuthContextCopy(authContext), [authContext]);
   const isGuest = Boolean(user?.is_guest);
   const canClose = typeof onClose === "function";
 
   const finalizeSuccess = async ({ resultType = null, redirectTo = null } = {}) => {
-    await checkUserStatus(setUser, setIsAuthenticated);
+    try {
+      await Promise.race([
+        checkUserStatus(setUser, setIsAuthenticated),
+        new Promise((_, reject) => {
+          const timeoutId = window.setTimeout(() => {
+            window.clearTimeout(timeoutId);
+            reject(new Error("status_timeout"));
+          }, REQUEST_TIMEOUT_MS);
+        }),
+      ]);
+    } catch (_error) {
+      // On garde la navigation de succès pour ne pas bloquer l’utilisateur après inscription/connexion.
+    }
     if (redirectTo) {
       navigate(redirectTo, { replace: true });
       return;
@@ -119,7 +156,7 @@ export default function AuthPanel({
     }
 
     try {
-      const response = await fetch("/users/login_user", {
+      const response = await fetchWithTimeout("/users/login_user", {
         method: "POST",
         headers: { "X-CSRFToken": getCookie("csrftoken") },
         credentials: "same-origin",
@@ -137,7 +174,11 @@ export default function AuthPanel({
       }
       await finalizeSuccess({ redirectTo: data?.auth_redirect_to || null, resultType: data?.auth_result || null });
     } catch (error) {
-      setLoginError("Impossible de te connecter.");
+      setLoginError(
+        isAbortError(error)
+          ? "La connexion prend trop longtemps. Vérifie ta connexion et réessaie."
+          : "Impossible de te connecter."
+      );
     } finally {
       setLoading(false);
     }
@@ -154,7 +195,7 @@ export default function AuthPanel({
     }
 
     try {
-      const response = await fetch("/users/register_user", {
+      const response = await fetchWithTimeout("/users/register_user", {
         method: "POST",
         headers: { "X-CSRFToken": getCookie("csrftoken") },
         credentials: "same-origin",
@@ -168,7 +209,13 @@ export default function AuthPanel({
       setSuccessMessage("Compte créé avec succès.");
       await finalizeSuccess({ resultType: "account_created" });
     } catch (error) {
-      setRegisterErrors({ global: ["Impossible de créer ton compte."] });
+      setRegisterErrors({
+        global: [
+          isAbortError(error)
+            ? "La création du compte prend trop longtemps. Vérifie ta connexion et réessaie."
+            : "Impossible de créer ton compte.",
+        ],
+      });
     } finally {
       setLoading(false);
     }
@@ -231,7 +278,7 @@ export default function AuthPanel({
 
       {tab === "login" ? (
         <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, p: "16px" }}>
-          <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus />
+          <TextField required fullWidth name="username" label="Nom d’utilisateur ou email" autoComplete="username" autoFocus />
           <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
           {isGuest ? (
             <FormControlLabel control={<Checkbox name="merge_guest" defaultChecked={mergeGuest || isGuest} />} label="Ajouter les partages faits avec cet appareil à mon profil" />
@@ -243,29 +290,21 @@ export default function AuthPanel({
         </Box>
       ) : (
         <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, p: "16px" }}>
-          <TextField required fullWidth name="username" label="Nom d'utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} />
-          <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" />
+          <TextField required fullWidth name="username" label="Nom d’utilisateur ou email" autoComplete="username" autoFocus defaultValue={prefillUsername} error={Boolean(registerUsernameError)} helperText={registerUsernameError || " "} />
+          <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" error={Boolean(registerEmailError)} helperText={registerEmailError || " "} />
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <TextField required fullWidth name="password1" label="Mot de passe" type="password" autoComplete="new-password" />
+              <TextField required fullWidth name="password1" label="Mot de passe" type="password" autoComplete="new-password" error={Boolean(registerPassword1Error)} helperText={registerPassword1Error || " "} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField required fullWidth name="password2" label="Confirmation du mot de passe" type="password" autoComplete="new-password" />
+              <TextField required fullWidth name="password2" label="Confirmation du mot de passe" type="password" autoComplete="new-password" error={Boolean(registerPassword2Error)} helperText={registerPassword2Error || " "} />
             </Grid>
           </Grid>
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Image de profil</Typography>
             <input type="file" name="profile_picture" accept=".jpg,.jpeg,.png" />
           </Box>
-          {Object.keys(registerErrors).length ? (
-            <Box sx={{ display: "grid", gap: 1 }}>
-              {Object.entries(registerErrors).map(([key, values]) => (
-                <Alert key={key} severity="error">
-                  {Array.isArray(values) ? values[0] : String(values)}
-                </Alert>
-              ))}
-            </Box>
-          ) : null}
+          {registerGlobalError ? <Alert severity="error">{registerGlobalError}</Alert> : null}
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? <CircularProgress size={20} /> : "Créer mon compte"}
           </Button>
