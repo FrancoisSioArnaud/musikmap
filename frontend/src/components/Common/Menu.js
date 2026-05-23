@@ -3,6 +3,7 @@ import MusicNote from "@mui/icons-material/MusicNoteRounded";
 import PersonIcon from "@mui/icons-material/PersonRounded";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -10,8 +11,9 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import * as React from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { startAuthPageFlow } from "../Auth/AuthFlow";
 import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext";
 import { UserContext } from "../UserContext";
 
@@ -45,6 +47,8 @@ function getSessionTone(remainingMs) {
 
 export default function MenuAppBar() {
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     currentFlowboxSlug,
     lastVisitedFlowboxSlug,
@@ -57,6 +61,7 @@ export default function MenuAppBar() {
 
   const [now, setNow] = useState(Date.now());
   const [manualExpandedUntil, setManualExpandedUntil] = useState(0);
+  const [messagesBadgeTotal, setMessagesBadgeTotal] = useState(0);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -112,12 +117,64 @@ export default function MenuAppBar() {
     }
   }, [activeSession, headerSlug, isLastMinute, markThreeMinWarningShown, remainingMs, uiHintsBySlug]);
 
-  const hasIdentity = Boolean(user?.id);
+  const isGuest = Boolean(user?.id && user?.is_guest);
+  const isFullUser = Boolean(user?.id && !user?.is_guest);
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
+  useEffect(() => {
+    if (!isFullUser) {
+      setMessagesBadgeTotal(0);
+      return undefined;
+    }
+
+    let alive = true;
+
+    const loadSummary = async () => {
+      if (document.visibilityState !== "visible") {return;}
+      try {
+        const res = await fetch("/messages/summary", {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !alive) {return;}
+        const unread = Number(data?.unread_conversations_count) || 0;
+        const pending = Number(data?.pending_invitations_count) || 0;
+        setMessagesBadgeTotal(unread + pending);
+      } catch {
+        // Silence volontaire : ne pas casser le header sur erreur réseau.
+      }
+    };
+
+    loadSummary();
+    const id = window.setInterval(loadSummary, 12000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [isFullUser]);
+
+  const handleAccountClick = (event) => {
+    event.stopPropagation();
+    if (isGuest) {
+      startAuthPageFlow({
+        navigate,
+        location,
+        tab: "register",
+        authContext: "account",
+        mergeGuest: true,
+        prefillUsername: user?.username || "",
+      });
+    }
+  };
+
   const handleHeaderClick = () => {
-    if (!activeSession) {return;}
+    if (!activeSession || !headerSlug) {return;}
     setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
+    const target = `/flowbox/${headerSlug}/discover`;
+    if (location.pathname !== target) {
+      navigate(target);
+    }
   };
 
   const helperText = useMemo(() => {
@@ -165,7 +222,7 @@ export default function MenuAppBar() {
             )}
           </Box>
 
-          {hasIdentity ? (
+          {isFullUser ? (
             <>
               <Box
                 className="points_container"
@@ -186,7 +243,9 @@ export default function MenuAppBar() {
                 to="/messages"
                 onClick={(event) => event.stopPropagation()}
               >
-                <ChatBubble />
+                <Badge color="primary" badgeContent={messagesBadgeTotal} invisible={!messagesBadgeTotal}>
+                  <ChatBubble />
+                </Badge>
               </IconButton>
 
               <IconButton
@@ -200,6 +259,38 @@ export default function MenuAppBar() {
               >
                 <Avatar alt={user?.display_name || user?.username || "Invité"} src={user?.profile_picture_url || undefined} />
               </IconButton>
+            </>
+          ) : isGuest ? (
+            <>
+              <Box
+                className="points_container"
+                onClick={(event) => event.stopPropagation()}
+                sx={{ flexShrink: 0 }}
+              >
+                <Typography variant="body1" component="span" sx={{ color: "text.primary" }}>
+                  {user?.points ?? 0}
+                </Typography>
+                <MusicNote />
+              </Box>
+
+              <Button
+                variant="menu"
+                endIcon={<PersonIcon />}
+                onClick={handleAccountClick}
+                sx={{
+                  borderRadius: "20px",
+                  backgroundColor: "background.paper",
+                  color: "primary",
+                  border: "none",
+                  textTransform: "none",
+                  flexShrink: 0,
+                  "&:hover": {
+                    border: "none",
+                  },
+                }}
+              >
+                Mon compte
+              </Button>
             </>
           ) : (
             <Button

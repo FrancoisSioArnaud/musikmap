@@ -31,7 +31,11 @@ def _get_authenticated_non_guest_user(request):
     if not user:
         return None, api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
     if getattr(user, "is_guest", False):
-        return None, api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+        return None, api_error(
+            status.HTTP_403_FORBIDDEN,
+            "ACCOUNT_COMPLETION_REQUIRED",
+            "Crée ton compte pour accéder aux messages.",
+        )
     touch_last_seen(user)
     return user, None
 
@@ -67,6 +71,7 @@ class MessageSummaryView(APIView):
             return error
 
         received_requests = []
+        sent_requests = []
         conversations = []
 
         for thread in list_threads_for_user(user.id):
@@ -74,6 +79,9 @@ class MessageSummaryView(APIView):
             is_pending_received = thread.status == ChatThread.STATUS_PENDING and thread.initiator_id != user.id
             if is_pending_received:
                 received_requests.append(payload)
+            is_pending_sent = thread.status == ChatThread.STATUS_PENDING and thread.initiator_id == user.id
+            if is_pending_sent:
+                sent_requests.append(payload)
             if thread.status == ChatThread.STATUS_ACCEPTED:
                 conversations.append(payload)
 
@@ -83,6 +91,7 @@ class MessageSummaryView(APIView):
         return Response(
             {
                 "received_requests": received_requests,
+                "sent_requests": sent_requests,
                 "conversations": conversations,
                 "unread_conversations_count": unread_conversations_count,
                 "pending_invitations_count": pending_invitations_count,

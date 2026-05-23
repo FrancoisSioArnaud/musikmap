@@ -9,7 +9,6 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import MessageComposer from "../Common/Composer/MessageComposer";
 import SongCompact from "../Common/Song/SongCompact";
@@ -39,7 +38,6 @@ export default function Conversation({
   onClose,
   onThreadUpdated,
 }) {
-  const navigate = useNavigate();
   const { user } = useContext(UserContext) || {};
   const currentViewer = viewer || user;
   const [thread, setThread] = useState(null);
@@ -61,13 +59,26 @@ export default function Conversation({
     if (!res.ok) {
       throw new Error(data?.detail || "Erreur chargement discussion");
     }
+    setResolvedThreadId(data?.thread_id || data?.id || null);
     setThread(data);
     if (!silent) {setLoading(false);}
     return data;
-  }, []);
+  }, [username]);
 
 
-  useEffect(() => { let mounted = true; setError(""); loadThread({ silent: false }).catch((err) => { if (mounted) { setError(err?.message || "Erreur de conversation."); setLoading(false); } }); return () => { mounted = false; }; }, [loadThread]);
+  useEffect(() => {
+    let mounted = true;
+    setError("");
+    loadThread({ silent: false }).catch((err) => {
+      if (mounted) {
+        setError(err?.message || "Erreur de conversation.");
+        setLoading(false);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [loadThread, username]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -136,7 +147,11 @@ export default function Conversation({
         return;
       }
 
-      const response = await fetch(`/messages/thread/${resolvedThreadId}/reply`, {
+      const threadId = resolvedThreadId || thread?.thread_id || thread?.id;
+      if (!threadId) {
+        throw new Error("Discussion introuvable.");
+      }
+      const response = await fetch(`/messages/thread/${threadId}/reply`, {
         method: "POST",
         credentials: "same-origin",
         headers: withCsrf(),

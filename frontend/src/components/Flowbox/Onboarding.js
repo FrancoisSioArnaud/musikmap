@@ -194,6 +194,12 @@ export default function Onboarding() {
       return;
     }
 
+    if (permissionState === "denied") {
+      setSheetOpen(false);
+      setSettingsDialogOpen(true);
+      return;
+    }
+
     setSheetOpen(true);
   }, [verifyAndOpenBox]);
 
