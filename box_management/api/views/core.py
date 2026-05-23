@@ -706,7 +706,7 @@ class PinnedSongView(APIView):
             return api_error(
                 status.HTTP_403_FORBIDDEN,
                 "ACCOUNT_COMPLETION_REQUIRED",
-                "Finalise d’abord ton compte pour épingler une chanson.",
+                "Crée ton compte pour épingler une chanson.",
             )
         touch_last_seen(current_user)
 

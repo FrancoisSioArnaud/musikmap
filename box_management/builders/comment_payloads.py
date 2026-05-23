@@ -53,7 +53,6 @@ def _build_comment_viewer_state(
     *,
     viewer: CustomUser | None,
     dep: Deposit,
-    has_consecutive_block: bool,
     restriction: CommentUserRestriction | None,
 ):
     if not is_full_comment_user(viewer):
@@ -108,7 +107,6 @@ def build_comments_context_for_deposits(
     viewer_id = getattr(viewer, "id", None) if is_full_comment_user(viewer) else None
     comments_by_dep = {dep_id: [] for dep_id in dep_ids}
     published_counts_by_dep = {dep_id: 0 for dep_id in dep_ids}
-    last_published_user_by_dep = {}
 
     comments_qs = (
         Comment.objects.filter(deposit_id__in=dep_ids)
@@ -120,7 +118,6 @@ def build_comments_context_for_deposits(
     for comment in comments_qs:
         dep_id = comment.deposit_id
         published_counts_by_dep[dep_id] = int(published_counts_by_dep.get(dep_id, 0)) + 1
-        last_published_user_by_dep[dep_id] = comment.user_id
         if include_items:
             comments_by_dep.setdefault(dep_id, []).append(_build_comment_item_from_instance(comment, viewer_id=viewer_id))
 
@@ -151,14 +148,12 @@ def build_comments_context_for_deposits(
     payload = {}
     for dep in deps:
         restriction = restriction_by_client.get(client_id_by_dep_id.get(dep.id))
-        has_consecutive_block = bool(viewer_id and last_published_user_by_dep.get(dep.id) == viewer_id)
         payload[dep.id] = {
             "items": comments_by_dep.get(dep.id, []),
             "count": int(published_counts_by_dep.get(dep.id, 0)),
             "viewer_state": _build_comment_viewer_state(
                 viewer=viewer,
                 dep=dep,
-                has_consecutive_block=has_consecutive_block,
                 restriction=restriction,
             ),
         }

@@ -278,7 +278,7 @@ export default function AuthPanel({
 
       {tab === "login" ? (
         <Box component="form" onSubmit={handleLoginSubmit} noValidate sx={{ display: "grid", gap: 2, p: "16px" }}>
-          <TextField required fullWidth name="username" label="Nom d’utilisateur ou email" autoComplete="username" autoFocus />
+          <TextField required fullWidth name="username" label={tab === "login" ? "Nom d’utilisateur ou email" : "Nom d’utilisateur"} autoComplete="username" autoFocus />
           <TextField required fullWidth name="password" label="Mot de passe" type="password" autoComplete="current-password" />
           {isGuest ? (
             <FormControlLabel control={<Checkbox name="merge_guest" defaultChecked={mergeGuest || isGuest} />} label="Ajouter les partages faits avec cet appareil à mon profil" />
@@ -290,7 +290,7 @@ export default function AuthPanel({
         </Box>
       ) : (
         <Box component="form" onSubmit={handleRegisterSubmit} noValidate sx={{ display: "grid", gap: 2, p: "16px" }}>
-          <TextField required fullWidth name="username" label="Nom d’utilisateur ou email" autoComplete="username" autoFocus defaultValue={prefillUsername} error={Boolean(registerUsernameError)} helperText={registerUsernameError || " "} />
+          <TextField required fullWidth name="username" label="Nom d’utilisateur" autoComplete="username" autoFocus defaultValue={prefillUsername} error={Boolean(registerUsernameError)} helperText={registerUsernameError || " "} />
           <TextField required fullWidth name="email" label="Adresse email" autoComplete="email" error={Boolean(registerEmailError)} helperText={registerEmailError || " "} />
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>

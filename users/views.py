@@ -210,7 +210,7 @@ class ChangePasswordUser(APIView):
         if not request.user.is_authenticated:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(request.user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
 
         user = request.user
         new_password1 = request.data.get("new_password1")
@@ -260,7 +260,7 @@ class ChangeProfilePicture(APIView):
         if not user.is_authenticated:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
 
         rl_key = f"avatar:rate:{user.id}"
         if cache.get(rl_key):
@@ -433,7 +433,7 @@ class SetFavoriteSong(APIView):
         if not current_user:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(current_user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
         touch_last_seen(current_user)
 
         option = request.data.get("option") or {}
@@ -477,7 +477,7 @@ class RemoveFavoriteSong(APIView):
         if not current_user:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(current_user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
         touch_last_seen(current_user)
 
         with transaction.atomic():
@@ -500,7 +500,7 @@ class ChangeUsername(APIView):
         if not request.user.is_authenticated:
             return api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
         if getattr(request.user, "is_guest", False):
-            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+            return api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
 
         new_username = (request.data.get("username") or request.data.get("new_username") or "").strip()
         if not new_username:
@@ -572,7 +572,7 @@ def _require_full_user(request):
     if not user:
         return None, api_error(status.HTTP_401_UNAUTHORIZED, "AUTH_REQUIRED", "Utilisateur non connecté.")
     if getattr(user, "is_guest", False):
-        return None, api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Finalise d’abord ton compte.")
+        return None, api_error(status.HTTP_403_FORBIDDEN, "ACCOUNT_COMPLETION_REQUIRED", "Crée ton compte pour continuer.")
     return user, None
 
 
