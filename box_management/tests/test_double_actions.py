@@ -337,12 +337,14 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         payload = {"dep_public_key": self.deposit.public_key, "text": "Super partage"}
 
         first = self.client.post(reverse("comments-create"), payload, format="json")
+        Comment.objects.filter(user=user).update(created_at=timezone.now() - timedelta(minutes=5))
         second = self.client.post(reverse("comments-create"), payload, format="json")
 
         self.assertEqual(first.status_code, 201)
-        self.assertEqual(second.status_code, 400)
-        self.assertEqual(second.data["code"], "COMMENT_CONSECUTIVE_BLOCKED")
-        self.assertEqual(Comment.objects.filter(user=user, deposit=self.deposit).count(), 1)
+        self.assertEqual(second.status_code, 201)
+        created = list(Comment.objects.filter(user=user, deposit=self.deposit).order_by("created_at", "id"))
+        self.assertEqual(len(created), 2)
+        self.assertLessEqual(created[0].created_at, created[1].created_at)
 
     def test_double_comment_report_creates_single_report(self):
         comment_author = self.make_user(username="comment-author")
@@ -449,23 +451,10 @@ class CommentAndShareDoubleActionTests(FlowboxAPITestCase):
         self.assertEqual(Deposit.objects.filter(deposit_type=Deposit.DEPOSIT_TYPE_COMMENT).count(), before_count)
         self.assertEqual(Comment.objects.filter(deposit=self.deposit, user__username="atomic-user").count(), 0)
 
-    def test_consecutive_rule_unblocked_after_other_user_reply(self):
+    def test_consecutive_comments_from_same_user_are_allowed(self):
         first_user = self.auth(self.make_user(username="first-user", points=0))
         payload = {"dep_public_key": self.deposit.public_key, "text": "première"}
         self.assertEqual(self.client.post(reverse("comments-create"), payload, format="json").status_code, 201)
-
-        blocked = self.client.post(reverse("comments-create"), payload, format="json")
-        self.assertEqual(blocked.status_code, 400)
-        self.assertEqual(blocked.data["code"], "COMMENT_CONSECUTIVE_BLOCKED")
-
-        second_user = self.make_user(username="second-user", points=0)
-        self.auth(second_user)
-        self.assertEqual(
-            self.client.post(
-                reverse("comments-create"), {"dep_public_key": self.deposit.public_key, "text": "ok"}, format="json"
-            ).status_code,
-            201,
-        )
         Comment.objects.filter(user=first_user).update(created_at=timezone.now() - timedelta(minutes=5))
 
         self.auth(first_user)

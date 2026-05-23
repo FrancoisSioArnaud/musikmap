@@ -67,6 +67,7 @@ class MessageSummaryView(APIView):
             return error
 
         received_requests = []
+        sent_requests = []
         conversations = []
 
         for thread in list_threads_for_user(user.id):
@@ -74,6 +75,9 @@ class MessageSummaryView(APIView):
             is_pending_received = thread.status == ChatThread.STATUS_PENDING and thread.initiator_id != user.id
             if is_pending_received:
                 received_requests.append(payload)
+            is_pending_sent = thread.status == ChatThread.STATUS_PENDING and thread.initiator_id == user.id
+            if is_pending_sent:
+                sent_requests.append(payload)
             if thread.status == ChatThread.STATUS_ACCEPTED:
                 conversations.append(payload)
 
@@ -83,6 +87,7 @@ class MessageSummaryView(APIView):
         return Response(
             {
                 "received_requests": received_requests,
+                "sent_requests": sent_requests,
                 "conversations": conversations,
                 "unread_conversations_count": unread_conversations_count,
                 "pending_invitations_count": pending_invitations_count,

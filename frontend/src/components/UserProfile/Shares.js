@@ -49,6 +49,9 @@ export default function Shares({ username, me = false, user, autoLoad }) {
 
   const abortRef = useRef(null);
   const loadingRef = useRef(false);
+  const introText = me
+    ? "Retrouve ici les chansons que tu as partagées."
+    : "Ici, tu retrouves les chansons déposées ou partagées par ce profil.";
 
   useEffect(() => {
     if (abortRef.current) {abortRef.current.abort();}
@@ -125,24 +128,38 @@ export default function Shares({ username, me = false, user, autoLoad }) {
   }, [autoLoad, hasMore, loadMore]);
 
   if (error) {
-    return <Typography sx={{ p: 2 }}>Erreur lors du chargement des partages.</Typography>;
+    return (
+      <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+        <Typography variant="body1">{introText}</Typography>
+        <Typography>Erreur lors du chargement des partages.</Typography>
+      </Box>
+    );
   }
 
   if (!loadedOnce && loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-        <CircularProgress />
+      <Box sx={{ display: "grid", gap: 2, p: 2 }}>
+        <Typography variant="body1">{introText}</Typography>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+          <CircularProgress />
+        </Box>
       </Box>
     );
   }
 
   if (!items.length && loadedOnce && !loading) {
-    return <Typography sx={{ p: 4 }}>Aucun partage pour l’instant.</Typography>;
+    return (
+      <Box sx={{ display: "grid", gap: 2, p: 4 }}>
+        <Typography variant="body1">{introText}</Typography>
+        <Typography>Aucun partage pour l’instant.</Typography>
+      </Box>
+    );
   }
 
   return (
     <>
       <Box sx={{ display: "grid", gap: 5, p: 5 }}>
+        <Typography variant="body1">{introText}</Typography>
         {items.map((it) => (
           <Deposit
             key={it?.public_key ?? it?.id ?? JSON.stringify(it)}

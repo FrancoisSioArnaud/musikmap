@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 
 from django.contrib import messages
@@ -39,6 +40,7 @@ MAX_SIZE_BYTES = 2 * 1024 * 1024  # 2 Mo
 OUT_SIZE = 512
 VARIANTS = [256, 64]
 RATE_LIMIT_SECONDS = 10  # simple anti-abus: 1 upload toutes les 10s par user
+logger = logging.getLogger(__name__)
 
 
 def _build_authenticated_user_payload(user):
@@ -78,10 +80,22 @@ def _normalize_field_errors(errors):
 
 class LoginUser(APIView):
     def post(self, request, format=None):
-        username = request.data.get("username")
+        identifier = str(request.data.get("username") or "").strip()
         password = request.data.get("password")
         merge_guest = _is_truthy(request.data.get("merge_guest"))
         guest_user = get_guest_user_from_request(request)
+
+        username = identifier
+        if "@" in identifier:
+            email_matches = CustomUser.objects.filter(email__iexact=identifier)
+            if email_matches.count() > 1:
+                return api_error(
+                    status.HTTP_401_UNAUTHORIZED,
+                    "AUTH_EMAIL_NOT_UNIQUE",
+                    "Plusieurs comptes utilisent cette adresse email. Connecte-toi avec ton nom d’utilisateur.",
+                )
+            if email_matches.count() == 1:
+                username = email_matches.first().username
 
         user = authenticate(request, username=username, password=password)
         if user is None:
@@ -162,14 +176,29 @@ class RegisterUser(APIView):
             user.converted_at = timezone.now()
             user.last_seen_at = timezone.now()
 
-        user.save()
-        username = form.cleaned_data["username"]
-        password = form.cleaned_data["password1"]
+        try:
+            user.save()
+            username = form.cleaned_data["username"]
+            password = form.cleaned_data["password1"]
 
-        user = authenticate(request, username=username, password=password)
-        login(request, user)
-        touch_last_seen(user)
-        messages.success(request, "Inscription réussie!")
+            user = authenticate(request, username=username, password=password)
+            if user is None:
+                logger.error("Register succeeded but authenticate failed for username=%s", username)
+                return api_error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "REGISTER_AUTH_FAILED",
+                    "Compte créé, mais la connexion automatique a échoué. Essaie de te connecter.",
+                )
+            login(request, user)
+            touch_last_seen(user)
+            messages.success(request, "Inscription réussie!")
+        except Exception:
+            logger.exception("RegisterUser failed unexpectedly")
+            return api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "REGISTER_FAILED",
+                "Une erreur est survenue pendant la création du compte.",
+            )
 
         response = Response({"status": True}, status=status.HTTP_200_OK)
         clear_guest_cookie(response)

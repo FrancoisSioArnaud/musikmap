@@ -12,7 +12,6 @@ from box_management.builders.comment_payloads import (
 from box_management.builders.deposit_payloads import build_reactions_payload_from_instance
 from box_management.domain.constants import (
     COMMENT_REASON_ALREADY_COMMENTED,
-    COMMENT_REASON_CONSECUTIVE_BLOCKED,
     COMMENT_REASON_EMAIL_FORBIDDEN,
     COMMENT_REASON_EMPTY,
     COMMENT_REASON_LINK_FORBIDDEN,
@@ -52,7 +51,6 @@ def _get_comment_error_message(reason_code):
     messages = {
         COMMENT_REASON_RATE_LIMIT: "Tu commentes trop vite. Réessaie dans un instant.",
         COMMENT_REASON_ALREADY_COMMENTED: "Tu as déjà commenté ce dépôt.",
-        COMMENT_REASON_CONSECUTIVE_BLOCKED: "Tu ne peux pas envoyer deux réponses d'affilé",
         COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED: "Cet utilisateur a déjà reçu beaucoup de commentaires aujourd’hui.",
         COMMENT_REASON_LINK_FORBIDDEN: "Les liens ne sont pas autorisés dans les commentaires.",
         COMMENT_REASON_EMAIL_FORBIDDEN: "Les adresses email ne sont pas autorisées dans les commentaires.",
@@ -70,7 +68,6 @@ def _comment_reason_to_error_code(reason_code):
     mapping = {
         COMMENT_REASON_RATE_LIMIT: "COMMENT_RATE_LIMIT",
         COMMENT_REASON_ALREADY_COMMENTED: "COMMENT_ALREADY_COMMENTED",
-        COMMENT_REASON_CONSECUTIVE_BLOCKED: "COMMENT_CONSECUTIVE_BLOCKED",
         COMMENT_REASON_TARGET_USER_DAILY_COMMENT_LIMIT_REACHED: "COMMENT_TARGET_LIMIT_REACHED",
         COMMENT_REASON_LINK_FORBIDDEN: "COMMENT_LINK_FORBIDDEN",
         COMMENT_REASON_EMAIL_FORBIDDEN: "COMMENT_EMAIL_FORBIDDEN",

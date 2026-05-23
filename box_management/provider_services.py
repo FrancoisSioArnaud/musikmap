@@ -90,11 +90,19 @@ def provider_uri_from_track_id(provider_code: str, provider_track_id: str) -> st
 def serialize_provider_link(link: SongProviderLink | None) -> dict[str, Any] | None:
     if not link:
         return None
+    provider_code = normalize_provider_code(link.provider_code)
+    provider_track_id = link.provider_track_id or None
+    provider_url = link.provider_url or None
+    if provider_code == "spotify" and provider_track_id:
+        canonical_track_url = provider_url_from_track_id(provider_code, provider_track_id)
+        if not provider_url or "/track/" not in provider_url:
+            provider_url = canonical_track_url or provider_url
+
     return {
-        "provider_code": link.provider_code,
+        "provider_code": provider_code,
         "status": link.status,
-        "provider_track_id": link.provider_track_id or None,
-        "provider_url": link.provider_url or None,
+        "provider_track_id": provider_track_id,
+        "provider_url": provider_url,
         "provider_uri": link.provider_uri or None,
         "last_attempt_at": link.last_attempt_at.isoformat() if link.last_attempt_at else None,
     }

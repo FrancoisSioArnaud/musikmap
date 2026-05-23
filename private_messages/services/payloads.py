@@ -59,9 +59,17 @@ def build_thread_payload(thread, current_user):
     messages = list(thread.messages.select_related("sender", "song").all())
     last_message = messages[-1] if messages else None
 
+    is_pending = thread.status == ChatThread.STATUS_PENDING
+    is_pending_sent = bool(is_pending and thread.initiator_id == current_user.id)
+    is_pending_received = bool(is_pending and thread.initiator_id != current_user.id)
+
     return {
         "id": thread.id,
+        "thread_id": thread.id,
         "status": thread.status,
+        "is_pending": is_pending,
+        "is_pending_sent": is_pending_sent,
+        "is_pending_received": is_pending_received,
         "other_user": _build_user_payload(other),
         "updated_at": thread.updated_at.isoformat() if thread.updated_at else None,
         "has_unread": thread_has_unread_for_user(thread, current_user),
@@ -78,9 +86,17 @@ def build_summary_thread_payload(thread, current_user):
     last_message = thread.messages.select_related("song").order_by("-created_at", "-id").first()
     has_unread = thread_has_unread_for_user(thread, current_user)
 
+    is_pending = thread.status == ChatThread.STATUS_PENDING
+    is_pending_sent = bool(is_pending and thread.initiator_id == current_user.id)
+    is_pending_received = bool(is_pending and thread.initiator_id != current_user.id)
+
     return {
         "id": thread.id,
+        "thread_id": thread.id,
         "status": thread.status,
+        "is_pending": is_pending,
+        "is_pending_sent": is_pending_sent,
+        "is_pending_received": is_pending_received,
         "other_user": _build_user_payload(other),
         "last_message": _build_last_message_payload(last_message) if last_message else None,
         "has_unread": has_unread,

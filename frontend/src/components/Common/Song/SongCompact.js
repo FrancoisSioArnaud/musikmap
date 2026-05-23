@@ -28,6 +28,7 @@ export default function SongCompact({
 
   const artistText = useMemo(() => getArtistText(song), [song]);
   const coverUrl = useMemo(() => getCoverUrl(song), [song]);
+  const titleText = song?.title || (artistText ? "Titre indisponible" : "Chanson indisponible");
 
   if (!song) {return null;}
 
@@ -59,7 +60,7 @@ export default function SongCompact({
           <Box
             component="img"
             src={coverUrl}
-            alt={song?.title || "Pochette"}
+            alt={titleText || "Pochette"}
             sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
@@ -76,7 +77,7 @@ export default function SongCompact({
             whiteSpace: "nowrap",
           }}
         >
-          {song?.title || "Chanson sans titre"}
+          {titleText}
         </Typography>
         <Typography
           variant="body2"

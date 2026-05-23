@@ -3,6 +3,7 @@ import MusicNote from "@mui/icons-material/MusicNoteRounded";
 import PersonIcon from "@mui/icons-material/PersonRounded";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -10,7 +11,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import * as React from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { FlowboxSessionContext } from "../Flowbox/runtime/FlowboxSessionContext";
 import { UserContext } from "../UserContext";
@@ -45,6 +46,8 @@ function getSessionTone(remainingMs) {
 
 export default function MenuAppBar() {
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     currentFlowboxSlug,
     lastVisitedFlowboxSlug,
@@ -57,6 +60,7 @@ export default function MenuAppBar() {
 
   const [now, setNow] = useState(Date.now());
   const [manualExpandedUntil, setManualExpandedUntil] = useState(0);
+  const [messagesBadgeTotal, setMessagesBadgeTotal] = useState(0);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -115,9 +119,46 @@ export default function MenuAppBar() {
   const hasIdentity = Boolean(user?.id);
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
+  useEffect(() => {
+    if (!hasIdentity) {
+      setMessagesBadgeTotal(0);
+      return undefined;
+    }
+
+    let alive = true;
+
+    const loadSummary = async () => {
+      if (document.visibilityState !== "visible") {return;}
+      try {
+        const res = await fetch("/messages/summary", {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !alive) {return;}
+        const unread = Number(data?.unread_conversations_count) || 0;
+        const pending = Number(data?.pending_invitations_count) || 0;
+        setMessagesBadgeTotal(unread + pending);
+      } catch {
+        // Silence volontaire : ne pas casser le header sur erreur réseau.
+      }
+    };
+
+    loadSummary();
+    const id = window.setInterval(loadSummary, 12000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [hasIdentity]);
+
   const handleHeaderClick = () => {
-    if (!activeSession) {return;}
+    if (!activeSession || !headerSlug) {return;}
     setManualExpandedUntil(Date.now() + EXTEND_DURATION_MS);
+    const target = `/flowbox/${headerSlug}/discover`;
+    if (location.pathname !== target) {
+      navigate(target);
+    }
   };
 
   const helperText = useMemo(() => {
@@ -186,7 +227,9 @@ export default function MenuAppBar() {
                 to="/messages"
                 onClick={(event) => event.stopPropagation()}
               >
-                <ChatBubble />
+                <Badge color="primary" badgeContent={messagesBadgeTotal} invisible={!messagesBadgeTotal}>
+                  <ChatBubble />
+                </Badge>
               </IconButton>
 
               <IconButton

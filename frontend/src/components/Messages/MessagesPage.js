@@ -1,4 +1,5 @@
 import Alert from "@mui/material/Alert";
+import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
@@ -16,17 +17,28 @@ import UserInline from "../Common/UserInline";
 import { UserContext } from "../UserContext";
 import { closeDrawerWithHistory, getDrawerParamValue, openDrawerWithHistory } from "../Utils/drawerHistory";
 import { formatRelativeTime } from "../Utils/time";
+
 import Conversation from "./Conversation";
 
 const normalize = (value) => (value || "").trim().toLowerCase();
 
 function getItemsForTab(summary, tab) {
-  return tab === "invitations"
-    ? summary?.received_requests || []
-    : summary?.conversations || [];
+  if (tab !== "invitations") {
+    return summary?.conversations || [];
+  }
+
+  const received = (summary?.received_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "received",
+  }));
+  const sent = (summary?.sent_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "sent",
+  }));
+  return [...received, ...sent];
 }
 
-function MessageRow({ item, active, onClick }) {
+function MessageRow({ item, active, onClick, showInvitationStatus = false }) {
   const preview = item?.last_message?.text_preview || "";
 
   return (
@@ -40,7 +52,21 @@ function MessageRow({ item, active, onClick }) {
       <Typography variant="caption">
         {formatRelativeTime(item?.last_message?.created_at || item?.updated_at)}
       </Typography>
+      {showInvitationStatus ? (
+        <Typography variant="caption" sx={{ ml: 1, opacity: "var(--mm-opacity-light-text)" }}>
+          {item?.invitation_kind === "sent" ? "Envoyée · En attente de réponse" : "À répondre"}
+        </Typography>
+      ) : null}
     </ListItemButton>
+  );
+}
+
+function TabLabelWithBadge({ label, count }) {
+  if (!count) {return label;}
+  return (
+    <Badge color="primary" badgeContent={count}>
+      <Box component="span" sx={{ pr: 1 }}>{label}</Box>
+    </Badge>
   );
 }
 
@@ -52,6 +78,7 @@ export default function MessagesPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [summary, setSummary] = useState({
     received_requests: [],
+    sent_requests: [],
     conversations: [],
     unread_conversations_count: 0,
     pending_invitations_count: 0,
@@ -113,8 +140,11 @@ export default function MessagesPage() {
     const inInvitations = (summary?.received_requests || []).some(
       (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
     );
+    const inSentInvitations = (summary?.sent_requests || []).some(
+      (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
+    );
 
-    setActiveTab(inInvitations ? "invitations" : "conversations");
+    setActiveTab(inInvitations || inSentInvitations ? "invitations" : "conversations");
   }, [selectedThreadUsername, summary]);
 
   const displayedItems = useMemo(
@@ -188,8 +218,24 @@ export default function MessagesPage() {
         >
           <Box>
             <Tabs value={activeTab} onChange={(_, n) => setActiveTab(n)}>
-              <Tab value="conversations" label="Conversations" />
-              <Tab value="invitations" label="Invitations" />
+              <Tab
+                value="conversations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Conversations"
+                    count={summary?.unread_conversations_count || 0}
+                  />
+                )}
+              />
+              <Tab
+                value="invitations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Invitations"
+                    count={summary?.pending_invitations_count || 0}
+                  />
+                )}
+              />
             </Tabs>
 
             <List>
@@ -201,6 +247,7 @@ export default function MessagesPage() {
                     normalize(item?.other_user?.username) ===
                     normalize(selectedThreadUsername)
                   }
+                  showInvitationStatus={activeTab === "invitations"}
                   onClick={() => handleSelectItem(item)}
                 />
               ))}

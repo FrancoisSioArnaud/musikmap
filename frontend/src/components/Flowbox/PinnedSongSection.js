@@ -403,7 +403,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
         >
           <Typography variant="h4">Chanson mise en avant</Typography>
           <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-            Une chanson mise en avant reste visible pour toutes les personnes qui ouvrent cette boîte pendant un temps limité.
+            Une chanson mise en avant est visible par toutes les personnes qui ouvrent cette boîte, sans avoir besoin de la révéler.
           </Typography>
         </Box>
 
@@ -481,7 +481,7 @@ export default function PinnedSongSection({ boxSlug, initialPinnedDeposit }) {
                     Choisis une durée
                   </Typography>
                   <Typography component="p" variant="body1" sx={{ mb: 3 }}>
-                    Choisis combien de temps elle restera visible.
+                    Pendant cette durée, elle sera visible par tout le monde dans la boîte, sans révélation.
                   </Typography>
 
                   <Box className="my_deposit deposit_card deposit_song" sx={{ width: "100%", boxSizing: "border-box" }}>

@@ -9,15 +9,16 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useMemo, useState } from "react";
 
-import SongCompact from "../Song/SongCompact";
 import SearchPanel from "../Search/SearchPanel";
+import SongCompact from "../Song/SongCompact";
 
 export function buildSongPreviewFromOption(option) {
   if (!option) {return null;}
   const artists = Array.isArray(option?.artists) ? option.artists.filter(Boolean) : [];
+  const artist = option?.artist || artists.join(", ");
   return {
-    title: option?.title || "",
-    artist: artists.join(", "),
+    title: option?.title || option?.name || "",
+    artist,
     image_url: option?.image_url || option?.image_url_small || "",
     provider_links: option?.provider_links || {},
   };

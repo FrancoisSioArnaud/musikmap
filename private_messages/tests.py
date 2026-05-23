@@ -111,10 +111,14 @@ class MessagingFlowTests(APITestCase):
         self.client.force_authenticate(self.sender)
         sender_summary = self.client.get(reverse("messages-summary"))
         self.assertEqual(len(sender_summary.data["conversations"]), 0)
+        self.assertEqual(len(sender_summary.data["sent_requests"]), 1)
+        self.assertEqual(sender_summary.data["pending_invitations_count"], 0)
 
         self.client.force_authenticate(self.receiver)
         receiver_summary = self.client.get(reverse("messages-summary"))
         self.assertEqual(len(receiver_summary.data["received_requests"]), 1)
+        self.assertEqual(len(receiver_summary.data["sent_requests"]), 0)
+        self.assertEqual(receiver_summary.data["pending_invitations_count"], 1)
 
         thread.status = ChatThread.STATUS_REFUSED
         thread.refused_at = timezone.now()
@@ -123,12 +127,33 @@ class MessagingFlowTests(APITestCase):
         self.client.force_authenticate(self.sender)
         sender_after_refused = self.client.get(reverse("messages-summary"))
         self.assertEqual(sender_after_refused.data["conversations"], [])
+        self.assertEqual(sender_after_refused.data["sent_requests"], [])
 
         thread.status = ChatThread.STATUS_EXPIRED
         thread.expired_at = timezone.now()
         thread.save(update_fields=["status", "expired_at", "updated_at"])
         sender_after_expired = self.client.get(reverse("messages-summary"))
         self.assertEqual(sender_after_expired.data["conversations"], [])
+        self.assertEqual(sender_after_expired.data["sent_requests"], [])
+
+    def test_thread_payload_flags_from_user_pov(self):
+        thread_id = self.start_thread()
+
+        self.client.force_authenticate(self.sender)
+        sender_detail = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "bob"}))
+        self.assertEqual(sender_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(sender_detail.data["thread_id"], thread_id)
+        self.assertTrue(sender_detail.data["is_pending"])
+        self.assertTrue(sender_detail.data["is_pending_sent"])
+        self.assertFalse(sender_detail.data["is_pending_received"])
+
+        self.client.force_authenticate(self.receiver)
+        receiver_detail = self.client.get(reverse("messages-thread-by-username", kwargs={"username": "alice"}))
+        self.assertEqual(receiver_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(receiver_detail.data["thread_id"], thread_id)
+        self.assertTrue(receiver_detail.data["is_pending"])
+        self.assertFalse(receiver_detail.data["is_pending_sent"])
+        self.assertTrue(receiver_detail.data["is_pending_received"])
 
 
     def test_status_lookup_by_username_is_case_insensitive(self):
