@@ -103,10 +103,33 @@ describe('Onboarding Flowbox entry', () => {
     restoreLocationApis?.();
   });
 
+
+
+  test('shows french dialog for POSITION_UNAVAILABLE geolocation errors', async () => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: jest.fn((success, error) => error({
+          code: 2,
+          message: 'Position update is unavailable',
+        })),
+      },
+    });
+
+    renderOnboarding();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la boîte' }));
+
+    expect(await screen.findByRole('heading', { name: 'Position introuvable' })).toBeInTheDocument();
+    expect(screen.getByText(/Ton navigateur n’arrive pas à récupérer ta position/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
+    expect(screen.queryByText('Position update is unavailable')).not.toBeInTheDocument();
+  });
+
   test('navigates to Discover after verify-location succeeds and never to search', async () => {
     const { saveVerifiedSession, markFlowboxVisited, setUser } = renderOnboarding();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Commencer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la boîte' }));
 
     expect(await screen.findByText('Discover route')).toBeInTheDocument();
     expect(screen.queryByText('Search route')).not.toBeInTheDocument();

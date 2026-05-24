@@ -26,6 +26,31 @@ function isPermissionDeniedError(error) {
   return error?.code === 1 || /denied/i.test(String(error?.message || ""));
 }
 
+
+function getGeolocationDialogConfig(error) {
+  if (!error || typeof error.code !== "number") {return null;}
+
+  if (error.code === 2) {
+    return {
+      type: "position-unavailable",
+      title: "Position introuvable",
+      message: "Ton navigateur n’arrive pas à récupérer ta position pour le moment. Vérifie que la localisation est activée sur ton téléphone, que ton navigateur y a accès, puis réessaie. Si tu es à l’intérieur, rapproche-toi d’une fenêtre.",
+      retryLabel: "Réessayer",
+    };
+  }
+
+  if (error.code === 3) {
+    return {
+      type: "timeout",
+      title: "Localisation trop lente",
+      message: "La récupération de ta position prend trop de temps. Vérifie que la localisation est activée, garde cette page ouverte quelques secondes, puis réessaie.",
+      retryLabel: "Réessayer",
+    };
+  }
+
+  return null;
+}
+
 function getDeviceOs() {
   const userAgent = navigator?.userAgent || "";
   const platform = navigator?.platform || "";
@@ -112,6 +137,7 @@ export default function Onboarding() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [outsideRangeDialogOpen, setOutsideRangeDialogOpen] = useState(false);
+  const [geolocationErrorDialog, setGeolocationErrorDialog] = useState(null);
 
   const boxName = runtime?.box?.name || "Boîte";
   const deviceOs = getDeviceOs();
@@ -133,6 +159,7 @@ export default function Onboarding() {
     setPageError("");
     setSettingsDialogOpen(false);
     setOutsideRangeDialogOpen(false);
+    setGeolocationErrorDialog(null);
 
     try {
       const position = await requestLocationOnce();
@@ -178,15 +205,31 @@ export default function Onboarding() {
         setSettingsDialogOpen(true);
         return;
       }
-      setPageError(error?.message || "Impossible d’ouvrir la boîte.");
+
+      const geolocationDialogConfig = getGeolocationDialogConfig(error);
+      if (geolocationDialogConfig) {
+        setSheetOpen(false);
+        setPageError("");
+        setGeolocationErrorDialog(geolocationDialogConfig);
+        return;
+      }
+
+      setPageError("Impossible de récupérer ta position. Réessaie dans un instant.");
     } finally {
       setGeoLoading(false);
     }
   }, [boxSlug, markFlowboxVisited, navigate, saveVerifiedSession, setUser]);
 
+  const handleRetryGeolocation = useCallback(() => {
+    if (geoLoading) {return;}
+    setGeolocationErrorDialog(null);
+    verifyAndOpenBox();
+  }, [geoLoading, verifyAndOpenBox]);
+
   const handleStart = useCallback(async () => {
     setPageError("");
     setOutsideRangeDialogOpen(false);
+    setGeolocationErrorDialog(null);
     const permissionState = await getLocationPermissionState();
 
     if (permissionState === "granted") {
@@ -282,6 +325,28 @@ export default function Onboarding() {
         <DialogActions>
           <Button variant="light" onClick={() => setSettingsDialogOpen(false)}>
             Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(geolocationErrorDialog)}
+        onClose={() => setGeolocationErrorDialog(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{geolocationErrorDialog?.title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            {geolocationErrorDialog?.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="light" onClick={() => setGeolocationErrorDialog(null)} disabled={geoLoading}>
+            Fermer
+          </Button>
+          <Button variant="contained" onClick={handleRetryGeolocation} disabled={geoLoading}>
+            {geolocationErrorDialog?.retryLabel || "Réessayer"}
           </Button>
         </DialogActions>
       </Dialog>
