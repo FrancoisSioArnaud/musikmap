@@ -110,7 +110,7 @@ export default function DepositComments({
             attachSongLabel="Attacher une chanson"
             songActionLabel="Choisir"
             textLabel="Répondre"
-            textPlaceholder="Répondre"
+            textPlaceholder=""
             onSubmit={async (payload) => {
               setSubmitting(true);
               setError("");
