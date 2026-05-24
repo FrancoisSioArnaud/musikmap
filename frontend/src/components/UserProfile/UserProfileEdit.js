@@ -1,6 +1,7 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useContext, useState } from "react";
@@ -149,7 +150,15 @@ export default function UserProfileEdit() {
       </Box>
       <Box className="bottom_fixed" sx={{ display: "flex", gap: "12px", justifyContent: "end" }}>
         <Button sx={{ width: "100%" }} variant="outlined" onClick={() => navigate(ownProfilePath)}>Annuler</Button>
-        <Button sx={{ width: "100%" }} variant="contained" onClick={onSaveUsername} disabled={saving}>Enregistrer</Button>
+        <Button
+          sx={{ width: "100%" }}
+          variant="contained"
+          onClick={onSaveUsername}
+          disabled={saving}
+          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </Button>
       </Box>
     </Box>
   );
