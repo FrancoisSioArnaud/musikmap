@@ -1,5 +1,4 @@
 import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
@@ -12,7 +11,7 @@ import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
 import { checkUserStatus } from "../UsersUtils";
 
-import AvatarCropperModal from "./AvatarCropperModal";
+import AvatarUploadField from "./AvatarUploadField";
 
 
 function getApiErrorMessage(payload, fallbackMessage) {
@@ -32,8 +31,6 @@ export default function UserProfileEdit() {
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const [cropOpen, setCropOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
   const ownProfilePath = user?.username ? `/profile/${user.username}` : "/profile";
 
   if (user?.is_guest) {
@@ -51,25 +48,14 @@ export default function UserProfileEdit() {
     );
   }
 
-  const onAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) {return;}
-    setErrorMessage("");
-    setSelectedFile(file);
-    setCropOpen(true);
-  };
-
-  const onConfirmCropped = async (blob) => {
-    setCropOpen(false);
+  const onAvatarCroppedFileChange = async (file, previewUrl) => {
     setSaving(true);
     setErrorMessage("");
     const csrftoken = getCookie("csrftoken");
     const form = new FormData();
-    const namedFile = new File([blob], "avatar.jpg", { type: "image/jpeg" });
-    form.append("profile_picture", namedFile);
+    form.append("profile_picture", file);
 
-    const localUrl = URL.createObjectURL(blob);
-    setUser((prev) => ({ ...(prev || {}), profile_picture_url: localUrl }));
+    setUser((prev) => ({ ...(prev || {}), profile_picture_url: previewUrl }));
 
     try {
       const res = await fetch("/users/change-profile-pic", {
@@ -94,7 +80,6 @@ export default function UserProfileEdit() {
       setErrorMessage("Échec de l’envoi de l’image.");
     } finally {
       setSaving(false);
-      setSelectedFile(null);
     }
   };
 
@@ -139,22 +124,12 @@ export default function UserProfileEdit() {
       <Typography variant="h1">Modifier le profil</Typography>
       {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <Avatar src={user?.profile_picture_url} alt={user?.username} sx={{ width: 72, height: 72 }} />
-        <label htmlFor="avatar-edit-input">
-          <input id="avatar-edit-input" type="file" accept="image/*" hidden onChange={onAvatarChange} />
-          <Button variant="outlined" component="span" disabled={saving}>Changer ma photo</Button>
-        </label>
-      </Box>
-
-      <AvatarCropperModal
-        open={cropOpen}
-        file={selectedFile}
-        onCancel={() => {
-          setCropOpen(false);
-          setSelectedFile(null);
-        }}
-        onConfirm={onConfirmCropped}
+      <AvatarUploadField
+        currentImageUrl={user?.profile_picture_url}
+        buttonLabel="Changer ma photo"
+        disabled={saving}
+        inputId="avatar-edit-input"
+        onCroppedFileChange={onAvatarCroppedFileChange}
       />
 
       <Box sx={{display:"grid", gap:"12px"}}>

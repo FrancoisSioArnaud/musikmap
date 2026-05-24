@@ -12,11 +12,12 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { getCookie } from "../Security/TokensUtils";
 import { UserContext } from "../UserContext";
+import AvatarUploadField from "../UserProfile/AvatarUploadField";
 import { checkUserStatus } from "../UsersUtils";
 import { authenticateProviderUser } from "../Utils/streaming/providerClient";
 
@@ -101,6 +102,7 @@ export default function AuthPanel({
   const [registerErrors, setRegisterErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [registerAvatarFile, setRegisterAvatarFile] = useState(null);
   const registerUsernameError = registerErrors?.username?.[0] || "";
   const registerEmailError = registerErrors?.email?.[0] || "";
   const registerPassword1Error = registerErrors?.password1?.[0] || "";
@@ -111,6 +113,12 @@ export default function AuthPanel({
   const isGuest = Boolean(user?.is_guest);
   const canClose = typeof onClose === "function";
 
+
+  useEffect(() => {
+    if (tab !== "register" && registerAvatarFile) {
+      setRegisterAvatarFile(null);
+    }
+  }, [tab, registerAvatarFile]);
   const finalizeSuccess = async ({ resultType = null, redirectTo = null } = {}) => {
     try {
       await Promise.race([
@@ -189,9 +197,9 @@ export default function AuthPanel({
     setLoading(true);
     setRegisterErrors({});
     const form = new FormData(event.currentTarget);
-    const profilePicture = form.get("profile_picture");
-    if (!profilePicture || !profilePicture.name) {
-      form.delete("profile_picture");
+    form.delete("profile_picture");
+    if (registerAvatarFile) {
+      form.append("profile_picture", registerAvatarFile);
     }
 
     try {
@@ -207,6 +215,7 @@ export default function AuthPanel({
         return;
       }
       setSuccessMessage("Compte créé avec succès.");
+      setRegisterAvatarFile(null);
       await finalizeSuccess({ resultType: "account_created" });
     } catch (error) {
       setRegisterErrors({
@@ -300,10 +309,14 @@ export default function AuthPanel({
               <TextField required fullWidth name="password2" label="Confirmation du mot de passe" type="password" autoComplete="new-password" error={Boolean(registerPassword2Error)} helperText={registerPassword2Error || " "} />
             </Grid>
           </Grid>
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Image de profil</Typography>
-            <input type="file" name="profile_picture" accept=".jpg,.jpeg,.png" />
-          </Box>
+          <AvatarUploadField
+            label="Ajoute une photo de profil"
+            buttonLabel="Choisir une photo"
+            avatarSize={64}
+            inputId="register-avatar-input"
+            disabled={loading}
+            onCroppedFileChange={(file) => setRegisterAvatarFile(file)}
+          />
           {registerGlobalError ? <Alert severity="error">{registerGlobalError}</Alert> : null}
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? <CircularProgress size={20} /> : "Créer mon compte"}
