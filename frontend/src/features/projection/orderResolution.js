@@ -1,6 +1,8 @@
 const REMOVED_STATUSES = new Set(["removed", "left", "hidden"]);
 const PLAYED_STATUSES = new Set(["played"]);
 const LOCKED_STATUSES = new Set(["locked"]);
+const MANUAL_REORDER_EVENT_TYPES = new Set(["card_moved", "manual_order_changed", "manual_drag", "appearance_moved_between"]);
+const CALL_DECISION_EVENT_TYPES = new Set(["appearance_skipped", "appearance_replaced", "replacement_selected", "without_musician_selected"]);
 
 function stableId(value) {
   return value === null || value === undefined ? "" : String(value);
@@ -30,6 +32,28 @@ function numberOrInfinity(value) {
   return Number.isFinite(value) ? value : Infinity;
 }
 
+function frozenOrderKey(card) {
+  if (isPlayed(card)) {return numberOrInfinity(card.playedAtPlateauIndex ?? card.frozenOrderKey ?? card.__fallbackIndex);}
+  if (isLocked(card)) {return numberOrInfinity(card.lockedOrderKey ?? card.frozenOrderKey ?? card.__fallbackIndex);}
+  return Infinity;
+}
+
+function withCapturedFrozenOrder(card, fallbackIndex) {
+  const next = { ...card, __fallbackIndex: fallbackIndex };
+  if (isPlayed(next) && (next.playedAtPlateauIndex === null || next.playedAtPlateauIndex === undefined)) {next.playedAtPlateauIndex = fallbackIndex;}
+  if (isLocked(next) && (next.lockedOrderKey === null || next.lockedOrderKey === undefined)) {next.lockedOrderKey = fallbackIndex;}
+  if ((next.frozenOrderKey === null || next.frozenOrderKey === undefined) && (isPlayed(next) || isLocked(next))) {next.frozenOrderKey = fallbackIndex;}
+  return next;
+}
+
+function warningIdentity(warning) {
+  return `${warning.code}:${(warning.cardIds || [warning.cardId, warning.anchorId].filter(Boolean)).join(",")}`;
+}
+
+function pushOrderWarning(warnings, warning) {
+  const key = warningIdentity(warning);
+  if (!warnings.some((item) => warningIdentity(item) === key)) {warnings.push(warning);}
+}
 
 function basePosition(card, fallbackIndex) {
   return [
@@ -60,7 +84,7 @@ function collectActiveCardsByColumn(state) {
     if (isRemoved(card)) {return columns;}
     const key = columnId(card);
     if (!columns[key]) {columns[key] = [];}
-    columns[key].push({ ...card, __fallbackIndex: fallbackIndex });
+    columns[key].push(withCapturedFrozenOrder(card, fallbackIndex));
     return columns;
   }, {});
 }
@@ -69,25 +93,46 @@ function collectEventCards(events, names) {
   return events.flatMap((event) => {
     if (!event || !names.has(event.type)) {return [];}
     const payload = event.payload || event;
-    return payload.cardIds || payload.appearanceIds || (payload.cardId ? [payload.cardId] : payload.appearanceId ? [payload.appearanceId] : []);
+    return payloadValues(payload, ["cardIds", "appearanceIds", "replacementAppearanceIds", "cardId", "appearanceId", "replacementAppearanceId", "targetAppearanceId", "id"]);
   }).map(stableId);
+}
+
+function firstPayloadValue(payload, names) {
+  return names.map((name) => payload[name]).find((value) => value !== null && value !== undefined);
+}
+
+function payloadValues(payload, names) {
+  const value = firstPayloadValue(payload, names);
+  return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function manualReorderAnchor(payload) {
+  return firstPayloadValue(payload, ["cardId", "appearanceId", "id", "movedAppearanceId", "movedCardId"]);
+}
+
+const EVENT_ANCHOR_READERS = {
+  link_created: (payload) => payloadValues(payload, ["anchorTarget", "anchorTargetId", "targetId", "toId"]),
+  conflict_created: (payload) => payloadValues(payload, ["anchorTargetId", "anchorTarget", "targetId"]),
+  participation_added: (payload) => payloadValues(payload, ["newAppearanceIds", "appearanceIds", "cardIds"]).slice(0, 1),
+  hole_added: (payload) => payloadValues(payload, ["holeId", "cardId", "appearanceId", "id"]),
+  appearance_skipped: (payload) => payloadValues(payload, ["cardId", "appearanceId", "id"]),
+  appearance_replaced: (payload) => payloadValues(payload, ["replacementAppearanceId", "appearanceId", "cardId", "targetAppearanceId", "id"]),
+  replacement_selected: (payload) => payloadValues(payload, ["replacementAppearanceId", "appearanceId", "cardId", "targetAppearanceId", "id"]),
+  without_musician_selected: (payload) => payloadValues(payload, ["appearanceId", "cardId", "targetAppearanceId", "id"]),
+  plateau_played: (payload) => payloadValues(payload, ["targets", "cardIds", "appearanceIds"]),
+};
+
+function eventAnchors(event) {
+  if (!event) {return [];}
+  const payload = event.payload || event;
+  if (MANUAL_REORDER_EVENT_TYPES.has(event.type)) {return payloadValues({ anchor: manualReorderAnchor(payload) }, ["anchor"]);}
+  const reader = EVENT_ANCHOR_READERS[event.type];
+  return reader ? reader(payload) : [];
 }
 
 function identifyAnchors(context) {
   const events = Array.isArray(context && context.events) ? context.events : Array.isArray(context && context.transaction && context.transaction.events) ? context.transaction.events : [];
-  const anchors = [];
-  events.forEach((event) => {
-    const payload = (event && event.payload) || event || {};
-    if (!event) {return;}
-    if (["card_moved", "manual_order_changed", "manual_drag"].includes(event.type)) {anchors.push(payload.cardId || payload.appearanceId || payload.id);}
-    if (event.type === "link_created") {anchors.push(payload.anchorTarget || payload.anchorTargetId || payload.targetId || payload.toId);}
-    if (event.type === "conflict_created") {anchors.push(payload.anchorTargetId || payload.anchorTarget || payload.targetId);}
-    if (event.type === "participation_added") {anchors.push(...(payload.newAppearanceIds || payload.appearanceIds || payload.cardIds || []));}
-    if (event.type === "hole_added") {anchors.push(payload.holeId || payload.cardId || payload.appearanceId || payload.id);}
-    if (event.type === "appearance_skipped") {anchors.push(payload.cardId || payload.appearanceId || payload.id);}
-    if (event.type === "plateau_played") {anchors.push(...(payload.targets || payload.cardIds || payload.appearanceIds || []));}
-  });
-  return new Set(anchors.filter(Boolean).map(stableId));
+  return new Set(events.flatMap(eventAnchors).filter(Boolean).map(stableId));
 }
 
 function relationPairs(state, key) {
@@ -103,19 +148,60 @@ function resolveOrderAfterTransaction(state, context = {}) {
   const anchors = identifyAnchors(context);
   const links = relationPairs(state, "links");
   const conflicts = relationPairs(state, "conflicts");
-  const movedDecisionIds = new Set(collectEventCards(Array.isArray(context.events) ? context.events : [], new Set(["appearance_skipped", "replacement_selected", "without_musician_selected"])));
+  const movedDecisionIds = new Set(collectEventCards(Array.isArray(context.events) ? context.events : [], CALL_DECISION_EVENT_TYPES));
   const resolvedColumns = {};
 
   Object.entries(byColumn).forEach(([col, cards]) => {
     const ids = new Set(cards.map(cardId));
     const directConflicts = new Set(conflicts.flatMap(([a, b]) => [`${a}\u0000${b}`, `${b}\u0000${a}`]));
+    const cardsById = new Map(cards.map((card) => [cardId(card), card]));
+    const warnFrozenBlockedAnchor = (code, anchorId, frozenId) => pushOrderWarning(warnings, { code, anchorId, cardId: frozenId });
+
+    cards.forEach((card) => {
+      const id = cardId(card);
+      if (!anchors.has(id) || isPlayed(card) || isLocked(card)) {return;}
+      const desiredPosition = numberOrInfinity(card.manualOrder ?? card.orderIndex);
+      if (desiredPosition === Infinity) {return;}
+      cards.forEach((candidate) => {
+        const candidateId = cardId(candidate);
+        if (candidateId !== id && (isPlayed(candidate) || isLocked(candidate)) && desiredPosition < frozenOrderKey(candidate)) {
+          warnFrozenBlockedAnchor("FROZEN_BOUNDARY_BLOCKED", id, candidateId);
+        }
+      });
+    });
+
+    links.forEach(([a, b]) => {
+      const ca = cardsById.get(a);
+      const cb = cardsById.get(b);
+      if (anchors.has(a) && cb && (isPlayed(cb) || isLocked(cb))) {warnFrozenBlockedAnchor("LINKED_CARD_FROZEN", a, b);}
+      if (anchors.has(b) && ca && (isPlayed(ca) || isLocked(ca))) {warnFrozenBlockedAnchor("LINKED_CARD_FROZEN", b, a);}
+    });
+
+    conflicts.forEach(([a, b]) => {
+      const ca = cardsById.get(a);
+      const cb = cardsById.get(b);
+      if (anchors.has(a) && cb && (isPlayed(cb) || isLocked(cb))) {warnFrozenBlockedAnchor("CONFLICT_TARGET_FROZEN", a, b);}
+      if (anchors.has(b) && ca && (isPlayed(ca) || isLocked(ca))) {warnFrozenBlockedAnchor("CONFLICT_TARGET_FROZEN", b, a);}
+    });
+
     const parent = {};
     ids.forEach((id) => { parent[id] = id; });
     const find = (id) => parent[id] === id ? id : (parent[id] = find(parent[id]));
     const union = (a, b) => { if (!ids.has(a) || !ids.has(b)) {return;} const ra = find(a); const rb = find(b); if (ra !== rb) { parent[rb] = ra; } };
+    const componentContains = (root, id) => ids.has(id) && find(id) === root;
+    const componentConflict = (leftRoot, rightRoot) => conflicts.find(([x, y]) =>
+      (componentContains(leftRoot, x) && componentContains(rightRoot, y)) ||
+      (componentContains(leftRoot, y) && componentContains(rightRoot, x))
+    );
     links.forEach(([a, b]) => {
       if (directConflicts.has(`${a}\u0000${b}`)) {
-        warnings.push({ code: "LINK_CONFLICT_DIRECT", cardIds: [a, b].sort() });
+        pushOrderWarning(warnings, { code: "LINK_CONFLICT_DIRECT", cardIds: [a, b].sort() });
+        return;
+      }
+      if (!ids.has(a) || !ids.has(b)) {return;}
+      const conflict = componentConflict(find(a), find(b));
+      if (conflict) {
+        pushOrderWarning(warnings, { code: "LINK_CONFLICT_TRANSITIVE", cardIds: conflict.slice().sort(), linkCardIds: [a, b].sort() });
         return;
       }
       union(a, b);
@@ -158,15 +244,21 @@ function resolveOrderAfterTransaction(state, context = {}) {
       const hasPlayed = sortedMembers.some(isPlayed);
       const hasLocked = sortedMembers.some(isLocked);
       const hasAnchor = sortedMembers.some((card) => anchors.has(cardId(card)));
-      const hasDecision = sortedMembers.some((card) => movedDecisionIds.has(cardId(card)) || card.callDecision || card.appearanceSkipped);
-      const minFrozen = Math.min(...sortedMembers.map((card) => isPlayed(card) ? numberOrInfinity(card.playedAtPlateauIndex ?? card.frozenOrderKey) : isLocked(card) ? numberOrInfinity(card.lockedOrderKey ?? card.frozenOrderKey) : Infinity));
+      const hasDecision = sortedMembers.some((card) => movedDecisionIds.has(cardId(card)) || card.callDecision || card.appearanceSkipped || card.appearanceReplaced || card.withoutMusician);
+      const minFrozen = Math.min(...sortedMembers.map(frozenOrderKey));
       const minManual = hasAnchor
         ? Math.min(...sortedMembers.filter((card) => anchors.has(cardId(card))).map((card) => numberOrInfinity(card.manualOrder)))
         : Math.min(...sortedMembers.map((card) => numberOrInfinity(card.manualOrder)));
       const minBase = hasAnchor
         ? sortedMembers.filter((card) => anchors.has(cardId(card))).reduce((best, card) => compareKeys(basePosition(card, card.__fallbackIndex), best) < 0 ? basePosition(card, card.__fallbackIndex) : best, [Infinity])
         : sortedMembers.reduce((best, card) => compareKeys(basePosition(card, card.__fallbackIndex), best) < 0 ? basePosition(card, card.__fallbackIndex) : best, [Infinity]);
-      return { members: sortedMembers, key: [hasPlayed ? 0 : hasLocked ? 1 : 2, hasPlayed || hasLocked ? minFrozen : Infinity, hasAnchor ? 0 : 1, hasDecision ? 0 : 1, minManual, ...minBase] };
+      const minFallbackIndex = Math.min(...sortedMembers.map((card) => numberOrInfinity(card.__fallbackIndex)));
+      const shouldRespectFrozenBoundary = (key) => hasAnchor || hasDecision || minFallbackIndex > key;
+      const blockingFrozenKeys = sortedMembers.some((card) => isPlayed(card) || isLocked(card)) || minManual === Infinity
+        ? []
+        : cards.map(frozenOrderKey).filter((key) => key !== Infinity && minManual < key && shouldRespectFrozenBoundary(key));
+      const effectiveManual = blockingFrozenKeys.length ? Math.max(minManual, Math.max(...blockingFrozenKeys) + 0.1) : minManual;
+      return { members: sortedMembers, key: [hasPlayed || hasLocked ? minFrozen : effectiveManual, hasPlayed ? 0 : hasLocked ? 1 : 2, hasAnchor ? 0 : 1, hasDecision ? 0 : 1, minManual, ...minBase] };
     });
 
     resolvedColumns[col] = units.sort((a, b) => compareKeys(a.key, b.key) || cardId(a.members[0]).localeCompare(cardId(b.members[0]))).flatMap((unit) => unit.members);
@@ -177,22 +269,47 @@ function resolveOrderAfterTransaction(state, context = {}) {
     delete next.__fallbackIndex;
     if (isPlayed(next) && (next.playedAtPlateauIndex === null || next.playedAtPlateauIndex === undefined)) {next.playedAtPlateauIndex = index;}
     if (isLocked(next) && (next.lockedOrderKey === null || next.lockedOrderKey === undefined)) {next.lockedOrderKey = index;}
-    if ((next.frozenOrderKey === null || next.frozenOrderKey === undefined) && (isPlayed(next) || isLocked(next))) {next.frozenOrderKey = index;}
+    if ((next.frozenOrderKey === null || next.frozenOrderKey === undefined) && (isPlayed(next) || isLocked(next))) {next.frozenOrderKey = frozenOrderKey(next) === Infinity ? index : frozenOrderKey(next);}
     return next;
   });
 
   return { ...state, cards: resolvedCards, orderWarnings: warnings };
 }
 
+function transactionEvents(transaction) {
+  if (Array.isArray(transaction && transaction.events)) {return transaction.events;}
+  return transaction && transaction.type ? [transaction] : [];
+}
+
+function isTransactionActive(transaction) {
+  return !(transaction && (transaction.undone || transaction.reverted || transaction.active === false));
+}
+
 function applyTransactionAndResolve(state, transaction, applyEvent) {
-  const events = Array.isArray(transaction && transaction.events) ? transaction.events : [];
+  const events = transactionEvents(transaction);
   const applied = events.reduce((current, event, index) => applyEvent(current, event, { transaction, eventIndex: index }), state);
   return resolveOrderAfterTransaction(applied, { transaction, events });
+}
+
+function projectEventLog(initialState, eventLog, applyEvent) {
+  const transactions = Array.isArray(eventLog) ? eventLog : [];
+  return transactions.reduce((state, transaction, transactionIndex) => {
+    if (!isTransactionActive(transaction)) {return state;}
+    const resolved = applyTransactionAndResolve(state, transaction, (current, event, eventContext) => applyEvent(current, event, {
+      ...eventContext,
+      transactionIndex,
+    }));
+    return {
+      ...resolved,
+      lastResolvedTransactionIndex: transactionIndex,
+    };
+  }, initialState);
 }
 
 module.exports = {
   resolveOrderAfterTransaction,
   applyTransactionAndResolve,
+  projectEventLog,
   collectActiveCardsByColumn,
   identifyAnchors,
   isPlayed,
