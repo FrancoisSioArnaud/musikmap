@@ -89,6 +89,47 @@ function collectActiveCardsByColumn(state) {
   }, {});
 }
 
+
+function targetKey(target) {
+  if (typeof target === "string" || typeof target === "number") {return stableId(target);}
+  return stableId(target && (target.cardId || target.appearanceId || target.id || target.targetId));
+}
+
+function getVisibleColumns(state) {
+  if (Array.isArray(state && state.columns)) {
+    return state.columns.map((column) => ({
+      ...column,
+      cards: (Array.isArray(column.cards) ? column.cards : []).filter((card) => !isRemoved(card)),
+    }));
+  }
+  const grouped = collectActiveCardsByColumn(state);
+  return Object.entries(grouped).map(([instrumentId, cards]) => ({
+    instrument: { instrumentId },
+    instrumentId,
+    cards,
+  }));
+}
+
+function getCardsForInstrument(state, instrumentId) {
+  const key = stableId(instrumentId);
+  const column = getVisibleColumns(state).find((item) => stableId(item.instrument && item.instrument.instrumentId || item.instrumentId || item.id) === key);
+  return column ? column.cards : [];
+}
+
+function findCardByTarget(state, target) {
+  const key = targetKey(target);
+  return getVisibleColumns(state).flatMap((column) => column.cards).find((card) => targetKey(card) === key);
+}
+
+function getVisiblePlateauIndex(state, target) {
+  const key = targetKey(target);
+  for (const column of getVisibleColumns(state)) {
+    const index = column.cards.findIndex((card) => targetKey(card) === key);
+    if (index !== -1) {return index;}
+  }
+  return -1;
+}
+
 function collectEventCards(events, names) {
   return events.flatMap((event) => {
     if (!event || !names.has(event.type)) {return [];}
@@ -140,6 +181,99 @@ function relationPairs(state, key) {
     stableId(relation.sourceId || relation.fromId || relation.a || relation.leftId || relation.cardId),
     stableId(relation.targetId || relation.toId || relation.b || relation.rightId || relation.linkedCardId || relation.conflictCardId),
   ]).filter(([a, b]) => a && b && a !== b);
+}
+
+
+function relationEndpoint(relation, names) {
+  return stableId(names.map((name) => relation && relation[name]).find((value) => value !== null && value !== undefined));
+}
+
+function activeLinks(state) {
+  return (Array.isArray(state && state.links) ? state.links : []).filter((link) =>
+    link && link.status !== "removed" && link.status !== "deleted" && link.status !== "inactive" && link.status !== "suppressed" && link.active !== false && link.suppressedByConflict !== true
+  ).map((link) => {
+    const sourceId = relationEndpoint(link, ["sourceId", "fromId", "a", "leftId", "cardId"]);
+    const targetId = relationEndpoint(link, ["targetId", "toId", "b", "rightId", "linkedCardId"]);
+    return {
+      ...link,
+      sourceId,
+      targetId,
+      anchorId: targetKey(link.anchorTarget) || stableId(link.anchorTargetId) || stableId(link.anchorId) || sourceId,
+    };
+  }).filter((link) => link.sourceId && link.targetId && link.sourceId !== link.targetId);
+}
+
+function cardColumnLookup(columns) {
+  const lookup = new Map();
+  Object.entries(columns).forEach(([columnKey, cards]) => {
+    cards.forEach((card, index) => lookup.set(cardId(card), { card, columnKey, index }));
+  });
+  return lookup;
+}
+
+function moveCardToPlateauIndex(cards, id, targetIndex) {
+  const fromIndex = cards.findIndex((card) => cardId(card) === id);
+  if (fromIndex === -1) {return cards;}
+  const next = [...cards];
+  const [card] = next.splice(fromIndex, 1);
+  const boundedIndex = Math.max(0, Math.min(targetIndex, next.length));
+  next.splice(boundedIndex, 0, card);
+  return next;
+}
+
+function suppressLinks(state, suppressedKeys) {
+  if (!suppressedKeys.size || !Array.isArray(state && state.links)) {return state && state.links;}
+  return state.links.map((link) => {
+    const sourceId = relationEndpoint(link, ["sourceId", "fromId", "a", "leftId", "cardId"]);
+    const targetId = relationEndpoint(link, ["targetId", "toId", "b", "rightId", "linkedCardId"]);
+    const key = [sourceId, targetId].sort().join("\u0000");
+    return suppressedKeys.has(key) ? { ...link, status: "suppressed", suppressedByConflict: true } : link;
+  });
+}
+
+function resolveActiveLinksInColumns(state, columns, warnings) {
+  const conflicts = relationPairs(state, "conflicts");
+  const directConflicts = new Set(conflicts.flatMap(([a, b]) => [[a, b].sort().join("\u0000")]));
+  let resolvedColumns = Object.fromEntries(Object.entries(columns).map(([key, cards]) => [key, [...cards]]));
+  const suppressedKeys = new Set();
+
+  activeLinks(state).forEach((link) => {
+    const linkKey = [link.sourceId, link.targetId].sort().join("\u0000");
+    if (directConflicts.has(linkKey)) {
+      suppressedKeys.add(linkKey);
+      pushOrderWarning(warnings, { code: "LINK_CONFLICT_DIRECT", cardIds: [link.sourceId, link.targetId].sort() });
+      return;
+    }
+
+    const lookup = cardColumnLookup(resolvedColumns);
+    const source = lookup.get(link.sourceId);
+    const target = lookup.get(link.targetId);
+    if (!source || !target) {return;}
+
+    const anchorId = link.anchorId === link.targetId ? link.targetId : link.sourceId;
+    const followerId = anchorId === link.sourceId ? link.targetId : link.sourceId;
+    const anchor = lookup.get(anchorId);
+    const follower = lookup.get(followerId);
+    if (!anchor || !follower) {return;}
+
+    if (isPlayed(follower.card) || isLocked(follower.card)) {
+      suppressedKeys.add(linkKey);
+      pushOrderWarning(warnings, { code: "LINKED_CARD_FROZEN", anchorId, cardId: followerId });
+      return;
+    }
+    if (anchor.columnKey === follower.columnKey) {return;}
+
+    const nextColumn = moveCardToPlateauIndex(resolvedColumns[follower.columnKey], followerId, anchor.index);
+    const movedFollower = nextColumn.findIndex((card) => cardId(card) === followerId);
+    if (movedFollower !== anchor.index) {
+      suppressedKeys.add(linkKey);
+      pushOrderWarning(warnings, { code: "LINK_PLATEAU_INDEX_UNREACHABLE", cardIds: [link.sourceId, link.targetId].sort() });
+      return;
+    }
+    resolvedColumns = { ...resolvedColumns, [follower.columnKey]: nextColumn };
+  });
+
+  return { columns: resolvedColumns, suppressedLinks: suppressLinks(state, suppressedKeys) };
 }
 
 function resolveOrderAfterTransaction(state, context = {}) {
@@ -264,7 +398,10 @@ function resolveOrderAfterTransaction(state, context = {}) {
     resolvedColumns[col] = units.sort((a, b) => compareKeys(a.key, b.key) || cardId(a.members[0]).localeCompare(cardId(b.members[0]))).flatMap((unit) => unit.members);
   });
 
-  const resolvedCards = Object.values(resolvedColumns).flatMap((cards) => cards).map((card, index) => {
+  const linkResolution = resolveActiveLinksInColumns(state, resolvedColumns, warnings);
+  const finalColumns = linkResolution.columns;
+
+  const resolvedCards = Object.values(finalColumns).flatMap((cards) => cards).map((card, index) => {
     const next = { ...card, resolvedOrder: index };
     delete next.__fallbackIndex;
     if (isPlayed(next) && (next.playedAtPlateauIndex === null || next.playedAtPlateauIndex === undefined)) {next.playedAtPlateauIndex = index;}
@@ -273,7 +410,7 @@ function resolveOrderAfterTransaction(state, context = {}) {
     return next;
   });
 
-  return { ...state, cards: resolvedCards, orderWarnings: warnings };
+  return { ...state, cards: resolvedCards, links: linkResolution.suppressedLinks || state.links, orderWarnings: warnings };
 }
 
 function transactionEvents(transaction) {
@@ -310,6 +447,11 @@ module.exports = {
   resolveOrderAfterTransaction,
   applyTransactionAndResolve,
   projectEventLog,
+  getVisibleColumns,
+  getCardsForInstrument,
+  getVisiblePlateauIndex,
+  findCardByTarget,
+  targetKey,
   collectActiveCardsByColumn,
   identifyAnchors,
   isPlayed,

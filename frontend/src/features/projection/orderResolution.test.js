@@ -360,3 +360,89 @@ describe('orderResolution hierarchy', () => {
     expect(ids(resolveOrderAfterTransaction(state, { events: [{ type: 'round_revealed', payload: { round: 2 } }, { type: 'card_moved', payload: { cardId: 'A' } }] }))).toEqual(['P', 'L', 'A', 'C', 'B', 'R']);
   });
 });
+
+describe('orderResolution links plateauIndex', () => {
+  const card = (id, columnId, extra = {}) => c(id, { columnId, ...extra });
+  const getCardPlateauIndex = (state, instrumentId, cardId) => {
+    const column = state.cards.filter((item) => item.columnId === instrumentId);
+    return column.findIndex((item) => item.id === cardId);
+  };
+  const project = (initial, eventLog) => projectEventLog(initial, eventLog, (state, event) => {
+    const payload = event.payload || {};
+    if (event.type === 'link_created') {
+      return { ...state, links: [...(state.links || []), { sourceId: payload.sourceId, targetId: payload.targetId, anchorTarget: payload.anchorTarget, status: 'active' }] };
+    }
+    if (event.type === 'conflict_created') {
+      return { ...state, conflicts: [...(state.conflicts || []), { sourceId: payload.sourceId, targetId: payload.targetId }] };
+    }
+    if (event.type === 'card_moved') {
+      return { ...state, cards: state.cards.map((item) => item.id === payload.cardId ? { ...item, manualOrder: payload.manualOrder } : item) };
+    }
+    if (event.type === 'without_musician_selected') {
+      return { ...state, cards: [...state.cards, card(payload.holeId, payload.columnId, { manualOrder: payload.manualOrder })], links: [...(state.links || []), { sourceId: payload.appearanceId, targetId: payload.holeId, anchorTarget: payload.appearanceId, status: 'active' }] };
+    }
+    return state;
+  });
+
+  test('link_created aligne deux appearances sur la même ligne visible', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 0 }), card('B', 'chant', { manualOrder: 1 }), card('C', 'chant', { manualOrder: 2 }), card('X', 'guitare', { manualOrder: 0 }), card('Y', 'guitare', { manualOrder: 1 }), card('Z', 'guitare', { manualOrder: 2 })] };
+    const projected = project(initial, [{ events: [{ type: 'link_created', payload: { sourceId: 'B', targetId: 'Z', anchorTarget: 'B' } }] }]);
+    expect(getCardPlateauIndex(projected, 'chant', 'B')).toBe(getCardPlateauIndex(projected, 'guitare', 'Z'));
+  });
+
+  test('link avec colonnes de tailles différentes réorganise autour du follower', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 0 }), card('B', 'chant', { manualOrder: 1 }), card('X', 'guitare', { manualOrder: 0 }), card('Y', 'guitare', { manualOrder: 1 }), card('Z', 'guitare', { manualOrder: 2 }), card('T', 'guitare', { manualOrder: 3 })] };
+    const projected = project(initial, [{ events: [{ type: 'link_created', payload: { sourceId: 'B', targetId: 'T', anchorTarget: 'B' } }] }]);
+    expect(getCardPlateauIndex(projected, 'chant', 'B')).toBe(getCardPlateauIndex(projected, 'guitare', 'T'));
+    expect(projected.cards.filter((item) => item.columnId === 'guitare').map((item) => item.id)).toEqual(['X', 'T', 'Y', 'Z']);
+  });
+
+  test('drag d’une card linkée conserve le groupe au même plateauIndex', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 0 }), card('B', 'chant', { manualOrder: 1 }), card('C', 'guitare', { manualOrder: 0 }), card('D', 'guitare', { manualOrder: 1 })] };
+    const projected = project(initial, [
+      { events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'C', anchorTarget: 'A' } }] },
+      { events: [{ type: 'card_moved', payload: { cardId: 'A', manualOrder: 10 } }] },
+    ]);
+    expect(getCardPlateauIndex(projected, 'chant', 'A')).toBe(getCardPlateauIndex(projected, 'guitare', 'C'));
+  });
+
+  test('link ne déplace pas played', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 1 }), card('B', 'chant', { manualOrder: 0 }), card('C', 'guitare', { manualOrder: 0, played: true, playedAtPlateauIndex: 0 }), card('D', 'guitare', { manualOrder: 1 })] };
+    const projected = project(initial, [{ events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'C', anchorTarget: 'A' } }] }]);
+    expect(getCardPlateauIndex(projected, 'guitare', 'C')).toBe(0);
+    expect(projected.links[0]).toMatchObject({ status: 'suppressed', suppressedByConflict: true });
+    expect(projected.orderWarnings).toContainEqual({ code: 'LINKED_CARD_FROZEN', anchorId: 'A', cardId: 'C' });
+  });
+
+  test('link ne déplace pas locked', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 1 }), card('B', 'chant', { manualOrder: 0 }), card('C', 'guitare', { manualOrder: 0, locked: true, lockedOrderKey: 0 }), card('D', 'guitare', { manualOrder: 1 })] };
+    const projected = project(initial, [{ events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'C', anchorTarget: 'A' } }] }]);
+    expect(getCardPlateauIndex(projected, 'guitare', 'C')).toBe(0);
+    expect(projected.links[0]).toMatchObject({ status: 'suppressed', suppressedByConflict: true });
+  });
+
+  test('conflict gagne contre link et désactive le link affichable', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 0 }), card('C', 'guitare', { manualOrder: 1 })] };
+    const projected = project(initial, [
+      { events: [{ type: 'conflict_created', payload: { sourceId: 'A', targetId: 'C' } }] },
+      { events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'C', anchorTarget: 'A' } }] },
+    ]);
+    expect(projected.links[0]).toMatchObject({ status: 'suppressed', suppressedByConflict: true });
+    expect(projected.orderWarnings).toContainEqual({ code: 'LINK_CONFLICT_DIRECT', cardIds: ['A', 'C'] });
+  });
+
+  test('play without aligne le hole et la source', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 1 }), card('B', 'chant', { manualOrder: 0 }), card('X', 'guitare', { manualOrder: 0 }), card('Y', 'guitare', { manualOrder: 1 })] };
+    const projected = project(initial, [{ events: [{ type: 'without_musician_selected', payload: { appearanceId: 'A', holeId: 'A-hole', columnId: 'guitare', manualOrder: 10 } }] }]);
+    expect(getCardPlateauIndex(projected, 'chant', 'A')).toBe(getCardPlateauIndex(projected, 'guitare', 'A-hole'));
+  });
+
+  test('replay déterministe avec link_created et drag linké', () => {
+    const initial = { cards: [card('A', 'chant', { manualOrder: 0 }), card('B', 'chant', { manualOrder: 1 }), card('C', 'guitare', { manualOrder: 0 }), card('D', 'guitare', { manualOrder: 1 })] };
+    const eventLog = [
+      { events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'C', anchorTarget: 'A' } }] },
+      { events: [{ type: 'card_moved', payload: { cardId: 'A', manualOrder: 10 } }] },
+    ];
+    expect(project(initial, eventLog)).toEqual(project(initial, eventLog));
+  });
+});
