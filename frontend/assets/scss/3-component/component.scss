@@ -1,0 +1,16 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au "component"
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use 'buttons';
+@use 'box';
+@use 'comments';
+@use 'deposits';
+@use 'points';
+@use 'reactions';
+@use 'success';
+@use 'modals';
+@use 'onboarding';
+@use 'articles';
+@use 'profile';

@@ -1,0 +1,30 @@
+{
+    "name": "module-themer-ki",
+    "version": "2.1.2",
+    "config": {
+        "partageReseau": false,
+        "lint": {
+            "failOnError": true,
+            "less": false,
+            "sass": true,
+            "js": false
+        },
+        "extension": {
+            "less": ".less",
+            "sass": ".scss"
+        }
+    },
+    "projects": [
+        {
+            "name": "la boite a groove",
+            "path": "./scss",
+            "compiler": "sass",
+            "lint": false,
+            "dir": {
+                "src": "./",
+                "dest": "../../static/css/"
+            },
+            "files": ["main.scss"]
+        }
+    ]
+}

@@ -1,0 +1,66 @@
+@use 'color' as *;
+
+/*************************************************************************************
+  Styles typographiques récurrents pouvant être appliqués avec la méthode @extend
+****************************************************************************************/
+
+/************** HEADING **********************/
+.heading1,
+%heading1 {
+
+
+
+}
+
+.heading2,
+%heading2 {
+
+}
+
+.heading3,
+%heading3 {
+
+}
+
+.heading4,
+%heading4 {
+
+}
+
+.heading5,
+%heading5 {
+
+}
+
+.heading6,
+%heading6 {
+
+}
+
+p {
+
+}
+
+/************** FORM **********************/
+
+/* .label,
+%label {} */
+
+/************** BUTTONS **********************/
+
+/* .btn {
+  &:hover,
+  &:focus {}
+}
+.btn-default {
+  &:hover,
+  &:focus {}
+}
+.btn-primary {
+  &:hover,
+  &:focus {}
+} */
+
+/************** ICONS **********************/
+
+/************** CUSTOM SHARED **********************/

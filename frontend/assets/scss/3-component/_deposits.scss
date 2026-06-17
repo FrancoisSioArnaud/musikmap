@@ -1,0 +1,495 @@
+@use "../0-init/color" as *;
+
+.my_deposit_notif {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px;
+  padding: 24px 16px 16px;
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-secondary-light);
+  opacity: 0;
+  transform: translateY(-120%);
+  animation: slideIn 300ms ease-out forwards;
+}
+
+.my_deposit .img_container {
+  width: 23% !important;
+}
+
+@keyframes slideIn {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes depositListPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.my_deposit_notif svg {
+  color: var(--mm-color-success);
+}
+
+.my_deposit .text {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.deposit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.discover_timeline {
+  background: linear-gradient(0deg, var(--mm-color-primary-light) 0%, transparent 33%);
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  padding: 26px 0;
+  padding-bottom: 32px;
+}
+
+.discover_timeline .deposit, .discover_timeline .article{
+  margin: 0 20px;
+}
+
+
+.deposit_card {
+  display: flex;
+  flex-direction: column;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-xl);
+  box-shadow: var(--mm-shadow-card);
+  z-index: 2;
+  overflow: clip;
+  width: 100%;
+}
+
+.favorite_song_section .deposit_card, .pinned_song_section .deposit_card, .deposit.my_deposit{
+  border: solid 3px var(--mm-color-white);
+}
+
+
+.deposit .deposit_infos {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.deposit .deposit_interact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  gap: 4px;
+  padding: 4px 12px;
+}
+
+.deposit .deposit_interact .left,
+.deposit .deposit_interact .right {
+  display: flex;
+  gap: 4px;
+}
+
+.deposit .deposit_action_button {
+  min-width: auto;
+  width: auto;
+  padding: 8px 12px;
+  background: none;
+  color: var(--mm-color-black);
+  font-size: 1em;
+}
+
+.deposit .deposit_action_button svg {
+  font-size: 26px;
+}
+
+.deposit .deposit_action_button.requires_reveal {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.deposit .deposit_action_button.requires_reveal .MuiSvgIcon-root,
+.deposit .deposit_action_button.requires_reveal .deposit_action_count,
+.deposit .deposit_action_button.requires_reveal .action_count {
+  opacity: 0.85;
+}
+
+.deposit .deposit_action_group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.deposit .addreaction_icon_button {
+  min-width: auto;
+  padding-right: 4px;
+}
+
+.deposit .reactionsummary_button {
+  min-width: auto;
+  padding-left: 0;
+}
+
+.deposit .deposit_date {
+}
+
+.deposit .deposit_user {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.deposit .deposit_user span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deposit_song {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  background-color: var(--mm-color-primary-light);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+
+  --deposit-reveal-settle-delay: 600ms;
+  --deposit-reveal-settle-duration: 340ms;
+
+  transition: 
+    height 1s;
+}
+
+
+.deposit_song > * {
+  position: relative;
+  z-index: 1;
+}
+
+.deposit_reveal_fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: rgb(0 0 0 / 12%);
+  transform-origin: left center;
+  transform: scaleX(var(--deposit-reveal-progress, 0));
+}
+
+.deposit_song.has_accent_color {
+  background-color: color-mix(in srgb, var(--deposit-accent) 15%, #fff 85%);
+}
+
+
+
+
+
+
+
+.my_deposit.deposit_song {
+  border-radius: var(--mm-radius-md);
+}
+
+.my_deposit {
+  background-color: var(--mm-color-surface);
+}
+
+.deposit .cover_media {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+  transition: margin 1s;
+}
+
+.deposit_song:not(.is_hidden) .cover_media{
+  margin:16px;
+}
+
+
+.deposit .img_container {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--mm-radius-sm);
+  box-shadow: 0 0.4rem 0.6rem rgb(0 0 0 / 15%);
+  aspect-ratio: 1 / 1;
+  transform: translateZ(0);
+}
+
+.img_container img,
+.img_container .cover_image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  transform: translateZ(0);
+  transition: filter var(--deposit-reveal-settle-duration) ease-in var(--deposit-reveal-settle-delay);
+  will-change: filter;
+}
+
+.img_container .cover_image.is_blurred {
+  filter: blur(6px);
+}
+
+
+.deposit .cover_media {
+  width: 33%;
+}
+
+.deposit .texts {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  flex:1;
+
+  //  color : var(--mm-color-black);
+}
+
+
+.deposit .texts {
+  text-align: left;
+}
+
+.deposit .interact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+
+.deposit .interact {
+  justify-content: left;
+}
+
+.deposit .texts .titre,
+.deposit .texts .artist,
+.deposit .interact button.play {
+  opacity: 0;
+  transform-origin: left center;
+  transform: scale(0.88);
+  animation: depositListPopIn 420ms ease-in forwards;
+  will-change: transform, opacity;
+}
+
+.deposit .texts .titre {
+  animation-delay: 0ms;
+}
+
+.deposit .texts .artist {
+  animation-delay: 200ms;
+}
+
+.deposit .interact button.play {
+  animation-delay: 400ms;
+}
+
+.deposit .deposit_song.is_hidden .interact {
+  justify-content: center;
+}
+
+.deposit .deposit_song.is_hidden .decouvrir {
+  max-width: 100%;
+  min-height: 48px;
+  height: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 12px;
+  width: 100%;
+}
+
+@keyframes depositRevealNudge {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  28% {
+    transform: scale(1.12) rotate(-2.5deg);
+  }
+
+  55% {
+    transform: scale(1.13) rotate(2.5deg);
+  }
+
+  78% {
+    transform: scale(1.14) rotate(-1.5deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.deposit .deposit_song.is_hidden.is_reveal_nudging .decouvrir {
+  animation: depositRevealNudge 420ms ease-out;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deposit .deposit_song.is_hidden.is_reveal_nudging .decouvrir {
+    animation: none;
+  }
+}
+
+.deposit .decouvrir {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.deposit .decouvrir {
+  display: flex;
+  flex-direction: inherit;
+  width: auto;
+  min-width: auto;
+  height: auto;
+}
+
+.deposit .points_container {
+  margin: 0;
+}
+
+.deposit .emojis {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.deposit .emojis .emoji_shell {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  transition:
+    left var(--emoji-settle-duration, var(--deposit-reveal-settle-duration)) ease-in var(--emoji-settle-delay, var(--deposit-reveal-settle-delay)),
+    top var(--emoji-settle-duration, var(--deposit-reveal-settle-duration)) ease-in var(--emoji-settle-delay, var(--deposit-reveal-settle-delay)),
+    opacity 180ms ease;
+  will-change: left, top;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.deposit .emojis .emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  line-height: 1;
+  text-shadow: var(--mm-shadow-high);
+  transform-origin: center center;
+  animation: emojiFloat var(--float-duration, 6s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+  will-change: transform;
+}
+
+.deposit .emojis.is_revealed .emoji_shell {
+  left: var(--emoji-target-left);
+  top: var(--emoji-target-top);
+}
+
+
+@keyframes emojiFloat {
+  0% {
+    transform: translate(0, 0) rotate(calc(var(--rot-max, 5deg) * -0.45))
+      scale(var(--scale-min, 0.95));
+  }
+
+  20% {
+    transform: translate(var(--x1, 6px), var(--y1, -4px))
+      rotate(calc(var(--rot-max, 5deg) * 0.35)) scale(var(--scale-max, 1.05));
+  }
+
+  40% {
+    transform: translate(var(--x2, -5px), var(--y2, 5px))
+      rotate(calc(var(--rot-max, 5deg) * -0.25)) scale(1);
+  }
+
+  60% {
+    transform: translate(var(--x3, 4px), var(--y3, 8px))
+      rotate(calc(var(--rot-max, 5deg) * 0.5)) scale(var(--scale-min, 0.95));
+  }
+
+  80% {
+    transform: translate(var(--x4, -7px), var(--y4, -3px))
+      rotate(calc(var(--rot-max, 5deg) * -0.2)) scale(var(--scale-max, 1.05));
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(calc(var(--rot-max, 5deg) * -0.45))
+      scale(var(--scale-min, 0.95));
+  }
+}
+
+.pinned_song_section,
+.favorite_song_section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pinned_song_container,
+.favorite_song_container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: var(--mm-color-primary-light);
+  text-align: center;
+}
+
+.pinned_song_container .slot,
+.favorite_song_container .slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: var(--mm-border-default);
+  border-radius: var(--mm-radius-lg);
+  background-color: var(--mm-color-surface);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.favorite_song_actions {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}

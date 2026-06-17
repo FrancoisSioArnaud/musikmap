@@ -1,0 +1,10 @@
+.profile .status {
+  padding: 12px 16px;
+  border-radius: var(--mm-radius-sm);
+  background-color: var(--mm-color-primary-light);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+

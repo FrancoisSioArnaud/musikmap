@@ -1,0 +1,11 @@
+/*************************************************************************************
+  Import tous les fichiers _name.scss liés au layout.
+  NE PAS APPLIQUER DES STYLES ICI.
+****************************************************************************************/
+
+@use 'header';
+@use 'footer';
+@use 'sidebars';
+@use 'main';
+@use 'homepage';
+@use 'intro';
