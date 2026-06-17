@@ -1,9 +1,229 @@
-const { resolveOrderAfterTransaction, applyTransactionAndResolve, projectEventLog } = require('./orderResolution');
+const { applyEvent, applyTransaction } = require('./applyEvent');
+const {
+  resolveOrderAfterTransaction,
+  applyTransactionAndResolve,
+  projectEventLog,
+  cardTarget,
+  getCardsByInstrument,
+  getInstrumentIdForCard,
+  identifyAnchors,
+  isCardActive,
+  isCardLocked,
+  isCardPlayed,
+  sortCardsByCurrentResolvedOrder,
+  targetKey,
+} = require('./orderResolution');
+const { projectJamState } = require('./projectJamState');
 
 const ids = (state) => state.cards.map((card) => card.id);
 const c = (id, extra = {}) => ({ id, round: 0, appearanceIndex: 0, baseOrder: 0, ...extra });
 
 describe('orderResolution', () => {
+  test("ajout après des cards jouées du round 2 conserve le préfixe frozen", () => {
+    const initial = { cards: [
+      c('A', { round: 0, appearanceIndex: 0 }),
+      c('B', { round: 0, appearanceIndex: 1 }),
+      c('C', { round: 0, appearanceIndex: 2 }),
+      c("A'", { round: 1, appearanceIndex: 0 }),
+      c("B'", { round: 1, appearanceIndex: 1 }),
+      c("C'", { round: 1, appearanceIndex: 2 }),
+    ] };
+    const eventLog = [
+      { events: [{ type: 'plateau_played', payload: { cardIds: ['A', 'B', 'C', "A'"] } }] },
+      { events: [{ type: 'participation_added', payload: { newAppearanceIds: ['D', "D'"] } }] },
+    ];
+    const apply = (state, event) => {
+      if (event.type === 'plateau_played') {
+        return { ...state, cards: state.cards.map((card) => event.payload.cardIds.includes(card.id) ? { ...card, played: true } : card) };
+      }
+      if (event.type === 'participation_added') {
+        return { ...state, cards: [...state.cards, c('D', { round: 0, appearanceIndex: 3 }), c("D'", { round: 1, appearanceIndex: 3 })] };
+      }
+      return state;
+    };
+
+    const projected = projectEventLog(initial, eventLog, apply);
+
+    expect(ids(projected)).toEqual(['A', 'B', 'C', "A'", 'D', "B'", "C'", "D'"]);
+    expect(projected.cards.slice(0, 4).map((card) => card.playedAtPlateauIndex)).toEqual([0, 1, 2, 3]);
+    expect(projected.cards.slice(0, 4).map((card) => card.resolvedPlateauIndex)).toEqual([0, 1, 2, 3]);
+  });
+
+  test("ajout autour d’une card locked ne décale pas A'", () => {
+    const state = { cards: [
+      c('A', { round: 0, appearanceIndex: 0 }),
+      c('B', { round: 0, appearanceIndex: 1 }),
+      c('C', { round: 0, appearanceIndex: 2 }),
+      c("A'", { round: 1, appearanceIndex: 0, locked: true, lockedAtPlateauIndex: 3 }),
+      c("B'", { round: 1, appearanceIndex: 1 }),
+      c("C'", { round: 1, appearanceIndex: 2 }),
+      c('D', { round: 0, appearanceIndex: 3 }),
+    ] };
+
+    const resolved = resolveOrderAfterTransaction(state, { events: [{ type: 'participation_added', payload: { newAppearanceIds: ['D'] } }] });
+
+    expect(resolved.cards.find((card) => card.id === "A'").resolvedPlateauIndex).toBe(3);
+    expect(ids(resolved).indexOf('D')).toBeGreaterThan(ids(resolved).indexOf("A'"));
+  });
+
+  test("played ne bouge pas lors d’un drag autour de A'", () => {
+    const state = { cards: [
+      c('A', { round: 0, appearanceIndex: 0 }),
+      c('B', { round: 0, appearanceIndex: 1 }),
+      c('C', { round: 0, appearanceIndex: 2 }),
+      c("A'", { round: 1, appearanceIndex: 0, played: true, playedAtPlateauIndex: 3 }),
+      c("B'", { round: 1, appearanceIndex: 1, manualOrder: -1 }),
+    ] };
+
+    const resolved = resolveOrderAfterTransaction(state, { events: [{ type: 'appearance_moved_between', payload: { appearanceId: "B'", beforeTargetId: "A'" } }] });
+
+    expect(resolved.cards.find((card) => card.id === "A'").resolvedPlateauIndex).toBe(3);
+  });
+
+  test("locked ne bouge pas lors d’un drag autour de A'", () => {
+    const state = { cards: [
+      c('A', { round: 0, appearanceIndex: 0 }),
+      c('B', { round: 0, appearanceIndex: 1 }),
+      c('C', { round: 0, appearanceIndex: 2 }),
+      c("A'", { round: 1, appearanceIndex: 0, locked: true, lockedAtPlateauIndex: 3 }),
+      c("B'", { round: 1, appearanceIndex: 1, manualOrder: -1 }),
+    ] };
+
+    const resolved = resolveOrderAfterTransaction(state, { events: [{ type: 'appearance_moved_between', payload: { appearanceId: "B'", beforeTargetId: "A'" } }] });
+
+    expect(resolved.cards.find((card) => card.id === "A'").resolvedPlateauIndex).toBe(3);
+  });
+
+  test('replay déterministe avec reveal, played, ajout, lock et drag', () => {
+    const initial = { cards: [
+      c('A', { round: 0, appearanceIndex: 0 }),
+      c('B', { round: 0, appearanceIndex: 1 }),
+      c("A'", { round: 1, appearanceIndex: 0 }),
+    ] };
+    const eventLog = [
+      { events: [{ type: 'round_revealed', payload: { round: 1 } }] },
+      { events: [{ type: 'plateau_played', payload: { cardIds: ['A'] } }] },
+      { events: [{ type: 'participation_added', payload: { newAppearanceIds: ['D'] } }] },
+      { events: [{ type: 'lock_toggled', payload: { appearanceId: "A'", locked: true } }] },
+      { events: [{ type: 'appearance_moved_between', payload: { appearanceId: 'D', manualOrder: -1 } }] },
+    ];
+    const apply = (state, event) => {
+      if (event.type === 'plateau_played') {
+        return { ...state, cards: state.cards.map((card) => event.payload.cardIds.includes(card.id) ? { ...card, played: true } : card) };
+      }
+      if (event.type === 'participation_added') {
+        return { ...state, cards: [...state.cards, c('D', { round: 0, appearanceIndex: 2 })] };
+      }
+      if (event.type === 'lock_toggled') {
+        return { ...state, cards: state.cards.map((card) => card.id === event.payload.appearanceId ? { ...card, locked: event.payload.locked } : card) };
+      }
+      if (event.type === 'appearance_moved_between') {
+        return { ...state, cards: state.cards.map((card) => card.id === event.payload.appearanceId ? { ...card, manualOrder: event.payload.manualOrder } : card) };
+      }
+      return state;
+    };
+
+    expect(projectEventLog(initial, eventLog, apply)).toEqual(projectEventLog(initial, eventLog, apply));
+  });
+
+  test('participant_updated reste un fait métier et ne change pas l’ordre', () => {
+    const state = { cards: [c('A', { resolvedOrder: 0 }), c('B', { resolvedOrder: 1 })], participants: [{ id: 'p1', name: 'Ana' }] };
+
+    const next = applyEvent(state, { type: 'participant_updated', payload: { participantId: 'p1', name: 'Anne' } });
+
+    expect(ids(next)).toEqual(['A', 'B']);
+    expect(next.participants).toEqual([{ id: 'p1', participantId: 'p1', name: 'Anne' }]);
+  });
+
+  test('link_created crée une contrainte et laisse l’ordre final au resolver', () => {
+    const initial = { cards: [c('B', { manualOrder: 0 }), c('A', { manualOrder: 1 })] };
+    const transaction = { events: [{ type: 'link_created', payload: { sourceId: 'A', targetId: 'B', anchorTarget: 'A', strategy: 'same_plateau_index' } }] };
+
+    const factOnly = applyTransaction(initial, transaction);
+    const resolved = resolveOrderAfterTransaction(factOnly, { transaction });
+
+    expect(ids(factOnly)).toEqual(['B', 'A']);
+    expect(factOnly.links).toEqual([{ id: 'A:B', sourceId: 'A', targetId: 'B', anchorTarget: 'A', anchorTargetId: undefined, strategy: 'same_plateau_index', status: 'active' }]);
+    expect(ids(resolved)).toEqual(['A', 'B']);
+  });
+
+  test('conflict_created crée une contrainte et le resolver applique le conflit', () => {
+    const initial = {
+      cards: [c('B', { manualOrder: 10 }), c('A', { manualOrder: 20 })],
+      links: [{ sourceId: 'A', targetId: 'B' }],
+    };
+    const transaction = { events: [{ type: 'conflict_created', payload: { sourceId: 'A', targetId: 'B' } }] };
+
+    const factOnly = applyTransaction(initial, transaction);
+    const resolved = resolveOrderAfterTransaction(factOnly, { transaction });
+
+    expect(ids(factOnly)).toEqual(['B', 'A']);
+    expect(factOnly.conflicts).toEqual([{ id: 'A:B', sourceId: 'A', targetId: 'B', anchorTargetId: undefined, status: 'active' }]);
+    expect(ids(resolved)).toEqual(['B', 'A']);
+    expect(resolved.orderWarnings).toEqual([{ code: 'LINK_CONFLICT_DIRECT', cardIds: ['A', 'B'] }]);
+  });
+
+  test('appearance_moved_between enregistre une intention puis le resolver finalise l’ordre', () => {
+    const initial = { cards: [c('B', { manualOrder: 0 }), c('A', { manualOrder: 10 })] };
+    const transaction = { events: [{ type: 'appearance_moved_between', payload: { appearanceId: 'A', beforeTargetId: 'B', manualOrder: -1 } }] };
+
+    const factOnly = applyTransaction(initial, transaction);
+    const resolved = resolveOrderAfterTransaction(factOnly, { transaction });
+
+    expect(ids(factOnly)).toEqual(['B', 'A']);
+    expect(factOnly.cards[1].manualOrderIntent).toEqual({ targetId: 'A', beforeTargetId: 'B', afterTargetId: undefined, anchorTargetId: 'A' });
+    expect(ids(resolved)).toEqual(['A', 'B']);
+  });
+
+  test('projectJamState rejoue le même event log sans interaction UX avec le même ordre final', () => {
+    const initial = { cards: [c('C', { manualOrder: 2 }), c('A', { manualOrder: 0 }), c('B', { manualOrder: 1 })] };
+    const eventLog = [
+      { events: [{ type: 'appearance_moved_between', payload: { appearanceId: 'C', manualOrder: -1 } }] },
+      { events: [{ type: 'link_created', payload: { sourceId: 'C', targetId: 'A', anchorTarget: 'C' } }] },
+      { events: [{ type: 'plateau_played', payload: { cardIds: ['C'] } }] },
+    ];
+
+    const first = projectJamState(initial, eventLog);
+    const second = projectJamState(initial, eventLog);
+
+    expect(first).toEqual(second);
+    expect(first.columns).toEqual(second.columns);
+    expect(first.columns[0].cards.map((card) => card.id)).toEqual(['C', 'A', 'B']);
+  });
+
+  test('helpers exposent des cibles, instruments et tris stables', () => {
+    const state = { cards: [
+      c('B', { columnId: 'chant', resolvedOrder: 2 }),
+      c('A', { columnId: 'chant', resolvedOrder: 1 }),
+      c('C', { columnId: 'guitare', status: 'hidden' }),
+    ] };
+
+    expect(cardTarget(state.cards[0])).toEqual({ type: 'card', id: 'B' });
+    expect(targetKey(cardTarget(state.cards[0]))).toBe('B');
+    expect(getInstrumentIdForCard(state.cards[0])).toBe('chant');
+    expect(getCardsByInstrument(state).chant.map((card) => card.id)).toEqual(['B', 'A']);
+    expect(sortCardsByCurrentResolvedOrder(state.cards).map((card) => card.id)).toEqual(['A', 'B', 'C']);
+    expect(isCardActive(state.cards[0])).toBe(true);
+    expect(isCardActive(state.cards[2])).toBe(false);
+    expect(isCardPlayed({ status: 'played' })).toBe(true);
+    expect(isCardLocked({ lockedAt: 1 })).toBe(true);
+  });
+
+  test('identifyAnchors prépare les events anchor demandés par le replay', () => {
+    const transaction = { events: [
+      { type: 'appearance_moved_between', payload: { appearanceId: 'A' } },
+      { type: 'hole_moved', payload: { holeId: 'H' } },
+      { type: 'link_created', payload: { anchorTarget: { id: 'L' } } },
+      { type: 'conflict_created', payload: { anchorTargetId: 'C' } },
+      { type: 'participation_added', payload: { newAppearanceIds: ['P', 'P2'] } },
+      { type: 'hole_added', payload: { holeId: 'HA' } },
+      { type: 'appearance_skipped', payload: { appearanceId: 'S' } },
+      { type: 'plateau_played', payload: { cardIds: ['PL'] } },
+    ] };
+
+    expect([...identifyAnchors({ transaction })].sort()).toEqual(['A', 'C', 'H', 'HA', 'L', 'P', 'PL', 'S']);
+  });
+
   test('replay identique deux fois', () => {
     const initial = { cards: [c('B', { manualOrder: 2 }), c('A', { manualOrder: 1 })] };
     const tx = { events: [{ type: 'card_moved', payload: { cardId: 'B' } }] };

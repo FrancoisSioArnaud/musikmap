@@ -9,6 +9,23 @@ class ResizeObserverMock {
 
 global.ResizeObserver = global.ResizeObserver || ResizeObserverMock;
 
+class WorkerMock {
+  postMessage() {}
+  terminate() {}
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+global.Worker = global.Worker || WorkerMock;
+global.URL.createObjectURL = global.URL.createObjectURL || jest.fn(() => "blob:mock");
+global.URL.revokeObjectURL = global.URL.revokeObjectURL || jest.fn();
+
+HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
+  drawImage: jest.fn(),
+  getImageData: jest.fn(() => ({ data: [] })),
+  putImageData: jest.fn(),
+}));
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation((query) => ({

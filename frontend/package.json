@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
-    "test": "jest --runInBand",
+    "test": "node runJest.js",
     "test:watch": "jest --watch",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix"
