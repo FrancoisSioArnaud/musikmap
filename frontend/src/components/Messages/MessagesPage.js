@@ -1,0 +1,351 @@
+import Alert from "@mui/material/Alert";
+import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Drawer from "@mui/material/Drawer";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import { useTheme } from "@mui/material/styles";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { startAuthPageFlow } from "../Auth/AuthFlow";
+import UserInline from "../Common/UserInline";
+import { UserContext } from "../UserContext";
+import { closeDrawerWithHistory, getDrawerParamValue, openDrawerWithHistory } from "../Utils/drawerHistory";
+import { formatRelativeTime } from "../Utils/time";
+
+import Conversation from "./Conversation";
+
+const normalize = (value) => (value || "").trim().toLowerCase();
+
+function getItemsForTab(summary, tab) {
+  if (tab !== "invitations") {
+    return summary?.conversations || [];
+  }
+
+  const received = (summary?.received_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "received",
+  }));
+  const sent = (summary?.sent_requests || []).map((item) => ({
+    ...item,
+    invitation_kind: "sent",
+  }));
+  return [...received, ...sent];
+}
+
+function MessageRow({ item, active, onClick, showInvitationStatus = false }) {
+  const preview = item?.last_message?.text_preview || "";
+
+  return (
+    <ListItemButton selected={active} onClick={onClick} sx={{ justifyContent: "space-between" }}>
+      <UserInline
+        user={item?.other_user}
+        subtitle={preview}
+        avatarSize={32}
+        interactive={false}
+      />
+      <Typography variant="caption">
+        {formatRelativeTime(item?.last_message?.created_at || item?.updated_at)}
+      </Typography>
+      {showInvitationStatus ? (
+        <Typography variant="caption" sx={{ ml: 1, opacity: "var(--mm-opacity-light-text)" }}>
+          {item?.invitation_kind === "sent" ? "Envoyée · En attente de réponse" : "À répondre"}
+        </Typography>
+      ) : null}
+    </ListItemButton>
+  );
+}
+
+function TabLabelWithBadge({ label, count }) {
+  if (!count) {return label;}
+  return (
+    <Badge color="primary" badgeContent={count}>
+      <Box component="span" sx={{ pr: 1 }}>{label}</Box>
+    </Badge>
+  );
+}
+
+export default function MessagesPage() {
+  const { user } = useContext(UserContext) || {};
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [summary, setSummary] = useState({
+    received_requests: [],
+    sent_requests: [],
+    conversations: [],
+    unread_conversations_count: 0,
+    pending_invitations_count: 0,
+  });
+  const [activeTab, setActiveTab] = useState("conversations");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const selectedThreadUsername = getDrawerParamValue(location, "thread");
+  const isGuest = Boolean(user?.is_guest);
+  const hasAccountAccess = Boolean(user?.id) && !isGuest;
+
+  const loadSummary = useCallback(async () => {
+    if (!hasAccountAccess) {
+      return;
+    }
+    const res = await fetch("/messages/summary", { credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data?.detail || "Erreur chargement messages");
+    }
+
+    setSummary(data);
+  }, [hasAccountAccess]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!hasAccountAccess) {
+      setLoading(false);
+      setError("");
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setLoading(true);
+    loadSummary()
+      .catch((e) => mounted && setError(e.message))
+      .finally(() => mounted && setLoading(false));
+
+    return () => {
+      mounted = false;
+    };
+  }, [hasAccountAccess, loadSummary]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (hasAccountAccess && document.visibilityState === "visible") {
+        loadSummary().catch(() => {});
+      }
+    }, 12000);
+
+    return () => window.clearInterval(id);
+  }, [hasAccountAccess, loadSummary]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileDrawerOpen(false);
+      return;
+    }
+
+    setMobileDrawerOpen(Boolean(selectedThreadUsername));
+  }, [isMobile, selectedThreadUsername]);
+
+  useEffect(() => {
+    if (!selectedThreadUsername) {
+      return;
+    }
+
+    const inInvitations = (summary?.received_requests || []).some(
+      (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
+    );
+    const inSentInvitations = (summary?.sent_requests || []).some(
+      (i) => normalize(i?.other_user?.username) === normalize(selectedThreadUsername),
+    );
+
+    setActiveTab(inInvitations || inSentInvitations ? "invitations" : "conversations");
+  }, [selectedThreadUsername, summary]);
+
+  const displayedItems = useMemo(
+    () => getItemsForTab(summary, activeTab),
+    [activeTab, summary],
+  );
+
+  const refreshSummaryAfterThreadMutation = useCallback(() => {
+    loadSummary().catch(() => {});
+  }, [loadSummary]);
+
+  const handleCloseMobileDrawer = useCallback(() => {
+    if (
+      !closeDrawerWithHistory({
+        navigate,
+        location,
+        param: "thread",
+        value: selectedThreadUsername,
+      })
+    ) {
+      setMobileDrawerOpen(false);
+    }
+  }, [location, navigate, selectedThreadUsername]);
+
+  const handleSelectItem = useCallback(
+    (item) => {
+      const username = item?.other_user?.username;
+
+      if (!username) {
+        return;
+      }
+
+      if (!isMobile) {
+        navigate(`/messages?thread=${encodeURIComponent(username)}`);
+        return;
+      }
+
+      if (
+        !openDrawerWithHistory({
+          navigate,
+          location,
+          param: "thread",
+          value: username,
+        })
+      ) {
+        setMobileDrawerOpen(true);
+      }
+    },
+    [isMobile, location, navigate],
+  );
+
+  if (!user?.id) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info">Connecte-toi pour accéder à tes messages.</Alert>
+      </Box>
+    );
+  }
+
+  if (isGuest) {
+    return (
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Typography variant="h3">Crée ton compte pour accéder aux messages.</Typography>
+        <Typography>
+          Les messages sont réservés aux utilisateurs ayant un compte pour que les autres utilisateurs sachent à qui ils parlent.
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="contained"
+            onClick={() =>
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "register",
+                authContext: "account",
+                mergeGuest: true,
+              })
+            }
+          >
+            Créer mon compte
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              startAuthPageFlow({
+                navigate,
+                location,
+                tab: "login",
+                authContext: "account",
+                mergeGuest: true,
+              })
+            }
+          >
+            Me connecter
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ }}>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "320px 1fr" },
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Tabs value={activeTab} onChange={(_, n) => setActiveTab(n)}>
+              <Tab
+                value="conversations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Conversations"
+                    count={summary?.unread_conversations_count || 0}
+                  />
+                )}
+              />
+              <Tab
+                value="invitations"
+                label={(
+                  <TabLabelWithBadge
+                    label="Invitations"
+                    count={summary?.pending_invitations_count || 0}
+                  />
+                )}
+              />
+            </Tabs>
+
+            <List>
+              {displayedItems.map((item) => (
+                <MessageRow
+                  key={`${activeTab}-${item.id}`}
+                  item={item}
+                  active={
+                    normalize(item?.other_user?.username) ===
+                    normalize(selectedThreadUsername)
+                  }
+                  showInvitationStatus={activeTab === "invitations"}
+                  onClick={() => handleSelectItem(item)}
+                />
+              ))}
+            </List>
+
+            {error ? <Alert severity="error">{error}</Alert> : null}
+          </Box>
+
+          {!isMobile ? (
+            <Box>
+              {selectedThreadUsername ? (
+                <Conversation
+                  username={selectedThreadUsername}
+                  viewer={user}
+                  onThreadUpdated={refreshSummaryAfterThreadMutation}
+                />
+              ) : (
+                <Typography>Sélectionne une discussion.</Typography>
+              )}
+            </Box>
+          ) : null}
+        </Box>
+      )}
+
+      <Drawer
+        anchor="right"
+        open={mobileDrawerOpen}
+        onClose={handleCloseMobileDrawer}
+        PaperProps={{ sx: { width: "100vw", maxWidth: "100vw" } }}
+      >
+        <Box sx={{ p: 2, height: "100%" }}>
+          {selectedThreadUsername ? (
+            <Conversation
+              username={selectedThreadUsername}
+              viewer={user}
+              isInDrawer
+              onClose={handleCloseMobileDrawer}
+              onThreadUpdated={refreshSummaryAfterThreadMutation}
+            />
+          ) : null}
+        </Box>
+      </Drawer>
+    </Box>
+  );
+}

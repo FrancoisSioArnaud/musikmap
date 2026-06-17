@@ -1,0 +1,147 @@
+// frontend/src/clientThemes.js
+
+export const CURRENT_CLIENT_STORAGE_KEY = "mm_current_client";
+
+export const CLIENT_THEMES = {
+  default: {
+    slug: "default",
+    fonts: {
+      h1: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h3: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h4: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      h5: '"Exo 2", Roboto, open-sans, system-ui, -apple-system, "Segoe UI", sans-serif',
+      subtitle1: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body1: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body2: '"Exo 2", open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    },
+    colors: {
+      black: "#000000",
+      white: "#FFFFFF",
+      text: "#000103",
+      primaryContrastText: "#FFFFFF",
+
+      primary: "#FF5B00",
+      primaryLight: "#ffefe7",
+      primaryDark: "#922a00",
+     
+      secondary: "#73beff",
+      secondaryLight: "rgba(12,0,92,0.04)",
+      
+      bgGradient:
+        "linear-gradient(48.71deg, rgb(255,255,255) 100%, rgb(253,252,253) 100%)",
+
+      spotify: "#1ED760",
+      deezer: "#9C42F3",
+
+      // tokens UI pratiques
+      appBg: "#FFFFFF",
+      surface: "#FFFFFF",
+      
+      
+      success: "#0FCC0A",
+      error: "#FB0000",
+      divider: "rgba(0,0,0,0.12)",
+      
+      appBarBg: "#FFFFFF",
+      appBarBorder: "1px solid rgba(255,255,255,0.12)",
+      avatarBorder: "2px solid rgba(0,0,0,0.04)",
+    },
+    radius: {
+      xs: "8px",
+      sm: "8px",
+      md: "16px",
+      lg: "24px",
+      xl: "32px",
+      button: "18px",
+      round: "999px",
+    },
+    border:{
+      default: "1px solid #e6f0ea",
+      paper: "1px solid #e6f0ea",
+    },
+    shadow: {
+      high: "0px 5px 3px rgba(0 0 0 / 20%)",
+      card: "0px 4px 8px -4px rgba(0 0 0 / 20%)",
+    },
+    padding:{
+      pageSide: "26px",
+    },
+    opacity:{
+      lightText: "0.7",
+    }
+  },
+
+  semitan: {
+    slug: "semitan",
+    fonts: {
+      h1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h3: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h4: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      h5: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      subtitle1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body1: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      body2: 'Manrope, open-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    
+    },
+    colors: {
+      primaryContrastText: "#000",
+      primary: "#78d700",
+      primaryLight: "#e6f0ea",
+      primaryDark: "linear-gradient(80deg,#002300 35%,#034003)",
+
+      secondary: "#73beff",
+      secondaryLight: "#e3f2ff",
+
+      success: "#78d700",
+
+    },
+    radius: {
+
+      xs: "8px",
+      sm: "8px",
+      md: "16px",
+      lg: "25px",
+      xl: "32px",
+      button: "14px",
+      round: "999px",
+ 
+    },
+  },
+};
+
+function mergeClientTheme(baseTheme, clientTheme) {
+  return {
+    ...baseTheme,
+    ...clientTheme,
+    fonts: {
+      ...baseTheme.fonts,
+      ...(clientTheme?.fonts || {}),
+    },
+    colors: {
+      ...baseTheme.colors,
+      ...(clientTheme?.colors || {}),
+    },
+    radius: {
+      ...baseTheme.radius,
+      ...(clientTheme?.radius || {}),
+    },
+  };
+}
+
+export function getClientTheme(clientSlug) {
+  const baseTheme = CLIENT_THEMES.default;
+  if (!clientSlug || clientSlug === "default") {return baseTheme;}
+
+  const clientTheme = CLIENT_THEMES[clientSlug];
+  if (!clientTheme) {return baseTheme;}
+
+  return mergeClientTheme(baseTheme, clientTheme);
+}
+
+export function getStoredCurrentClient() {
+  try {
+    return localStorage.getItem(CURRENT_CLIENT_STORAGE_KEY) || "default";
+  } catch (error) {
+    return "default";
+  }
+}
