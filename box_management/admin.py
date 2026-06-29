@@ -18,6 +18,7 @@ from .models import (
     Box,
     BoxSession,
     Client,
+    ColorProfile,
     Comment,
     CommentAttemptLog,
     CommentModerationDecision,
@@ -32,7 +33,15 @@ from .models import (
     Reaction,
     Song,
     Sticker,
+    StickerTemplate,
 )
+
+
+class StickerTemplateClientInline(admin.TabularInline):
+    model = StickerTemplate.clients.through
+    extra = 1
+    verbose_name = "Template sticker"
+    verbose_name_plural = "Templates sticker"
 
 
 @admin.register(Client)
@@ -40,6 +49,7 @@ class ClientAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_display = ("name", "slug", "background_picture", "created_at", "updated_at")
     search_fields = ("name", "slug")
     ordering = ("name",)
+    inlines = (StickerTemplateClientInline,)
     fieldsets = (
         (
             "Identité",
@@ -55,6 +65,42 @@ class ClientAdmin(ImportExportModelAdmin, admin.ModelAdmin):
             {"fields": ("background_picture",)},
         ),
     )
+
+
+@admin.register(ColorProfile)
+class ColorProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "color_space", "is_active", "is_default", "created_at", "updated_at")
+    list_filter = ("color_space", "is_active", "is_default")
+    search_fields = ("name", "slug")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Identité", {"fields": ("name", "slug", "color_space")}),
+        ("Profil ICC", {"fields": ("icc_file",)}),
+        ("Activation", {"fields": ("is_active", "is_default")}),
+        ("Dates", {"fields": ("created_at", "updated_at")}),
+    )
+
+
+@admin.register(StickerTemplate)
+class StickerTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "is_active", "client_count", "created_at", "updated_at")
+    list_filter = ("is_active", "clients")
+    search_fields = ("name", "slug", "clients__name", "clients__slug")
+    filter_horizontal = ("clients",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Identité", {"fields": ("name", "slug", "is_active")}),
+        ("Fichier SVG", {"fields": ("svg_file",)}),
+        ("Clients", {"fields": ("clients",)}),
+        ("Dates", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("clients")
+
+    @admin.display(description="Clients")
+    def client_count(self, obj):
+        return obj.clients.count()
 
 
 @admin.register(Box)
