@@ -132,6 +132,7 @@ STATIC_URL = "/static/"
 STATIC_ROOT = Path("/var/www/boite-a-groove/static")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path("/var/www/boite-a-groove/media")
+STICKER_GENERIC_CMYK_ICC_PROFILE_PATH = os.environ.get("STICKER_GENERIC_CMYK_ICC_PROFILE_PATH", "")
 FILE_UPLOAD_PERMISSIONS = 0o664
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o2775
 

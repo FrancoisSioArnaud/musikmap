@@ -1,16 +1,89 @@
 import re
 import secrets
+import xml.etree.ElementTree as ET
 from datetime import timedelta
 from typing import Union
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db import transaction
 from django.dispatch import receiver
 from django.utils import timezone
 
 from users.models import CustomUser
 from utils import generate_unique_filename
+
+
+def color_profile_upload_to(instance, filename):
+    filename = generate_unique_filename(instance, filename)
+    return f"color_profiles/{filename}"
+
+
+def validate_color_profile_file(uploaded_file):
+    name = str(getattr(uploaded_file, "name", "") or "")
+    if not name.lower().endswith((".icc", ".icm")):
+        raise ValidationError("Le profil couleur doit utiliser l’extension .icc ou .icm.")
+
+
+def sticker_template_upload_to(instance, filename):
+    filename = generate_unique_filename(instance, filename)
+    return f"sticker_templates/{filename}"
+
+
+def validate_sticker_template_svg_file(uploaded_file):
+    name = str(getattr(uploaded_file, "name", "") or "")
+    if not name.lower().endswith(".svg"):
+        raise ValidationError("Le fichier du template doit être un SVG avec l’extension .svg.")
+
+    position = None
+    if hasattr(uploaded_file, "tell") and hasattr(uploaded_file, "seek"):
+        position = uploaded_file.tell()
+        uploaded_file.seek(0)
+    raw = uploaded_file.read()
+    if position is not None:
+        uploaded_file.seek(position)
+    if isinstance(raw, str):
+        svg_text = raw
+    else:
+        try:
+            svg_text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValidationError("Le fichier SVG doit être lisible en UTF-8.") from exc
+
+    try:
+        root = ET.fromstring(svg_text)
+    except ET.ParseError as exc:
+        raise ValidationError("Le fichier SVG doit être un XML valide.") from exc
+
+    if root.tag.split("}")[-1].lower() != "svg":
+        raise ValidationError("La racine du fichier doit être un élément SVG.")
+
+    view_box = str(root.attrib.get("viewBox") or "").strip()
+    parts = re.split(r"[\s,]+", view_box) if view_box else []
+    try:
+        if len(parts) != 4 or float(parts[2]) <= 0 or float(parts[3]) <= 0:
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("Le SVG doit contenir un viewBox exploitable.") from exc
+
+    qr_zone = None
+    for element in root.iter():
+        if str(element.attrib.get("id") or "").strip() == "qr-zone":
+            qr_zone = element
+            break
+    if qr_zone is None:
+        raise ValidationError("Le SVG doit contenir un élément id=\"qr-zone\".")
+
+    for attr in ("x", "y", "width", "height"):
+        if attr not in qr_zone.attrib:
+            raise ValidationError("La zone QR doit définir x, y, width et height numériques.")
+        try:
+            value = float(str(qr_zone.attrib.get(attr)).replace("px", "").strip())
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("La zone QR doit définir x, y, width et height numériques.") from exc
+        if attr in ("width", "height") and value <= 0:
+            raise ValidationError("La zone QR doit avoir une largeur et une hauteur strictement positives.")
 
 
 class Client(models.Model):
@@ -1163,6 +1236,78 @@ class CommentAttemptLog(models.Model):
             models.Index(fields=["client", "reason_code", "created_at"]),
             models.Index(fields=["user", "reason_code", "created_at"]),
         ]
+
+
+class ColorProfile(models.Model):
+    COLOR_SPACE_CMYK = "CMYK"
+    COLOR_SPACE_CHOICES = ((COLOR_SPACE_CMYK, "CMYK"),)
+
+    name = models.CharField(max_length=120, unique=True)
+    slug = models.SlugField(max_length=120, unique=True)
+    color_space = models.CharField(max_length=16, choices=COLOR_SPACE_CHOICES)
+    icc_file = models.FileField(upload_to=color_profile_upload_to)
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_default = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["color_space", "is_active", "is_default"]),
+            models.Index(fields=["slug"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.color_space})"
+
+    def clean(self):
+        super().clean()
+        self.color_space = (self.color_space or "").strip().upper()
+        if not self.color_space:
+            raise ValidationError({"color_space": "L’espace couleur est obligatoire."})
+        if self.color_space != self.COLOR_SPACE_CMYK:
+            raise ValidationError({"color_space": "Seul l’espace couleur CMYK est supporté pour le moment."})
+        if self.icc_file:
+            validate_color_profile_file(self.icc_file)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        with transaction.atomic():
+            result = super().save(*args, **kwargs)
+            if self.is_active and self.is_default:
+                self.__class__.objects.filter(
+                    color_space=self.color_space,
+                    is_active=True,
+                    is_default=True,
+                ).exclude(pk=self.pk).update(is_default=False)
+            return result
+
+
+class StickerTemplate(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    slug = models.SlugField(max_length=120, unique=True)
+    svg_file = models.FileField(upload_to=sticker_template_upload_to)
+    clients = models.ManyToManyField(Client, related_name="sticker_templates", blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [models.Index(fields=["is_active"]), models.Index(fields=["slug"])]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        super().clean()
+        if self.svg_file:
+            validate_sticker_template_svg_file(self.svg_file)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class Sticker(models.Model):

@@ -10,3 +10,5 @@ django-import-export
 qrcode[pil]
 cairosvg
 reportlab
+
+pypdf

@@ -43,6 +43,7 @@ from box_management.api.views.stickers import (
     ClientAdminStickerGenerateView,
     ClientAdminStickerInstallView,
     ClientAdminStickerListView,
+    ClientAdminStickerTemplateListView,
     ClientAdminStickerUnassignView,
 )
 
@@ -99,6 +100,11 @@ urlpatterns = [
         "client-admin/stickers/",
         ClientAdminStickerListView.as_view(),
         name="client-admin-stickers-list",
+    ),
+    path(
+        "client-admin/stickers/templates/",
+        ClientAdminStickerTemplateListView.as_view(),
+        name="client-admin-sticker-templates",
     ),
     path(
         "client-admin/stickers/generate/",
