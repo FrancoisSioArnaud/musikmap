@@ -242,15 +242,80 @@ def build_stickers_zip_response(request, stickers, *, template, paper_size, file
     return response
 
 
-def build_pdf_wrapper_svg(sticker_svg_path, page_width_pt, page_height_pt):
-    href = Path(sticker_svg_path).as_uri()
-    return f'''<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="{SVG_NS}" width="{page_width_pt}pt" height="{page_height_pt}pt" viewBox="0 0 {page_width_pt} {page_height_pt}">\n  <image href="{href}" x="0" y="0" width="{page_width_pt}" height="{page_height_pt}" preserveAspectRatio="xMidYMid meet"/>\n</svg>'''
+def get_svg_viewbox(root):
+    parts = re.split(r"[\s,]+", str(root.attrib.get("viewBox") or "").strip())
+    if len(parts) != 4:
+        raise ValueError("Le SVG sticker doit contenir un viewBox exploitable.")
+    min_x, min_y, width, height = [float(part) for part in parts]
+    if width <= 0 or height <= 0:
+        raise ValueError("Le viewBox du SVG sticker doit définir une largeur et une hauteur positives.")
+    return min_x, min_y, width, height
+
+
+def build_pdf_wrapper_svg(sticker_svg_bytes, page_width_pt, page_height_pt):
+    sticker_root = ET.fromstring(sticker_svg_bytes)
+    _min_x, _min_y, svg_width, svg_height = get_svg_viewbox(sticker_root)
+    scale = min(page_width_pt / svg_width, page_height_pt / svg_height)
+    rendered_width = svg_width * scale
+    rendered_height = svg_height * scale
+    x = (page_width_pt - rendered_width) / 2
+    y = (page_height_pt - rendered_height) / 2
+
+    wrapper = ET.Element(
+        f"{{{SVG_NS}}}svg",
+        {
+            "width": f"{page_width_pt}pt",
+            "height": f"{page_height_pt}pt",
+            "viewBox": f"0 0 {page_width_pt} {page_height_pt}",
+        },
+    )
+    wrapper.set(f"xmlns:xlink", XLINK_NS)
+    sticker_root.set("x", str(x))
+    sticker_root.set("y", str(y))
+    sticker_root.set("width", str(rendered_width))
+    sticker_root.set("height", str(rendered_height))
+    sticker_root.set("preserveAspectRatio", "xMidYMid meet")
+    wrapper.append(sticker_root)
+    return ET.tostring(wrapper, encoding="utf-8", xml_declaration=True)
 
 
 def export_svg_to_pdf_with_inkscape(input_svg, output_pdf):
     if not shutil.which("inkscape"):
         raise RuntimeError("inkscape_missing")
-    subprocess.run(["inkscape", str(input_svg), "--export-type=pdf", f"--export-filename={output_pdf}", "--export-text-to-path"], check=True, capture_output=True)
+    try:
+        subprocess.run(
+            ["inkscape", str(input_svg), "--export-type=pdf", f"--export-filename={output_pdf}", "--export-text-to-path"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("inkscape_failed") from exc
+
+
+def _pdf_stream_bytes(contents):
+    if contents is None:
+        return b""
+    contents = contents.get_object()
+    if isinstance(contents, list):
+        return b"\n".join(item.get_object().get_data() for item in contents)
+    return contents.get_data()
+
+
+def assert_pdf_has_visible_content(pdf_path):
+    PdfReader, _PdfWriter = get_pypdf_writer()
+    reader = PdfReader(str(pdf_path))
+    if not reader.pages:
+        raise RuntimeError("inkscape_blank_pdf")
+    drawing_operators = {b"m", b"l", b"c", b"v", b"y", b"h", b"re", b"S", b"s", b"f", b"F", b"f*", b"B", b"B*", b"b", b"b*", b"Do", b"Tj", b"TJ", b"'", b'"'}
+    for page in reader.pages:
+        resources = page.get("/Resources")
+        content = _pdf_stream_bytes(page.get("/Contents"))
+        tokens = re.findall(rb"/?[A-Za-z0-9*'\"]+", content)
+        has_drawing_operator = any(token in drawing_operators for token in tokens)
+        if content.strip() and (has_drawing_operator or (resources and resources.get_object())):
+            return
+    raise RuntimeError("inkscape_blank_pdf")
 
 
 def build_stickers_pdf_bytes(request, stickers, *, template, paper_size, orientation):
@@ -264,12 +329,12 @@ def build_stickers_pdf_bytes(request, stickers, *, template, paper_size, orienta
         tmp_path = Path(tmp)
         for index, sticker in enumerate(stickers):
             sticker_svg, _w, _h = build_sticker_svg_bytes(sticker, template, request.build_absolute_uri(f"/s/{sticker.slug}"))
-            sticker_svg_path = tmp_path / f"sticker-{index}.svg"
             wrapper_svg_path = tmp_path / f"page-{index}.svg"
             page_pdf_path = tmp_path / f"page-{index}.pdf"
-            sticker_svg_path.write_bytes(sticker_svg)
-            wrapper_svg_path.write_text(build_pdf_wrapper_svg(sticker_svg_path, page_width_pt, page_height_pt), encoding="utf-8")
+            wrapper_svg = build_pdf_wrapper_svg(sticker_svg, page_width_pt, page_height_pt)
+            wrapper_svg_path.write_bytes(wrapper_svg)
             export_svg_to_pdf_with_inkscape(wrapper_svg_path, page_pdf_path)
+            assert_pdf_has_visible_content(page_pdf_path)
             for page in PdfReader(str(page_pdf_path)).pages:
                 writer.add_page(page)
         output = io.BytesIO()

@@ -10,7 +10,12 @@ from django.test import override_settings
 from django.urls import reverse
 
 from box_management.models import ColorProfile, StickerTemplate
-from box_management.services.stickers.export import resolve_cmyk_icc_profile_path
+from box_management.services.stickers.export import (
+    assert_pdf_has_visible_content,
+    build_pdf_wrapper_svg,
+    build_stickers_pdf_bytes,
+    resolve_cmyk_icc_profile_path,
+)
 
 from .base import ClientAdminTestCase
 
@@ -163,6 +168,117 @@ class ClientAdminStickerTemplateApiTests(ClientAdminTestCase):
         self.assertEqual(response.data["results"], [])
 
 
+class StickerPdfExportUnitTests(ClientAdminTestCase):
+    def setUp(self):
+        super().setUp()
+        self.client_a = self.make_client(name="PDF export client", slug="pdf-export-client")
+        self.owner = self.make_client_user(username="pdf-export-owner", client=self.client_a)
+        self.sticker = self.make_sticker(client=self.client_a, slug="55555555555")
+
+    def sticker_svg_bytes(self):
+        return (
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">'
+            b'<defs><style>.marker{fill:#000}</style></defs>'
+            b'<rect id="qr-zone" x="10" y="20" width="30" height="30" />'
+            b'<path id="visible-marker" class="marker" d="M0 0H100V20H0Z" />'
+            b'<image id="generated-qr" href="data:image/png;base64,AAAA" x="10" y="20" width="30" height="30" />'
+            b'</svg>'
+        )
+
+    def test_pdf_wrapper_is_inline_without_file_uri(self):
+        wrapper = build_pdf_wrapper_svg(self.sticker_svg_bytes(), 200, 300).decode("utf-8")
+
+        self.assertNotIn("file://", wrapper)
+        self.assertNotIn('<image href="file:', wrapper)
+        self.assertNotIn("as_uri", wrapper)
+        self.assertIn('id="qr-zone"', wrapper)
+        self.assertIn('id="generated-qr"', wrapper)
+        self.assertIn('id="visible-marker"', wrapper)
+
+    def test_pdf_wrapper_preserves_inline_svg_content(self):
+        wrapper = build_pdf_wrapper_svg(self.sticker_svg_bytes(), 100, 100).decode("utf-8")
+
+        self.assertIn('id="visible-marker"', wrapper)
+        self.assertIn('viewBox="0 0 100 200"', wrapper)
+        self.assertIn('preserveAspectRatio="xMidYMid meet"', wrapper)
+
+    @patch("box_management.services.stickers.export.get_pypdf_writer")
+    @patch("box_management.services.stickers.export.assert_pdf_has_visible_content")
+    @patch("box_management.services.stickers.export.export_svg_to_pdf_with_inkscape")
+    def test_build_stickers_pdf_bytes_writes_self_contained_wrapper(self, export_pdf, assert_content, get_pypdf):
+        template = self.make_sticker_template(clients=self.client_a, svg_content=self.sticker_svg_bytes().decode("utf-8"))
+        seen_wrappers = []
+
+        class FakeReader:
+            def __init__(self, _path):
+                self.pages = [object()]
+
+        class FakeWriter:
+            def __init__(self):
+                self.pages = []
+
+            def add_page(self, page):
+                self.pages.append(page)
+
+            def write(self, output):
+                output.write(b"pdf")
+
+        def fake_export(input_svg, output_pdf):
+            seen_wrappers.append(Path(input_svg).read_text(encoding="utf-8"))
+            Path(output_pdf).write_bytes(b"%PDF-1.4\n%test")
+
+        get_pypdf.return_value = (FakeReader, FakeWriter)
+        export_pdf.side_effect = fake_export
+        request = self.client.post("/").wsgi_request
+        build_stickers_pdf_bytes(request, [self.sticker], template=template, paper_size="A4", orientation="portrait")
+
+        self.assertEqual(len(seen_wrappers), 1)
+        self.assertIn('id="visible-marker"', seen_wrappers[0])
+        self.assertNotIn("file://", seen_wrappers[0])
+        self.assertNotIn("sticker-0.svg", seen_wrappers[0])
+        assert_content.assert_called_once()
+
+    @patch("box_management.services.stickers.export.get_pypdf_writer")
+    def test_assert_pdf_has_visible_content_rejects_blank_pdf(self, get_pypdf):
+        class BlankPage(dict):
+            def get(self, key):
+                return super().get(key)
+
+        class FakeReader:
+            def __init__(self, _path):
+                self.pages = [BlankPage({"/Contents": None, "/Resources": {}})]
+
+        get_pypdf.return_value = (FakeReader, object)
+
+        with self.assertRaisesRegex(RuntimeError, "inkscape_blank_pdf"):
+            assert_pdf_has_visible_content("blank.pdf")
+
+    @patch("box_management.services.stickers.export.get_pypdf_writer")
+    def test_assert_pdf_has_visible_content_accepts_non_empty_pdf(self, get_pypdf):
+        class FakeContents:
+            def get_object(self):
+                return self
+
+            def get_data(self):
+                return b"0 0 10 10 re f"
+
+        class FakeResources(dict):
+            def get_object(self):
+                return self
+
+        class NonEmptyPage(dict):
+            def get(self, key):
+                return super().get(key)
+
+        class FakeReader:
+            def __init__(self, _path):
+                self.pages = [NonEmptyPage({"/Contents": FakeContents(), "/Resources": FakeResources({"/ProcSet": []})})]
+
+        get_pypdf.return_value = (FakeReader, object)
+
+        assert_pdf_has_visible_content("non-empty.pdf")
+
+
 class ClientAdminStickerDownloadExportTests(ClientAdminTestCase):
     def setUp(self):
         self.client_a = self.make_client(name="Export A", slug="export-a")
@@ -257,6 +373,19 @@ class ClientAdminStickerDownloadExportTests(ClientAdminTestCase):
         response = self.post_download({"template_id": self.template.id, "file_type": "jpeg", "color_mode": "cmyk"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(build_zip.call_args.kwargs["file_type"], "jpeg")
+
+
+    @patch("box_management.api.views.stickers.build_stickers_pdf_response")
+    def test_inkscape_failed_returns_error(self, build_pdf):
+        build_pdf.side_effect = RuntimeError("inkscape_failed")
+        response = self.post_download({"template_id": self.template.id, "file_type": "pdf", "orientation": "portrait", "color_mode": "rgb"})
+        self.assert_api_error(response, 503, "INKSCAPE_FAILED")
+
+    @patch("box_management.api.views.stickers.build_stickers_pdf_response")
+    def test_inkscape_blank_pdf_returns_error(self, build_pdf):
+        build_pdf.side_effect = RuntimeError("inkscape_blank_pdf")
+        response = self.post_download({"template_id": self.template.id, "file_type": "pdf", "orientation": "portrait", "color_mode": "rgb"})
+        self.assert_api_error(response, 503, "INKSCAPE_BLANK_PDF")
 
     @patch("box_management.services.stickers.export.resolve_cmyk_icc_profile_path")
     @patch("box_management.services.stickers.export.convert_pdf_to_cmyk_with_ghostscript")

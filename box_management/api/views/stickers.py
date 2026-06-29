@@ -155,6 +155,8 @@ class ClientAdminStickerDownloadView(APIView):
                 "cairosvg_missing": "L’export de stickers nécessite la dépendance Python cairosvg côté serveur pour générer les PNG et JPEG.",
                 "cairosvg_system_missing": "L’export de stickers nécessite les bibliothèques système Cairo sur le serveur pour générer les PNG et JPEG.",
                 "inkscape_missing": "L’export PDF nécessite Inkscape côté serveur.",
+                "inkscape_failed": "La génération PDF via Inkscape a échoué.",
+                "inkscape_blank_pdf": "Inkscape a généré un PDF vide pour le sticker.",
                 "sticker_cmyk_profile_missing": "L’export CMYK nécessite un profil ICC CMYK configuré côté serveur.",
                 "sticker_cmyk_profile_unreadable": "Le profil ICC CMYK configuré est introuvable ou illisible.",
                 "ghostscript_missing": "L’export CMYK nécessite Ghostscript côté serveur.",
