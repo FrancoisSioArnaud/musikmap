@@ -1,9 +1,10 @@
 from datetime import date, timedelta
 
+from django.core.files.base import ContentFile
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from box_management.models import Article, Box, BoxSession, Client, Deposit, Emoji, IncitationPhrase, Song, Sticker
+from box_management.models import Article, Box, BoxSession, Client, ColorProfile, Deposit, Emoji, IncitationPhrase, Song, Sticker, StickerTemplate
 from users.models import CustomUser
 
 
@@ -56,6 +57,30 @@ class ClientAdminTestCase(APITestCase):
 
     def make_sticker(self, *, client, slug="12345678901", is_active=True, box=None):
         return Sticker.objects.create(client=client, slug=slug, is_active=is_active, box=box)
+
+    def make_sticker_template(self, *, clients=None, name="Template test", slug="template-test", svg_content=None, is_active=True):
+        svg_content = svg_content or '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200"><rect id="qr-zone" x="10" y="20" width="30" height="30" /></svg>'
+        template = StickerTemplate(name=name, slug=slug, is_active=is_active)
+        template.svg_file.save(f"{slug}.svg", ContentFile(svg_content.encode("utf-8")), save=False)
+        template.save()
+        if clients:
+            if not isinstance(clients, (list, tuple, set)):
+                clients = [clients]
+            template.clients.set(clients)
+        return template
+
+    def make_color_profile(self, *, name="CMYK profile", slug="cmyk-profile", color_space="CMYK", filename=None, content=b"icc", is_active=True, is_default=False):
+        filename = filename or f"{slug}.icc"
+        profile = ColorProfile(
+            name=name,
+            slug=slug,
+            color_space=color_space,
+            is_active=is_active,
+            is_default=is_default,
+        )
+        profile.icc_file.save(filename, ContentFile(content), save=False)
+        profile.save()
+        return profile
 
     def assert_api_error(self, response, status_code, code):
         self.assertEqual(response.status_code, status_code)

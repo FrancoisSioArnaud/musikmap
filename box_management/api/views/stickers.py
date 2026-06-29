@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from box_management.builders.sticker_payloads import serialize_client_admin_sticker
-from box_management.models import Sticker
+from box_management.models import Sticker, StickerTemplate
 from box_management.services.boxes.client_access import get_active_client_user_or_response
 from box_management.services.stickers.assignments import (
     assign_sticker_to_box,
@@ -17,6 +17,8 @@ from box_management.services.stickers.export import (
     build_stickers_zip_response,
     mark_stickers_downloaded,
     mark_stickers_generated,
+    resolve_client_sticker_template,
+    validate_export_options,
 )
 from box_management.services.stickers.selection import resolve_client_sticker_selection
 from la_boite_a_son.api_errors import api_error
@@ -92,6 +94,21 @@ class ClientAdminStickerGenerateView(APIView):
         )
 
 
+class ClientAdminStickerTemplateListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user, error_response = get_active_client_user_or_response(request)
+        if error_response:
+            return error_response
+
+        templates = StickerTemplate.objects.filter(clients__id=user.client_id, is_active=True).order_by("name", "id")
+        return Response(
+            {"results": [{"id": template.id, "name": template.name, "slug": template.slug} for template in templates]},
+            status=status.HTTP_200_OK,
+        )
+
+
 class ClientAdminStickerDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -104,54 +121,52 @@ class ClientAdminStickerDownloadView(APIView):
         if error:
             return api_error(error["status"], error["code"], error["detail"])
 
-        export_format = (request.data.get("format") or "images").strip().lower()
+        options, error = validate_export_options(request.data)
+        if error:
+            return api_error(error["status"], error["code"], error["detail"])
+
+        template, error = resolve_client_sticker_template(user.client_id, request.data.get("template_id"))
+        if error:
+            return api_error(error["status"], error["code"], error["detail"])
+
         mark_stickers_generated(stickers)
 
         try:
-            if export_format == "pdf":
-                return build_stickers_pdf_response(request, stickers)
-            return build_stickers_zip_response(request, stickers)
+            if options["file_type"] == "pdf":
+                return build_stickers_pdf_response(
+                    request,
+                    stickers,
+                    template=template,
+                    paper_size=options["paper_size"],
+                    orientation=options["orientation"],
+                    color_mode=options["color_mode"],
+                )
+            return build_stickers_zip_response(
+                request,
+                stickers,
+                template=template,
+                paper_size=options["paper_size"],
+                file_type=options["file_type"],
+            )
         except RuntimeError as exc:
             error_code = str(exc)
             details_by_code = {
                 "qrcode_missing": "L’export de stickers nécessite la dépendance Python qrcode côté serveur.",
-                "cairosvg_missing": "L’export de stickers nécessite la dépendance Python cairosvg côté serveur pour générer les PNG et PDF.",
-                "cairosvg_system_missing": "L’export de stickers nécessite les bibliothèques système Cairo sur le serveur pour générer les PNG et PDF.",
-                "reportlab_missing": "L’export PDF de stickers nécessite la dépendance Python reportlab côté serveur.",
+                "cairosvg_missing": "L’export de stickers nécessite la dépendance Python cairosvg côté serveur pour générer les PNG et JPEG.",
+                "cairosvg_system_missing": "L’export de stickers nécessite les bibliothèques système Cairo sur le serveur pour générer les PNG et JPEG.",
+                "inkscape_missing": "L’export PDF nécessite Inkscape côté serveur.",
+                "sticker_cmyk_profile_missing": "L’export CMYK nécessite un profil ICC CMYK configuré côté serveur.",
+                "sticker_cmyk_profile_unreadable": "Le profil ICC CMYK configuré est introuvable ou illisible.",
+                "ghostscript_missing": "L’export CMYK nécessite Ghostscript côté serveur.",
+                "ghostscript_failed": "La conversion CMYK a échoué.",
+                "pypdf_missing": "L’export PDF de stickers nécessite la dépendance Python pypdf côté serveur.",
             }
             detail = details_by_code.get(error_code)
             if not detail:
                 raise
-            return api_error(
-                status.HTTP_503_SERVICE_UNAVAILABLE,
-                str(error_code or "STICKER_EXPORT_DEPENDENCY_MISSING").upper(),
-                detail,
-            )
-        except FileNotFoundError:
-            return api_error(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "STICKER_TEMPLATE_NOT_FOUND",
-                "Le template SVG sticker est introuvable sur le serveur.",
-            )
-        except ValueError as exc:
-            error_text = str(exc or "")
-            if "zone QR du template SVG doit définir" in error_text:
-                return api_error(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "STICKER_TEMPLATE_QR_ZONE_INVALID",
-                    "La zone QR du template sticker est invalide.",
-                )
-            if "template SVG doit contenir" in error_text:
-                return api_error(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "STICKER_TEMPLATE_QR_ZONE_MISSING",
-                    "Le template sticker doit contenir une zone QR.",
-                )
-            return api_error(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "STICKER_TEMPLATE_INVALID",
-                "Le template SVG sticker est invalide.",
-            )
+            return api_error(status.HTTP_503_SERVICE_UNAVAILABLE, str(error_code).upper(), detail)
+        except ValueError:
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "STICKER_TEMPLATE_INVALID", "Le template SVG sticker est invalide.")
 
 
 class ClientAdminStickerConfirmDownloadView(APIView):
