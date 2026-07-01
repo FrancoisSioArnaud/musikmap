@@ -78,6 +78,7 @@ class PublicContractViewTests(FlowboxAPITestCase):
                 "slug",
                 "name",
                 "client_slug",
+                "require_loc",
                 "deposit_count",
                 "last_deposit_date",
                 "last_deposit_song_image_url",

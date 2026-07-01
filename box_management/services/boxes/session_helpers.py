@@ -61,6 +61,7 @@ def serialize_box_identity(box):
         "slug": getattr(box, "slug", None) or getattr(box, "url", None),
         "name": getattr(box, "name", None),
         "client_slug": getattr(getattr(box, "client", None), "slug", None),
+        "require_loc": bool(getattr(box, "require_loc", True)),
     }
 
 

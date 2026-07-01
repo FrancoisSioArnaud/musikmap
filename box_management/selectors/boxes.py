@@ -29,7 +29,7 @@ def get_box_with_stats(slug):
             deposit_count=Count("deposits", filter=Q(deposits__deposit_type=Deposit.DEPOSIT_TYPE_BOX)),
             last_deposit_at=Max("deposits__deposited_at", filter=Q(deposits__deposit_type=Deposit.DEPOSIT_TYPE_BOX)),
         )
-        .only("name", "url", "client__slug")
+        .only("name", "url", "require_loc", "client__slug")
         .first()
     )
 

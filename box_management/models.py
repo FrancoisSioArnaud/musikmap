@@ -144,6 +144,7 @@ class Box(models.Model):
     description = models.CharField(max_length=150, blank=True)
     url = models.SlugField(blank=True, unique=True)
     image_url = models.URLField(max_length=200, blank=True)
+    require_loc = models.BooleanField(default=True)
     client = models.ForeignKey(
         "Client",
         on_delete=models.PROTECT,

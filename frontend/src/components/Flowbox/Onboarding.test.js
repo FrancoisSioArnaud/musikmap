@@ -151,4 +151,47 @@ describe('Onboarding Flowbox entry', () => {
     expect(markFlowboxVisited).toHaveBeenCalledWith('box-a');
     expect(setUser).toHaveBeenCalledWith({ username: 'viewer', points: 50 });
   });
+
+  test('opens box-session directly without GPS when requireLoc is false', async () => {
+    const { saveVerifiedSession, markFlowboxVisited, setUser } = renderOnboarding({
+      flowboxContext: {
+        getBoxRuntime: jest.fn(() => ({
+          box: {
+            slug: 'box-a',
+            name: 'Box A',
+            requireLoc: false,
+            lastDepositSongImageUrl: null,
+            lastDepositDate: null,
+          },
+        })),
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la boîte' }));
+
+    expect(await screen.findByText('Discover route')).toBeInTheDocument();
+    expect(navigator.geolocation.getCurrentPosition).not.toHaveBeenCalled();
+    expect(navigator.permissions.query).not.toHaveBeenCalled();
+    expect(screen.queryByText('Vérifie que tu es près de la boîte')).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      '/box-management/verify-location',
+      expect.anything()
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/box-management/box-session/',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ boxSlug: 'box-a' }),
+      })
+    );
+    expect(screen.getByTestId('current-path')).toHaveTextContent('/flowbox/box-a/discover');
+    expect(saveVerifiedSession).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true }),
+      { triggerEnterHint: true }
+    );
+    expect(markFlowboxVisited).toHaveBeenCalledWith('box-a');
+    expect(setUser).toHaveBeenCalledWith({ username: 'viewer', points: 50 });
+  });
+
 });

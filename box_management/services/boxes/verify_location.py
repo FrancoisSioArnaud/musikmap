@@ -20,6 +20,9 @@ def verify_location_for_box(*, box_slug, latitude, longitude):
             "detail": "Boîte introuvable.",
         }
 
+    if not getattr(box, "require_loc", True):
+        return {"box": box}, None
+
     points = get_location_points(box)
     if not points.exists():
         return None, {

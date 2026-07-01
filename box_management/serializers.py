@@ -50,6 +50,7 @@ class BoxSerializer(serializers.ModelSerializer):
             "description",
             "url",
             "image_url",
+            "require_loc",
             "client",
             "client_detail",
             "created_at",
