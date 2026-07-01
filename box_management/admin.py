@@ -109,8 +109,8 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     Class goal: This class represents a Music Box used in the admin interface to import/export data.
     """
 
-    list_display = ("name", "url", "client", "description", "image_url")
-    list_filter = ("client",)
+    list_display = ("name", "url", "client", "require_loc", "description", "image_url")
+    list_filter = ("client", "require_loc")
     search_fields = ("name", "description", "url", "client__name")
     autocomplete_fields = ("client",)
     fieldsets = (
@@ -121,6 +121,7 @@ class BoxAdmin(ImportExportModelAdmin, admin.ModelAdmin):
                     "name",
                     "url",
                     "client",
+                    "require_loc",
                 )
             },
         ),

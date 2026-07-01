@@ -107,4 +107,28 @@ describe('FlowboxSessionProvider discover snapshot runtime', () => {
       pointsBalance: 5060,
     });
   });
+
+  test('saveBoxBootstrap normalizes require_loc to requireLoc with true fallback', () => {
+    render(
+      <FlowboxSessionProvider>
+        <Harness />
+      </FlowboxSessionProvider>
+    );
+
+    act(() => {
+      contextValue.saveBoxBootstrap({
+        slug: 'box-a',
+        name: 'Box A',
+        require_loc: false,
+      });
+      contextValue.saveBoxBootstrap({
+        slug: 'box-b',
+        name: 'Box B',
+      });
+    });
+
+    expect(readRuntime('box-a').box.requireLoc).toBe(false);
+    expect(readRuntime('box-b').box.requireLoc).toBe(true);
+  });
+
 });

@@ -53,6 +53,7 @@ export default function FlowboxBoxShell() {
           slug: data?.slug || boxSlug,
           name: data?.name || "",
           clientSlug: data?.client_slug || "default",
+          requireLoc: data?.require_loc ?? true,
           searchIncitationText: data?.search_incitation_text || "",
           lastDepositDate: data?.last_deposit_date || null,
           lastDepositSongImageUrl: data?.last_deposit_song_image_url || null,

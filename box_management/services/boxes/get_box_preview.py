@@ -36,6 +36,7 @@ def get_box_preview(box_slug):
         "slug": box.slug,
         "name": box.name,
         "client_slug": box.client.slug if box.client else None,
+        "require_loc": bool(getattr(box, "require_loc", True)),
         "deposit_count": box.deposit_count,
         "last_deposit_date": naturaltime(localtime(box.last_deposit_at)) if box.last_deposit_at else None,
         "last_deposit_song_image_url": last_deposit.song.image_url if last_deposit and last_deposit.song else None,

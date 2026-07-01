@@ -33,6 +33,7 @@ function sanitizeBox(box, fallbackSlug = null) {
     slug: box?.slug || fallbackSlug || null,
     name: box?.name || "",
     clientSlug: box?.clientSlug || box?.client_slug || null,
+    requireLoc: box?.requireLoc ?? box?.require_loc ?? true,
     searchIncitationText:
       box?.searchIncitationText || box?.search_incitation_text || "",
     lastDepositDate: box?.lastDepositDate || box?.last_deposit_date || null,

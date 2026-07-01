@@ -381,6 +381,28 @@ class BoxDepositView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+def _open_box_session_response(request, box):
+    current_user = get_current_app_user(request)
+    guest_created = False
+    if not current_user:
+        current_user, guest_created = ensure_guest_user_for_request(request)
+    touch_last_seen(current_user)
+
+    session = open_box_session_for_user(current_user, box)
+    response = Response(
+        {
+            "active": True,
+            "box": serialize_box_identity(box),
+            "session": serialize_box_session(session),
+            "current_user": build_current_user_payload(current_user),
+        },
+        status=status.HTTP_200_OK,
+    )
+    if guest_created and getattr(current_user, "guest_device_token", None):
+        attach_guest_cookie(response, current_user.guest_device_token)
+    return response
+
+
 class Location(APIView):
     """
     POST /box-management/verify-location
@@ -411,25 +433,7 @@ class Location(APIView):
             return api_error(error["status"], error["code"], error["detail"])
         box = result["box"]
 
-        current_user = get_current_app_user(request)
-        guest_created = False
-        if not current_user:
-            current_user, guest_created = ensure_guest_user_for_request(request)
-        touch_last_seen(current_user)
-
-        session = open_box_session_for_user(current_user, box)
-        response = Response(
-            {
-                "active": True,
-                "box": serialize_box_identity(box),
-                "session": serialize_box_session(session),
-                "current_user": build_current_user_payload(current_user),
-            },
-            status=status.HTTP_200_OK,
-        )
-        if guest_created and getattr(current_user, "guest_device_token", None):
-            attach_guest_cookie(response, current_user.guest_device_token)
-        return response
+        return _open_box_session_response(request, box)
 
 
 class BoxSessionView(APIView):
@@ -455,6 +459,28 @@ class BoxSessionView(APIView):
             )
 
         return Response(session_payload_for_box(session, box), status=status.HTTP_200_OK)
+
+    def post(self, request):
+        box_slug = (
+            (request.data.get("boxSlug") if hasattr(request, "data") else None)
+            or request.query_params.get("boxSlug")
+            or ""
+        ).strip()
+        if not box_slug:
+            return api_error(status.HTTP_400_BAD_REQUEST, "BOX_SLUG_REQUIRED", "boxSlug manquant")
+
+        box = get_box_by_slug(box_slug)
+        if not box:
+            return api_error(status.HTTP_404_NOT_FOUND, "BOX_NOT_FOUND", "Boîte introuvable.")
+
+        if getattr(box, "require_loc", True):
+            return api_error(
+                status.HTTP_403_FORBIDDEN,
+                "BOX_LOCATION_REQUIRED",
+                "Cette boîte nécessite une vérification de localisation.",
+            )
+
+        return _open_box_session_response(request, box)
 
 
 class ActiveBoxSessionsView(APIView):

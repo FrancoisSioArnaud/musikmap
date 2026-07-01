@@ -13,7 +13,10 @@ export default function ClosedBoxPage() {
   const { boxSlug } = useParams();
   const { getBoxRuntime } = useContext(FlowboxSessionContext);
   const runtime = getBoxRuntime(boxSlug);
-  const boxName = runtime?.box?.name || "cette boîte";
+  const requireLoc = runtime?.box?.requireLoc !== false;
+  const reopenText = requireLoc
+    ? "Ton temps d’exploration est terminé. Pour rouvrir cette boîte, scanne à nouveau son QR code sur place."
+    : "Ton temps d’exploration est terminé. Pour rouvrir cette boîte, ouvre-la à nouveau.";
 
   return (
     <Box sx={{ minHeight: "calc(100vh - 56px)", display: "grid", placeItems: "center", p: 4 }}>
@@ -24,7 +27,7 @@ export default function ClosedBoxPage() {
             La boîte est refermée
           </Typography>
           <Typography component="p" variant="body1">
-            Ton temps d’exploration est terminé. Pour rouvrir cette boîte, scanne à nouveau son QR code sur place.
+            {reopenText}
           </Typography>
         </Box>
 

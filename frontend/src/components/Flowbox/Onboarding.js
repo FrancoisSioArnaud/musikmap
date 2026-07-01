@@ -140,6 +140,7 @@ export default function Onboarding() {
   const [geolocationErrorDialog, setGeolocationErrorDialog] = useState(null);
 
   const boxName = runtime?.box?.name || "Boîte";
+  const requireLoc = runtime?.box?.requireLoc !== false;
   const deviceOs = getDeviceOs();
   const permissionDialog = getPermissionDialogContent(deviceOs);
 
@@ -220,6 +221,45 @@ export default function Onboarding() {
     }
   }, [boxSlug, markFlowboxVisited, navigate, saveVerifiedSession, setUser]);
 
+
+  const openBoxWithoutLocation = useCallback(async () => {
+    setGeoLoading(true);
+    setPageError("");
+    setSettingsDialogOpen(false);
+    setOutsideRangeDialogOpen(false);
+    setGeolocationErrorDialog(null);
+    setSheetOpen(false);
+
+    try {
+      const response = await fetch(`/box-management/box-session/`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ boxSlug }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.detail || "Impossible d’ouvrir la boîte.");
+      }
+
+      saveVerifiedSession(data, { triggerEnterHint: true });
+      markFlowboxVisited(boxSlug);
+      if (data?.current_user && setUser) {
+        setUser(data.current_user);
+      }
+      navigate(`/flowbox/${encodeURIComponent(boxSlug)}/discover`, { replace: true });
+    } catch (error) {
+      setPageError(error?.message || "Impossible d’ouvrir la boîte.");
+    } finally {
+      setGeoLoading(false);
+    }
+  }, [boxSlug, markFlowboxVisited, navigate, saveVerifiedSession, setUser]);
+
   const handleRetryGeolocation = useCallback(() => {
     if (geoLoading) {return;}
     setGeolocationErrorDialog(null);
@@ -230,6 +270,11 @@ export default function Onboarding() {
     setPageError("");
     setOutsideRangeDialogOpen(false);
     setGeolocationErrorDialog(null);
+    if (!requireLoc) {
+      openBoxWithoutLocation();
+      return;
+    }
+
     const permissionState = await getLocationPermissionState();
 
     if (permissionState === "granted") {
@@ -244,7 +289,7 @@ export default function Onboarding() {
     }
 
     setSheetOpen(true);
-  }, [verifyAndOpenBox]);
+  }, [openBoxWithoutLocation, requireLoc, verifyAndOpenBox]);
 
   const coverImage = runtime?.box?.lastDepositSongImageUrl || null;
 
@@ -307,13 +352,15 @@ export default function Onboarding() {
         </Box>
       </Paper>
 
-      <EnableLocation
-        open={sheetOpen}
-        boxTitle={boxName}
-        loading={geoLoading}
-        onAuthorize={verifyAndOpenBox}
-        onClose={() => setSheetOpen(false)}
-      />
+      {requireLoc ? (
+        <EnableLocation
+          open={sheetOpen}
+          boxTitle={boxName}
+          loading={geoLoading}
+          onAuthorize={verifyAndOpenBox}
+          onClose={() => setSheetOpen(false)}
+        />
+      ) : null}
 
       <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>{permissionDialog.title}</DialogTitle>
